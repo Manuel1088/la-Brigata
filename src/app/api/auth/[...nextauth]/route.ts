@@ -1,0 +1,142 @@
+import NextAuth from 'next-auth'
+import CredentialsProvider from 'next-auth/providers/credentials'
+import { logLogin, logLogout } from '@/lib/audit'
+
+// Configurazione ruoli e livelli gerarchici
+const roleConfig = {
+  PROPRIETARIO: { level: 10, name: 'Proprietario', avatar: '👑' },
+  DIRETTORE: { level: 9, name: 'Direttore', avatar: '👔' },
+  MANAGER: { level: 8, name: 'Manager', avatar: '📊' },
+  RESPONSABILE_SALA: { level: 7, name: 'Responsabile Sala', avatar: '🍽️' },
+  HEAD_CHEF: { level: 7, name: 'Head Chef', avatar: '👨‍🍳' },
+  CASSIERE: { level: 6, name: 'Cassiere', avatar: '💰' },
+  DIPENDENTE: { level: 5, name: 'Dipendente', avatar: '👤' }
+}
+
+// Account demo con credenziali specifiche
+const demoAccounts = {
+  'admin': { 
+    password: 'admin123', 
+    user: { 
+      id: '1', 
+      email: 'admin@brigata.it', 
+      name: 'Admin Proprietario', 
+      role: 'PROPRIETARIO',
+      level: 10,
+      avatar: '👑'
+    } 
+  },
+  'direttore': { 
+    password: 'dir123', 
+    user: { 
+      id: '2', 
+      email: 'direttore@brigata.it', 
+      name: 'Marco Direttore', 
+      role: 'DIRETTORE',
+      level: 9,
+      avatar: '👔'
+    } 
+  },
+  'manager': { 
+    password: 'mgr123', 
+    user: { 
+      id: '3', 
+      email: 'manager@brigata.it', 
+      name: 'Anna Manager', 
+      role: 'MANAGER',
+      level: 8,
+      avatar: '📊'
+    } 
+  },
+  'cassiere': { 
+    password: 'cassa123', 
+    user: { 
+      id: '4', 
+      email: 'cassiere@brigata.it', 
+      name: 'Luca Cassiere', 
+      role: 'CASSIERE',
+      level: 6,
+      avatar: '💰'
+    } 
+  },
+  'dipendente': { 
+    password: 'dip123', 
+    user: { 
+      id: '5', 
+      email: 'dipendente@brigata.it', 
+      name: 'Sofia Dipendente', 
+      role: 'DIPENDENTE',
+      level: 5,
+      avatar: '👤'
+    } 
+  }
+}
+
+const handler = NextAuth({
+  providers: [
+    CredentialsProvider({
+      name: 'credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
+
+        // Estrai username dall'email (prima parte prima di @)
+        const username = credentials.email.split('@')[0]
+        
+        // Verifica credenziali demo
+        if (demoAccounts[username as keyof typeof demoAccounts]) {
+          const account = demoAccounts[username as keyof typeof demoAccounts]
+          if (account.password === credentials.password) {
+            // Log del login
+            await logLogin(account.user.id)
+            return account.user
+          }
+        }
+        
+        return null
+      }
+    })
+  ],
+  pages: {
+    signIn: '/login',
+  },
+  session: {
+    strategy: 'jwt',
+    maxAge: 8 * 60 * 60, // 8 ore
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user && 'role' in user) {
+        token.role = (user as any).role;
+        token.level = (user as any).level;
+        token.avatar = (user as any).avatar;
+      }
+      if (user && 'id' in user) {
+        token.sub = (user as any).id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token && session.user) {
+        (session.user as any).id = token.sub;
+        (session.user as any).role = token.role as string;
+        (session.user as any).level = token.level as number;
+        (session.user as any).avatar = token.avatar as string;
+      }
+      return session;
+    },
+    async signOut({ token }) {
+      // Log del logout
+      if (token?.sub) {
+        await logLogout(token.sub as string);
+      }
+    }
+  }
+})
+
+export { handler as GET, handler as POST }

@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now())
+  
+  users     User[]
+  shifts    Shift[]
+  tips      DailyTips[]
+  bookings  Booking[]
+  tables    Table[]
+  leavePolicies LeavePolicy[]
+  
+  @@map("restaurants")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  password       String   // Hash della password
+  role           UserRole
+  hierarchyLevel Int      @map("hierarchy_level")
+  restaurantId   String   @map("restaurant_id")
+  department     String?
+  isActive       Boolean  @default(true) @map("is_active")
+  lastLogin      DateTime? @map("last_login")
+  createdAt      DateTime @default(now())
+  
+  // Nuovi campi per gestione dipendenti
+  phone          String?
+  hourlyRate     Decimal? @map("hourly_rate")
+  contractType   String?  @map("contract_type") // full-time, part-time
+  startDate      DateTime? @map("start_date")
+  avatar         String?  @default("👤")
+  
+  // Informazioni personali
+  fiscalCode     String?  @map("fiscal_code")
+  address        String?
+  emergencyContact String? @map("emergency_contact")
+  notes          String?
+  
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id])
+  shifts           Shift[]
+  tipDistributions TipDistribution[]
+  leaveRequests    LeaveRequest[]
+  leaveApprovals   LeaveApproval[]
+  leaveEntitlements LeaveEntitlement[]
+  leaveBalances    LeaveBalance[]
+  skills           EmployeeSkill[]
+  userPermissions  UserPermission[]
+  auditLogs        AuditLog[]
+  
+  @@map("users")
+}
+
+model Shift {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  restaurantId String   @map("restaurant_id")
+  date         DateTime
+  startTime    DateTime @map("start_time")
+  endTime      DateTime @map("end_time")
+  department   String
+  status       String   @default("scheduled")
+  createdAt    DateTime @default(now())
+  
+  user         User       @relation(fields: [userId], references: [id])
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  
+  @@map("shifts")
+}
+
+model DailyTips {
+  id                   String   @id @default(cuid())
+  restaurantId         String   @map("restaurant_id")
+  date                 DateTime
+  cashTips            Decimal  @default(0) @map("cash_tips")
+  cardTips            Decimal  @default(0) @map("card_tips")
+  foreignCurrencyTips Decimal  @default(0) @map("foreign_currency_tips")
+  enteredBy           String   @map("entered_by")
+  createdAt           DateTime @default(now())
+  
+  restaurant          Restaurant @relation(fields: [restaurantId], references: [id])
+  distributions       TipDistribution[]
+  
+  @@unique([restaurantId, date])
+  @@map("daily_tips")
+}
+
+model TipDistribution {
+  id           String   @id @default(cuid())
+  dailyTipsId  String   @map("daily_tips_id")
+  userId       String   @map("user_id")
+  amount       Decimal
+  createdAt    DateTime @default(now())
+  
+  dailyTips    DailyTips @relation(fields: [dailyTipsId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
+  
+  @@map("tip_distributions")
+}
+
+model LeaveRequest {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  type        LeaveType
+  reason      String?
+  status      LeaveStatus @default("pending")
+  approvedBy  String?  @map("approved_by")
+  approvedAt  DateTime? @map("approved_at")
+  rejectedBy  String?  @map("rejected_by")
+  rejectedAt  DateTime? @map("rejected_at")
+  rejectionReason String? @map("rejection_reason")
+  isUrgent    Boolean  @default(false) @map("is_urgent")
+  attachment  String?  // URL certificato medico, documenti
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user        User     @relation(fields: [userId], references: [id])
+  approvals   LeaveApproval[]
+  
+  @@map("leave_requests")
+}
+
+model LeaveApproval {
+  id          String   @id @default(cuid())
+  requestId   String   @map("request_id")
+  approverId  String   @map("approver_id")
+  status      String   // approved, rejected, pending
+  comment     String?
+  approvedAt  DateTime? @map("approved_at")
+  createdAt   DateTime @default(now())
+  
+  request     LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver    User         @relation(fields: [approverId], references: [id])
+  
+  @@map("leave_approvals")
+}
+
+model LeaveEntitlement {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  year            Int
+  vacationDays    Int      @default(26) @map("vacation_days")
+  rolHours        Int      @default(32) @map("rol_hours")
+  paidLeaveDays   Int      @default(3) @map("paid_leave_days")
+  unpaidLeaveDays Int      @default(30) @map("unpaid_leave_days")
+  parentalDays    Int      @default(180) @map("parental_days")
+  studyDays       Int      @default(150) @map("study_days")
+  unionDays       Int      @default(8) @map("union_days")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  user            User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, year])
+  @@map("leave_entitlements")
+}
+
+model LeaveBalance {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  year        Int
+  type        LeaveType
+  total       Int      // Totale giorni/ore disponibili
+  used        Int      @default(0) // Giorni/ore utilizzati
+  remaining   Int      // Giorni/ore rimanenti
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, year, type])
+  @@map("leave_balances")
+}
+
+model LeavePolicy {
+  id              String   @id @default(cuid())
+  restaurantId    String   @map("restaurant_id")
+  type            LeaveType
+  maxDays         Int      @map("max_days")
+  noticeDays      Int      @map("notice_days")
+  autoApprove     Boolean  @default(false) @map("auto_approve")
+  requiresAttachment Boolean @default(false) @map("requires_attachment")
+  blackoutPeriods String?  @map("blackout_periods") // JSON array of date ranges
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id])
+  
+  @@unique([restaurantId, type])
+  @@map("leave_policies")
+}
+
+model Booking {
+  id           String   @id @default(cuid())
+  restaurantId String   @map("restaurant_id")
+  customerName String   @map("customer_name")
+  customerPhone String? @map("customer_phone")
+  date         DateTime
+  time         DateTime
+  partySize    Int      @map("party_size")
+  tableNumber  Int?     @map("table_number")
+  status       String   @default("confirmed")
+  notes        String?
+  createdAt    DateTime @default(now())
+  
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  
+  @@map("bookings")
+}
+
+model Table {
+  id           String   @id @default(cuid())
+  restaurantId String   @map("restaurant_id")
+  tableNumber  Int      @map("table_number")
+  seats        Int
+  status       String   @default("available")
+  lastUpdated  DateTime @default(now()) @map("last_updated")
+  
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  
+  @@unique([restaurantId, tableNumber])
+  @@map("tables")
+}
+
+model EmployeeSkill {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  skill     String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("employee_skills")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  category    String   // personale, mance, turni, report, admin
+  createdAt   DateTime @default(now())
+  
+  userPermissions UserPermission[]
+  
+  @@map("permissions")
+}
+
+model UserPermission {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  permissionId String     @map("permission_id")
+  granted      Boolean    @default(true)
+  grantedBy    String?    @map("granted_by")
+  grantedAt    DateTime   @default(now())
+  
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  action      String   // CREATE, READ, UPDATE, DELETE, LOGIN, LOGOUT
+  resource    String   // users, tips, shifts, etc.
+  resourceId  String?  @map("resource_id")
+  details     String?  // JSON con dettagli dell'azione
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@map("audit_logs")
+}
+
+enum UserRole {
+  // 👑 Livello 10 - Accesso Totale
+  PROPRIETARIO
+  
+  // 👔 Livello 9 - Gestione Operativa
+  DIRETTORE
+  
+  // 📊 Livello 8 - Gestione Mance e Turni
+  MANAGER
+  
+  // 🍽️ Livello 7 - Gestione Sala
+  RESPONSABILE_SALA
+  
+  // 👨‍🍳 Livello 7 - Gestione Cucina
+  HEAD_CHEF
+  
+  // 💰 Livello 6 - Gestione Cassa
+  CASSIERE
+  
+  // 👤 Livello 5 - Solo Visualizzazione
+  DIPENDENTE
+}
+
+enum LeaveType {
+  VACATION        // 🏖️ Ferie (26 giorni/anno, preavviso 15gg)
+  SICK_LEAVE      // 🤒 Malattia (180gg, auto-approvata con certificato)
+  ROL             // ⏰ ROL (32 ore accumulate, preavviso 7gg)
+  PAID_LEAVE      // 📅 Permessi Retribuiti (3 giorni/anno, preavviso 3gg)
+  UNPAID_LEAVE    // 📋 Permessi Non Retribuiti (30gg max, preavviso 15gg)
+  PARENTAL_LEAVE  // 👶 Congedo Parentale (180gg, preavviso 30gg)
+  STUDY_LEAVE     // 📚 Permesso Studio (150gg, preavviso 30gg)
+  UNION_LEAVE     // 🤝 Permesso Sindacale (8 giorni/anno, preavviso 7gg)
+}
+
+enum LeaveStatus {
+  PENDING         // In attesa di approvazione
+  APPROVED        // Approvata
+  REJECTED        // Rifiutata
+  CANCELLED       // Annullata dal dipendente
+  EXPIRED         // Scaduta (non approvata in tempo)
+}
