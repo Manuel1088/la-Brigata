@@ -28,7 +28,7 @@ export interface LeaveRequest {
   endDate: Date
   type: string
   reason?: string
-  status: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PROPOSED'
   isUrgent: boolean
   attachment?: string
   createdAt: Date
@@ -37,6 +37,12 @@ export interface LeaveRequest {
   rejectedBy?: string
   rejectedAt?: Date
   rejectionReason?: string
+  // Campi per proposta alternative date
+  proposedStartDate?: Date
+  proposedEndDate?: Date
+  proposedBy?: string
+  proposedAt?: Date
+  proposalComment?: string
 }
 
 // Configurazione delle 8 tipologie di ferie/permessi
@@ -361,7 +367,7 @@ export function getLeaveStats(): {
   })
   
   // Conta per status
-  const statuses = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'EXPIRED']
+  const statuses = ['PENDING', 'APPROVED', 'REJECTED', 'PROPOSED', 'CANCELLED', 'EXPIRED']
   statuses.forEach(status => {
     stats.requestsByStatus[status] = requests.filter(r => r.status === status).length
   })
@@ -448,4 +454,128 @@ export function updateLeaveRequestStatus(
   return {
     success: true
   }
+}
+
+// Proponi nuove date per una richiesta (da parte dell'approvatore)
+export function proposeLeaveDates(
+  requestId: string,
+  approverId: string,
+  newStartDate: Date,
+  newEndDate: Date,
+  comment?: string
+): { success: boolean; error?: string } {
+  const request = mockLeaveRequests.find(req => req.id === requestId)
+  if (!request) {
+    return { success: false, error: 'Richiesta non trovata' }
+  }
+  if (request.status !== 'PENDING') {
+    return { success: false, error: 'Solo richieste in attesa possono ricevere una proposta' }
+  }
+
+  // Valida le nuove date rispetto all'utente richiedente
+  const validation = validateLeaveRequest(request.userId, request.type, newStartDate, newEndDate, request.isUrgent)
+  if (!validation.isValid) {
+    return { success: false, error: validation.errors.join('; ') }
+  }
+
+  request.proposedStartDate = newStartDate
+  request.proposedEndDate = newEndDate
+  request.proposedBy = approverId
+  request.proposedAt = new Date()
+  request.proposalComment = comment
+  request.status = 'PROPOSED'
+
+  return { success: true }
+}
+
+// Accetta una proposta (da parte del richiedente)
+export function acceptLeaveProposal(
+  requestId: string,
+  userId: string
+): { success: boolean; error?: string } {
+  const request = mockLeaveRequests.find(req => req.id === requestId)
+  if (!request) {
+    return { success: false, error: 'Richiesta non trovata' }
+  }
+  if (request.userId !== userId) {
+    return { success: false, error: 'Operazione non consentita' }
+  }
+  if (request.status !== 'PROPOSED' || !request.proposedStartDate || !request.proposedEndDate) {
+    return { success: false, error: 'Nessuna proposta da accettare' }
+  }
+
+  // Applica le date proposte e torna in attesa di approvazione
+  request.startDate = request.proposedStartDate
+  request.endDate = request.proposedEndDate
+  request.proposedStartDate = undefined
+  request.proposedEndDate = undefined
+  request.proposedBy = undefined
+  request.proposedAt = undefined
+  request.proposalComment = undefined
+  request.status = 'PENDING'
+
+  return { success: true }
+}
+
+// Rifiuta una proposta (da parte del richiedente)
+export function rejectLeaveProposal(
+  requestId: string,
+  userId: string,
+  reason?: string
+): { success: boolean; error?: string } {
+  const request = mockLeaveRequests.find(req => req.id === requestId)
+  if (!request) {
+    return { success: false, error: 'Richiesta non trovata' }
+  }
+  if (request.userId !== userId) {
+    return { success: false, error: 'Operazione non consentita' }
+  }
+  if (request.status !== 'PROPOSED') {
+    return { success: false, error: 'Nessuna proposta da rifiutare' }
+  }
+
+  request.proposedStartDate = undefined
+  request.proposedEndDate = undefined
+  request.proposedBy = undefined
+  request.proposedAt = undefined
+  request.proposalComment = undefined
+  request.rejectionReason = reason
+  request.status = 'PENDING'
+
+  return { success: true }
+}
+
+// Controproponi nuove date (da parte del richiedente) quando c'è già una proposta
+export function counterProposeLeaveDates(
+  requestId: string,
+  userId: string,
+  newStartDate: Date,
+  newEndDate: Date,
+  comment?: string
+): { success: boolean; error?: string } {
+  const request = mockLeaveRequests.find(req => req.id === requestId)
+  if (!request) {
+    return { success: false, error: 'Richiesta non trovata' }
+  }
+  if (request.userId !== userId) {
+    return { success: false, error: 'Operazione non consentita' }
+  }
+  if (request.status !== 'PROPOSED') {
+    return { success: false, error: 'Nessuna proposta attiva da controproporre' }
+  }
+
+  // Valida le nuove date
+  const validation = validateLeaveRequest(userId, request.type, newStartDate, newEndDate, request.isUrgent)
+  if (!validation.isValid) {
+    return { success: false, error: validation.errors.join('; ') }
+  }
+
+  request.proposedStartDate = newStartDate
+  request.proposedEndDate = newEndDate
+  request.proposedBy = userId
+  request.proposedAt = new Date()
+  request.proposalComment = comment
+  request.status = 'PROPOSED'
+
+  return { success: true }
 }

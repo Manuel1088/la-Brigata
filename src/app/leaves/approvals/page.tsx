@@ -10,6 +10,7 @@ import {
   getLeaveRequests, 
   getLeaveRequestsByStatus,
   updateLeaveRequestStatus,
+  proposeLeaveDates,
   LEAVE_TYPES 
 } from '@/lib/leaveSystem'
 
@@ -18,12 +19,14 @@ export default function LeaveApprovalsPage() {
   const router = useRouter()
   const { canApproveLeave, canViewAllLeaves } = usePermissions()
   const { logApproveAction, logRejectAction } = useAudit()
-  const { notifyLeaveApproved, notifyLeaveRejected } = useNotifications()
+  const { notifyLeaveApproved, notifyLeaveRejected, notifyLeaveProposed } = useNotifications()
   
   const [pendingRequests, setPendingRequests] = useState<any[]>([])
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending')
   const [selectedRequest, setSelectedRequest] = useState<any>(null)
   const [comment, setComment] = useState('')
+  const [proposedStart, setProposedStart] = useState<string>('')
+  const [proposedEnd, setProposedEnd] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
@@ -107,6 +110,32 @@ export default function LeaveApprovalsPage() {
       alert('Errore nel rifiuto: ' + result.error)
     }
     
+    setIsProcessing(false)
+  }
+
+  const handlePropose = async (requestId: string) => {
+    if (!session?.user?.id) return
+    if (!proposedStart || !proposedEnd) {
+      alert('Inserisci le date proposte')
+      return
+    }
+    setIsProcessing(true)
+    const result = proposeLeaveDates(requestId, session.user.id, new Date(proposedStart), new Date(proposedEnd), comment)
+    if (result.success) {
+      // Notifica al dipendente
+      const request = pendingRequests.find(r => r.id === requestId)
+      if (request) {
+        const employeeName = `Dipendente ${request.userId}`
+        notifyLeaveProposed(employeeName, new Date(proposedStart).toLocaleDateString('it-IT'), new Date(proposedEnd).toLocaleDateString('it-IT'), comment)
+      }
+      setComment('')
+      setProposedStart('')
+      setProposedEnd('')
+      loadRequests()
+      setSelectedRequest(null)
+    } else {
+      alert('Errore nella proposta: ' + result.error)
+    }
     setIsProcessing(false)
   }
 
@@ -422,6 +451,28 @@ export default function LeaveApprovalsPage() {
                         placeholder="Aggiungi un commento per l'approvazione o il rifiuto..."
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Proponi Data Inizio</label>
+                          <input
+                            type="date"
+                            value={proposedStart}
+                            onChange={(e) => setProposedStart(e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Proponi Data Fine</label>
+                          <input
+                            type="date"
+                            value={proposedEnd}
+                            onChange={(e) => setProposedEnd(e.target.value)}
+                            min={proposedStart || new Date().toISOString().split('T')[0]}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -440,6 +491,13 @@ export default function LeaveApprovalsPage() {
                       className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
                     >
                       ❌ Rifiuta
+                    </button>
+                    <button
+                      onClick={() => handlePropose(selectedRequest.id)}
+                      disabled={isProcessing}
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
+                    >
+                      ✏️ Proponi date
                     </button>
                     <button
                       onClick={() => handleApprove(selectedRequest.id)}

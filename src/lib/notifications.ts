@@ -330,6 +330,44 @@ export function createLeaveRequestNotification(employeeName: string, days: numbe
   })
 }
 
+export function createLeaveProposalNotification(employeeName: string, startDate: string, endDate: string, comment?: string): Notification {
+  return createNotification({
+    type: 'INFO',
+    category: 'LEAVES',
+    title: 'Nuova proposta ferie',
+    message: `${employeeName}: proposta ${startDate} → ${endDate}${comment ? ` — ${comment}` : ''}`,
+    isUrgent: false,
+    actions: [
+      { label: 'Accetta', action: 'accept_proposal', variant: 'primary', icon: '✅' },
+      { label: 'Rifiuta', action: 'reject_proposal', variant: 'danger', icon: '❌' },
+      { label: 'Dettagli', action: 'view_details', variant: 'secondary', icon: '👁️' }
+    ],
+    metadata: { employeeName, startDate, endDate, comment }
+  })
+}
+
+export function createProposalAcceptedNotification(employeeName: string, startDate: string, endDate: string): Notification {
+  return createNotification({
+    type: 'SUCCESS',
+    category: 'LEAVES',
+    title: 'Proposta accettata',
+    message: `${employeeName}: ${startDate} → ${endDate}`,
+    isUrgent: false,
+    metadata: { employeeName, startDate, endDate }
+  })
+}
+
+export function createProposalRejectedNotification(employeeName: string, reason?: string): Notification {
+  return createNotification({
+    type: 'WARNING',
+    category: 'LEAVES',
+    title: 'Proposta rifiutata',
+    message: `${employeeName}${reason ? ` — ${reason}` : ''}`,
+    isUrgent: false,
+    metadata: { employeeName, reason }
+  })
+}
+
 export function createShiftCoverageNotification(shiftDate: string, shiftTime: string, department: string, reason: string): Notification {
   return createNotification({
     type: 'URGENT',

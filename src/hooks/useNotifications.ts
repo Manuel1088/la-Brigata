@@ -5,6 +5,9 @@ import {
   createLeaveRequestNotification,
   createShiftCoverageNotification,
   createTipsCompletedNotification,
+  createLeaveProposalNotification,
+  createProposalAcceptedNotification,
+  createProposalRejectedNotification,
   NotificationType,
   NotificationCategory
 } from '@/lib/notifications'
@@ -27,6 +30,18 @@ export const useNotifications = () => {
       ],
       metadata: { employeeName, days }
     })
+  }, [])
+
+  const notifyLeaveProposed = useCallback((employeeName: string, startDate: string, endDate: string, comment?: string) => {
+    return createLeaveProposalNotification(employeeName, startDate, endDate, comment)
+  }, [])
+
+  const notifyProposalAccepted = useCallback((employeeName: string, startDate: string, endDate: string) => {
+    return createProposalAcceptedNotification(employeeName, startDate, endDate)
+  }, [])
+
+  const notifyProposalRejected = useCallback((employeeName: string, reason?: string) => {
+    return createProposalRejectedNotification(employeeName, reason)
   }, [])
 
   const notifyLeaveRejected = useCallback((employeeName: string, reason?: string) => {
@@ -173,6 +188,9 @@ export const useNotifications = () => {
     notifyLeaveRequest,
     notifyLeaveApproved,
     notifyLeaveRejected,
+    notifyLeaveProposed,
+    notifyProposalAccepted,
+    notifyProposalRejected,
     
     // Turni
     notifyShiftCoverage,

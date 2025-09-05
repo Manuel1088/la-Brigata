@@ -5,13 +5,17 @@ import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useAudit } from '@/hooks/useAudit'
+import { useNotifications } from '@/hooks/useNotifications'
 import { 
   getLeaveBalances, 
   getLeaveRequests, 
   getLeaveStats, 
   LEAVE_TYPES,
   LeaveBalance,
-  LeaveRequest 
+  LeaveRequest,
+  acceptLeaveProposal,
+  rejectLeaveProposal,
+  counterProposeLeaveDates 
 } from '@/lib/leaveSystem'
 
 export default function LeavesPage() {
@@ -27,6 +31,7 @@ export default function LeavesPage() {
   } = usePermissions()
   
   const { logReadAction } = useAudit()
+  const { notifyProposalAccepted, notifyProposalRejected } = useNotifications()
   
   const [balances, setBalances] = useState<LeaveBalance[]>([])
   const [requests, setRequests] = useState<LeaveRequest[]>([])
@@ -357,11 +362,13 @@ export default function LeavesPage() {
                                 request.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
                                 request.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                                 request.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                request.status === 'PROPOSED' ? 'bg-blue-100 text-blue-800' :
                                 'bg-gray-100 text-gray-800'
                               }`}>
                                 {request.status === 'APPROVED' ? '✅ Approvata' :
                                  request.status === 'PENDING' ? '⏳ In Attesa' :
                                  request.status === 'REJECTED' ? '❌ Rifiutata' :
+                                 request.status === 'PROPOSED' ? '✏️ Proposta' :
                                  request.status}
                               </span>
                             </td>
@@ -376,6 +383,83 @@ export default function LeavesPage() {
                                 <button className="text-red-600 hover:text-red-900">
                                   🗑️ Annulla
                                 </button>
+                              )}
+                              {request.status === 'PROPOSED' && (
+                                <div className="space-y-2">
+                                  <span className="inline-flex items-center space-x-2">
+                                    <button
+                                      onClick={() => {
+                                        if (!session?.user?.id) return
+                                        const res = acceptLeaveProposal(request.id, session.user.id)
+                                        if (!res.success) {
+                                          alert('Errore: ' + res.error)
+                                        } else {
+                                          const employeeName = session.user?.name || 'Dipendente'
+                                          const ps = request.proposedStartDate?.toLocaleDateString('it-IT') || request.startDate.toLocaleDateString('it-IT')
+                                          const pe = request.proposedEndDate?.toLocaleDateString('it-IT') || request.endDate.toLocaleDateString('it-IT')
+                                          notifyProposalAccepted(employeeName, ps, pe)
+                                          loadData()
+                                        }
+                                      }}
+                                      className="text-green-600 hover:text-green-900"
+                                    >
+                                      ✅ Accetta proposta
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (!session?.user?.id) return
+                                        const res = rejectLeaveProposal(request.id, session.user.id)
+                                        if (!res.success) {
+                                          alert('Errore: ' + res.error)
+                                        } else {
+                                          const employeeName = session.user?.name || 'Dipendente'
+                                          notifyProposalRejected(employeeName)
+                                          loadData()
+                                        }
+                                      }}
+                                      className="text-red-600 hover:text-red-900"
+                                    >
+                                      ❌ Rifiuta proposta
+                                    </button>
+                                  </span>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                                    <div>
+                                      <label className="block text-xs text-gray-600">Controproponi Inizio</label>
+                                      <input
+                                        type="date"
+                                        onChange={(e) => (request as any)._counterStart = e.target.value}
+                                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs text-gray-600">Controproponi Fine</label>
+                                      <input
+                                        type="date"
+                                        onChange={(e) => (request as any)._counterEnd = e.target.value}
+                                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                                      />
+                                    </div>
+                                    <div>
+                                      <button
+                                        onClick={() => {
+                                          if (!session?.user?.id) return
+                                          const cs = (request as any)._counterStart
+                                          const ce = (request as any)._counterEnd
+                                          if (!cs || !ce) {
+                                            alert('Inserisci entrambe le date per controproporre')
+                                            return
+                                          }
+                                          const res = counterProposeLeaveDates(request.id, session.user.id, new Date(cs), new Date(ce))
+                                          if (!res.success) alert('Errore: ' + res.error)
+                                          else loadData()
+                                        }}
+                                        className="bg-orange-600 text-white px-3 py-2 rounded hover:bg-orange-700 transition text-sm"
+                                      >
+                                        ✏️ Controproponi
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
                               )}
                             </td>
                           </tr>
