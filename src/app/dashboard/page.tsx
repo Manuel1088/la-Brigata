@@ -1,4 +1,5 @@
 'use client'
+// Test comment added by AI assistant - prova modifica GitHub
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -126,6 +127,44 @@ export default function DashboardPage() {
                      isManager ? 'Gestisci prenotazioni, turni e personale' :
                      `Sistema di gestione per ${(session.user as any)?.role}`}
                   </p>
+                </div>
+
+                {/* Azioni Rapide */}
+                <div className="flex flex-wrap justify-center gap-4 mb-8">
+                  {canManageEmployees() && (
+                    <button 
+                      onClick={() => router.push('/employees')}
+                      className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2"
+                    >
+                      👥 Dipendenti
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => router.push('/shifts')}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                  >
+                    📅 Turni
+                  </button>
+                  {canManageLeaves() && (
+                    <button 
+                      onClick={() => router.push('/leaves')}
+                      className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition flex items-center gap-2"
+                    >
+                      🏖️ Ferie
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => router.push('/tips')}
+                    className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                  >
+                    💰 Mance
+                  </button>
+                  <button 
+                    onClick={() => router.push('/bookings')}
+                    className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition flex items-center gap-2"
+                  >
+                    📋 Prenotazioni
+                  </button>
                 </div>
 
                 {/* Widget Break-Even per Direttore e Manager */}
