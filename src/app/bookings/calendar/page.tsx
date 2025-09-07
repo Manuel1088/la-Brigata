@@ -435,39 +435,10 @@ export default function BookingCalendarPage() {
                   })
 
                   return (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <div className="lg:col-span-2">
-                        {dayHeader}
-                        <div className="grid grid-cols-7 gap-0">
-                          {cellEls}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="border rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-semibold text-gray-900">Dettagli Giorno</div>
-                            <button onClick={() => setSelectedDate('')} className="text-xs text-gray-500 hover:text-gray-700">Pulisci</button>
-                          </div>
-                          <div className="text-sm text-gray-700 mb-2">
-                            {selectedDate ? new Date(selectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Seleziona un giorno'}
-                          </div>
-                          <div className="space-y-2">
-                            {selectedDate && getBookingsForDate(selectedDate).length === 0 && (
-                              <div className="text-sm text-gray-500">Nessuna prenotazione</div>
-                            )}
-                            {selectedDate && getBookingsForDate(selectedDate).map(booking => (
-                              <div key={booking.id} className="border rounded p-2 bg-gray-50 text-gray-900">
-                                <div className="text-sm font-medium flex items-center justify-between">
-                                  <span>{booking.customerName}</span>
-                                  <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>{getStatusText(booking.status)}</span>
-                                </div>
-                                <div className="text-xs text-gray-700 mt-1">
-                                  {formatTime(booking.time)} • {booking.partySize}p • Tavolo {booking.tableNumber || '-'}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                    <div>
+                      {dayHeader}
+                      <div className="grid grid-cols-7 gap-0">
+                        {cellEls}
                       </div>
                     </div>
                   )
