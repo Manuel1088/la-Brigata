@@ -240,7 +240,7 @@ export default function ShiftsPage() {
 
   // Utility: ISO date yyyy-mm-dd
   const toISODate = (d: Date) => {
-    const z = n => (n < 10 ? `0${n}` : `${n}`)
+    const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
     return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
   }
 
@@ -341,7 +341,10 @@ export default function ShiftsPage() {
           if (restRule?.fixedDayIndex !== undefined && restRule.fixedDayIndex === dayIndex) {
             continue // giorno di riposo fisso
           }
-          const restCount = Array.from({ length: 7 }).reduce((acc, _, i) => acc + (newShifts[`${employeeName}-${i}`]?.time === 'RIPOSO' ? 1 : 0), 0)
+          let restCount = 0
+          for (let i = 0; i < 7; i++) {
+            if (newShifts[`${employeeName}-${i}`]?.time === 'RIPOSO') restCount++
+          }
           if (restRule && restCount >= restRule.weeklyRestDays) {
             // ha già i riposi settimanali richiesti
           } else {
@@ -465,6 +468,12 @@ export default function ShiftsPage() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/shifts/rest')}
+                className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition text-sm"
+              >
+                😴 Regole Riposi
+              </button>
               <span className="text-gray-700">
                 {session?.user?.name}
               </span>
