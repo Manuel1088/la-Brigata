@@ -611,7 +611,7 @@ export default function ShiftsPage() {
               >
                 😴 Regole Riposi
               </button>
-              <span className="text-gray-700">
+              <span className="text-gray-900">
                 {session?.user?.name}
               </span>
               <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm">
@@ -660,7 +660,7 @@ export default function ShiftsPage() {
                 <span className="text-xl mr-2">←</span>
                 Settimana Precedente
               </button>
-              <div className={`text-lg font-bold ${isCurrentWeekDisplayed ? 'text-red-600' : 'text-gray-800'}`}>
+              <div className={`text-lg font-bold ${isCurrentWeekDisplayed ? 'text-red-600' : 'text-gray-900'}`}>
                 {weekDays[0].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })} - {weekDays[6].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })}
               </div>
               <button
@@ -704,7 +704,7 @@ export default function ShiftsPage() {
                   {dayNames.map((day, index) => (
                     <th key={day} className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <div>{day}</div>
-                      <div className={`${isCurrentWeekDisplayed ? 'text-red-600' : 'text-gray-400'} font-normal`}>
+                      <div className={`${isCurrentWeekDisplayed ? 'text-red-600' : 'text-gray-900'} font-normal`}>
                         {weekDays[index].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })}
                       </div>
                     </th>
@@ -763,7 +763,7 @@ export default function ShiftsPage() {
                                     <div className="font-semibold text-gray-700">
                                       😴 RIPOSO
                                     </div>
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-900">
                                       Non in servizio
                                     </div>
                                   </>
@@ -789,15 +789,15 @@ export default function ShiftsPage() {
                                 {leaveInfo ? (
                                   <>
                                     <div className="font-semibold text-yellow-800">🗓️ {leaveInfo.label}</div>
-                                    <div className="text-xs text-gray-500">Assenza approvata</div>
+                                    <div className="text-xs text-gray-900">Assenza approvata</div>
                                   </>
                                 ) : isFixedRest ? (
                                   <>
-                                    <div className="font-semibold text-gray-700">😴 RIPOSO</div>
-                                    <div className="text-xs text-gray-500">Giorno fisso</div>
+                                    <div className="font-semibold text-gray-900">😴 RIPOSO</div>
+                                    <div className="text-xs text-gray-900">Giorno fisso</div>
                                   </>
                                 ) : (
-                                  <span className="text-gray-400">{canManageShifts ? '+ Assegna' : '-'}</span>
+                                  <span className="text-gray-900">{canManageShifts ? '+ Assegna' : '-'}</span>
                                 )}
                               </div>
                             )}

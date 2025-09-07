@@ -289,7 +289,7 @@ export default function EmployeesPage() {
               <div className="flex items-center">
                 <div className="text-3xl mr-4">👥</div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Totale Dipendenti</p>
+                  <p className="text-sm font-medium text-gray-900">Totale Dipendenti</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                 </div>
               </div>
@@ -299,7 +299,7 @@ export default function EmployeesPage() {
               <div className="flex items-center">
                 <div className="text-3xl mr-4">✅</div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Attivi</p>
+                  <p className="text-sm font-medium text-gray-900">Attivi</p>
                   <p className="text-2xl font-bold text-green-600">{stats.active}</p>
                 </div>
               </div>
@@ -309,7 +309,7 @@ export default function EmployeesPage() {
               <div className="flex items-center">
                 <div className="text-3xl mr-4">🏢</div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Reparti</p>
+                  <p className="text-sm font-medium text-gray-900">Reparti</p>
                   <p className="text-2xl font-bold text-blue-600">{Object.keys(departments).length}</p>
                 </div>
               </div>
@@ -319,7 +319,7 @@ export default function EmployeesPage() {
               <div className="flex items-center">
                 <div className="text-3xl mr-4">💰</div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Costo Mensile</p>
+                  <p className="text-sm font-medium text-gray-900">Costo Mensile</p>
                   <p className="text-2xl font-bold text-orange-600">€{stats.monthlyCost.toLocaleString()}</p>
                 </div>
               </div>
@@ -328,13 +328,13 @@ export default function EmployeesPage() {
 
           {/* Distribuzione per Reparto */}
           <div className="bg-white p-6 rounded-lg shadow mb-8">
-            <h3 className="text-lg font-semibold mb-4">📊 Distribuzione per Reparto</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">📊 Distribuzione per Reparto</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {Object.entries(departments).map(([key, dept]) => (
                 <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center">
                     <span className="text-2xl mr-3">{dept.icon}</span>
-                    <span className="font-medium">{dept.name}</span>
+                    <span className="font-medium text-gray-900">{dept.name}</span>
                   </div>
                   <span className="text-2xl font-bold text-gray-900">{stats.byDepartment[key] || 0}</span>
                 </div>

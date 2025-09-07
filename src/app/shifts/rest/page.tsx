@@ -52,7 +52,7 @@ export default function RestRulesPage() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
-                      <div className="text-sm text-gray-700">Seleziona fino a 2 giorni fissi:</div>
+                      <div className="text-sm text-gray-900">Seleziona fino a 2 giorni fissi:</div>
                       <div className="flex flex-wrap gap-3">
                         {dayNames.map((d, idx) => {
                           const checked = !!rule.fixedDayIndices?.includes(idx as any)
