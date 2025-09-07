@@ -27,6 +27,7 @@ export default function ShiftsPage() {
   const [isAutoScheduling, setIsAutoScheduling] = useState(false)
   const [autoMetrics, setAutoMetrics] = useState<any>(null)
   const [autoConflicts, setAutoConflicts] = useState<any[]>([])
+  const [autoBlockMessage, setAutoBlockMessage] = useState<string | null>(null)
   // Nuovi stati per gestione turni personalizzati
   const [customShifts, setCustomShifts] = useState<{[department: string]: Array<{id: string, name: string, time: string, description: string}>}>({})
   const [isAddingCustomShift, setIsAddingCustomShift] = useState(false)
@@ -575,8 +576,16 @@ export default function ShiftsPage() {
       const metrics = data?.metrics || null
       setAutoConflicts(conflicts)
       setAutoMetrics(metrics)
+      setAutoBlockMessage(null)
 
       const assignments = schedule?.assignments || []
+      // Blocca applicazione se conflitti bloccanti presenti
+      const blockingTypes = ['MIN_REST', 'OVERLAP', 'WEEKLY_HOURS', 'CONSECUTIVE_DAYS']
+      const hasBlocking = conflicts.some((c: any) => blockingTypes.includes(c.type))
+      if (hasBlocking) {
+        setAutoBlockMessage('Sono presenti conflitti bloccanti (riposo minimo/overlap/ore/giorni consecutivi). Risolvi prima di applicare.')
+        return
+      }
       const newShifts = { ...shifts }
       const isoToIndex: Record<string, number> = {}
       for (let i = 0; i < 7; i++) {
@@ -784,6 +793,11 @@ export default function ShiftsPage() {
               >
                 {isAutoScheduling ? '🔄 AutoScheduler...' : '🧠 Compila automaticamente'}
               </button>
+              {autoBlockMessage && (
+                <div className="ml-4 text-sm text-red-700 bg-red-100 px-3 py-2 rounded">
+                  {autoBlockMessage}
+                </div>
+              )}
             </div>
           </div>
           {/* Tabella Turni */}
