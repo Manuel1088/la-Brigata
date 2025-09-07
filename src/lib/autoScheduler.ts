@@ -80,6 +80,9 @@ function restBetween(endHHmm: string, nextStartHHmm: string): number {
 }
 
 export class AutoScheduler {
+  private lastWeekStartISO: string | null = null
+  private lastAssignments: ScheduledAssignment[] = []
+  private lastInput: OptimizeInput | null = null
   async generateWeeklySchedule(week: Date): Promise<WeeklySchedule> {
     const weekStart = this.getWeekStart(week)
     const weekStartISO = toISODate(weekStart)
@@ -89,13 +92,19 @@ export class AutoScheduler {
     const workload = await this.getExpectedWorkload(weekStart)
     const previousWeeks = await this.getPreviousSchedules(weekStart, 4)
 
-    const schedule = this.optimizeSchedule({
+    const input: OptimizeInput = {
       constraints,
       employees,
       availability,
       workload,
       previousWeeks
-    })
+    }
+
+    const schedule = this.optimizeSchedule(input)
+
+    this.lastWeekStartISO = weekStartISO
+    this.lastAssignments = schedule
+    this.lastInput = input
 
     return { weekStartISO, assignments: schedule }
   }
@@ -284,6 +293,118 @@ export class AutoScheduler {
     if (!fits && slots.length > 0) return false
 
     return true
+  }
+
+  getConflicts() {
+    if (!this.lastInput) return []
+    const input = this.lastInput
+    const assignments = this.lastAssignments
+    const conflicts: Array<{ type: string; dateISO?: string; employeeName?: string; details?: string }> = []
+
+    // Overlap nello stesso giorno
+    const byEmpDate: Record<string, Record<string, Array<{ start: string; end: string }>>> = {}
+    assignments.forEach(a => {
+      byEmpDate[a.employeeName] = byEmpDate[a.employeeName] || {}
+      byEmpDate[a.employeeName][a.dateISO] = byEmpDate[a.employeeName][a.dateISO] || []
+      byEmpDate[a.employeeName][a.dateISO].push({ start: a.startTime, end: a.endTime })
+    })
+    const toMinutes = (hhmm: string) => {
+      const [h, m] = hhmm.split(':').map(Number)
+      return h * 60 + m
+    }
+    for (const emp of Object.keys(byEmpDate)) {
+      for (const dateISO of Object.keys(byEmpDate[emp])) {
+        const slots = byEmpDate[emp][dateISO]
+        const normalized = slots.map(s => {
+          const sMin = toMinutes(s.start)
+          let eMin = toMinutes(s.end)
+          if (eMin < sMin) eMin += 24 * 60
+          return { s: sMin, e: eMin }
+        }).sort((a, b) => a.s - b.s)
+        for (let i = 1; i < normalized.length; i++) {
+          if (normalized[i].s < normalized[i - 1].e) {
+            conflicts.push({ type: 'OVERLAP', dateISO, employeeName: emp, details: 'Turni sovrapposti nello stesso giorno' })
+          }
+        }
+      }
+    }
+
+    // Rest minimo, ore settimanali, consecutivi e copertura
+    const constraints = input.constraints
+    const dates = Object.keys(input.workload).sort()
+    const empWeeklyHours: Record<string, number> = {}
+    const empLastEnd: Record<string, { dateISO: string; end: string }> = {}
+    const empConsecutive: Record<string, number> = {}
+
+    for (const dateISO of dates) {
+      const todays = assignments.filter(a => a.dateISO === dateISO)
+      const workedNames = new Set<string>()
+      for (const a of todays) {
+        workedNames.add(a.employeeName)
+        empWeeklyHours[a.employeeName] = (empWeeklyHours[a.employeeName] || 0) + hoursBetween(a.startTime, a.endTime)
+        const last = empLastEnd[a.employeeName]
+        if (last && last.dateISO !== dateISO) {
+          const rest = restBetween(last.end, a.startTime)
+          if (rest < (constraints.minRestBetweenShifts || 11)) {
+            conflicts.push({ type: 'MIN_REST', dateISO, employeeName: a.employeeName, details: `Riposo ${rest}h < ${constraints.minRestBetweenShifts}h` })
+          }
+        }
+        empLastEnd[a.employeeName] = { dateISO, end: a.endTime }
+      }
+      const allNames = input.employees.map(e => e.name)
+      for (const name of allNames) {
+        if (workedNames.has(name)) {
+          empConsecutive[name] = (empConsecutive[name] || 0) + 1
+          if ((empConsecutive[name] || 0) > (constraints.maxConsecutiveDays || 6)) {
+            conflicts.push({ type: 'CONSECUTIVE_DAYS', dateISO, employeeName: name, details: `Consecutivi > ${constraints.maxConsecutiveDays}` })
+          }
+        } else {
+          empConsecutive[name] = 0
+        }
+      }
+    }
+    for (const [name, hours] of Object.entries(empWeeklyHours)) {
+      if (hours > (constraints.maxWeeklyHours || 40)) {
+        conflicts.push({ type: 'WEEKLY_HOURS', employeeName: name, details: `Ore ${hours}h > ${constraints.maxWeeklyHours}h` })
+      }
+    }
+
+    // Copertura
+    const coverageAssigned: Record<string, Record<DepartmentKey, number>> = {}
+    assignments.forEach(a => {
+      coverageAssigned[a.dateISO] = coverageAssigned[a.dateISO] || { cucina: 0, sala: 0, bar: 0 }
+      coverageAssigned[a.dateISO][a.department] = (coverageAssigned[a.dateISO][a.department] || 0) + 1
+    })
+    for (const dateISO of Object.keys(input.workload)) {
+      for (const dept of Object.keys(input.workload[dateISO]) as DepartmentKey[]) {
+        const requiredPerSlot = input.workload[dateISO][dept]
+        const requiredTotal = requiredPerSlot * SLOT_PATTERNS[dept].length
+        const assigned = coverageAssigned[dateISO]?.[dept] || 0
+        if (assigned < requiredTotal) {
+          const missing = requiredTotal - assigned
+          conflicts.push({ type: 'UNDERSTAFFED', dateISO, details: `${dept}: mancano ${missing} assegnazioni` })
+        }
+      }
+    }
+
+    return conflicts
+  }
+
+  getMetrics() {
+    if (!this.lastInput) return { totalAssignments: 0, totalHours: 0, coverageRate: 0, conflicts: 0 }
+    const input = this.lastInput
+    const assignments = this.lastAssignments
+    const totalAssignments = assignments.length
+    const totalHours = assignments.reduce((s, a) => s + hoursBetween(a.startTime, a.endTime), 0)
+    let requiredAll = 0
+    for (const dateISO of Object.keys(input.workload)) {
+      for (const dept of Object.keys(input.workload[dateISO]) as DepartmentKey[]) {
+        requiredAll += input.workload[dateISO][dept] * SLOT_PATTERNS[dept].length
+      }
+    }
+    const coverageRate = requiredAll > 0 ? Math.min(1, assignments.length / requiredAll) : 1
+    const conflicts = this.getConflicts().length
+    return { totalAssignments, totalHours, coverageRate, conflicts }
   }
 }
 

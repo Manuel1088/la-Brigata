@@ -7,8 +7,10 @@ export async function POST(req: Request) {
     const week = body?.week ? new Date(body.week) : new Date()
     // overrides non usati per ora
     const scheduler = new AutoScheduler()
-    const result = await scheduler.generateWeeklySchedule(week)
-    return NextResponse.json(result, { status: 200 })
+    const schedule = await scheduler.generateWeeklySchedule(week)
+    const conflicts = scheduler.getConflicts()
+    const metrics = scheduler.getMetrics()
+    return NextResponse.json({ schedule, conflicts, metrics }, { status: 200 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Errore generazione' }, { status: 500 })
   }
