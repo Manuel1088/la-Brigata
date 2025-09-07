@@ -7,6 +7,7 @@ import { generateAISuggestions, type Booking as AIBooking, type CompanyEvent as 
 import { getBookingsByDate, getCompanyEventsByDate, getBookingsByDateDB, getCompanyEventsByDateDB } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
+import { getEmployeesClient, type SimpleEmployee } from '@/lib/employees'
 
 interface ShiftCell {
   employee: string
@@ -192,14 +193,12 @@ export default function ShiftsPage() {
   }, [session, status, router])
 
   // Dipendenti del ristorante
-  const employees = [
-    { name: 'Giuseppe Chef', role: 'CHEF', department: 'cucina' },
-    { name: 'Maria Cameriera', role: 'DIPENDENTE_SALA', department: 'sala' },
-    { name: 'Luca Barista', role: 'DIPENDENTE_BAR', department: 'bar' },
-    { name: 'Anna Sous Chef', role: 'CAPO_PARTITA', department: 'cucina' },
-    { name: 'Marco Cameriere', role: 'DIPENDENTE_SALA', department: 'sala' },
-    { name: 'Sofia Cassiera', role: 'CASSIERE', department: 'sala' }
-  ]
+  const [employees, setEmployees] = useState<SimpleEmployee[]>(getEmployeesClient())
+  useEffect(() => {
+    const reload = () => setEmployees(getEmployeesClient())
+    window.addEventListener('employees_updated', reload)
+    return () => window.removeEventListener('employees_updated', reload)
+  }, [])
 
   // Giorni della settimana
   const getDaysOfWeek = (date: Date) => {
@@ -393,9 +392,8 @@ export default function ShiftsPage() {
             // niente: i due giorni sono fissati da fixedDayIndices
           } else if (restRule && restRule.weeklyRestDays === 2 && restCount < 2) {
             // Preferisci non assegnare altro oltre il necessario per permettere due riposi totali
-            // Continuiamo solo se le ore sono poche (< 32h) per bilanciare
-            const hoursSoFarSoft = calculateWeeklyHours(employeeName)
-            if (hoursSoFarSoft >= 32) continue
+            // Se siamo su venerdì/sabato/domenica e ha ancora <2 riposi, evita assegnazione per bilanciare
+            if (dayIndex >= 4) continue
           }
 
           // Ore settimanali <= 48
