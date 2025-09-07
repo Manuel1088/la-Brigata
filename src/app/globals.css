@@ -26,6 +26,21 @@ body {
 }
 
 /* Override gray text utilities for better readability on white */
-.text-gray-400, .text-gray-500, .text-gray-600, .text-gray-700 {
+.text-gray-100, .text-gray-200, .text-gray-300, .text-gray-400, .text-gray-500, .text-gray-600, .text-gray-700,
+.text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600, .text-slate-700 {
   color: #171717 !important;
+}
+
+/* Forza testo nero dentro riquadri bianchi */
+.bg-white .text-gray-100, .bg-white .text-gray-200, .bg-white .text-gray-300, .bg-white .text-gray-400,
+.bg-white .text-gray-500, .bg-white .text-gray-600, .bg-white .text-gray-700,
+.bg-white .text-slate-100, .bg-white .text-slate-200, .bg-white .text-slate-300, .bg-white .text-slate-400,
+.bg-white .text-slate-500, .bg-white .text-slate-600, .bg-white .text-slate-700 {
+  color: #171717 !important;
+}
+
+/* Placeholder più leggibili */
+input::placeholder, textarea::placeholder {
+  color: #171717 !important;
+  opacity: 0.6;
 }
