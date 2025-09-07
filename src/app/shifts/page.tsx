@@ -4,6 +4,8 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { generateAISuggestions, type Booking as AIBooking, type CompanyEvent as AIEvent, type Shift as AIShift } from '@/lib/aiShiftScheduler'
+import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
+import { getLeaveRequests } from '@/lib/leaveSystem'
 
 interface ShiftCell {
   employee: string
@@ -242,9 +244,27 @@ export default function ShiftsPage() {
   }
 
   // Placeholder: eventi/prenotazioni e ferie approvate (integrazione futura)
-  const getBookingsForDateAI = (_isoDate: string): AIBooking[] => []
-  const getEventsForDateAI = (_isoDate: string): AIEvent[] => []
-  const isOnApprovedLeave = (_employeeName: string, _isoDate: string): boolean => false
+  const getBookingsForDateAI = (isoDate: string): AIBooking[] => {
+    const list = getBookingsByDate(isoDate)
+    return list.map(b => ({ id: b.id, date: b.date, time: b.time, partySize: b.partySize, status: b.status }))
+  }
+  const getEventsForDateAI = (isoDate: string): AIEvent[] => {
+    const list = getCompanyEventsByDate(isoDate)
+    return list.map(e => ({ id: e.id, name: e.name, date: e.date, type: e.type, expectedCoversMultiplier: e.expectedCoversMultiplier }))
+  }
+  const isOnApprovedLeave = (employeeName: string, isoDate: string): boolean => {
+    const userIdMap: Record<string, string> = {
+      'Giuseppe Chef': '1',
+      'Maria Cameriera': '2',
+      'Luca Barista': '3',
+      'Anna Sous Chef': '4',
+      'Marco Cameriere': '5'
+    }
+    const userId = userIdMap[employeeName]
+    if (!userId) return false
+    const requests = getLeaveRequests(userId)
+    return requests.some(r => r.status === 'APPROVED' && isoDate >= r.startDate.toISOString().split('T')[0] && isoDate <= r.endDate.toISOString().split('T')[0])
+  }
 
   // Costruisce lista turni esistenti per AI (evita duplicati)
   const buildExistingAIShifts = (): AIShift[] => {
