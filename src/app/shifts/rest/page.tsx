@@ -48,7 +48,7 @@ export default function RestRulesPage() {
                       <div className="text-gray-900 font-medium">{rule.employeeName}</div>
                       <div className="text-sm text-gray-500">Riposi settimanali: {rule.weeklyRestDays}</div>
                       <div className="text-sm text-gray-500">
-                        Giorno fisso: {rule.fixedDayIndex !== undefined ? dayNames[rule.fixedDayIndex] : 'Nessuno'}
+                        Giorni fissi: {rule.fixedDayIndices && rule.fixedDayIndices.length ? rule.fixedDayIndices.map(i => dayNames[i]).join(', ') : 'Nessuno'}
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
@@ -63,20 +63,38 @@ export default function RestRulesPage() {
                         <option value={1}>1 riposo</option>
                         <option value={2}>2 riposi</option>
                       </select>
-                      <select
-                        defaultValue={rule.fixedDayIndex !== undefined ? rule.fixedDayIndex : ''}
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? undefined : (Number(e.target.value) as any)
-                          const updated = updateRestRule(rule.employeeName, { fixedDayIndex: val })
-                          setRules(prev => prev.map(r => r.employeeName === rule.employeeName ? updated : r))
-                        }}
-                        className="px-3 py-2 border rounded"
-                      >
-                        <option value="">Nessun giorno fisso</option>
-                        {dayNames.map((d, idx) => (
-                          <option key={d} value={idx}>{d}</option>
-                        ))}
-                      </select>
+                      <div className="flex items-center space-x-2">
+                        <select
+                          defaultValue={rule.fixedDayIndices?.[0] !== undefined ? rule.fixedDayIndices?.[0] : ''}
+                          onChange={(e) => {
+                            const first = e.target.value === '' ? undefined : Number(e.target.value)
+                            const arr = [first, rule.fixedDayIndices?.[1]].filter(v => v !== undefined) as number[]
+                            const updated = updateRestRule(rule.employeeName, { fixedDayIndices: arr as any })
+                            setRules(prev => prev.map(r => r.employeeName === rule.employeeName ? updated : r))
+                          }}
+                          className="px-3 py-2 border rounded bg-white text-gray-900"
+                        >
+                          <option value="">Nessun giorno fisso</option>
+                          {dayNames.map((d, idx) => (
+                            <option key={`a-${d}`} value={idx}>{d}</option>
+                          ))}
+                        </select>
+                        <select
+                          defaultValue={rule.fixedDayIndices?.[1] !== undefined ? rule.fixedDayIndices?.[1] : ''}
+                          onChange={(e) => {
+                            const second = e.target.value === '' ? undefined : Number(e.target.value)
+                            const arr = [rule.fixedDayIndices?.[0], second].filter(v => v !== undefined) as number[]
+                            const updated = updateRestRule(rule.employeeName, { fixedDayIndices: arr as any })
+                            setRules(prev => prev.map(r => r.employeeName === rule.employeeName ? updated : r))
+                          }}
+                          className="px-3 py-2 border rounded bg-white text-gray-900"
+                        >
+                          <option value="">Nessun giorno fisso (2°)</option>
+                          {dayNames.map((d, idx) => (
+                            <option key={`b-${d}`} value={idx}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>

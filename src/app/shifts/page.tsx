@@ -338,7 +338,7 @@ export default function ShiftsPage() {
 
           // Riposi settimanali: rispetta giorni fissi e numero di riposi
           const restRule = getRestRuleFor(employeeName)
-          if (restRule?.fixedDayIndex !== undefined && restRule.fixedDayIndex === dayIndex) {
+          if (restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any)) {
             continue // giorno di riposo fisso
           }
           let restCount = 0

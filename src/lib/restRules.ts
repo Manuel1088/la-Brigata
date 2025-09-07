@@ -3,7 +3,7 @@ export type FixedDayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 // 0=Lunedì ... 6=Domenic
 export interface RestRule {
   employeeName: string
   weeklyRestDays: 1 | 2
-  fixedDayIndex?: FixedDayIndex // opzionale: giorno fisso di riposo (0=Lunedì)
+  fixedDayIndices?: FixedDayIndex[] // opzionale: fino a 2 giorni fissi di riposo (0=Lunedì)
 }
 
 // Mock storage in-memory. In produzione: DB.
@@ -28,7 +28,7 @@ export function getRestRuleFor(name: string): RestRule | undefined {
 export function updateRestRule(name: string, updates: Partial<Omit<RestRule, 'employeeName'>>): RestRule {
   const idx = rules.findIndex(r => r.employeeName === name)
   if (idx === -1) {
-    const created: RestRule = { employeeName: name, weeklyRestDays: (updates.weeklyRestDays as 1 | 2) || 1, fixedDayIndex: updates.fixedDayIndex }
+    const created: RestRule = { employeeName: name, weeklyRestDays: (updates.weeklyRestDays as 1 | 2) || 1, fixedDayIndices: updates.fixedDayIndices }
     rules.push(created)
     return created
   }
