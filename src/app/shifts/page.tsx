@@ -269,6 +269,47 @@ export default function ShiftsPage() {
     return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
   }
 
+  // Seleziona il miglior dipendente per un suggerimento quando il nome non coincide
+  const pickBestEmployeeForSuggestion = (
+    department: string,
+    dateISO: string,
+    dayIndex: number,
+    startTime: string,
+    endTime: string
+  ): SimpleEmployee | null => {
+    // Candidati per reparto
+    const candidates = employees.filter(e => e.department === department)
+    // Filtra per blocchi (ferie, riposo fisso, già assegnato)
+    const available = candidates.filter(e => {
+      const key = `${e.name}-${dayIndex}`
+      const rule = getRestRuleFor(e.name)
+      const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes(dayIndex as any))
+      const hasLeave = isOnApprovedLeave(e.name, dateISO)
+      const alreadyAssigned = !!shifts[key]?.time
+      if (isFixed || hasLeave || alreadyAssigned) return false
+      // Riposo minimo 11h con giorni adiacenti
+      const prevTime = shifts[`${e.name}-${dayIndex - 1}`]?.time
+      const nextTime = shifts[`${e.name}-${dayIndex + 1}`]?.time
+      if (prevTime && prevTime !== 'RIPOSO') {
+        const rest = calculateRestBetweenShifts(prevTime.includes('/') ? prevTime.split(' / ')[0] : prevTime, `${startTime}-${endTime}`)
+        if (rest < 11) return false
+      }
+      if (nextTime && nextTime !== 'RIPOSO') {
+        const rest = calculateRestBetweenShifts(`${startTime}-${endTime}`, nextTime.includes('/') ? nextTime.split(' / ')[0] : nextTime)
+        if (rest < 11) return false
+      }
+      // 48h settimanali
+      const hoursToday = calculateShiftHours(`${startTime}-${endTime}`)
+      const hoursSoFar = calculateWeeklyHours(e.name)
+      if (hoursSoFar + hoursToday > 48) return false
+      return true
+    })
+    if (available.length === 0) return null
+    // Ordina per minor monte ore settimanale per bilanciare
+    available.sort((a, b) => calculateWeeklyHours(a.name) - calculateWeeklyHours(b.name))
+    return available[0]
+  }
+
   // Placeholder: eventi/prenotazioni e ferie approvate (integrazione futura)
   const getBookingsForDateAI = (isoDate: string): AIBooking[] => {
     const list = getBookingsByDate(isoDate)
@@ -353,16 +394,20 @@ export default function ShiftsPage() {
         for (const sug of daySuggestions) {
           const employeeName = sug.suggestedEmployee.name
           const localDept = toLocalDepartment(sug.department)
-          const employee = employees.find(e => e.name === employeeName)
-          if (!employee) continue
-          if (employee.department !== localDept) continue
-          const key = `${employeeName}-${dayIndex}`
+          let employee = employees.find(e => e.name === employeeName && e.department === localDept) || null
+          // Se il nome non coincide con la lista attuale, scegli il migliore nel reparto
+          if (!employee) {
+            const picked = pickBestEmployeeForSuggestion(localDept, dateISO, dayIndex, sug.startTime, sug.endTime)
+            if (!picked) continue
+            employee = picked
+          }
+          const key = `${employee.name}-${dayIndex}`
           if (newShifts[key] && newShifts[key].time) continue // già assegnato
-          if (isOnApprovedLeave(employeeName, dateISO)) continue // in ferie
+          if (isOnApprovedLeave(employee.name, dateISO)) continue // in ferie
 
           // Controlli CCNL: riposo minimo 11h con giorno precedente/successivo
-          const prevKey = `${employeeName}-${dayIndex - 1}`
-          const nextKey = `${employeeName}-${dayIndex + 1}`
+          const prevKey = `${employee.name}-${dayIndex - 1}`
+          const nextKey = `${employee.name}-${dayIndex + 1}`
           const prevTime = newShifts[prevKey]?.time
           const nextTime = newShifts[nextKey]?.time
           let restOk = true
@@ -377,13 +422,13 @@ export default function ShiftsPage() {
           if (!restOk) continue
 
           // Riposi settimanali: rispetta giorni fissi e numero di riposi
-          const restRule = getRestRuleFor(employeeName)
+          const restRule = getRestRuleFor(employee.name)
           if (restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any)) {
             continue // giorno di riposo fisso
           }
           let restCount = 0
           for (let i = 0; i < 7; i++) {
-            if (newShifts[`${employeeName}-${i}`]?.time === 'RIPOSO') restCount++
+            if (newShifts[`${employee.name}-${i}`]?.time === 'RIPOSO') restCount++
           }
           // Se l'impiegato deve avere due riposi e non li ha ancora, lascia spazi liberi evitando over-assegnazioni
           if (restRule && restRule.fixedDayIndices && restRule.fixedDayIndices.length === 2) {
@@ -396,12 +441,12 @@ export default function ShiftsPage() {
 
           // Ore settimanali <= 48
           const hoursToday = calculateShiftHours(`${sug.startTime}-${sug.endTime}`)
-          const hoursSoFar = calculateWeeklyHours(employeeName)
+          const hoursSoFar = calculateWeeklyHours(employee.name)
           if (hoursSoFar + hoursToday > 48) continue
 
           // Applica suggerimento
           newShifts[key] = {
-            employee: employeeName,
+            employee: employee.name,
             time: `${sug.startTime}-${sug.endTime}`,
             department: employee.department,
             role: employee.role
@@ -409,12 +454,12 @@ export default function ShiftsPage() {
 
           // Aggiorna existing per evitare duplicati nella stessa giornata
           existing.push({
-            id: `${dateISO}-${sug.department}-${sug.startTime}-${employeeName}`,
+            id: `${dateISO}-${sug.department}-${sug.startTime}-${employee.name}`,
             date: dateISO,
             startTime: sug.startTime,
             endTime: sug.endTime,
             department: sug.department,
-            employeeId: employeeName,
+            employeeId: employee.name,
             status: 'scheduled'
           })
         }
