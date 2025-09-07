@@ -360,6 +360,16 @@ export default function BookingCalendarPage() {
                     const inMonth = d.getMonth() === currentMonth.getMonth()
                     const dayISO = toLocalISO(d)
                     const dayBookings = bookings.filter(b => b.date === dayISO)
+                    // Conteggi pranzo/cena
+                    const parseHour = (t: string) => {
+                      const [hh] = t.split(':'); const n = parseInt(hh || '0', 10); return isNaN(n)?0:n
+                    }
+                    let lunchGuests = 0, dinnerGuests = 0
+                    dayBookings.forEach(b => {
+                      const h = parseHour(b.time)
+                      if (h >= 11 && h < 16) lunchGuests += b.partySize
+                      else if (h >= 18 && h <= 23) dinnerGuests += b.partySize
+                    })
                     const isSelected = selectedDate === dayISO
                     const isToday = dayISO === todayISO
                     const numberCls = isSelected
@@ -385,6 +395,10 @@ export default function BookingCalendarPage() {
                             const color = dotColorByStatus[b.status] || dotColorByStatus.default
                             return <span key={b.id} className={`w-1.5 h-1.5 rounded-full ${color}`}></span>
                           })}
+                        </div>
+                        <div className="mt-1 text-[10px] text-gray-700 flex justify-center gap-2">
+                          <span>P: {lunchGuests}</span>
+                          <span>C: {dinnerGuests}</span>
                         </div>
                       </div>
                     )
