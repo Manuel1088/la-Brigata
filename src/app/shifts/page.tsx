@@ -285,7 +285,8 @@ export default function ShiftsPage() {
       'Maria Cameriera': '2',
       'Luca Barista': '3',
       'Anna Sous Chef': '4',
-      'Marco Cameriere': '5'
+      'Marco Cameriere': '5',
+      'Sofia Cassiera': '6'
     }
     const userId = userIdMap[employeeName]
     if (!userId) return false
@@ -387,10 +388,14 @@ export default function ShiftsPage() {
           for (let i = 0; i < 7; i++) {
             if (newShifts[`${employeeName}-${i}`]?.time === 'RIPOSO') restCount++
           }
-          if (restRule && restCount >= restRule.weeklyRestDays) {
-            // ha già i riposi settimanali richiesti
-          } else {
-            // se non ha ancora il minimo di riposi, non forzare riposi qui; lasciamo spazio a pianificazione complessiva
+          // Se l'impiegato deve avere due riposi e non li ha ancora, lascia spazi liberi evitando over-assegnazioni
+          if (restRule && restRule.fixedDayIndices && restRule.fixedDayIndices.length === 2) {
+            // niente: i due giorni sono fissati da fixedDayIndices
+          } else if (restRule && restRule.weeklyRestDays === 2 && restCount < 2) {
+            // Preferisci non assegnare altro oltre il necessario per permettere due riposi totali
+            // Continuiamo solo se le ore sono poche (< 32h) per bilanciare
+            const hoursSoFarSoft = calculateWeeklyHours(employeeName)
+            if (hoursSoFarSoft >= 32) continue
           }
 
           // Ore settimanali <= 48

@@ -202,6 +202,27 @@ const employees: Employee[] = [
       preferredShifts: ['09:00-17:00', '14:00-22:00'],
       avoidShifts: ['18:00-24:00']
     }
+  },
+  {
+    id: '6',
+    name: 'Sofia Cassiera',
+    department: 'Sala',
+    hourlyRate: 11,
+    skills: ['Cashier', 'Customer Service'],
+    availability: {
+      'monday': ['09:00-17:00', '14:00-22:00'],
+      'tuesday': ['09:00-17:00'],
+      'wednesday': ['14:00-22:00'],
+      'thursday': ['09:00-17:00', '14:00-22:00'],
+      'friday': ['14:00-22:00'],
+      'saturday': ['09:00-17:00', '14:00-22:00'],
+      'sunday': ['09:00-17:00']
+    },
+    preferences: {
+      maxHoursPerDay: 8,
+      preferredShifts: ['09:00-17:00'],
+      avoidShifts: []
+    }
   }
 ]
 
