@@ -213,6 +213,22 @@ export default function ShiftsPage() {
   const weekDays = getDaysOfWeek(currentWeek)
   const dayNames = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
 
+  // Evidenziazione settimana corrente
+  const getWeekStart = (date: Date) => {
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = (day === 0 ? -6 : 1) - day // porta a lunedì
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + diff)
+    return d
+  }
+  const shownWeekStart = getWeekStart(currentWeek)
+  const shownWeekEnd = new Date(shownWeekStart)
+  shownWeekEnd.setDate(shownWeekStart.getDate() + 6)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const isCurrentWeekDisplayed = today >= shownWeekStart && today <= shownWeekEnd
+
   // Turni demo (inizialmente vuoti)
   const [shifts, setShifts] = useState<{[key: string]: ShiftCell}>({
     'Giuseppe Chef-0': { employee: 'Giuseppe Chef', time: '08:00-16:00', department: 'cucina', role: 'CHEF' },
@@ -347,7 +363,7 @@ export default function ShiftsPage() {
                 <span className="text-xl mr-2">←</span>
                 Settimana Precedente
               </button>
-              <div className="text-lg font-bold text-gray-800">
+              <div className={`text-lg font-bold ${isCurrentWeekDisplayed ? 'text-red-600' : 'text-gray-800'}`}>
                 {weekDays[0].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })} - {weekDays[6].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })}
               </div>
               <button
@@ -382,7 +398,7 @@ export default function ShiftsPage() {
                   {dayNames.map((day, index) => (
                     <th key={day} className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <div>{day}</div>
-                      <div className="text-gray-400 font-normal">
+                      <div className={`${isCurrentWeekDisplayed ? 'text-red-600' : 'text-gray-400'} font-normal`}>
                         {weekDays[index].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })}
                       </div>
                     </th>
