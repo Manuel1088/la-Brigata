@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { generateAISuggestions, type Booking as AIBooking, type CompanyEvent as AIEvent, type Shift as AIShift } from '@/lib/aiShiftScheduler'
+// import legacy AI generator rimosso
 import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
@@ -23,7 +23,7 @@ export default function ShiftsPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{name: string, dayIndex: number, isEdit?: boolean} | null>(null)
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+  // rimosso generatore AI legacy
   const [isAutoScheduling, setIsAutoScheduling] = useState(false)
   const [autoMetrics, setAutoMetrics] = useState<any>(null)
   const [autoConflicts, setAutoConflicts] = useState<any[]>([])
@@ -269,8 +269,7 @@ export default function ShiftsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shownWeekStart.getTime()])
 
-  // Utility: mappa nome reparto per AI lib
-  const toAIDepartment = (dep: string) => dep === 'cucina' ? 'Cucina' : dep === 'sala' ? 'Sala' : 'Bar'
+  // Utility: mappa nome reparto
   const toLocalDepartment = (dep: string) => dep === 'Cucina' ? 'cucina' : dep === 'Sala' ? 'sala' : 'bar'
 
   // Utility: ISO date yyyy-mm-dd
@@ -321,14 +320,7 @@ export default function ShiftsPage() {
   }
 
   // Placeholder: eventi/prenotazioni e ferie approvate (integrazione futura)
-  const getBookingsForDateAI = (isoDate: string): AIBooking[] => {
-    const list = getBookingsByDate(isoDate)
-    return list.map(b => ({ id: b.id, date: b.date, time: b.time, partySize: b.partySize, status: b.status }))
-  }
-  const getEventsForDateAI = (isoDate: string): AIEvent[] => {
-    const list = getCompanyEventsByDate(isoDate)
-    return list.map(e => ({ id: e.id, name: e.name, date: e.date, type: e.type, expectedCoversMultiplier: e.expectedCoversMultiplier }))
-  }
+  // legacy mapping rimosso
   const isOnApprovedLeave = (employeeName: string, isoDate: string): boolean => {
     const userIdMap: Record<string, string> = {
       'Giuseppe Chef': '1',
@@ -361,206 +353,10 @@ export default function ShiftsPage() {
   }
 
   // Costruisce lista turni esistenti per AI (evita duplicati)
-  const buildExistingAIShifts = (): AIShift[] => {
-    const ai: AIShift[] = []
-    employees.forEach(emp => {
-      weekDays.forEach((d, idx) => {
-        const key = `${emp.name}-${idx}`
-        const s = shifts[key]
-        if (s && s.time && s.time !== 'RIPOSO') {
-          const [startTime, endTime] = s.time.split(' - ').length === 1 ? s.time.split('-') : s.time.split(' - ')
-          if (startTime && endTime) {
-            ai.push({
-              id: `${toISODate(d)}-${toAIDepartment(emp.department)}-${startTime}-${emp.name}`,
-              date: toISODate(d),
-              startTime,
-              endTime,
-              department: toAIDepartment(emp.department),
-              employeeId: emp.name,
-              status: 'scheduled'
-            })
-          }
-        }
-      })
-    })
-    return ai
-  }
+  // legacy buildExistingAIShifts rimosso
 
   // Applica suggerimenti AI alla settimana corrente rispettando riposi 11h e 48h settimanali
-  const generateWeekWithAI = async () => {
-    setIsGeneratingAI(true)
-    try {
-      const existing = buildExistingAIShifts()
-      // Copia mutabile dello stato turni
-      const newShifts = { ...shifts }
-
-      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-        const dateISO = toISODate(weekDays[dayIndex])
-        // Usa fonte lato client (mock o cache). Lato client non accediamo al DB direttamente
-        const dayBookings = getBookingsForDateAI(dateISO) as AIBooking[]
-        const dayEvents = getEventsForDateAI(dateISO) as AIEvent[]
-        const daySuggestions = generateAISuggestions(dateISO, dayBookings, dayEvents, existing)
-
-        for (const sug of daySuggestions) {
-          const employeeName = sug.suggestedEmployee.name
-          const localDept = toLocalDepartment(sug.department)
-          let employee = employees.find(e => e.name === employeeName && e.department === localDept) || null
-          // Se il nome non coincide con la lista attuale, scegli il migliore nel reparto
-          if (!employee) {
-            const picked = pickBestEmployeeForSuggestion(localDept, dateISO, dayIndex, sug.startTime, sug.endTime)
-            if (!picked) continue
-            employee = picked
-          }
-          const key = `${employee.name}-${dayIndex}`
-          if (newShifts[key] && newShifts[key].time) continue // già assegnato
-          if (isOnApprovedLeave(employee.name, dateISO)) continue // in ferie
-
-          // Controlli CCNL: riposo minimo 11h con giorno precedente/successivo
-          const prevKey = `${employee.name}-${dayIndex - 1}`
-          const nextKey = `${employee.name}-${dayIndex + 1}`
-          const prevTime = newShifts[prevKey]?.time
-          const nextTime = newShifts[nextKey]?.time
-          let restOk = true
-          if (prevTime && prevTime !== 'RIPOSO') {
-            const rest = calculateRestBetweenShifts(prevTime.includes('/') ? prevTime.split(' / ')[0] : prevTime, `${sug.startTime}-${sug.endTime}`)
-            if (rest < 11) restOk = false
-          }
-          if (nextTime && nextTime !== 'RIPOSO') {
-            const rest = calculateRestBetweenShifts(`${sug.startTime}-${sug.endTime}`, nextTime.includes('/') ? nextTime.split(' / ')[0] : nextTime)
-            if (rest < 11) restOk = false
-          }
-          if (!restOk) continue
-
-          // Riposi settimanali: rispetta giorni fissi e numero di riposi
-          const restRule = getRestRuleFor(employee.name)
-          if (restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any)) {
-            continue // giorno di riposo fisso
-          }
-          let restCount = 0
-          for (let i = 0; i < 7; i++) {
-            if (newShifts[`${employee.name}-${i}`]?.time === 'RIPOSO') restCount++
-          }
-          // Se l'impiegato deve avere due riposi e non li ha ancora, lascia spazi liberi evitando over-assegnazioni
-          if (restRule && restRule.fixedDayIndices && restRule.fixedDayIndices.length === 2) {
-            // niente: i due giorni sono fissati da fixedDayIndices
-          } else if (restRule && restRule.weeklyRestDays === 2 && restCount < 2) {
-            // Preferisci non assegnare altro oltre il necessario per permettere due riposi totali
-            // Se siamo su venerdì/sabato/domenica e ha ancora <2 riposi, evita assegnazione per bilanciare
-            if (dayIndex >= 4) continue
-          }
-
-          // Ore settimanali <= 48
-          const hoursToday = calculateShiftHours(`${sug.startTime}-${sug.endTime}`)
-          const hoursSoFar = calculateWeeklyHours(employee.name)
-          if (hoursSoFar + hoursToday > 48) continue
-
-          // Applica suggerimento
-          newShifts[key] = {
-            employee: employee.name,
-            time: `${sug.startTime}-${sug.endTime}`,
-            department: employee.department,
-            role: employee.role
-          }
-
-          // Aggiorna existing per evitare duplicati nella stessa giornata
-          existing.push({
-            id: `${dateISO}-${sug.department}-${sug.startTime}-${employee.name}`,
-            date: dateISO,
-            startTime: sug.startTime,
-            endTime: sug.endTime,
-            department: sug.department,
-            employeeId: employee.name,
-            status: 'scheduled'
-          })
-        }
-      }
-
-      // Assegna RIPOSO in base alle regole (giorni fissi e numero minimo settimanale)
-      employees.forEach((emp) => {
-        const rule = getRestRuleFor(emp.name)
-        const targetRests = rule?.fixedDayIndices && rule.fixedDayIndices.length === 2
-          ? 2
-          : (rule?.weeklyRestDays === 2 ? 2 : 1)
-
-        // 1) Imposta riposi fissi
-        const fixed = rule?.fixedDayIndices || []
-        fixed.forEach((dayIndex) => {
-          const dateISO = toISODate(weekDays[dayIndex as number])
-          if (!getApprovedLeaveInfo(emp.name, dateISO)) {
-            const key = `${emp.name}-${dayIndex}`
-            newShifts[key] = {
-              employee: emp.name,
-              time: 'RIPOSO',
-              department: emp.department,
-              role: emp.role
-            }
-          }
-        })
-
-        // 2) Completa fino al numero richiesto di riposi
-        let restCount = 0
-        for (let i = 0; i < 7; i++) {
-          if (newShifts[`${emp.name}-${i}`]?.time === 'RIPOSO') restCount++
-        }
-        for (let i = 0; i < 7 && restCount < targetRests; i++) {
-          const dateISO = toISODate(weekDays[i])
-          const key = `${emp.name}-${i}`
-          const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
-          const alreadyAssigned = !!newShifts[key]?.time
-          const isFixed = fixed.includes(i as any)
-          if (!hasLeave && !alreadyAssigned && !isFixed) {
-            newShifts[key] = {
-              employee: emp.name,
-              time: 'RIPOSO',
-              department: emp.department,
-              role: emp.role
-            }
-            restCount++
-          }
-        }
-      })
-
-      // 3) Enforce riposo minimo 11h tra giorni consecutivi
-      employees.forEach((emp) => {
-        for (let i = 0; i < 6; i++) {
-          const todayKey = `${emp.name}-${i}`
-          const nextKey = `${emp.name}-${i + 1}`
-          const today = newShifts[todayKey]
-          const next = newShifts[nextKey]
-          if (!today || !next) continue
-          if (today.time === 'RIPOSO' || next.time === 'RIPOSO') continue
-
-          // Escludi split handling come sufficiente (gestito in calculateRestBetweenShifts)
-          const todayTime = today.time || ''
-          const nextTime = next.time || ''
-          const rest = calculateRestBetweenShifts(
-            todayTime.includes(' / ')? todayTime.split(' / ')[0] : todayTime,
-            nextTime.includes(' / ')? nextTime.split(' / ')[0] : nextTime
-          )
-          if (rest < 11) {
-            // Prova a mettere RIPOSO il giorno successivo se non fisso o assenza
-            const rule = getRestRuleFor(emp.name)
-            const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes((i + 1) as any))
-            const dateISO = toISODate(weekDays[i + 1])
-            const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
-            if (!isFixed && !hasLeave) {
-              newShifts[nextKey] = {
-                employee: emp.name,
-                time: 'RIPOSO',
-                department: emp.department,
-                role: emp.role
-              }
-            }
-          }
-        }
-      })
-
-      setShifts(newShifts)
-      saveWeekShifts(newShifts)
-    } finally {
-      setIsGeneratingAI(false)
-    }
-  }
+  // (rimosso) generateWeekWithAI legacy
 
   // Applica piano settimanale da AutoScheduler (API)
   const generateWeekWithAutoScheduler = async () => {
@@ -779,13 +575,7 @@ export default function ShiftsPage() {
               </button>
             </div>
             <div className="mt-4 flex justify-end">
-              <button
-                onClick={generateWeekWithAI}
-                disabled={isGeneratingAI}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
-              >
-                {isGeneratingAI ? '🔄 Generazione AI...' : '🤖 Genera Turni con AI'}
-              </button>
+              {/* Rimosso bottone Genera Turni con AI (legacy) */}
               <button
                 onClick={generateWeekWithAutoScheduler}
                 disabled={isAutoScheduling}
