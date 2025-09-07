@@ -388,18 +388,69 @@ export default function ShiftsPage() {
         isoToIndex[toISODate(weekDays[i])] = i
       }
 
+      // 1) Imposta riposi fissi prima di applicare le assegnazioni
+      employees.forEach((emp) => {
+        const rule = getRestRuleFor(emp.name)
+        const fixed = rule?.fixedDayIndices || []
+        fixed.forEach((dayIndex) => {
+          const dateISO = toISODate(weekDays[dayIndex as number])
+          if (!getApprovedLeaveInfo(emp.name, dateISO)) {
+            const key = `${emp.name}-${dayIndex}`
+            newShifts[key] = {
+              employee: emp.name,
+              time: 'RIPOSO',
+              department: emp.department,
+              role: emp.role
+            }
+          }
+        })
+      })
+
       assignments.forEach((a: any) => {
         const idx = isoToIndex[a.dateISO]
         if (idx === undefined) return
         const emp = employees.find(e => e.name === a.employeeName)
         if (!emp) return
         const key = `${emp.name}-${idx}`
+        // Evita assegnazioni su giorni con riposo fisso o assenza approvata
+        const dateISO = toISODate(weekDays[idx])
+        const rule = getRestRuleFor(emp.name)
+        const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes(idx as any))
+        const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
+        if (isFixed || hasLeave) return
         if (newShifts[key]?.time) return
         newShifts[key] = {
           employee: emp.name,
           time: `${a.startTime}-${a.endTime}`,
           department: a.department,
           role: emp.role
+        }
+      })
+
+      // 2) Completa riposi fino al minimo settimanale richiesto
+      employees.forEach((emp) => {
+        const rule = getRestRuleFor(emp.name)
+        const targetRests = rule?.fixedDayIndices && rule.fixedDayIndices.length === 2 ? 2 : (rule?.weeklyRestDays === 2 ? 2 : 1)
+        const fixed = rule?.fixedDayIndices || []
+        let restCount = 0
+        for (let i = 0; i < 7; i++) {
+          if (newShifts[`${emp.name}-${i}`]?.time === 'RIPOSO') restCount++
+        }
+        for (let i = 0; i < 7 && restCount < targetRests; i++) {
+          const dateISO = toISODate(weekDays[i])
+          const key = `${emp.name}-${i}`
+          const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
+          const alreadyAssigned = !!newShifts[key]?.time
+          const isFixed = fixed.includes(i as any)
+          if (!hasLeave && !alreadyAssigned && !isFixed) {
+            newShifts[key] = {
+              employee: emp.name,
+              time: 'RIPOSO',
+              department: emp.department,
+              role: emp.role
+            }
+            restCount++
+          }
         }
       })
 
