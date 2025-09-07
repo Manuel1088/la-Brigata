@@ -636,7 +636,7 @@ export default function LeavesPage() {
                       const numberCls = isSelected
                         ? 'bg-blue-600 text-white'
                         : isToday
-                          ? 'border border-blue-600 text-blue-600'
+                          ? 'border border-red-600 text-red-600'
                           : inMonth
                             ? 'text-gray-900'
                             : 'text-gray-400'
