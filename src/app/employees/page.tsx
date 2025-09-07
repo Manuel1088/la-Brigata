@@ -5,8 +5,10 @@ import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 
-// Database dipendenti realistico
-const employees = [
+import { getEmployeesFullClient } from '@/lib/employees'
+
+// Database dipendenti realistico (derivato da storage condiviso)
+const employeesDefault = [
   {
     id: '1',
     name: 'Giuseppe Rossi',
@@ -141,7 +143,25 @@ export default function EmployeesPage() {
   const [selectedLevel, setSelectedLevel] = useState('all')
   const [showActiveOnly, setShowActiveOnly] = useState(true)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
-  const [filteredEmployees, setFilteredEmployees] = useState(employees)
+  const [employees, setEmployees] = useState<any[]>(employeesDefault)
+  const [filteredEmployees, setFilteredEmployees] = useState<any[]>(employeesDefault)
+
+  useEffect(() => {
+    const reload = () => {
+      const full = getEmployeesFullClient()
+      setEmployees(full)
+      // riapplica i filtri
+      setSearchTerm('')
+      setSelectedDepartment('all')
+      setSelectedLevel('all')
+      setShowActiveOnly(true)
+      setFilteredEmployees(full)
+    }
+    window.addEventListener('employees_updated', reload)
+    // iniziale
+    reload()
+    return () => window.removeEventListener('employees_updated', reload)
+  }, [])
 
   // Redirect se non autenticato
   useEffect(() => {
