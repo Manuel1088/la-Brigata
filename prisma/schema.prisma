@@ -20,6 +20,8 @@ model Restaurant {
   bookings  Booking[]
   tables    Table[]
   leavePolicies LeavePolicy[]
+  ccnlRules CCNLRules[]
+  events    RestaurantEvent[]
   
   @@map("restaurants")
 }
@@ -49,6 +51,13 @@ model User {
   address        String?
   emergencyContact String? @map("emergency_contact")
   notes          String?
+
+  // Vincoli contrattuali/CCNL aggiuntivi
+  weeklyHours        Int?     @map("weekly_hours")
+  nightShifts        Boolean? @default(false) @map("night_shifts")
+  weekendWork        Boolean? @default(true)  @map("weekend_work")
+  maxConsecutiveDays Int?     @default(6)     @map("max_consecutive_days")
+  contractTypeEnum   ContractType?            @map("contract_type_enum")
   
   restaurant       Restaurant @relation(fields: [restaurantId], references: [id])
   shifts           Shift[]
@@ -133,6 +142,52 @@ model LeaveRequest {
   approvals   LeaveApproval[]
   
   @@map("leave_requests")
+}
+
+// Regole CCNL per ristorante
+model CCNLRules {
+  id                      String   @id @default(cuid())
+  restaurantId            String   @map("restaurant_id")
+  maxDailyHours           Int      @default(8)  @map("max_daily_hours")
+  maxWeeklyHours          Int      @default(40) @map("max_weekly_hours")
+  minRestBetweenShifts    Int      @default(11) @map("min_rest_between_shifts")
+  maxConsecutiveDays      Int      @default(6)  @map("max_consecutive_days")
+  mandatoryWeeklyRest     Int      @default(36) @map("mandatory_weekly_rest")
+
+  restaurant              Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@map("ccnl_rules")
+}
+
+// Eventi del ristorante e fabbisogni di staff
+enum EventType {
+  NORMALE
+  EVENTO_SPECIALE
+  FESTA
+}
+
+model RestaurantEvent {
+  id               String   @id @default(cuid())
+  restaurantId     String   @map("restaurant_id")
+  date             DateTime
+  expectedGuests   Int      @map("expected_guests")
+  eventType        EventType @map("event_type")
+
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id])
+  staffNeeded      StaffRequirement[]
+
+  @@map("restaurant_events")
+}
+
+model StaffRequirement {
+  id          String     @id @default(cuid())
+  eventId     String     @map("event_id")
+  department  Department
+  count       Int
+
+  event       RestaurantEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("staff_requirements")
 }
 
 model LeaveApproval {
@@ -312,6 +367,20 @@ enum UserRole {
   
   // 👤 Livello 5 - Solo Visualizzazione
   DIPENDENTE
+}
+
+// Dipartimenti standard
+enum Department {
+  CUCINA
+  SALA
+  BAR
+}
+
+// Tipi contratto standard
+enum ContractType {
+  FULL_TIME
+  PART_TIME
+  STAGIONALE
 }
 
 enum LeaveType {

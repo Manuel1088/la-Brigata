@@ -12,6 +12,7 @@ import {
   Booking,
   CompanyEvent
 } from '@/lib/aiShiftScheduler'
+import { useState as useReactState } from 'react'
 
 export default function AIShiftsPage() {
   const { data: session, status } = useSession()
@@ -26,6 +27,7 @@ export default function AIShiftsPage() {
   // Dati mock per demo
   const [bookings, setBookings] = useState<Booking[]>([])
   const [events, setEvents] = useState<CompanyEvent[]>([])
+  const [autoSchedule, setAutoSchedule] = useState<any>(null)
 
   // Carica dati
   useEffect(() => {
@@ -378,6 +380,18 @@ export default function AIShiftsPage() {
                 >
                   {isGenerating ? '🔄 Generando...' : '🤖 Genera Suggerimenti AI'}
                 </button>
+                <div className="mt-4">
+                  <button
+                    onClick={async () => {
+                      const res = await fetch('/api/schedule/generate', { method: 'POST', body: JSON.stringify({ week: new Date() }) })
+                      const data = await res.json()
+                      setAutoSchedule(data)
+                    }}
+                    className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
+                  >
+                    🧠 AutoScheduler (beta)
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -450,6 +464,14 @@ export default function AIShiftsPage() {
                   Salva Modifiche
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {autoSchedule && (
+          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold mb-3">Anteprima Piano Settimanale</h3>
+              <pre className="text-xs overflow-auto">{JSON.stringify(autoSchedule, null, 2)}</pre>
             </div>
           </div>
         )}
