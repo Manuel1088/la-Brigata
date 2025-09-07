@@ -286,90 +286,148 @@ export default function BookingCalendarPage() {
               </div>
             </div>
 
-            {/* Navigazione Mese */}
-            <div className="bg-white p-6 rounded-lg shadow mb-6">
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => navigateMonth('prev')}
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition"
-                >
-                  ← Mese Precedente
-                </button>
-                <h2 className="text-xl font-semibold">
-                  {currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
-                </h2>
-                <button
-                  onClick={() => navigateMonth('next')}
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition"
-                >
-                  Mese Successivo →
-                </button>
-              </div>
-            </div>
-
-            {/* Calendario */}
+            {/* Calendario stile iPhone */}
             <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold">Calendario Mensile</h3>
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => navigateMonth('prev')}
+                    className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                  >
+                    ← Mese precedente
+                  </button>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+                  </div>
+                  <button
+                    onClick={() => navigateMonth('next')}
+                    className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                  >
+                    Mese successivo →
+                  </button>
+                </div>
+                <div className="mt-2">
+                  <button
+                    onClick={() => {
+                      const now = new Date()
+                      setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
+                      const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                      setSelectedDate(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
+                    }}
+                    className="text-xs text-blue-700 hover:text-blue-900"
+                  >
+                    Oggi
+                  </button>
+                </div>
               </div>
               <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {calendarDays.map((day) => (
-                    <div
-                      key={day.date}
-                      className={`border rounded-lg p-4 cursor-pointer transition ${
-                        selectedDate === day.date ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => setSelectedDate(day.date)}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {new Date(day.date).getDate()}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {new Date(day.date).toLocaleDateString('it-IT', { weekday: 'short' })}
-                          </p>
-                        </div>
-                        <span className={`px-2 py-1 rounded text-xs ${getOccupancyColor(day.occupancy)}`}>
-                          {day.occupancy}%
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="text-sm text-gray-600">
-                          📅 {day.bookings.length} prenotazioni
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          👥 {day.totalGuests} coperti
-                        </div>
-                      </div>
-                      
-                      {day.bookings.length > 0 && (
-                        <div className="mt-3 space-y-1">
-                          {day.bookings.slice(0, 2).map((booking) => (
-                            <div key={booking.id} className="text-xs">
-                              <div className="flex items-center space-x-1">
-                                <span className="font-medium">{booking.customerName}</span>
-                                <span className={`px-1 py-0.5 rounded text-xs ${getStatusColor(booking.status)}`}>
-                                  {getStatusText(booking.status).charAt(0)}
-                                </span>
-                              </div>
-                              <div className="text-gray-500">
-                                {formatTime(booking.time)} - {booking.partySize}p
-                              </div>
-                            </div>
-                          ))}
-                          {day.bookings.length > 2 && (
-                            <div className="text-xs text-gray-500">
-                              +{day.bookings.length - 2} altre...
-                            </div>
-                          )}
-                        </div>
-                      )}
+                {(() => {
+                  const toLocalISO = (d: Date) => {
+                    const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                    return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+                  }
+                  const todayISO = toLocalISO(new Date())
+
+                  const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+                  const startDay = (firstDay.getDay() + 6) % 7 // Monday start
+                  const gridStart = new Date(firstDay)
+                  gridStart.setDate(firstDay.getDate() - startDay)
+                  gridStart.setHours(0,0,0,0)
+                  const cells: Date[] = []
+                  for (let i = 0; i < 42; i++) {
+                    const d = new Date(gridStart)
+                    d.setDate(gridStart.getDate() + i)
+                    cells.push(d)
+                  }
+
+                  const dayHeader = (
+                    <div className="grid grid-cols-7 text-xs text-gray-500 mb-1">
+                      {['L','M','M','G','V','S','D'].map(d => (
+                        <div key={d} className="px-2 py-1 text-center uppercase tracking-wide">{d}</div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )
+
+                  const dotColorByStatus: Record<string, string> = {
+                    confirmed: 'bg-green-500',
+                    pending: 'bg-yellow-500',
+                    waiting: 'bg-blue-500',
+                    cancelled: 'bg-red-500',
+                    default: 'bg-gray-400'
+                  }
+
+                  const cellEls = cells.map(d => {
+                    const inMonth = d.getMonth() === currentMonth.getMonth()
+                    const dayISO = toLocalISO(d)
+                    const dayBookings = bookings.filter(b => b.date === dayISO)
+                    const isSelected = selectedDate === dayISO
+                    const isToday = dayISO === todayISO
+                    const numberCls = isSelected
+                      ? 'bg-blue-600 text-white'
+                      : isToday
+                        ? 'border border-red-600 text-red-600'
+                        : inMonth
+                          ? 'text-gray-900'
+                          : 'text-gray-400'
+
+                    return (
+                      <div
+                        key={dayISO}
+                        onClick={() => setSelectedDate(dayISO)}
+                        className={`p-2 h-20 cursor-pointer ${inMonth ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 rounded-lg transition`}
+                        title={`${dayBookings.length} prenotazioni`}
+                      >
+                        <div className="flex justify-center">
+                          <div className={`w-7 h-7 flex items-center justify-center rounded-full text-sm ${numberCls}`}>{d.getDate()}</div>
+                        </div>
+                        <div className="mt-2 flex justify-center gap-1">
+                          {dayBookings.slice(0,4).map(b => {
+                            const color = dotColorByStatus[b.status] || dotColorByStatus.default
+                            return <span key={b.id} className={`w-1.5 h-1.5 rounded-full ${color}`}></span>
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })
+
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      <div className="lg:col-span-2">
+                        {dayHeader}
+                        <div className="grid grid-cols-7 gap-0">
+                          {cellEls}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="border rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-semibold text-gray-900">Dettagli Giorno</div>
+                            <button onClick={() => setSelectedDate('')} className="text-xs text-gray-500 hover:text-gray-700">Pulisci</button>
+                          </div>
+                          <div className="text-sm text-gray-700 mb-2">
+                            {selectedDate ? new Date(selectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Seleziona un giorno'}
+                          </div>
+                          <div className="space-y-2">
+                            {selectedDate && getBookingsForDate(selectedDate).length === 0 && (
+                              <div className="text-sm text-gray-500">Nessuna prenotazione</div>
+                            )}
+                            {selectedDate && getBookingsForDate(selectedDate).map(booking => (
+                              <div key={booking.id} className="border rounded p-2 bg-gray-50 text-gray-900">
+                                <div className="text-sm font-medium flex items-center justify-between">
+                                  <span>{booking.customerName}</span>
+                                  <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>{getStatusText(booking.status)}</span>
+                                </div>
+                                <div className="text-xs text-gray-700 mt-1">
+                                  {formatTime(booking.time)} • {booking.partySize}p • Tavolo {booking.tableNumber || '-'}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
 
