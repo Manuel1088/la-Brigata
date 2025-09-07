@@ -558,14 +558,28 @@ export default function LeavesPage() {
                       Mese successivo →
                     </button>
                   </div>
+                  <div className="mb-3">
+                    <button
+                      onClick={() => {
+                        const now = new Date()
+                        const d = new Date(now.getFullYear(), now.getMonth(), 1)
+                        d.setHours(0,0,0,0)
+                        setCalendarDate(d)
+                        setSelectedDayISO(now.toISOString().split('T')[0])
+                      }}
+                      className="text-xs text-blue-700 hover:text-blue-900"
+                    >
+                      Oggi
+                    </button>
+                  </div>
 
                   {/* Griglia calendario */}
                   {(() => {
                     // Days header
                     const dayHeader = (
                       <div className="grid grid-cols-7 text-xs text-gray-500 mb-1">
-                        {['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].map(d => (
-                          <div key={d} className="px-2 py-1 text-center">{d}</div>
+                        {['L','M','M','G','V','S','D'].map(d => (
+                          <div key={d} className="px-2 py-1 text-center uppercase tracking-wide">{d}</div>
                         ))}
                       </div>
                     )
@@ -584,8 +598,8 @@ export default function LeavesPage() {
                       cells.push(d)
                     }
 
-                    const isSameDayISO = (a: Date, b: Date) => a.toISOString().split('T')[0] === b.toISOString().split('T')[0]
                     const toISO = (d: Date) => d.toISOString().split('T')[0]
+                    const todayISO = toISO(new Date())
 
                     // Filtra richieste secondo filtri
                     const allReq = getLeaveRequests()
@@ -606,34 +620,50 @@ export default function LeavesPage() {
                     const cellEls = cells.map((d) => {
                       const inMonth = d.getMonth() === calendarDate.getMonth()
                       const dayISO = toISO(d)
-                      const dayReqs = allReq.filter(r => d >= new Date(r.startDate.setHours(0,0,0,0)) && d <= new Date(r.endDate.setHours(0,0,0,0)))
-                      const count = dayReqs.length
+                      const startOf = (date: Date) => { const x = new Date(date); x.setHours(0,0,0,0); return x }
+                      const dayReqs = allReq.filter(r => {
+                        const s = startOf(r.startDate)
+                        const e = startOf(r.endDate)
+                        const dd = startOf(d)
+                        return dd >= s && dd <= e
+                      })
+                      const isSelected = selectedDayISO === dayISO
+                      const isToday = dayISO === todayISO
+                      const numberCls = isSelected
+                        ? 'bg-blue-600 text-white'
+                        : isToday
+                          ? 'border border-blue-600 text-blue-600'
+                          : inMonth
+                            ? 'text-gray-900'
+                            : 'text-gray-400'
+
+                      const dotColorMap: Record<string, string> = {
+                        blue: 'bg-blue-500',
+                        red: 'bg-red-500',
+                        green: 'bg-green-500',
+                        purple: 'bg-purple-500',
+                        gray: 'bg-gray-400',
+                        pink: 'bg-pink-500',
+                        indigo: 'bg-indigo-500',
+                        orange: 'bg-orange-500'
+                      }
+
                       return (
                         <div
                           key={dayISO}
                           onClick={() => setSelectedDayISO(dayISO)}
-                          className={`border p-1 h-24 cursor-pointer ${inMonth ? 'bg-white' : 'bg-gray-50'} hover:bg-orange-50`}
-                          title={`${count} assenze`}
+                          className={`p-2 h-20 cursor-pointer ${inMonth ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 rounded-lg transition`}
+                          title={`${dayReqs.length} assenze`}
                         >
-                          <div className="flex justify-between items-center mb-1">
-                            <div className={`text-xs ${inMonth ? 'text-gray-900' : 'text-gray-400'}`}>{d.getDate()}</div>
-                            {count > 0 && (
-                              <div className="text-[10px] px-1 rounded bg-orange-100 text-orange-800">{count}</div>
-                            )}
+                          <div className="flex justify-center">
+                            <div className={`w-7 h-7 flex items-center justify-center rounded-full text-sm ${numberCls}`}>{d.getDate()}</div>
                           </div>
-                          <div className="space-y-1 overflow-hidden">
-                            {dayReqs.slice(0,2).map(r => {
+                          <div className="mt-2 flex justify-center gap-1">
+                            {dayReqs.slice(0,4).map(r => {
                               const cfg = LEAVE_TYPES[r.type]
-                              const cls = colorMap[cfg?.color || 'gray']
-                              return (
-                                <div key={r.id} className={`truncate text-[10px] px-1 py-0.5 rounded ${cls}`}>
-                                  {cfg?.icon} {cfg?.name}
-                                </div>
-                              )
+                              const colorCls = dotColorMap[cfg?.color || 'gray']
+                              return <span key={r.id} className={`w-1.5 h-1.5 rounded-full ${colorCls}`}></span>
                             })}
-                            {dayReqs.length > 2 && (
-                              <div className="text-[10px] text-gray-500">+{dayReqs.length - 2} altri</div>
-                            )}
                           </div>
                         </div>
                       )
