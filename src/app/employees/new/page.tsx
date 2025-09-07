@@ -2,6 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { addEmployeeClient } from '@/lib/employees'
 
 // Configurazione ruoli e livelli
 const roleConfig = {
@@ -171,6 +172,10 @@ export default function NewEmployeePage() {
       // Per ora simuliamo il salvataggio
       await new Promise(resolve => setTimeout(resolve, 1000))
       
+      // Aggiorna elenco dipendenti in Turni (senza pulsante)
+      const department = roleConfig[formData.role as keyof typeof roleConfig]?.department || 'sala'
+      addEmployeeClient({ name: formData.name, role: formData.role, department: department as any })
+
       setMessage('✅ Dipendente aggiunto con successo!')
       setTimeout(() => {
         router.push('/employees')
