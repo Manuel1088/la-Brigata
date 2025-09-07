@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { generateAISuggestions, type Booking as AIBooking, type CompanyEvent as AIEvent, type Shift as AIShift } from '@/lib/aiShiftScheduler'
 import { getBookingsByDate, getCompanyEventsByDate, getBookingsByDateDB, getCompanyEventsByDateDB } from '@/lib/bookings'
-import { getLeaveRequests } from '@/lib/leaveSystem'
+import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
 
 interface ShiftCell {
@@ -291,6 +291,22 @@ export default function ShiftsPage() {
     if (!userId) return false
     const requests = getLeaveRequests(userId)
     return requests.some(r => r.status === 'APPROVED' && isoDate >= r.startDate.toISOString().split('T')[0] && isoDate <= r.endDate.toISOString().split('T')[0])
+  }
+
+  const getApprovedLeaveInfo = (employeeName: string, isoDate: string): { type: string; label: string } | null => {
+    const userIdMap: Record<string, string> = {
+      'Giuseppe Chef': '1',
+      'Maria Cameriera': '2',
+      'Luca Barista': '3',
+      'Anna Sous Chef': '4',
+      'Marco Cameriere': '5'
+    }
+    const userId = userIdMap[employeeName]
+    if (!userId) return null
+    const req = getLeaveRequests(userId).find(r => r.status === 'APPROVED' && isoDate >= r.startDate.toISOString().split('T')[0] && isoDate <= r.endDate.toISOString().split('T')[0])
+    if (!req) return null
+    const cfg = LEAVE_TYPES[req.type]
+    return { type: req.type, label: cfg?.name || req.type }
   }
 
   // Costruisce lista turni esistenti per AI (evita duplicati)
@@ -635,10 +651,16 @@ export default function ShiftsPage() {
                           </div>
                         </div>
                       </td>
-                      {weekDays.map((_, dayIndex) => {
+                      {weekDays.map((d, dayIndex) => {
                         const key = `${employee.name}-${dayIndex}`
                         const shift = shifts[key]
                         const isRestDay = shift?.time === 'RIPOSO'
+                        const dateISO = toISODate(d)
+                        const restRule = getRestRuleFor(employee.name)
+                        const isFixedRest = !!(restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any))
+                        const leaveInfo = getApprovedLeaveInfo(employee.name, dateISO)
+                        const isDerivedBlocked = isFixedRest || !!leaveInfo
+                        const canClickCell = canManageShifts && !isDerivedBlocked
                         return (
                           <td 
                             key={dayIndex}
@@ -648,10 +670,10 @@ export default function ShiftsPage() {
                                   employee.department === 'cucina' ? 'bg-red-100 hover:bg-red-200' :
                                   employee.department === 'sala' ? 'bg-blue-100 hover:bg-blue-200' : 'bg-green-100 hover:bg-green-200'
                                 )
-                              ) : 'bg-gray-50 hover:bg-orange-50'
+                              ) : isDerivedBlocked ? 'bg-gray-100' : 'bg-gray-50 hover:bg-orange-50'
                             }`}
-                            onClick={() => canManageShifts && handleCellClick(employee.name, dayIndex)}
-                            onContextMenu={(e) => canManageShifts && handleCellRightClick(e, employee.name, dayIndex)}
+                            onClick={() => canClickCell && handleCellClick(employee.name, dayIndex)}
+                            onContextMenu={(e) => canClickCell && handleCellRightClick(e, employee.name, dayIndex)}
                           >
                             {shift ? (
                               <div className="text-sm">
@@ -682,8 +704,20 @@ export default function ShiftsPage() {
                                 )}
                               </div>
                             ) : (
-                              <div className="text-gray-400 text-sm">
-                                {canManageShifts ? '+ Assegna' : '-'}
+                              <div className="text-sm">
+                                {leaveInfo ? (
+                                  <>
+                                    <div className="font-semibold text-yellow-800">🗓️ {leaveInfo.label}</div>
+                                    <div className="text-xs text-gray-500">Assenza approvata</div>
+                                  </>
+                                ) : isFixedRest ? (
+                                  <>
+                                    <div className="font-semibold text-gray-700">😴 RIPOSO</div>
+                                    <div className="text-xs text-gray-500">Giorno fisso</div>
+                                  </>
+                                ) : (
+                                  <span className="text-gray-400">{canManageShifts ? '+ Assegna' : '-'}</span>
+                                )}
                               </div>
                             )}
                           </td>
