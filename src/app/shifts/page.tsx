@@ -420,6 +420,51 @@ export default function ShiftsPage() {
         }
       }
 
+      // Assegna RIPOSO in base alle regole (giorni fissi e numero minimo settimanale)
+      employees.forEach((emp) => {
+        const rule = getRestRuleFor(emp.name)
+        const targetRests = rule?.fixedDayIndices && rule.fixedDayIndices.length === 2
+          ? 2
+          : (rule?.weeklyRestDays === 2 ? 2 : 1)
+
+        // 1) Imposta riposi fissi
+        const fixed = rule?.fixedDayIndices || []
+        fixed.forEach((dayIndex) => {
+          const dateISO = toISODate(weekDays[dayIndex as number])
+          if (!getApprovedLeaveInfo(emp.name, dateISO)) {
+            const key = `${emp.name}-${dayIndex}`
+            newShifts[key] = {
+              employee: emp.name,
+              time: 'RIPOSO',
+              department: emp.department,
+              role: emp.role
+            }
+          }
+        })
+
+        // 2) Completa fino al numero richiesto di riposi
+        let restCount = 0
+        for (let i = 0; i < 7; i++) {
+          if (newShifts[`${emp.name}-${i}`]?.time === 'RIPOSO') restCount++
+        }
+        for (let i = 0; i < 7 && restCount < targetRests; i++) {
+          const dateISO = toISODate(weekDays[i])
+          const key = `${emp.name}-${i}`
+          const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
+          const alreadyAssigned = !!newShifts[key]?.time
+          const isFixed = fixed.includes(i as any)
+          if (!hasLeave && !alreadyAssigned && !isFixed) {
+            newShifts[key] = {
+              employee: emp.name,
+              time: 'RIPOSO',
+              department: emp.department,
+              role: emp.role
+            }
+            restCount++
+          }
+        }
+      })
+
       setShifts(newShifts)
       saveWeekShifts(newShifts)
     } finally {
