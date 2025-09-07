@@ -37,6 +37,16 @@ export default function LeavesPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([])
   const [stats, setStats] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'balances' | 'requests' | 'calendar'>('balances')
+  // Stato calendario
+  const [calendarDate, setCalendarDate] = useState(() => {
+    const d = new Date()
+    d.setDate(1)
+    d.setHours(0,0,0,0)
+    return d
+  })
+  const [selectedDayISO, setSelectedDayISO] = useState<string | null>(null)
+  const [filterEmployee, setFilterEmployee] = useState<string>('all')
+  const [filterType, setFilterType] = useState<string>('all')
 
   useEffect(() => {
     if (status === 'loading') return
@@ -490,15 +500,190 @@ export default function LeavesPage() {
             {activeTab === 'calendar' && canViewAllLeaves() && (
               <div className="bg-white rounded-lg shadow">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">📅 Calendario Assenze Team</h2>
-                  <p className="text-sm text-gray-600">Visualizza le assenze programmate del team</p>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">📅 Calendario Assenze Team</h2>
+                      <p className="text-sm text-gray-600">Visualizza e filtra ferie e permessi su base giornaliera</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <select
+                        value={filterEmployee}
+                        onChange={(e) => setFilterEmployee(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded text-sm"
+                        title="Filtra per dipendente"
+                      >
+                        <option value="all">Tutti i dipendenti</option>
+                        {[...new Set(getLeaveRequests().map(r => r.userId))].map(uid => (
+                          <option key={uid} value={uid}>Utente {uid}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded text-sm"
+                        title="Filtra per tipologia"
+                      >
+                        <option value="all">Tutte le tipologie</option>
+                        {Object.values(LEAVE_TYPES).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
                 <div className="p-6">
-                  <div className="text-center py-8">
-                    <div className="text-4xl mb-4">📅</div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Calendario in Sviluppo</h3>
-                    <p className="text-gray-500">La vista calendario sarà disponibile nella prossima versione</p>
+                  {/* Toolbar mese */}
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => {
+                        const d = new Date(calendarDate)
+                        d.setMonth(d.getMonth() - 1)
+                        setCalendarDate(d)
+                      }}
+                      className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                    >
+                      ← Mese precedente
+                    </button>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {calendarDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+                    </div>
+                    <button
+                      onClick={() => {
+                        const d = new Date(calendarDate)
+                        d.setMonth(d.getMonth() + 1)
+                        setCalendarDate(d)
+                      }}
+                      className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                    >
+                      Mese successivo →
+                    </button>
                   </div>
+
+                  {/* Griglia calendario */}
+                  {(() => {
+                    // Days header
+                    const dayHeader = (
+                      <div className="grid grid-cols-7 text-xs text-gray-500 mb-1">
+                        {['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].map(d => (
+                          <div key={d} className="px-2 py-1 text-center">{d}</div>
+                        ))}
+                      </div>
+                    )
+
+                    const startOfMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1)
+                    const endOfMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0)
+                    const startDay = (startOfMonth.getDay() + 6) % 7 // Monday=0
+                    const gridStart = new Date(startOfMonth)
+                    gridStart.setDate(startOfMonth.getDate() - startDay)
+                    gridStart.setHours(0,0,0,0)
+
+                    const cells: Date[] = []
+                    for (let i = 0; i < 42; i++) {
+                      const d = new Date(gridStart)
+                      d.setDate(gridStart.getDate() + i)
+                      cells.push(d)
+                    }
+
+                    const isSameDayISO = (a: Date, b: Date) => a.toISOString().split('T')[0] === b.toISOString().split('T')[0]
+                    const toISO = (d: Date) => d.toISOString().split('T')[0]
+
+                    // Filtra richieste secondo filtri
+                    const allReq = getLeaveRequests()
+                      .filter(r => (filterEmployee === 'all' ? true : r.userId === filterEmployee))
+                      .filter(r => (filterType === 'all' ? true : r.type === filterType))
+
+                    const colorMap: Record<string, string> = {
+                      blue: 'bg-blue-100 text-blue-800',
+                      red: 'bg-red-100 text-red-800',
+                      green: 'bg-green-100 text-green-800',
+                      purple: 'bg-purple-100 text-purple-800',
+                      gray: 'bg-gray-100 text-gray-800',
+                      pink: 'bg-pink-100 text-pink-800',
+                      indigo: 'bg-indigo-100 text-indigo-800',
+                      orange: 'bg-orange-100 text-orange-800'
+                    }
+
+                    const cellEls = cells.map((d) => {
+                      const inMonth = d.getMonth() === calendarDate.getMonth()
+                      const dayISO = toISO(d)
+                      const dayReqs = allReq.filter(r => d >= new Date(r.startDate.setHours(0,0,0,0)) && d <= new Date(r.endDate.setHours(0,0,0,0)))
+                      const count = dayReqs.length
+                      return (
+                        <div
+                          key={dayISO}
+                          onClick={() => setSelectedDayISO(dayISO)}
+                          className={`border p-1 h-24 cursor-pointer ${inMonth ? 'bg-white' : 'bg-gray-50'} hover:bg-orange-50`}
+                          title={`${count} assenze`}
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <div className={`text-xs ${inMonth ? 'text-gray-900' : 'text-gray-400'}`}>{d.getDate()}</div>
+                            {count > 0 && (
+                              <div className="text-[10px] px-1 rounded bg-orange-100 text-orange-800">{count}</div>
+                            )}
+                          </div>
+                          <div className="space-y-1 overflow-hidden">
+                            {dayReqs.slice(0,2).map(r => {
+                              const cfg = LEAVE_TYPES[r.type]
+                              const cls = colorMap[cfg?.color || 'gray']
+                              return (
+                                <div key={r.id} className={`truncate text-[10px] px-1 py-0.5 rounded ${cls}`}>
+                                  {cfg?.icon} {cfg?.name}
+                                </div>
+                              )
+                            })}
+                            {dayReqs.length > 2 && (
+                              <div className="text-[10px] text-gray-500">+{dayReqs.length - 2} altri</div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })
+
+                    // Dettagli giorno selezionato
+                    const selectedDate = selectedDayISO ? new Date(selectedDayISO) : null
+                    const selectedReqs = selectedDate ? allReq.filter(r => selectedDate >= new Date(r.startDate.setHours(0,0,0,0)) && selectedDate <= new Date(r.endDate.setHours(0,0,0,0))) : []
+
+                    return (
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div className="lg:col-span-2">
+                          {dayHeader}
+                          <div className="grid grid-cols-7 gap-0">
+                            {cellEls}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="border rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="font-semibold text-gray-900">Dettagli Giorno</div>
+                              <button onClick={() => setSelectedDayISO(null)} className="text-xs text-gray-500 hover:text-gray-700">Pulisci</button>
+                            </div>
+                            <div className="text-sm text-gray-700 mb-2">
+                              {selectedDate ? selectedDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Seleziona un giorno'}
+                            </div>
+                            <div className="space-y-2">
+                              {selectedReqs.length === 0 && (
+                                <div className="text-sm text-gray-500">Nessuna assenza</div>
+                              )}
+                              {selectedReqs.map(r => {
+                                const cfg = LEAVE_TYPES[r.type]
+                                const cls = colorMap[cfg?.color || 'gray']
+                                return (
+                                  <div key={r.id} className={`border rounded p-2 ${cls.replace('100','50')} text-gray-900`}>
+                                    <div className="text-sm font-medium">
+                                      {cfg?.icon} {cfg?.name} • Utente {r.userId}
+                                    </div>
+                                    <div className="text-xs text-gray-700">
+                                      {r.startDate.toLocaleDateString('it-IT')} → {r.endDate.toLocaleDateString('it-IT')} • {r.status}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             )}
