@@ -234,6 +234,32 @@ export default function ShiftsPage() {
   today.setHours(0, 0, 0, 0)
   const isCurrentWeekDisplayed = today >= shownWeekStart && today <= shownWeekEnd
 
+  // Persistenza locale dei turni per settimana (localStorage)
+  const getWeekKey = () => `shifts_${toISODate(shownWeekStart)}`
+  const saveWeekShifts = (data: { [key: string]: ShiftCell }) => {
+    try {
+      localStorage.setItem(getWeekKey(), JSON.stringify(data))
+    } catch {}
+  }
+  const loadWeekShifts = (): { [key: string]: ShiftCell } | null => {
+    try {
+      const raw = localStorage.getItem(getWeekKey())
+      if (!raw) return null
+      return JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+
+  // Carica i turni salvati quando cambia la settimana
+  useEffect(() => {
+    const saved = loadWeekShifts()
+    if (saved) {
+      setShifts(saved)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownWeekStart.getTime()])
+
   // Utility: mappa nome reparto per AI lib
   const toAIDepartment = (dep: string) => dep === 'cucina' ? 'Cucina' : dep === 'sala' ? 'Sala' : 'Bar'
   const toLocalDepartment = (dep: string) => dep === 'Cucina' ? 'cucina' : dep === 'Sala' ? 'sala' : 'bar'
@@ -378,6 +404,7 @@ export default function ShiftsPage() {
       }
 
       setShifts(newShifts)
+      saveWeekShifts(newShifts)
     } finally {
       setIsGeneratingAI(false)
     }
@@ -396,6 +423,7 @@ export default function ShiftsPage() {
     if (!canManageShifts) return
     const shiftKey = `${employee}-${dayIndex}`
     const existingShift = shifts[shiftKey]
+    // Blocca edit se turno è "bloccato" (assegnato e passato mezzanotte non ancora) - opzionale: per ora blocco solo se assegnato manualmente? Manteniamo semplice: consentiamo edit sempre ai manager
     setSelectedEmployee({ 
       name: employee, 
       dayIndex, 
@@ -444,6 +472,18 @@ export default function ShiftsPage() {
         role: employees.find(e => e.name === selectedEmployee.name)?.role
       }
     }))
+    // Salva persistente
+    setTimeout(() => {
+      saveWeekShifts({
+        ...shifts,
+        [shiftKey]: {
+          employee: selectedEmployee.name,
+          time: shift.time,
+          department: employees.find(e => e.name === selectedEmployee.name)?.department,
+          role: employees.find(e => e.name === selectedEmployee.name)?.role
+        }
+      })
+    }, 0)
     setIsShiftSelectorOpen(false)
     setSelectedEmployee(null)
   }
