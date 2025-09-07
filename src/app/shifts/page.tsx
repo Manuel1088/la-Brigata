@@ -279,6 +279,8 @@ export default function ShiftsPage() {
   useEffect(() => {
     const newShifts = { ...shifts }
     let changed = false
+    const todayWeekStart = getWeekStart(new Date())
+    const isFutureWeek = shownWeekStart > todayWeekStart
     employees.forEach(emp => {
       const rule = getRestRuleFor(emp.name)
       const fixed = rule?.fixedDayIndices || []
@@ -297,6 +299,52 @@ export default function ShiftsPage() {
           changed = true
         }
       })
+
+      // Se settimana futura: completa automaticamente i riposi fino al minimo richiesto
+      if (isFutureWeek) {
+        const targetRests = rule?.fixedDayIndices && rule.fixedDayIndices.length === 2
+          ? 2
+          : (rule?.weeklyRestDays === 2 ? 2 : 1)
+
+        // conteggio attuale dei riposi (include i fissi impostati sopra)
+        let restCount = 0
+        for (let i = 0; i < 7; i++) {
+          if (newShifts[`${emp.name}-${i}`]?.time === 'RIPOSO') restCount++
+        }
+        if (restCount < targetRests) {
+          // ordina i giorni per domanda (meno prenotazioni prima), poi ruota per dipendente per non concentrare sullo stesso giorno
+          const dayDemands: Array<{ idx: number; demand: number }> = []
+          for (let i = 0; i < 7; i++) {
+            const dateISO = toISODate(weekDays[i])
+            const guests = getBookingsByDate(dateISO).reduce((s, b) => s + b.partySize, 0)
+            dayDemands.push({ idx: i, demand: guests })
+          }
+          dayDemands.sort((a, b) => a.demand - b.demand)
+          const hash = Array.from(emp.name).reduce((s, ch) => s + ch.charCodeAt(0), 0)
+          const rotate = (arr: number[], offset: number) => arr.slice(offset).concat(arr.slice(0, offset))
+          const sortedIdx = rotate(dayDemands.map(d => d.idx), hash % 7)
+          const fixedSet = new Set(rule?.fixedDayIndices || [])
+
+          for (const i of sortedIdx) {
+            if (restCount >= targetRests) break
+            const key = `${emp.name}-${i}`
+            if (newShifts[key]?.time) continue // già assegnato turno o riposo
+            if (fixedSet.has(i as any)) continue
+            const dateISO = toISODate(weekDays[i])
+            const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
+            if (hasLeave) continue
+
+            newShifts[key] = {
+              employee: emp.name,
+              time: 'RIPOSO',
+              department: emp.department,
+              role: emp.role
+            }
+            restCount++
+            changed = true
+          }
+        }
+      }
     })
     if (changed) {
       setShifts(newShifts)
