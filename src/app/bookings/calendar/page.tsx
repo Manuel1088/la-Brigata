@@ -30,6 +30,7 @@ export default function BookingCalendarPage() {
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([])
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<string>('')
+  const [walkins, setWalkins] = useState<{ lunch: number; dinner: number }>({ lunch: 0, dinner: 0 })
 
   // Carica dati
   useEffect(() => {
@@ -216,6 +217,35 @@ export default function BookingCalendarPage() {
   const getAverageOccupancy = () => {
     const totalOccupancy = calendarDays.reduce((sum, day) => sum + day.occupancy, 0)
     return Math.round(totalOccupancy / calendarDays.length)
+  }
+
+  // Walk-ins storage per day
+  useEffect(() => {
+    if (!selectedDate) return
+    try {
+      const raw = localStorage.getItem(`walkins_${selectedDate}`)
+      if (raw) setWalkins(JSON.parse(raw))
+      else setWalkins({ lunch: 0, dinner: 0 })
+    } catch {
+      setWalkins({ lunch: 0, dinner: 0 })
+    }
+  }, [selectedDate])
+
+  const saveWalkins = (next: { lunch: number; dinner: number }) => {
+    setWalkins(next)
+    try { localStorage.setItem(`walkins_${selectedDate}`, JSON.stringify(next)) } catch {}
+  }
+
+  const splitCovers = (date: string) => {
+    const isLunch = (t: string) => { const h = parseInt((t || '0').split(':')[0] || '0', 10); return h >= 11 && h < 16 }
+    const isDinner = (t: string) => { const h = parseInt((t || '0').split(':')[0] || '0', 10); return h >= 18 && h <= 23 }
+    let lunch = 0, dinner = 0
+    getBookingsForDate(date).forEach(b => {
+      if (b.status === 'cancelled') return
+      if (isLunch(b.time)) lunch += b.partySize
+      else if (isDinner(b.time)) dinner += b.partySize
+    })
+    return { lunch, dinner }
   }
 
   return (
@@ -445,7 +475,9 @@ export default function BookingCalendarPage() {
               </div>
             </div>
 
-            {/* Dettagli Giorno Selezionato */}
+            {/* Dettagli Giorno Selezionato */
+            // Mostra coperti prenotati e walk-in (passanti) per pranzo e cena
+            }
             {selectedDate && (
               <div className="mt-6 bg-white rounded-lg shadow">
                 <div className="px-6 py-4 border-b border-gray-200">
@@ -454,6 +486,47 @@ export default function BookingCalendarPage() {
                   </h3>
                 </div>
                 <div className="p-6">
+                  {(() => {
+                    const covers = splitCovers(selectedDate)
+                    return (
+                      <div className="grid md:grid-cols-2 gap-4 mb-6">
+                        <div className="border rounded-lg p-3">
+                          <div className="font-semibold text-gray-900 mb-1">🍽️ Pranzo</div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-700">Prenotati:</span>
+                            <span className="font-bold text-gray-900">{covers.lunch}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="text-gray-700">Passanti (walk-in):</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={walkins.lunch}
+                              onChange={(e) => saveWalkins({ lunch: Math.max(0, parseInt(e.target.value || '0', 10)), dinner: walkins.dinner })}
+                              className="w-20 px-2 py-1 border border-gray-300 rounded"
+                            />
+                          </div>
+                        </div>
+                        <div className="border rounded-lg p-3">
+                          <div className="font-semibold text-gray-900 mb-1">🌙 Cena</div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-700">Prenotati:</span>
+                            <span className="font-bold text-gray-900">{covers.dinner}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="text-gray-700">Passanti (walk-in):</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={walkins.dinner}
+                              onChange={(e) => saveWalkins({ lunch: walkins.lunch, dinner: Math.max(0, parseInt(e.target.value || '0', 10)) })}
+                              className="w-20 px-2 py-1 border border-gray-300 rounded"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
                   {getBookingsForDate(selectedDate).length > 0 ? (
                     <div className="space-y-4">
                       {getBookingsForDate(selectedDate).map((booking) => (
