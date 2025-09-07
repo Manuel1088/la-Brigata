@@ -278,6 +278,36 @@ export default function ShiftsPage() {
     return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
   }
 
+  // Prefill: applica subito i riposi fissi in tabella quando cambiano regole o settimana
+  useEffect(() => {
+    const newShifts = { ...shifts }
+    let changed = false
+    employees.forEach(emp => {
+      const rule = getRestRuleFor(emp.name)
+      const fixed = rule?.fixedDayIndices || []
+      fixed.forEach((dayIdx) => {
+        if (dayIdx < 0 || dayIdx > 6) return
+        const key = `${emp.name}-${dayIdx}`
+        const dateISO = toISODate(weekDays[dayIdx])
+        const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
+        if (!hasLeave && !newShifts[key]?.time) {
+          newShifts[key] = {
+            employee: emp.name,
+            time: 'RIPOSO',
+            department: emp.department,
+            role: emp.role
+          }
+          changed = true
+        }
+      })
+    })
+    if (changed) {
+      setShifts(newShifts)
+      saveWeekShifts(newShifts)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restVersion, employees.length, shownWeekStart.getTime()])
+
   // Seleziona il miglior dipendente per un suggerimento quando il nome non coincide
   const pickBestEmployeeForSuggestion = (
     department: string,
