@@ -565,7 +565,8 @@ export default function LeavesPage() {
                         const d = new Date(now.getFullYear(), now.getMonth(), 1)
                         d.setHours(0,0,0,0)
                         setCalendarDate(d)
-                        setSelectedDayISO(now.toISOString().split('T')[0])
+                        const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                        setSelectedDayISO(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
                       }}
                       className="text-xs text-blue-700 hover:text-blue-900"
                     >
@@ -598,8 +599,11 @@ export default function LeavesPage() {
                       cells.push(d)
                     }
 
-                    const toISO = (d: Date) => d.toISOString().split('T')[0]
-                    const todayISO = toISO(new Date())
+                    const toLocalISO = (d: Date) => {
+                      const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                      return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+                    }
+                    const todayISO = toLocalISO(new Date())
 
                     // Filtra richieste secondo filtri
                     const allReq = getLeaveRequests()
@@ -619,8 +623,8 @@ export default function LeavesPage() {
 
                     const cellEls = cells.map((d) => {
                       const inMonth = d.getMonth() === calendarDate.getMonth()
-                      const dayISO = toISO(d)
-                      const startOf = (date: Date) => { const x = new Date(date); x.setHours(0,0,0,0); return x }
+                      const dayISO = toLocalISO(d)
+                      const startOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
                       const dayReqs = allReq.filter(r => {
                         const s = startOf(r.startDate)
                         const e = startOf(r.endDate)
@@ -670,7 +674,7 @@ export default function LeavesPage() {
                     })
 
                     // Dettagli giorno selezionato
-                    const selectedDate = selectedDayISO ? new Date(selectedDayISO) : null
+                    const selectedDate = selectedDayISO ? (() => { const [yy,mm,dd] = selectedDayISO.split('-').map(Number); return new Date(yy, (mm||1)-1, dd||1) })() : null
                     const selectedReqs = selectedDate ? allReq.filter(r => selectedDate >= new Date(r.startDate.setHours(0,0,0,0)) && selectedDate <= new Date(r.endDate.setHours(0,0,0,0))) : []
 
                     return (
