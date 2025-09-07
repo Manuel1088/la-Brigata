@@ -24,10 +24,7 @@ export default function ShiftsPage() {
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{name: string, dayIndex: number, isEdit?: boolean} | null>(null)
   // rimosso generatore AI legacy
-  const [isAutoScheduling, setIsAutoScheduling] = useState(false)
-  const [autoMetrics, setAutoMetrics] = useState<any>(null)
-  const [autoConflicts, setAutoConflicts] = useState<any[]>([])
-  const [autoBlockMessage, setAutoBlockMessage] = useState<string | null>(null)
+  // AutoScheduler rimosso
   // Nuovi stati per gestione turni personalizzati
   const [customShifts, setCustomShifts] = useState<{[department: string]: Array<{id: string, name: string, time: string, description: string}>}>({})
   const [isAddingCustomShift, setIsAddingCustomShift] = useState(false)
@@ -388,201 +385,7 @@ export default function ShiftsPage() {
   // Applica suggerimenti AI alla settimana corrente rispettando riposi 11h e 48h settimanali
   // (rimosso) generateWeekWithAI legacy
 
-  // Applica piano settimanale da AutoScheduler (API)
-  const generateWeekWithAutoScheduler = async () => {
-    setIsAutoScheduling(true)
-    try {
-      const res = await fetch('/api/schedule/generate', {
-        method: 'POST',
-        body: JSON.stringify({ week: shownWeekStart })
-      })
-      const data = await res.json()
-      const schedule = data?.schedule
-      const conflicts = data?.conflicts || []
-      const metrics = data?.metrics || null
-      setAutoConflicts(conflicts)
-      setAutoMetrics(metrics)
-      setAutoBlockMessage(null)
-
-      const assignments = schedule?.assignments || []
-      // Blocca applicazione se conflitti bloccanti presenti
-      const blockingTypes = ['MIN_REST', 'OVERLAP', 'WEEKLY_HOURS', 'CONSECUTIVE_DAYS']
-      const hasBlocking = conflicts.some((c: any) => blockingTypes.includes(c.type))
-      if (hasBlocking) {
-        setAutoBlockMessage('Sono presenti conflitti bloccanti (riposo minimo/overlap/ore/giorni consecutivi). Risolvi prima di applicare.')
-        return
-      }
-      const newShifts = { ...shifts }
-      const isoToIndex: Record<string, number> = {}
-      for (let i = 0; i < 7; i++) {
-        isoToIndex[toISODate(weekDays[i])] = i
-      }
-
-      // 1) Imposta riposi fissi prima di applicare le assegnazioni (forza RIPOSO anche se c'è già un turno)
-      employees.forEach((emp) => {
-        const rule = getRestRuleFor(emp.name)
-        const fixed = rule?.fixedDayIndices || []
-        fixed.forEach((dayIndex) => {
-          const dateISO = toISODate(weekDays[dayIndex as number])
-          if (!getApprovedLeaveInfo(emp.name, dateISO)) {
-            const key = `${emp.name}-${dayIndex}`
-            newShifts[key] = {
-              employee: emp.name,
-              time: 'RIPOSO',
-              department: emp.department,
-              role: emp.role
-            }
-          }
-        })
-      })
-
-      assignments.forEach((a: any) => {
-        const idx = isoToIndex[a.dateISO]
-        if (idx === undefined) return
-        const emp = employees.find(e => e.name === a.employeeName)
-        if (!emp) return
-        const key = `${emp.name}-${idx}`
-        // Evita assegnazioni su giorni con riposo fisso o assenza approvata
-        const dateISO = toISODate(weekDays[idx])
-        const rule = getRestRuleFor(emp.name)
-        const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes(idx as any))
-        const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
-        if (isFixed || hasLeave) return
-        if (newShifts[key]?.time) return
-        newShifts[key] = {
-          employee: emp.name,
-          time: `${a.startTime}-${a.endTime}`,
-          department: a.department,
-          role: emp.role
-        }
-      })
-
-      // 2) Completa riposi fino al minimo settimanale richiesto (mai assegnare turno su giorni fissi)
-      employees.forEach((emp) => {
-        const rule = getRestRuleFor(emp.name)
-        const targetRests = rule?.fixedDayIndices && rule.fixedDayIndices.length === 2 ? 2 : (rule?.weeklyRestDays === 2 ? 2 : 1)
-        const fixed = rule?.fixedDayIndices || []
-        let restCount = 0
-        for (let i = 0; i < 7; i++) {
-          if (newShifts[`${emp.name}-${i}`]?.time === 'RIPOSO') restCount++
-        }
-
-        // ordina i giorni dalla domanda più bassa a più alta; in caso di parità, ruota in base al nome per evitare tutti lunedì
-        const dayDemands: Array<{ idx: number; demand: number }> = []
-        for (let i = 0; i < 7; i++) {
-          const dateISO = toISODate(weekDays[i])
-          const guests = getBookingsByDate(dateISO).reduce((s, b) => s + b.partySize, 0)
-          dayDemands.push({ idx: i, demand: guests })
-        }
-        dayDemands.sort((a, b) => a.demand - b.demand)
-        const hash = Array.from(emp.name).reduce((s, ch) => s + ch.charCodeAt(0), 0)
-        const rotate = (arr: number[], offset: number) => arr.slice(offset).concat(arr.slice(0, offset))
-        const sortedIdx = rotate(dayDemands.map(d => d.idx), hash % 7)
-
-        for (const i of sortedIdx) {
-          if (restCount >= targetRests) break
-          const dateISO = toISODate(weekDays[i])
-          const key = `${emp.name}-${i}`
-          const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
-          const alreadyAssigned = !!newShifts[key]?.time
-          const isFixed = fixed.includes(i as any)
-          if (!hasLeave && !alreadyAssigned && !isFixed) {
-            newShifts[key] = {
-              employee: emp.name,
-              time: 'RIPOSO',
-              department: emp.department,
-              role: emp.role
-            }
-            restCount++
-          }
-        }
-      })
-
-      // 3) Backfill: assegna turni base dove mancano, rispettando 48h e riposo 11h
-      const fallbackByDept: Record<string, { start: string; end: string }> = {
-        cucina: { start: '10:00', end: '18:00' },
-        sala: { start: '11:00', end: '16:00' },
-        bar: { start: '17:00', end: '21:00' }
-      }
-      const hoursBetweenLocal = (time: string) => {
-        const [s, e] = time.split('-')
-        if (!s || !e) return 0
-        const [sh, sm] = s.split(':').map(Number)
-        const [eh, em] = e.split(':').map(Number)
-        let start = sh * 60 + sm
-        let end = eh * 60 + em
-        if (end < start) end += 24 * 60
-        return (end - start) / 60
-      }
-      const weeklyHoursIn = (name: string) => {
-        let h = 0
-        for (let i = 0; i < 7; i++) {
-          const t = newShifts[`${name}-${i}`]?.time
-          if (t && t !== 'RIPOSO') {
-            if (t.includes('/')) {
-              const [m, e] = t.split(' / ')
-              h += hoursBetweenLocal(m) + hoursBetweenLocal(e)
-            } else {
-              h += hoursBetweenLocal(t)
-            }
-          }
-        }
-        return h
-      }
-      const restBetweenLocal = (endShift: string, startShift: string) => {
-        const endTime = endShift.split('-')[1]
-        const startTime = startShift.split('-')[0]
-        if (!endTime || !startTime) return 12
-        const [eh, em] = endTime.split(':').map(Number)
-        const [sh, sm] = startTime.split(':').map(Number)
-        let end = eh * 60 + em
-        let next = sh * 60 + sm + 24 * 60
-        return (next - end) / 60
-      }
-      employees.forEach(emp => {
-        for (let i = 0; i < 7; i++) {
-          const key = `${emp.name}-${i}`
-          if (newShifts[key]?.time) continue
-          const dateISO = toISODate(weekDays[i])
-          const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
-          const rule = getRestRuleFor(emp.name)
-          const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes(i as any))
-          if (hasLeave || isFixed) continue
-
-          const fb = fallbackByDept[emp.department] || { start: '10:00', end: '18:00' }
-          const candidate = `${fb.start}-${fb.end}`
-
-          // Rispetta 11h con adiacenti
-          const prev = newShifts[`${emp.name}-${i - 1}`]?.time
-          const next = newShifts[`${emp.name}-${i + 1}`]?.time
-          if (prev && prev !== 'RIPOSO') {
-            const rest = restBetweenLocal(prev.includes('/') ? prev.split(' / ')[0] : prev, candidate)
-            if (rest < 11) continue
-          }
-          if (next && next !== 'RIPOSO') {
-            const rest = restBetweenLocal(candidate, next.includes('/') ? next.split(' / ')[0] : next)
-            if (rest < 11) continue
-          }
-
-          // Rispetta 48h
-          const addHours = hoursBetweenLocal(candidate)
-          if (weeklyHoursIn(emp.name) + addHours > 48) continue
-
-          newShifts[key] = {
-            employee: emp.name,
-            time: candidate,
-            department: emp.department,
-            role: emp.role
-          }
-        }
-      })
-
-      setShifts(newShifts)
-      saveWeekShifts(newShifts)
-    } finally {
-      setIsAutoScheduling(false)
-    }
-  }
+  // AutoScheduler e compilazione automatica rimossi
 
   // Turni demo (inizialmente vuoti)
   const [shifts, setShifts] = useState<{[key: string]: ShiftCell}>({
@@ -750,18 +553,7 @@ export default function ShiftsPage() {
             </div>
             <div className="mt-4 flex justify-end">
               {/* Rimosso bottone Genera Turni con AI (legacy) */}
-              <button
-                onClick={generateWeekWithAutoScheduler}
-                disabled={isAutoScheduling}
-                className="ml-3 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
-              >
-                {isAutoScheduling ? '🔄 AutoScheduler...' : '🧠 Compila automaticamente'}
-              </button>
-              {autoBlockMessage && (
-                <div className="ml-4 text-sm text-red-700 bg-red-100 px-3 py-2 rounded">
-                  {autoBlockMessage}
-                </div>
-              )}
+              {/* Rimosso pulsante Compila automaticamente */}
             </div>
           </div>
           {/* Tabella Turni */}
@@ -896,14 +688,7 @@ export default function ShiftsPage() {
           <div className="bg-white rounded-lg shadow mt-6">
             <div className="px-6 py-4 border-b bg-yellow-50">
               <h3 className="text-lg font-semibold text-yellow-800">⚖️ Controlli Compliance CCNL</h3>
-              {autoMetrics && (
-                <div className="mt-2 text-sm text-yellow-800">
-                  <span className="mr-3">Assegnazioni: <strong>{autoMetrics.totalAssignments}</strong></span>
-                  <span className="mr-3">Ore totali: <strong>{autoMetrics.totalHours}</strong></span>
-                  <span className="mr-3">Copertura: <strong>{Math.round(autoMetrics.coverageRate * 100)}%</strong></span>
-                  <span>Conflitti: <strong>{autoMetrics.conflicts}</strong></span>
-                </div>
-              )}
+              {/* Metriche AutoScheduler rimosse */}
             </div>
             <div className="p-6">
               <div className="grid md:grid-cols-2 gap-6">
@@ -938,18 +723,7 @@ export default function ShiftsPage() {
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">😴 Riposi Minimi (Min 11h)</h4>
                   <div className="space-y-2">
-                    {autoConflicts && autoConflicts.length > 0 && (
-                      <div className="space-y-1 mb-4">
-                        {autoConflicts.slice(0, 10).map((c, idx) => (
-                          <div key={idx} className="p-2 bg-orange-100 rounded text-sm text-orange-800">
-                            <span className="font-medium">{c.type}</span> {c.employeeName ? `• ${c.employeeName}` : ''} {c.dateISO ? `• ${c.dateISO}` : ''} {c.details ? `— ${c.details}` : ''}
-                          </div>
-                        ))}
-                        {autoConflicts.length > 10 && (
-                          <div className="text-xs text-orange-700">+ {autoConflicts.length - 10} altri</div>
-                        )}
-                      </div>
-                    )}
+                    {/* Conflitti AutoScheduler rimossi */}
                     {(() => {
                       const conflicts: { employee: string; day: string; warning: string }[] = []
                       for (let day = 1; day < 7; day++) {
