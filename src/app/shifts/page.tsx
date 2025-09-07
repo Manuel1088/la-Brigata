@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { generateAISuggestions, type Booking as AIBooking, type CompanyEvent as AIEvent, type Shift as AIShift } from '@/lib/aiShiftScheduler'
-import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
+import { getBookingsByDate, getCompanyEventsByDate, getBookingsByDateDB, getCompanyEventsByDateDB } from '@/lib/bookings'
 import { getLeaveRequests } from '@/lib/leaveSystem'
 
 interface ShiftCell {
@@ -302,8 +302,11 @@ export default function ShiftsPage() {
 
       for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
         const dateISO = toISODate(weekDays[dayIndex])
-        const dayBookings = getBookingsForDateAI(dateISO)
-        const dayEvents = getEventsForDateAI(dateISO)
+        // Preferisci dati DB se disponibili
+        const dbBookings = process.env.DATABASE_URL ? await getBookingsByDateDB(dateISO) : []
+        const dbEvents = process.env.DATABASE_URL ? await getCompanyEventsByDateDB(dateISO) : []
+        const dayBookings = (dbBookings.length ? dbBookings : getBookingsForDateAI(dateISO)) as AIBooking[]
+        const dayEvents = (dbEvents.length ? dbEvents : getEventsForDateAI(dateISO)) as AIEvent[]
         const daySuggestions = generateAISuggestions(dateISO, dayBookings, dayEvents, existing)
 
         for (const sug of daySuggestions) {

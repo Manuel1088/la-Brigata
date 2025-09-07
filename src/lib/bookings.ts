@@ -36,4 +36,35 @@ export function getCompanyEventsByDate(dateISO: string): CompanyEvent[] {
   return mockEvents.filter(e => e.date === dateISO)
 }
 
+// Prisma-backed accessors (se DATABASE_URL configurato)
+import prisma from './db'
+
+export async function getBookingsByDateDB(dateISO: string): Promise<Booking[]> {
+  if (!process.env.DATABASE_URL) return getBookingsByDate(dateISO)
+  const start = new Date(dateISO)
+  const end = new Date(dateISO)
+  end.setHours(23, 59, 59, 999)
+  const rows = await prisma.booking.findMany({
+    where: {
+      date: {
+        gte: start,
+        lte: end
+      }
+    }
+  })
+  return rows.map(r => ({
+    id: r.id,
+    date: r.date.toISOString().split('T')[0],
+    time: new Date(r.time).toTimeString().slice(0,5),
+    partySize: r.partySize,
+    status: r.status as Booking['status']
+  }))
+}
+
+export async function getCompanyEventsByDateDB(dateISO: string): Promise<CompanyEvent[]> {
+  if (!process.env.DATABASE_URL) return getCompanyEventsByDate(dateISO)
+  // Non c'è tabella events nel prisma schema: si usa mock per ora
+  return getCompanyEventsByDate(dateISO)
+}
+
 
