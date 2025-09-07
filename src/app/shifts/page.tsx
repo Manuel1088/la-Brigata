@@ -197,8 +197,14 @@ export default function ShiftsPage() {
   useEffect(() => {
     const reload = () => setEmployees(getEmployeesClient())
     window.addEventListener('employees_updated', reload)
+    // reattivo anche regole riposi
+    const reloadRest = () => setRestVersion(v => v + 1)
+    window.addEventListener('rest_rules_updated', reloadRest)
     return () => window.removeEventListener('employees_updated', reload)
   }, [])
+
+  // trigger per ricaricare regole riposi
+  const [restVersion, setRestVersion] = useState(0)
 
   // Giorni della settimana
   const getDaysOfWeek = (date: Date) => {
