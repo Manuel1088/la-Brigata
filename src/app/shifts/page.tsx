@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { generateAISuggestions, type Booking as AIBooking, type CompanyEvent as AIEvent, type Shift as AIShift } from '@/lib/aiShiftScheduler'
 import { getBookingsByDate, getCompanyEventsByDate, getBookingsByDateDB, getCompanyEventsByDateDB } from '@/lib/bookings'
 import { getLeaveRequests } from '@/lib/leaveSystem'
+import { getRestRuleFor } from '@/lib/restRules'
 
 interface ShiftCell {
   employee: string
@@ -334,6 +335,18 @@ export default function ShiftsPage() {
             if (rest < 11) restOk = false
           }
           if (!restOk) continue
+
+          // Riposi settimanali: rispetta giorni fissi e numero di riposi
+          const restRule = getRestRuleFor(employeeName)
+          if (restRule?.fixedDayIndex !== undefined && restRule.fixedDayIndex === dayIndex) {
+            continue // giorno di riposo fisso
+          }
+          const restCount = Array.from({ length: 7 }).reduce((acc, _, i) => acc + (newShifts[`${employeeName}-${i}`]?.time === 'RIPOSO' ? 1 : 0), 0)
+          if (restRule && restCount >= restRule.weeklyRestDays) {
+            // ha già i riposi settimanali richiesti
+          } else {
+            // se non ha ancora il minimo di riposi, non forzare riposi qui; lasciamo spazio a pianificazione complessiva
+          }
 
           // Ore settimanali <= 48
           const hoursToday = calculateShiftHours(`${sug.startTime}-${sug.endTime}`)

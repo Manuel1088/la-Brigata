@@ -118,7 +118,7 @@ model LeaveRequest {
   endDate     DateTime @map("end_date")
   type        LeaveType
   reason      String?
-  status      LeaveStatus @default("pending")
+  status      LeaveStatus @default(PENDING)
   approvedBy  String?  @map("approved_by")
   approvedAt  DateTime? @map("approved_at")
   rejectedBy  String?  @map("rejected_by")
