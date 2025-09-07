@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { generateAISuggestions, type Booking as AIBooking, type CompanyEvent as AIEvent, type Shift as AIShift } from '@/lib/aiShiftScheduler'
 
 interface ShiftCell {
   employee: string
@@ -18,6 +19,7 @@ export default function ShiftsPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{name: string, dayIndex: number, isEdit?: boolean} | null>(null)
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
   // Nuovi stati per gestione turni personalizzati
   const [customShifts, setCustomShifts] = useState<{[department: string]: Array<{id: string, name: string, time: string, description: string}>}>({})
   const [isAddingCustomShift, setIsAddingCustomShift] = useState(false)
@@ -229,6 +231,119 @@ export default function ShiftsPage() {
   today.setHours(0, 0, 0, 0)
   const isCurrentWeekDisplayed = today >= shownWeekStart && today <= shownWeekEnd
 
+  // Utility: mappa nome reparto per AI lib
+  const toAIDepartment = (dep: string) => dep === 'cucina' ? 'Cucina' : dep === 'sala' ? 'Sala' : 'Bar'
+  const toLocalDepartment = (dep: string) => dep === 'Cucina' ? 'cucina' : dep === 'Sala' ? 'sala' : 'bar'
+
+  // Utility: ISO date yyyy-mm-dd
+  const toISODate = (d: Date) => {
+    const z = n => (n < 10 ? `0${n}` : `${n}`)
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
+  }
+
+  // Placeholder: eventi/prenotazioni e ferie approvate (integrazione futura)
+  const getBookingsForDateAI = (_isoDate: string): AIBooking[] => []
+  const getEventsForDateAI = (_isoDate: string): AIEvent[] => []
+  const isOnApprovedLeave = (_employeeName: string, _isoDate: string): boolean => false
+
+  // Costruisce lista turni esistenti per AI (evita duplicati)
+  const buildExistingAIShifts = (): AIShift[] => {
+    const ai: AIShift[] = []
+    employees.forEach(emp => {
+      weekDays.forEach((d, idx) => {
+        const key = `${emp.name}-${idx}`
+        const s = shifts[key]
+        if (s && s.time && s.time !== 'RIPOSO') {
+          const [startTime, endTime] = s.time.split(' - ').length === 1 ? s.time.split('-') : s.time.split(' - ')
+          if (startTime && endTime) {
+            ai.push({
+              id: `${toISODate(d)}-${toAIDepartment(emp.department)}-${startTime}-${emp.name}`,
+              date: toISODate(d),
+              startTime,
+              endTime,
+              department: toAIDepartment(emp.department),
+              employeeId: emp.name,
+              status: 'scheduled'
+            })
+          }
+        }
+      })
+    })
+    return ai
+  }
+
+  // Applica suggerimenti AI alla settimana corrente rispettando riposi 11h e 48h settimanali
+  const generateWeekWithAI = async () => {
+    setIsGeneratingAI(true)
+    try {
+      const existing = buildExistingAIShifts()
+      // Copia mutabile dello stato turni
+      const newShifts = { ...shifts }
+
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        const dateISO = toISODate(weekDays[dayIndex])
+        const dayBookings = getBookingsForDateAI(dateISO)
+        const dayEvents = getEventsForDateAI(dateISO)
+        const daySuggestions = generateAISuggestions(dateISO, dayBookings, dayEvents, existing)
+
+        for (const sug of daySuggestions) {
+          const employeeName = sug.suggestedEmployee.name
+          const localDept = toLocalDepartment(sug.department)
+          const employee = employees.find(e => e.name === employeeName)
+          if (!employee) continue
+          if (employee.department !== localDept) continue
+          const key = `${employeeName}-${dayIndex}`
+          if (newShifts[key] && newShifts[key].time) continue // già assegnato
+          if (isOnApprovedLeave(employeeName, dateISO)) continue // in ferie
+
+          // Controlli CCNL: riposo minimo 11h con giorno precedente/successivo
+          const prevKey = `${employeeName}-${dayIndex - 1}`
+          const nextKey = `${employeeName}-${dayIndex + 1}`
+          const prevTime = newShifts[prevKey]?.time
+          const nextTime = newShifts[nextKey]?.time
+          let restOk = true
+          if (prevTime && prevTime !== 'RIPOSO') {
+            const rest = calculateRestBetweenShifts(prevTime.includes('/') ? prevTime.split(' / ')[0] : prevTime, `${sug.startTime}-${sug.endTime}`)
+            if (rest < 11) restOk = false
+          }
+          if (nextTime && nextTime !== 'RIPOSO') {
+            const rest = calculateRestBetweenShifts(`${sug.startTime}-${sug.endTime}`, nextTime.includes('/') ? nextTime.split(' / ')[0] : nextTime)
+            if (rest < 11) restOk = false
+          }
+          if (!restOk) continue
+
+          // Ore settimanali <= 48
+          const hoursToday = calculateShiftHours(`${sug.startTime}-${sug.endTime}`)
+          const hoursSoFar = calculateWeeklyHours(employeeName)
+          if (hoursSoFar + hoursToday > 48) continue
+
+          // Applica suggerimento
+          newShifts[key] = {
+            employee: employeeName,
+            time: `${sug.startTime}-${sug.endTime}`,
+            department: employee.department,
+            role: employee.role
+          }
+
+          // Aggiorna existing per evitare duplicati nella stessa giornata
+          existing.push({
+            id: `${dateISO}-${sug.department}-${sug.startTime}-${employeeName}`,
+            date: dateISO,
+            startTime: sug.startTime,
+            endTime: sug.endTime,
+            department: sug.department,
+            employeeId: employeeName,
+            status: 'scheduled'
+          })
+        }
+      }
+
+      setShifts(newShifts)
+    } finally {
+      setIsGeneratingAI(false)
+    }
+  }
+
   // Turni demo (inizialmente vuoti)
   const [shifts, setShifts] = useState<{[key: string]: ShiftCell}>({
     'Giuseppe Chef-0': { employee: 'Giuseppe Chef', time: '08:00-16:00', department: 'cucina', role: 'CHEF' },
@@ -372,6 +487,15 @@ export default function ShiftsPage() {
               >
                 Settimana Successiva
                 <span className="text-xl ml-2">→</span>
+              </button>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={generateWeekWithAI}
+                disabled={isGeneratingAI}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
+              >
+                {isGeneratingAI ? '🔄 Generazione AI...' : '🤖 Genera Turni con AI'}
               </button>
             </div>
           </div>
