@@ -418,7 +418,7 @@ export default function ShiftsPage() {
         isoToIndex[toISODate(weekDays[i])] = i
       }
 
-      // 1) Imposta riposi fissi prima di applicare le assegnazioni
+      // 1) Imposta riposi fissi prima di applicare le assegnazioni (forza RIPOSO anche se c'è già un turno)
       employees.forEach((emp) => {
         const rule = getRestRuleFor(emp.name)
         const fixed = rule?.fixedDayIndices || []
@@ -457,7 +457,7 @@ export default function ShiftsPage() {
         }
       })
 
-      // 2) Completa riposi fino al minimo settimanale richiesto
+      // 2) Completa riposi fino al minimo settimanale richiesto (mai assegnare turno su giorni fissi)
       employees.forEach((emp) => {
         const rule = getRestRuleFor(emp.name)
         const targetRests = rule?.fixedDayIndices && rule.fixedDayIndices.length === 2 ? 2 : (rule?.weeklyRestDays === 2 ? 2 : 1)
