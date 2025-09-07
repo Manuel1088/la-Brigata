@@ -484,6 +484,85 @@ export default function ShiftsPage() {
         }
       })
 
+      // 3) Backfill: assegna turni base dove mancano, rispettando 48h e riposo 11h
+      const fallbackByDept: Record<string, { start: string; end: string }> = {
+        cucina: { start: '10:00', end: '18:00' },
+        sala: { start: '11:00', end: '16:00' },
+        bar: { start: '17:00', end: '21:00' }
+      }
+      const hoursBetweenLocal = (time: string) => {
+        const [s, e] = time.split('-')
+        if (!s || !e) return 0
+        const [sh, sm] = s.split(':').map(Number)
+        const [eh, em] = e.split(':').map(Number)
+        let start = sh * 60 + sm
+        let end = eh * 60 + em
+        if (end < start) end += 24 * 60
+        return (end - start) / 60
+      }
+      const weeklyHoursIn = (name: string) => {
+        let h = 0
+        for (let i = 0; i < 7; i++) {
+          const t = newShifts[`${name}-${i}`]?.time
+          if (t && t !== 'RIPOSO') {
+            if (t.includes('/')) {
+              const [m, e] = t.split(' / ')
+              h += hoursBetweenLocal(m) + hoursBetweenLocal(e)
+            } else {
+              h += hoursBetweenLocal(t)
+            }
+          }
+        }
+        return h
+      }
+      const restBetweenLocal = (endShift: string, startShift: string) => {
+        const endTime = endShift.split('-')[1]
+        const startTime = startShift.split('-')[0]
+        if (!endTime || !startTime) return 12
+        const [eh, em] = endTime.split(':').map(Number)
+        const [sh, sm] = startTime.split(':').map(Number)
+        let end = eh * 60 + em
+        let next = sh * 60 + sm + 24 * 60
+        return (next - end) / 60
+      }
+      employees.forEach(emp => {
+        for (let i = 0; i < 7; i++) {
+          const key = `${emp.name}-${i}`
+          if (newShifts[key]?.time) continue
+          const dateISO = toISODate(weekDays[i])
+          const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
+          const rule = getRestRuleFor(emp.name)
+          const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes(i as any))
+          if (hasLeave || isFixed) continue
+
+          const fb = fallbackByDept[emp.department] || { start: '10:00', end: '18:00' }
+          const candidate = `${fb.start}-${fb.end}`
+
+          // Rispetta 11h con adiacenti
+          const prev = newShifts[`${emp.name}-${i - 1}`]?.time
+          const next = newShifts[`${emp.name}-${i + 1}`]?.time
+          if (prev && prev !== 'RIPOSO') {
+            const rest = restBetweenLocal(prev.includes('/') ? prev.split(' / ')[0] : prev, candidate)
+            if (rest < 11) continue
+          }
+          if (next && next !== 'RIPOSO') {
+            const rest = restBetweenLocal(candidate, next.includes('/') ? next.split(' / ')[0] : next)
+            if (rest < 11) continue
+          }
+
+          // Rispetta 48h
+          const addHours = hoursBetweenLocal(candidate)
+          if (weeklyHoursIn(emp.name) + addHours > 48) continue
+
+          newShifts[key] = {
+            employee: emp.name,
+            time: candidate,
+            department: emp.department,
+            role: emp.role
+          }
+        }
+      })
+
       setShifts(newShifts)
       saveWeekShifts(newShifts)
     } finally {

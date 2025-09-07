@@ -79,13 +79,11 @@ export default function DashboardPage() {
                 🍝 LA BRIGATA
               </h1>
             </div>
-                               <div className="flex items-center space-x-4">
-                     <div className="flex items-center space-x-2">
-                       <span className="text-2xl">{(session.user as any)?.avatar}</span>
-                       <div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl">{(session.user as any)?.avatar}</span>
                          <div className="text-gray-700 font-medium">
                            Ciao, {session.user?.name}!
-                         </div>
                          <div className="text-xs text-gray-500">
                            Livello {(session.user as any)?.level}
                          </div>
