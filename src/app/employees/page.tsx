@@ -140,7 +140,7 @@ export default function EmployeesPage() {
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [selectedLevel, setSelectedLevel] = useState('all')
   const [showActiveOnly, setShowActiveOnly] = useState(true)
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
   const [filteredEmployees, setFilteredEmployees] = useState(employees)
 
   // Redirect se non autenticato
