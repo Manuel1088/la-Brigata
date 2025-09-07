@@ -465,6 +465,41 @@ export default function ShiftsPage() {
         }
       })
 
+      // 3) Enforce riposo minimo 11h tra giorni consecutivi
+      employees.forEach((emp) => {
+        for (let i = 0; i < 6; i++) {
+          const todayKey = `${emp.name}-${i}`
+          const nextKey = `${emp.name}-${i + 1}`
+          const today = newShifts[todayKey]
+          const next = newShifts[nextKey]
+          if (!today || !next) continue
+          if (today.time === 'RIPOSO' || next.time === 'RIPOSO') continue
+
+          // Escludi split handling come sufficiente (gestito in calculateRestBetweenShifts)
+          const todayTime = today.time || ''
+          const nextTime = next.time || ''
+          const rest = calculateRestBetweenShifts(
+            todayTime.includes(' / ')? todayTime.split(' / ')[0] : todayTime,
+            nextTime.includes(' / ')? nextTime.split(' / ')[0] : nextTime
+          )
+          if (rest < 11) {
+            // Prova a mettere RIPOSO il giorno successivo se non fisso o assenza
+            const rule = getRestRuleFor(emp.name)
+            const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes((i + 1) as any))
+            const dateISO = toISODate(weekDays[i + 1])
+            const hasLeave = !!getApprovedLeaveInfo(emp.name, dateISO)
+            if (!isFixed && !hasLeave) {
+              newShifts[nextKey] = {
+                employee: emp.name,
+                time: 'RIPOSO',
+                department: emp.department,
+                role: emp.role
+              }
+            }
+          }
+        }
+      })
+
       setShifts(newShifts)
       saveWeekShifts(newShifts)
     } finally {
