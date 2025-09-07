@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { generateAISuggestions, type Booking as AIBooking, type CompanyEvent as AIEvent, type Shift as AIShift } from '@/lib/aiShiftScheduler'
-import { getBookingsByDate, getCompanyEventsByDate, getBookingsByDateDB, getCompanyEventsByDateDB } from '@/lib/bookings'
+import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
 import { getEmployeesClient, type SimpleEmployee } from '@/lib/employees'
@@ -345,11 +345,9 @@ export default function ShiftsPage() {
 
       for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
         const dateISO = toISODate(weekDays[dayIndex])
-        // Preferisci dati DB se disponibili
-        const dbBookings = process.env.DATABASE_URL ? await getBookingsByDateDB(dateISO) : []
-        const dbEvents = process.env.DATABASE_URL ? await getCompanyEventsByDateDB(dateISO) : []
-        const dayBookings = (dbBookings.length ? dbBookings : getBookingsForDateAI(dateISO)) as AIBooking[]
-        const dayEvents = (dbEvents.length ? dbEvents : getEventsForDateAI(dateISO)) as AIEvent[]
+        // Usa fonte lato client (mock o cache). Lato client non accediamo al DB direttamente
+        const dayBookings = getBookingsForDateAI(dateISO) as AIBooking[]
+        const dayEvents = getEventsForDateAI(dateISO) as AIEvent[]
         const daySuggestions = generateAISuggestions(dateISO, dayBookings, dayEvents, existing)
 
         for (const sug of daySuggestions) {
