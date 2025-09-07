@@ -24,6 +24,9 @@ export default function ShiftsPage() {
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{name: string, dayIndex: number, isEdit?: boolean} | null>(null)
   const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+  const [isAutoScheduling, setIsAutoScheduling] = useState(false)
+  const [autoMetrics, setAutoMetrics] = useState<any>(null)
+  const [autoConflicts, setAutoConflicts] = useState<any[]>([])
   // Nuovi stati per gestione turni personalizzati
   const [customShifts, setCustomShifts] = useState<{[department: string]: Array<{id: string, name: string, time: string, description: string}>}>({})
   const [isAddingCustomShift, setIsAddingCustomShift] = useState(false)
@@ -558,6 +561,50 @@ export default function ShiftsPage() {
     }
   }
 
+  // Applica piano settimanale da AutoScheduler (API)
+  const generateWeekWithAutoScheduler = async () => {
+    setIsAutoScheduling(true)
+    try {
+      const res = await fetch('/api/schedule/generate', {
+        method: 'POST',
+        body: JSON.stringify({ week: shownWeekStart })
+      })
+      const data = await res.json()
+      const schedule = data?.schedule
+      const conflicts = data?.conflicts || []
+      const metrics = data?.metrics || null
+      setAutoConflicts(conflicts)
+      setAutoMetrics(metrics)
+
+      const assignments = schedule?.assignments || []
+      const newShifts = { ...shifts }
+      const isoToIndex: Record<string, number> = {}
+      for (let i = 0; i < 7; i++) {
+        isoToIndex[toISODate(weekDays[i])] = i
+      }
+
+      assignments.forEach((a: any) => {
+        const idx = isoToIndex[a.dateISO]
+        if (idx === undefined) return
+        const emp = employees.find(e => e.name === a.employeeName)
+        if (!emp) return
+        const key = `${emp.name}-${idx}`
+        if (newShifts[key]?.time) return
+        newShifts[key] = {
+          employee: emp.name,
+          time: `${a.startTime}-${a.endTime}`,
+          department: a.department,
+          role: emp.role
+        }
+      })
+
+      setShifts(newShifts)
+      saveWeekShifts(newShifts)
+    } finally {
+      setIsAutoScheduling(false)
+    }
+  }
+
   // Turni demo (inizialmente vuoti)
   const [shifts, setShifts] = useState<{[key: string]: ShiftCell}>({
     'Giuseppe Chef-0': { employee: 'Giuseppe Chef', time: '08:00-16:00', department: 'cucina', role: 'CHEF' },
@@ -730,6 +777,13 @@ export default function ShiftsPage() {
               >
                 {isGeneratingAI ? '🔄 Generazione AI...' : '🤖 Genera Turni con AI'}
               </button>
+              <button
+                onClick={generateWeekWithAutoScheduler}
+                disabled={isAutoScheduling}
+                className="ml-3 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              >
+                {isAutoScheduling ? '🔄 AutoScheduler...' : '🧠 Compila automaticamente'}
+              </button>
             </div>
           </div>
           {/* Tabella Turni */}
@@ -864,6 +918,14 @@ export default function ShiftsPage() {
           <div className="bg-white rounded-lg shadow mt-6">
             <div className="px-6 py-4 border-b bg-yellow-50">
               <h3 className="text-lg font-semibold text-yellow-800">⚖️ Controlli Compliance CCNL</h3>
+              {autoMetrics && (
+                <div className="mt-2 text-sm text-yellow-800">
+                  <span className="mr-3">Assegnazioni: <strong>{autoMetrics.totalAssignments}</strong></span>
+                  <span className="mr-3">Ore totali: <strong>{autoMetrics.totalHours}</strong></span>
+                  <span className="mr-3">Copertura: <strong>{Math.round(autoMetrics.coverageRate * 100)}%</strong></span>
+                  <span>Conflitti: <strong>{autoMetrics.conflicts}</strong></span>
+                </div>
+              )}
             </div>
             <div className="p-6">
               <div className="grid md:grid-cols-2 gap-6">
@@ -898,6 +960,18 @@ export default function ShiftsPage() {
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">😴 Riposi Minimi (Min 11h)</h4>
                   <div className="space-y-2">
+                    {autoConflicts && autoConflicts.length > 0 && (
+                      <div className="space-y-1 mb-4">
+                        {autoConflicts.slice(0, 10).map((c, idx) => (
+                          <div key={idx} className="p-2 bg-orange-100 rounded text-sm text-orange-800">
+                            <span className="font-medium">{c.type}</span> {c.employeeName ? `• ${c.employeeName}` : ''} {c.dateISO ? `• ${c.dateISO}` : ''} {c.details ? `— ${c.details}` : ''}
+                          </div>
+                        ))}
+                        {autoConflicts.length > 10 && (
+                          <div className="text-xs text-orange-700">+ {autoConflicts.length - 10} altri</div>
+                        )}
+                      </div>
+                    )}
                     {(() => {
                       const conflicts: { employee: string; day: string; warning: string }[] = []
                       for (let day = 1; day < 7; day++) {
