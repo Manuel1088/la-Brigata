@@ -108,18 +108,21 @@ export default function BookingsPage() {
     return () => window.removeEventListener('booking_areas_updated', handler)
   }, [])
 
-  // Carica layout tavoli per Sala quando apro modal o cambio Sala
-  useEffect(() => {
-    if (!showTableModal) return
-    if (!selectedAreaId) return
+  const loadFloorTablesFor = (areaId: string) => {
     try {
-      const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${selectedAreaId}`)
+      const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${areaId}`)
       if (raw) setFloorTables(JSON.parse(raw))
       else setFloorTables([])
     } catch { setFloorTables([]) }
+  }
+
+  // Carica layout tavoli per Sala quando cambio Sala (sempre)
+  useEffect(() => {
+    if (!selectedAreaId) return
+    loadFloorTablesFor(selectedAreaId)
     // Default data ISO alla data filtri se presente
     if (selectedDate) setFloorDateISO(selectedDate)
-  }, [showTableModal, selectedAreaId])
+  }, [selectedAreaId])
 
   // Salva layout tavoli per Sala
   useEffect(() => {
