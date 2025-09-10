@@ -69,8 +69,9 @@ export default function BookingsPage() {
     const d = new Date(); const z = (n: number) => (n < 10 ? `0${n}` : `${n}`); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
   })
   const STORAGE_KEY_PREFIX = 'table_layout_v1_'
-  const [floorAddForm, setFloorAddForm] = useState<{ tableNumber: string; seats: string }>({ tableNumber: '', seats: '' })
   const [tableModalTab, setTableModalTab] = useState<'lista' | 'piano'>('lista')
+  const [isLayoutEdit, setIsLayoutEdit] = useState<boolean>(false)
+  
 
   // Form data per nuova prenotazione
   const [bookingForm, setBookingForm] = useState({
@@ -1103,45 +1104,18 @@ export default function BookingsPage() {
                 <div className="text-sm text-gray-600">Seleziona una Sala nella pagina per gestire la mappa tavoli.</div>
               ) : (
                 <>
-                  <div className="flex items-center gap-3 mb-3">
-                    {tableModalTab === 'piano' && (
-                      <input
-                        type="date"
-                        value={floorDateISO}
-                        onChange={(e) => setFloorDateISO(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    )}
-                    <div className="flex items-end gap-2">
-                      <div>
-                        <label className="block text-xs text-gray-700 mb-1">Numero Tavolo</label>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {tableModalTab === 'piano' && (
                         <input
-                          type="number"
-                          value={floorAddForm.tableNumber}
-                          onChange={(e) => setFloorAddForm({ ...floorAddForm, tableNumber: e.target.value })}
-                          className="w-28 px-2 py-1 border border-gray-300 rounded"
+                          type="date"
+                          value={floorDateISO}
+                          onChange={(e) => setFloorDateISO(e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-700 mb-1">Posti</label>
-                        <input
-                          type="number"
-                          value={floorAddForm.seats}
-                          onChange={(e) => setFloorAddForm({ ...floorAddForm, seats: e.target.value })}
-                          className="w-24 px-2 py-1 border border-gray-300 rounded"
-                        />
-                      </div>
-                      <button
-                        onClick={() => addFloorTable(floorAddForm.tableNumber, floorAddForm.seats, setFloorAddForm)}
-                        className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
-                      >
-                        Aggiungi
-                      </button>
+                      )}
                     </div>
-                  </div>
-                  {/* Tabs Lista/Piano */}
-                  <div className="mb-3 border-b border-gray-200">
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => setTableModalTab('lista')}
                         className={`px-3 py-2 text-sm border-b-2 ${tableModalTab === 'lista' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
@@ -1154,8 +1128,18 @@ export default function BookingsPage() {
                       >
                         Piano Tavoli
                       </button>
+                      {tableModalTab === 'piano' && (
+                        <button
+                          onClick={() => setIsLayoutEdit(v => !v)}
+                          className={`ml-2 px-3 py-1 rounded text-sm ${isLayoutEdit ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+                          title="Abilita spostamento tavoli"
+                        >
+                          {isLayoutEdit ? 'Disabilita spostamento' : 'Abilita spostamento'}
+                        </button>
+                      )}
                     </div>
                   </div>
+                  <div className="mb-3 border-b border-gray-200" />
 
                   {tableModalTab === 'lista' && (
                     <div className="mb-3">
@@ -1193,7 +1177,7 @@ export default function BookingsPage() {
                         <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-yellow-200 border border-yellow-400"></span><span>Capienza ≥ 6</span></div>
                       </div>
                       <div className="bg-white rounded-lg shadow p-4">
-                        <div className="mb-3 text-sm text-gray-700">Mappa tavoli (solo visualizzazione). Libero = verde, Occupato = rosso.</div>
+                        <div className="mb-3 text-sm text-gray-700">{isLayoutEdit ? 'Sposta i tavoli e rilascia per salvare (per Sala).' : 'Mappa tavoli (solo visualizzazione). Libero = verde, Occupato = rosso.'}</div>
                         <div
                           ref={cellSizeRef}
                           className="relative grid gap-1"
@@ -1212,7 +1196,8 @@ export default function BookingsPage() {
                               <div
                                 key={t.id}
                                 style={toGridStyle(t) as any}
-                                className={`absolute rounded-md border p-2 cursor-default select-none ${busy}`}
+                                className={`absolute rounded-md border p-2 ${isLayoutEdit ? 'cursor-move' : 'cursor-default'} select-none ${busy}`}
+                                onMouseDown={(e) => { if (isLayoutEdit) onMouseDownTable(e, t.id) }}
                               >
                                 <div className="flex justify-between items-center text-sm">
                                   <div className="font-semibold text-gray-900">Tavolo {t.tableNumber}</div>
