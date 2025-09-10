@@ -124,6 +124,14 @@ export default function BookingsPage() {
     if (selectedDate) setFloorDateISO(selectedDate)
   }, [selectedAreaId])
 
+  // Assicurati che quando apriamo Piano da riclick giorno, ricarichiamo mappe corrette
+  useEffect(() => {
+    if (!showTableModal) return
+    if (tableModalTab !== 'piano') return
+    if (!selectedAreaId) return
+    loadFloorTablesFor(selectedAreaId)
+  }, [showTableModal, tableModalTab, selectedAreaId])
+
   // Salva layout tavoli per Sala
   useEffect(() => {
     if (!selectedAreaId) return
@@ -463,7 +471,7 @@ export default function BookingsPage() {
                   ➕ Nuova Prenotazione
                 </button>
                 <button
-                  onClick={() => { setTableModalTab('lista'); setShowTableModal(true) }}
+                  onClick={() => { setTableModalTab('lista'); if (selectedAreaId) loadFloorTablesFor(selectedAreaId); setShowTableModal(true) }}
                   className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition h-12 w-36 flex items-center justify-center"
                 >
                   🪑 Gestisci Tavoli
