@@ -42,6 +42,7 @@ export default function BookingsPage() {
   const [tables, setTables] = useState<Table[]>([])
   const [showBookingModal, setShowBookingModal] = useState(false)
   const [showTableModal, setShowTableModal] = useState(false)
+  const [showAreaSelectModal, setShowAreaSelectModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [filterStatus, setFilterStatus] = useState<string>('all')
   // Aree/Sale da Impostazioni
@@ -325,6 +326,8 @@ export default function BookingsPage() {
     }
     
     setBookings([newBooking, ...bookings])
+    // Imposta anche la data selezionata nel calendario corrente
+    if (bookingForm.date) setCalSelectedDate(bookingForm.date)
     setBookingForm({
       customerName: '',
       customerPhone: '',
@@ -465,7 +468,7 @@ export default function BookingsPage() {
               </div>
               <div className="flex items-center space-x-4">
                 <button
-                  onClick={() => setShowBookingModal(true)}
+                  onClick={() => setShowAreaSelectModal(true)}
                   className="bg-green-600 text-white rounded-lg hover:bg-green-700 transition h-12 w-36 flex items-center justify-center"
                 >
                   ➕ Nuova Prenotazione
@@ -950,6 +953,39 @@ export default function BookingsPage() {
             </div>
           </div>
         </main>
+
+        {/* Modal Nuova Prenotazione */}
+        {/* Modal Seleziona Sala per nuova prenotazione */}
+        {showAreaSelectModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">Seleziona Sala</h3>
+              {areas.length === 0 ? (
+                <div className="text-sm text-gray-600 mb-4">Nessuna sala disponibile. Crea una sala da "Modifica" nella card Sale.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                  {areas.map(a => (
+                    <button
+                      key={a.id}
+                      onClick={() => {
+                        setSelectedAreaId(a.id)
+                        setShowAreaSelectModal(false)
+                        setShowBookingModal(true)
+                      }}
+                      className={`px-3 py-2 rounded border text-sm ${selectedAreaId === a.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
+                      title={a.type}
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setShowAreaSelectModal(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800">Annulla</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal Nuova Prenotazione */}
         {showBookingModal && (
