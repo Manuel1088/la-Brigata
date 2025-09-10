@@ -41,6 +41,10 @@ export default function BookingsPage() {
   const [calCurrentMonth, setCalCurrentMonth] = useState<Date>(new Date())
   const [calSelectedDate, setCalSelectedDate] = useState<string>('')
   const [calWalkins, setCalWalkins] = useState<{ lunch: number; dinner: number }>({ lunch: 0, dinner: 0 })
+  // Form Aree/Sale inline
+  const [newAreaName, setNewAreaName] = useState<string>('')
+  const [newAreaType, setNewAreaType] = useState<AreaType>('sala')
+  const [newAreaQty, setNewAreaQty] = useState<number>(1)
 
   // Form data per nuova prenotazione
   const [bookingForm, setBookingForm] = useState({
@@ -76,6 +80,30 @@ export default function BookingsPage() {
     window.addEventListener('booking_areas_updated', handler)
     return () => window.removeEventListener('booking_areas_updated', handler)
   }, [])
+
+  const saveAreas = (next: BookingArea[]) => {
+    setAreas(next)
+    try { localStorage.setItem('booking_areas_v1', JSON.stringify(next)) } catch {}
+    try { window.dispatchEvent(new CustomEvent('booking_areas_updated')) } catch {}
+  }
+
+  const addArea = () => {
+    const name = (newAreaName || '').trim()
+    if (!name) return
+    const qty = Math.max(1, Number.isFinite(newAreaQty) ? newAreaQty : 1)
+    const id = (globalThis.crypto && 'randomUUID' in globalThis.crypto) ? (globalThis.crypto as any).randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`
+    const next: BookingArea[] = [...areas, { id, name, type: newAreaType, quantity: qty }]
+    saveAreas(next)
+    setNewAreaName('')
+    setNewAreaType('sala')
+    setNewAreaQty(1)
+  }
+
+  const removeArea = (id: string) => {
+    const next = areas.filter(a => a.id !== id)
+    if (selectedAreaId === id) setSelectedAreaId('')
+    saveAreas(next)
+  }
 
   // Reimposta calendario quando si seleziona un'area
   useEffect(() => {
@@ -328,12 +356,6 @@ export default function BookingsPage() {
               </div>
               <div className="flex items-center space-x-4">
                 <button
-                  onClick={() => router.push('/bookings/settings')}
-                  className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
-                >
-                  ⚙️ Impostazioni
-                </button>
-                <button
                   onClick={() => router.push('/bookings/floor')}
                   className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition"
                 >
@@ -364,24 +386,83 @@ export default function BookingsPage() {
 
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
-            {/* Aree/Sale (prima delle statistiche) */}
-            {areas.length > 0 && (
-              <div className="bg-white p-4 rounded-lg shadow mb-6">
-                <div className="text-sm font-medium text-gray-700 mb-2">Aree/Sale</div>
-                <div className="flex flex-wrap gap-2">
-                  {areas.map(a => (
-                    <button
-                      key={a.id}
-                      className={`px-3 py-1 rounded border text-sm ${selectedAreaId === a.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
-                      onClick={() => setSelectedAreaId(a.id)}
-                      title={`${a.type} • ${a.quantity}x`}
+            {/* Aree/Sale (permanente) */}
+            <div className="bg-white p-4 rounded-lg shadow mb-6">
+              <div className="flex flex-wrap items-end gap-2 justify-between">
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-2">Aree/Sale</div>
+                  <div className="flex flex-wrap gap-2">
+                    {areas.map(a => (
+                      <div key={a.id} className={`flex items-center gap-1 px-3 py-1 rounded border text-sm ${selectedAreaId === a.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}>
+                        <button
+                          onClick={() => setSelectedAreaId(a.id)}
+                          className="hover:opacity-80"
+                          title={`${a.type} • ${a.quantity}x`}
+                        >
+                          {a.name}
+                        </button>
+                        <span className={`${selectedAreaId === a.id ? 'text-white/80' : 'text-gray-500'}`}>×{a.quantity}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeArea(a.id) }}
+                          className={`ml-1 w-5 h-5 flex items-center justify-center rounded ${selectedAreaId === a.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                          title="Rimuovi"
+                        >
+                          −
+                        </button>
+                      </div>
+                    ))}
+                    {areas.length === 0 && (
+                      <div className="text-sm text-gray-500">Nessuna area. Aggiungine una qui a destra.</div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">Nome</label>
+                    <input
+                      type="text"
+                      value={newAreaName}
+                      onChange={(e) => setNewAreaName(e.target.value)}
+                      placeholder="Es. Mirabelle"
+                      className="px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">Tipo</label>
+                    <select
+                      value={newAreaType}
+                      onChange={(e) => setNewAreaType(e.target.value as AreaType)}
+                      className="px-2 py-1 border border-gray-300 rounded"
                     >
-                      {a.name}
-                    </button>
-                  ))}
+                      <option value="sala">Sala</option>
+                      <option value="sala_colazioni">Sala Colazioni</option>
+                      <option value="bar">Bar</option>
+                      <option value="ristorante">Ristorante</option>
+                      <option value="terrazza">Terrazza</option>
+                      <option value="privé">Privé</option>
+                      <option value="altro">Altro</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">Qtà</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={newAreaQty}
+                      onChange={(e) => setNewAreaQty(parseInt(e.target.value || '1', 10))}
+                      className="w-20 px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </div>
+                  <button
+                    onClick={addArea}
+                    className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+                    title="Aggiungi area"
+                  >
+                    + Aggiungi
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Statistiche */}
             <div className="grid md:grid-cols-4 gap-6 mb-8">
