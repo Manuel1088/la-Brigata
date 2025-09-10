@@ -150,7 +150,7 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-        </div>
+        </header>
 
         {/* Tabs Navigation */}
         <div className="bg-white border-b">
