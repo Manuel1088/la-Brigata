@@ -1193,7 +1193,7 @@ export default function BookingsPage() {
                         <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-yellow-200 border border-yellow-400"></span><span>Capienza ≥ 6</span></div>
                       </div>
                       <div className="bg-white rounded-lg shadow p-4">
-                        <div className="mb-3 text-sm text-gray-700">Trascina i tavoli per riposizionarli. Salvataggio automatico per Sala.</div>
+                        <div className="mb-3 text-sm text-gray-700">Mappa tavoli (solo visualizzazione). Libero = verde, Occupato = rosso.</div>
                         <div
                           ref={cellSizeRef}
                           className="relative grid gap-1"
@@ -1212,12 +1212,10 @@ export default function BookingsPage() {
                               <div
                                 key={t.id}
                                 style={toGridStyle(t) as any}
-                                className={`absolute rounded-md border p-2 cursor-move select-none ${busy}`}
-                                onMouseDown={(e) => onMouseDownTable(e, t.id)}
+                                className={`absolute rounded-md border p-2 cursor-default select-none ${busy}`}
                               >
                                 <div className="flex justify-between items-center text-sm">
                                   <div className="font-semibold text-gray-900">Tavolo {t.tableNumber}</div>
-                                  <button onClick={() => removeFloorTable(t.id)} className="text-xs text-red-600 hover:text-red-800">✕</button>
                                 </div>
                                 <div className="text-xs text-gray-700">{t.seats} posti</div>
                                 {isOccupied && (
