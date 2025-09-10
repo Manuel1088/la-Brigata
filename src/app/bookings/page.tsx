@@ -1104,12 +1104,14 @@ export default function BookingsPage() {
               ) : (
                 <>
                   <div className="flex items-center gap-3 mb-3">
-                    <input
-                      type="date"
-                      value={floorDateISO}
-                      onChange={(e) => setFloorDateISO(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    {tableModalTab === 'piano' && (
+                      <input
+                        type="date"
+                        value={floorDateISO}
+                        onChange={(e) => setFloorDateISO(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
                     <div className="flex items-end gap-2">
                       <div>
                         <label className="block text-xs text-gray-700 mb-1">Numero Tavolo</label>
