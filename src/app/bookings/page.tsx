@@ -714,7 +714,7 @@ export default function BookingsPage() {
                           ? 'border border-red-600 text-red-600'
                           : inMonth
                             ? 'text-gray-900'
-                            : 'text-gray-300'
+                            : 'text-gray-400 opacity-50'
 
                       return (
                         <div
