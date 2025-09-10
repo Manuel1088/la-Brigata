@@ -796,6 +796,7 @@ export default function BookingsPage() {
                       const dayISO = toLocalISO(d)
                       const dayBookings = bookings.filter(b => {
                         if (b.date !== dayISO) return false
+                        if (b.status === 'cancelled') return false
                         if (!selectedAreaId) return true
                         // Considera solo i tavoli appartenenti alla sala selezionata
                         const num = b.tableNumber ?? -1
