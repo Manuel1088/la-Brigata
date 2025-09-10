@@ -652,7 +652,10 @@ export default function BookingsPage() {
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="text-base font-bold text-gray-900">
-                      {calCurrentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+                      {(() => {
+                        const label = calCurrentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+                        return label.charAt(0).toUpperCase() + label.slice(1)
+                      })()}
                     </div>
                   </div>
                 </div>
