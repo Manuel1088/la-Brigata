@@ -1085,7 +1085,18 @@ export default function BookingsPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-xl max-w-5xl w-full mx-4" onMouseMove={onMouseMoveTable} onMouseUp={onMouseUpTable}>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">🪑 Gestione Tavoli — {areas.find(a => a.id === selectedAreaId)?.name || 'Seleziona una Sala'}</h3>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => { if (tableModalTab === 'piano') setTableModalTab('lista'); else setShowTableModal(false) }}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>Indietro</span>
+                  </button>
+                  <h3 className="text-lg font-semibold">🪑 Gestione Tavoli — {areas.find(a => a.id === selectedAreaId)?.name || 'Seleziona una Sala'}</h3>
+                </div>
                 <button onClick={() => setShowTableModal(false)} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Chiudi</button>
               </div>
               {!selectedAreaId ? (
