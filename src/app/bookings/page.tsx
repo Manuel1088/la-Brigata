@@ -614,42 +614,46 @@ export default function BookingsPage() {
             {/* Calendario Prenotazioni per Area selezionata */}
             {!!selectedAreaId && (
               <div className="bg-white rounded-lg shadow mb-6">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                  <div className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <span>📅</span>
-                    <span>{areas.find(a => a.id === selectedAreaId)?.name || ''}</span>
+                <div className="px-6 py-4 border-b border-gray-200 relative">
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <span>📅</span>
+                      <span>{areas.find(a => a.id === selectedAreaId)?.name || ''}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() - 1, 1))}
+                        className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                        aria-label="Mese precedente"
+                        title="Mese precedente"
+                      >
+                        ←
+                      </button>
+                      <button
+                        onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() + 1, 1))}
+                        className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                        aria-label="Mese successivo"
+                        title="Mese successivo"
+                      >
+                        →
+                      </button>
+                      <button
+                        onClick={() => {
+                          const now = new Date()
+                          setCalCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
+                          const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                          setCalSelectedDate(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
+                        }}
+                        className="ml-2 text-xs text-blue-700 hover:text-blue-900"
+                      >
+                        Oggi
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() - 1, 1))}
-                      className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
-                      aria-label="Mese precedente"
-                      title="Mese precedente"
-                    >
-                      ←
-                    </button>
-                    <div className="text-sm text-gray-900">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-base font-bold text-gray-900">
                       {calCurrentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
                     </div>
-                    <button
-                      onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() + 1, 1))}
-                      className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
-                      aria-label="Mese successivo"
-                      title="Mese successivo"
-                    >
-                      →
-                    </button>
-                    <button
-                      onClick={() => {
-                        const now = new Date()
-                        setCalCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
-                        const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-                        setCalSelectedDate(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
-                      }}
-                      className="ml-2 text-xs text-blue-700 hover:text-blue-900"
-                    >
-                      Oggi
-                    </button>
                   </div>
                 </div>
                 <div className="p-6">
