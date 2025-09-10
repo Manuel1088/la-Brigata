@@ -55,8 +55,7 @@ export default function BookingsPage() {
   // Form Aree/Sale inline
   const [newAreaName, setNewAreaName] = useState<string>('')
   const [newAreaType, setNewAreaType] = useState<AreaType>('sala')
-  const [showAddPanel, setShowAddPanel] = useState<boolean>(false)
-  const [showRemovePanel, setShowRemovePanel] = useState<boolean>(false)
+  const [showManagePanel, setShowManagePanel] = useState<boolean>(false)
 
   // Stato per mappa tavoli per Sala (unifica Piano Tavoli)
   const [gridCols] = useState<number>(12)
@@ -485,18 +484,11 @@ export default function BookingsPage() {
                 <div className="text-sm font-medium text-gray-700 text-center">Sale</div>
                 <div className="absolute right-0 top-0 flex items-center gap-2">
                   <button
-                    onClick={() => { setShowAddPanel(v => !v); if (!showAddPanel) setShowRemovePanel(false) }}
-                    className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 text-gray-700 hover:bg-green-50"
-                    title="Aggiungi area"
+                    onClick={() => setShowManagePanel(v => !v)}
+                    className="px-3 h-8 flex items-center justify-center rounded border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm"
+                    title="Gestisci sale"
                   >
-                    +
-                  </button>
-                  <button
-                    onClick={() => { setShowRemovePanel(v => !v); if (!showRemovePanel) setShowAddPanel(false) }}
-                    className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 text-gray-700 hover:bg-red-50"
-                    title="Rimuovi aree"
-                  >
-                    −
+                    Modifica
                   </button>
                 </div>
               </div>
@@ -516,82 +508,74 @@ export default function BookingsPage() {
                 )}
               </div>
 
-              {showAddPanel && (
+              {showManagePanel && (
                 <div className="mt-4 border-t border-gray-200 pt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                    <div>
-                      <label className="block text-xs text-gray-700 mb-1">Nome</label>
-                      <input
-                        type="text"
-                        value={newAreaName}
-                        onChange={(e) => setNewAreaName(e.target.value)}
-                        placeholder="Es. Mirabelle"
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-700 mb-1">Tipo</label>
-                      <select
-                        value={newAreaType}
-                        onChange={(e) => setNewAreaType(e.target.value as AreaType)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      >
-                        <option value="sala">Sala</option>
-                        <option value="sala_colazioni">Sala Colazioni</option>
-                        <option value="bar">Bar</option>
-                        <option value="ristorante">Ristorante</option>
-                        <option value="terrazza">Terrazza</option>
-                        <option value="privé">Privé</option>
-                        <option value="altro">Altro</option>
-                      </select>
-                    </div>
-                    {/* Qtà rimossa: invariabilmente 1 */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={addArea}
-                        className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
-                        title="Aggiungi area"
-                      >
-                        Aggiungi
-                      </button>
-                      <button
-                        onClick={() => { setShowAddPanel(false) }}
-                        className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        Chiudi
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="font-medium text-gray-900">Gestisci Sale</div>
+                    <button onClick={() => setShowManagePanel(false)} className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Chiudi</button>
                   </div>
-                </div>
-              )}
-
-              {showRemovePanel && (
-                <div className="mt-4 border-t border-gray-200 pt-4">
-                  <div className="space-y-2">
-                    {areas.length === 0 && (
-                      <div className="text-sm text-gray-500">Nessuna area da rimuovere.</div>
-                    )}
-                    {areas.map(a => (
-                      <div key={a.id} className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <div className="font-medium text-gray-900">{a.name}</div>
-                          <div className="text-xs text-gray-600">{a.type}</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border rounded p-3">
+                      <div className="font-medium text-gray-900 mb-2">Aggiungi Sala</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs text-gray-700 mb-1">Nome</label>
+                          <input
+                            type="text"
+                            value={newAreaName}
+                            onChange={(e) => setNewAreaName(e.target.value)}
+                            placeholder="Es. Mirabelle"
+                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                          />
                         </div>
-                        <button
-                          onClick={() => removeArea(a.id)}
-                          className="px-3 py-1 rounded bg-red-600 text-white text-sm hover:bg-red-700"
-                        >
-                          Elimina
-                        </button>
+                        <div>
+                          <label className="block text-xs text-gray-700 mb-1">Tipo</label>
+                          <select
+                            value={newAreaType}
+                            onChange={(e) => setNewAreaType(e.target.value as AreaType)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                          >
+                            <option value="sala">Sala</option>
+                            <option value="sala_colazioni">Sala Colazioni</option>
+                            <option value="bar">Bar</option>
+                            <option value="ristorante">Ristorante</option>
+                            <option value="terrazza">Terrazza</option>
+                            <option value="privé">Privé</option>
+                            <option value="altro">Altro</option>
+                          </select>
+                        </div>
+                        <div className="sm:col-span-3">
+                          <button
+                            onClick={addArea}
+                            className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+                            title="Aggiungi sala"
+                          >
+                            Aggiungi
+                          </button>
+                        </div>
                       </div>
-                    ))}
-                    <div>
-                      <button
-                        onClick={() => setShowRemovePanel(false)}
-                        className="mt-1 px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        Chiudi
-                      </button>
+                    </div>
+                    <div className="border rounded p-3">
+                      <div className="font-medium text-gray-900 mb-2">Sale esistenti</div>
+                      <div className="space-y-2 max-h-64 overflow-auto">
+                        {areas.length === 0 && (
+                          <div className="text-sm text-gray-500">Nessuna sala presente.</div>
+                        )}
+                        {areas.map(a => (
+                          <div key={a.id} className="flex items-center justify-between p-2 border rounded">
+                            <div>
+                              <div className="font-medium text-gray-900">{a.name}</div>
+                              <div className="text-xs text-gray-600">{a.type}</div>
+                            </div>
+                            <button
+                              onClick={() => removeArea(a.id)}
+                              className="px-3 py-1 rounded bg-red-600 text-white text-sm hover:bg-red-700"
+                            >
+                              Elimina
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
