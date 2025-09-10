@@ -1059,7 +1059,7 @@ export default function BookingsPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tavolo (opzionale)
+                        Tavolo (opzionale) — {areas.find(a => a.id === selectedAreaId)?.name || 'Sala non selezionata'}
                       </label>
                       <select
                         value={bookingForm.tableNumber}
@@ -1067,11 +1067,17 @@ export default function BookingsPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                       >
                         <option value="">Seleziona tavolo</option>
-                        {getAvailableTables().map((table) => (
-                          <option key={table.id} value={table.tableNumber}>
-                            Tavolo {table.tableNumber} ({table.seats} posti)
-                          </option>
-                        ))}
+                        {floorTables
+                          .slice()
+                          .sort((a,b) => a.tableNumber - b.tableNumber)
+                          .map((t) => (
+                            <option key={t.id} value={t.tableNumber}>
+                              Tavolo {t.tableNumber} ({t.seats} posti)
+                            </option>
+                          ))}
+                        {floorTables.length === 0 && (
+                          <option value="" disabled>Nessun tavolo definito per questa sala</option>
+                        )}
                       </select>
                     </div>
                   </div>
