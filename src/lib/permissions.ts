@@ -5,7 +5,7 @@ export interface Permission {
   id: string
   name: string
   description: string
-  category: 'personale' | 'mance' | 'turni' | 'report' | 'admin'
+  category: 'personale' | 'mance' | 'turni' | 'report' | 'admin' | 'ferie'
   level: number // Livello minimo richiesto
 }
 
