@@ -599,7 +599,7 @@ export default function BookingsPage() {
                       <span className="font-semibold text-gray-900">Passanti</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-gray-700">Coperti</div>
+                      <div className="text-xs font-bold text-gray-900">Coperti</div>
                       <div className="flex items-center gap-2">
                         {(() => {
                           const hour = new Date().getHours()
