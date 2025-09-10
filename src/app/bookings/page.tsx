@@ -732,7 +732,7 @@ export default function BookingsPage() {
                               return <span key={b.id} className={`w-1.5 h-1.5 rounded-full ${color}`}></span>
                             })}
                           </div>
-                          <div className="mt-1 text-[10px] text-gray-700 flex justify-center gap-2">
+                          <div className={`mt-1 text-[10px] flex justify-center gap-2 ${inMonth ? 'text-gray-700' : 'text-gray-400 opacity-50'}`}>
                             <span>P: {lunchGuests}</span>
                             <span>C: {dinnerGuests}</span>
                           </div>
