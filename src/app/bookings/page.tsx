@@ -790,10 +790,17 @@ export default function BookingsPage() {
 
                     const parseHour = (t: string) => { const [hh] = (t || '0').split(':'); const n = parseInt(hh || '0', 10); return isNaN(n)?0:n }
 
+                    const tableSet = new Set(floorTables.map(t => t.tableNumber))
                     const cellEls = cells.map(d => {
                       const inMonth = d.getMonth() === calCurrentMonth.getMonth()
                       const dayISO = toLocalISO(d)
-                      const dayBookings = bookings.filter(b => b.date === dayISO)
+                      const dayBookings = bookings.filter(b => {
+                        if (b.date !== dayISO) return false
+                        if (!selectedAreaId) return true
+                        // Considera solo i tavoli appartenenti alla sala selezionata
+                        const num = b.tableNumber ?? -1
+                        return tableSet.has(num)
+                      })
                       let lunchGuests = 0, dinnerGuests = 0
                       dayBookings.forEach(b => {
                         const h = parseHour(b.time)
