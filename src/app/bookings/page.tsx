@@ -128,6 +128,17 @@ export default function BookingsPage() {
     try { localStorage.setItem(`${STORAGE_KEY_PREFIX}${selectedAreaId}`, JSON.stringify(floorTables)) } catch {}
   }, [floorTables, selectedAreaId])
 
+  // Seleziona automaticamente la prima sala se nessuna selezionata o se la selezione non esiste più
+  useEffect(() => {
+    if (areas.length === 0) {
+      if (selectedAreaId) setSelectedAreaId('')
+      return
+    }
+    if (!selectedAreaId || !areas.some(a => a.id === selectedAreaId)) {
+      setSelectedAreaId(areas[0].id)
+    }
+  }, [areas])
+
   const saveAreas = (next: BookingArea[]) => {
     setAreas(next)
     try { localStorage.setItem('booking_areas_v1', JSON.stringify(next)) } catch {}
