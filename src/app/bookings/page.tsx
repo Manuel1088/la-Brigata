@@ -454,12 +454,6 @@ export default function BookingsPage() {
               </div>
               <div className="flex items-center space-x-4">
                 <button
-                  onClick={() => router.push('/bookings/calendar')}
-                  className="bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition h-12 w-36 flex items-center justify-center"
-                >
-                  📅 Calendario
-                </button>
-                <button
                   onClick={() => setShowBookingModal(true)}
                   className="bg-green-600 text-white rounded-lg hover:bg-green-700 transition h-12 w-36 flex items-center justify-center"
                 >
