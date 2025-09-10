@@ -44,7 +44,6 @@ export default function BookingsPage() {
   // Form Aree/Sale inline
   const [newAreaName, setNewAreaName] = useState<string>('')
   const [newAreaType, setNewAreaType] = useState<AreaType>('sala')
-  const [newAreaQty, setNewAreaQty] = useState<number>(1)
   const [showAddPanel, setShowAddPanel] = useState<boolean>(false)
   const [showRemovePanel, setShowRemovePanel] = useState<boolean>(false)
 
@@ -92,13 +91,11 @@ export default function BookingsPage() {
   const addArea = () => {
     const name = (newAreaName || '').trim()
     if (!name) return
-    const qty = Math.max(1, Number.isFinite(newAreaQty) ? newAreaQty : 1)
     const id = (globalThis.crypto && 'randomUUID' in globalThis.crypto) ? (globalThis.crypto as any).randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`
-    const next: BookingArea[] = [...areas, { id, name, type: newAreaType, quantity: qty }]
+    const next: BookingArea[] = [...areas, { id, name, type: newAreaType, quantity: 1 }]
     saveAreas(next)
     setNewAreaName('')
     setNewAreaType('sala')
-    setNewAreaQty(1)
   }
 
   const removeArea = (id: string) => {
@@ -415,10 +412,9 @@ export default function BookingsPage() {
                     key={a.id}
                     className={`flex items-center gap-2 px-3 py-1 rounded border text-sm ${selectedAreaId === a.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
                     onClick={() => setSelectedAreaId(a.id)}
-                    title={`${a.type} • ${a.quantity}x`}
+                    title={`${a.type}`}
                   >
                     <span>{a.name}</span>
-                    <span className={`${selectedAreaId === a.id ? 'text-white/80' : 'text-gray-500'}`}>×{a.quantity}</span>
                   </button>
                 ))}
                 {areas.length === 0 && (
@@ -455,16 +451,7 @@ export default function BookingsPage() {
                         <option value="altro">Altro</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-700 mb-1">Qtà</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={newAreaQty}
-                        onChange={(e) => setNewAreaQty(parseInt(e.target.value || '1', 10))}
-                        className="w-24 px-2 py-1 border border-gray-300 rounded"
-                      />
-                    </div>
+                    {/* Qtà rimossa: invariabilmente 1 */}
                     <div className="flex gap-2">
                       <button
                         onClick={addArea}
@@ -494,7 +481,7 @@ export default function BookingsPage() {
                       <div key={a.id} className="flex items-center justify-between p-2 border rounded">
                         <div>
                           <div className="font-medium text-gray-900">{a.name}</div>
-                          <div className="text-xs text-gray-600">{a.type} • quantità: {a.quantity}</div>
+                          <div className="text-xs text-gray-600">{a.type}</div>
                         </div>
                         <button
                           onClick={() => removeArea(a.id)}
