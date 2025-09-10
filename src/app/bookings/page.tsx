@@ -409,7 +409,7 @@ export default function BookingsPage() {
                   </button>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {areas.map(a => (
                   <button
                     key={a.id}
@@ -422,7 +422,7 @@ export default function BookingsPage() {
                   </button>
                 ))}
                 {areas.length === 0 && (
-                  <div className="text-sm text-gray-500">Nessuna area. Usa “+” per aggiungere.</div>
+                  <div className="text-sm text-gray-500 text-center w-full">Nessuna area. Usa “+” per aggiungere.</div>
                 )}
               </div>
 
