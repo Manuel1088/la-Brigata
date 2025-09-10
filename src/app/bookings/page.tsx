@@ -364,6 +364,31 @@ export default function BookingsPage() {
 
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
+            {/* Aree/Sale (prima delle statistiche) */}
+            {areas.length > 0 && (
+              <div className="bg-white p-4 rounded-lg shadow mb-6">
+                <div className="text-sm font-medium text-gray-700 mb-2">Aree/Sale</div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className={`px-3 py-1 rounded border text-sm ${selectedAreaId === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
+                    onClick={() => setSelectedAreaId('all')}
+                  >
+                    Tutte
+                  </button>
+                  {areas.map(a => (
+                    <button
+                      key={a.id}
+                      className={`px-3 py-1 rounded border text-sm ${selectedAreaId === a.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
+                      onClick={() => setSelectedAreaId(a.id)}
+                      title={`${a.type} • ${a.quantity}x`}
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Statistiche */}
             <div className="grid md:grid-cols-4 gap-6 mb-8">
               <div className="bg-white p-6 rounded-lg shadow">
@@ -428,30 +453,6 @@ export default function BookingsPage() {
                   </select>
                 </div>
               </div>
-              {/* Aree/Sale */}
-              {areas.length > 0 && (
-                <div className="mt-4">
-                  <div className="text-sm font-medium text-gray-700 mb-2">Aree/Sale</div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      className={`px-3 py-1 rounded border text-sm ${selectedAreaId === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
-                      onClick={() => setSelectedAreaId('all')}
-                    >
-                      Tutte
-                    </button>
-                    {areas.map(a => (
-                      <button
-                        key={a.id}
-                        className={`px-3 py-1 rounded border text-sm ${selectedAreaId === a.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
-                        onClick={() => setSelectedAreaId(a.id)}
-                        title={`${a.type} • ${a.quantity}x`}
-                      >
-                        {a.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Calendario Prenotazioni per Area selezionata */}
