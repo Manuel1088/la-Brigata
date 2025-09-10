@@ -460,7 +460,7 @@ export default function BookingsPage() {
                   ➕ Nuova Prenotazione
                 </button>
                 <button
-                  onClick={() => setShowTableModal(true)}
+                  onClick={() => { setTableModalTab('lista'); setShowTableModal(true) }}
                   className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition h-12 w-36 flex items-center justify-center"
                 >
                   🪑 Gestisci Tavoli
