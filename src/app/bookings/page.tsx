@@ -449,7 +449,7 @@ export default function BookingsPage() {
                   <span>Indietro</span>
                 </button>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  📅 Gestione Prenotazioni
+                  📅 Prenotazioni
                 </h1>
               </div>
               <div className="flex items-center space-x-4">
