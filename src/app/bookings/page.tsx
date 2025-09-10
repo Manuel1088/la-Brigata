@@ -494,7 +494,7 @@ export default function BookingsPage() {
                   <div className="absolute right-0 top-0 flex items-center gap-2">
                     <button
                       onClick={() => setShowManagePanel(v => !v)}
-                      className="px-3 h-8 flex items-center justify-center rounded border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm"
+                      className="h-6 px-2 text-xs text-gray-600 hover:text-gray-800"
                       title="Gestisci sale"
                     >
                       Modifica
@@ -593,30 +593,42 @@ export default function BookingsPage() {
 
               <div>
                 {calSelectedDate && (
-                  <div className="bg-white rounded-lg border p-4 h-full">
+                  <div className="p-2 h-full">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span>🚶</span>
                         <span className="font-semibold text-gray-900">Passanti</span>
                       </div>
-                      {(() => {
-                        const hour = new Date().getHours()
-                        const value = hour >= 17 ? calWalkins.dinner : calWalkins.lunch
-                        return (
-                          <input
-                            type="number"
-                            min={0}
-                            value={value}
-                            onChange={(e) => {
-                              const v = Math.max(0, parseInt(e.target.value || '0', 10))
-                              const hourNow = new Date().getHours()
-                              if (hourNow >= 17) saveCalWalkins({ lunch: calWalkins.lunch, dinner: v })
-                              else saveCalWalkins({ lunch: v, dinner: calWalkins.dinner })
-                            }}
-                            className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
-                          />
-                        )
-                      })()}
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const hour = new Date().getHours()
+                          const value = hour >= 17 ? calWalkins.dinner : calWalkins.lunch
+                          return (
+                            <input
+                              type="number"
+                              min={0}
+                              value={value}
+                              onChange={(e) => {
+                                const v = Math.max(0, parseInt(e.target.value || '0', 10))
+                                const hourNow = new Date().getHours()
+                                if (hourNow >= 17) saveCalWalkins({ lunch: calWalkins.lunch, dinner: v })
+                                else saveCalWalkins({ lunch: v, dinner: calWalkins.dinner })
+                              }}
+                              className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
+                            />
+                          )
+                        })()}
+                        <button
+                          onClick={() => {
+                            const hourNow = new Date().getHours()
+                            if (hourNow >= 17) saveCalWalkins({ lunch: calWalkins.lunch, dinner: calWalkins.dinner + 1 })
+                            else saveCalWalkins({ lunch: calWalkins.lunch + 1, dinner: calWalkins.dinner })
+                          }}
+                          className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                        >
+                          Invia
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
