@@ -490,7 +490,7 @@ export default function BookingsPage() {
             <div className="grid md:grid-cols-2 gap-6 mb-6 items-stretch">
               <div className="bg-white p-4 rounded-lg shadow h-full">
                 <div className="relative mb-2">
-                  <div className="text-sm font-medium text-gray-700 text-center">Sale</div>
+                  <div className="font-semibold text-gray-900 text-center">Sale</div>
                   <div className="absolute right-0 top-0 flex items-center gap-2">
                     <button
                       onClick={() => setShowManagePanel(v => !v)}
