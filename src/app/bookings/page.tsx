@@ -38,6 +38,9 @@ export default function BookingsPage() {
   interface BookingArea { id: string; name: string; type: AreaType; quantity: number }
   const [areas, setAreas] = useState<BookingArea[]>([])
   const [selectedAreaId, setSelectedAreaId] = useState<string>('all')
+  const [calCurrentMonth, setCalCurrentMonth] = useState<Date>(new Date())
+  const [calSelectedDate, setCalSelectedDate] = useState<string>('')
+  const [calWalkins, setCalWalkins] = useState<{ lunch: number; dinner: number }>({ lunch: 0, dinner: 0 })
 
   // Form data per nuova prenotazione
   const [bookingForm, setBookingForm] = useState({
@@ -73,6 +76,33 @@ export default function BookingsPage() {
     window.addEventListener('booking_areas_updated', handler)
     return () => window.removeEventListener('booking_areas_updated', handler)
   }, [])
+
+  // Reimposta calendario quando si seleziona un'area
+  useEffect(() => {
+    if (selectedAreaId === 'all') return
+    const now = new Date()
+    setCalCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
+    const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+    setCalSelectedDate(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
+  }, [selectedAreaId])
+
+  // Carica/salva walk-in per area+data
+  useEffect(() => {
+    if (!calSelectedDate || selectedAreaId === 'all') return
+    try {
+      const raw = localStorage.getItem(`walkins_${selectedAreaId}_${calSelectedDate}`)
+      if (raw) setCalWalkins(JSON.parse(raw))
+      else setCalWalkins({ lunch: 0, dinner: 0 })
+    } catch {
+      setCalWalkins({ lunch: 0, dinner: 0 })
+    }
+  }, [calSelectedDate, selectedAreaId])
+
+  const saveCalWalkins = (next: { lunch: number; dinner: number }) => {
+    setCalWalkins(next)
+    if (!calSelectedDate || selectedAreaId === 'all') return
+    try { localStorage.setItem(`walkins_${selectedAreaId}_${calSelectedDate}`, JSON.stringify(next)) } catch {}
+  }
 
   const loadBookings = () => {
     // Dati mock per demo - in produzione verranno caricati dal database
@@ -423,6 +453,225 @@ export default function BookingsPage() {
                 </div>
               )}
             </div>
+
+            {/* Calendario Prenotazioni per Area selezionata */}
+            {selectedAreaId !== 'all' && (
+              <div className="bg-white rounded-lg shadow mb-6">
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                  <div className="text-lg font-semibold text-gray-900">
+                    📅 Calendario Prenotazioni — {areas.find(a => a.id === selectedAreaId)?.name || ''}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() - 1, 1))}
+                      className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                    >
+                      ← Mese precedente
+                    </button>
+                    <div className="text-sm text-gray-900">
+                      {calCurrentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+                    </div>
+                    <button
+                      onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() + 1, 1))}
+                      className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                    >
+                      Mese successivo →
+                    </button>
+                    <button
+                      onClick={() => {
+                        const now = new Date()
+                        setCalCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
+                        const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                        setCalSelectedDate(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
+                      }}
+                      className="ml-2 text-xs text-blue-700 hover:text-blue-900"
+                    >
+                      Oggi
+                    </button>
+                  </div>
+                </div>
+                <div className="p-6">
+                  {(() => {
+                    const toLocalISO = (d: Date) => {
+                      const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                      return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+                    }
+                    const todayISO = toLocalISO(new Date())
+                    const firstDay = new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth(), 1)
+                    const startDay = (firstDay.getDay() + 6) % 7 // Lunedì
+                    const gridStart = new Date(firstDay)
+                    gridStart.setDate(firstDay.getDate() - startDay)
+                    gridStart.setHours(0,0,0,0)
+                    const cells: Date[] = []
+                    for (let i = 0; i < 42; i++) {
+                      const d = new Date(gridStart)
+                      d.setDate(gridStart.getDate() + i)
+                      cells.push(d)
+                    }
+
+                    const dayHeader = (
+                      <div className="grid grid-cols-7 text-xs text-gray-500 mb-1">
+                        {['L','M','M','G','V','S','D'].map(d => (
+                          <div key={d} className="px-2 py-1 text-center uppercase tracking-wide">{d}</div>
+                        ))}
+                      </div>
+                    )
+
+                    const dotColorByStatus: Record<string, string> = {
+                      confirmed: 'bg-green-500',
+                      pending: 'bg-yellow-500',
+                      waiting: 'bg-blue-500',
+                      cancelled: 'bg-red-500',
+                      default: 'bg-gray-400'
+                    }
+
+                    const parseHour = (t: string) => { const [hh] = (t || '0').split(':'); const n = parseInt(hh || '0', 10); return isNaN(n)?0:n }
+
+                    const cellEls = cells.map(d => {
+                      const inMonth = d.getMonth() === calCurrentMonth.getMonth()
+                      const dayISO = toLocalISO(d)
+                      const dayBookings = bookings.filter(b => b.date === dayISO)
+                      let lunchGuests = 0, dinnerGuests = 0
+                      dayBookings.forEach(b => {
+                        const h = parseHour(b.time)
+                        if (h >= 11 && h < 16) lunchGuests += b.partySize
+                        else if (h >= 18 && h <= 23) dinnerGuests += b.partySize
+                      })
+                      const isSelected = calSelectedDate === dayISO
+                      const isToday = dayISO === todayISO
+                      const numberCls = isSelected
+                        ? 'bg-blue-600 text-white'
+                        : isToday
+                          ? 'border border-red-600 text-red-600'
+                          : inMonth
+                            ? 'text-gray-900'
+                            : 'text-gray-400'
+
+                      return (
+                        <div
+                          key={dayISO}
+                          onClick={() => setCalSelectedDate(dayISO)}
+                          className={`p-2 h-20 cursor-pointer ${inMonth ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 rounded-lg transition`}
+                          title={`${dayBookings.length} prenotazioni`}
+                        >
+                          <div className="flex justify-center">
+                            <div className={`w-7 h-7 flex items-center justify-center rounded-full text-sm ${numberCls}`}>{d.getDate()}</div>
+                          </div>
+                          <div className="mt-2 flex justify-center gap-1">
+                            {dayBookings.slice(0,4).map(b => {
+                              const color = (dotColorByStatus as any)[b.status] || dotColorByStatus.default
+                              return <span key={b.id} className={`w-1.5 h-1.5 rounded-full ${color}`}></span>
+                            })}
+                          </div>
+                          <div className="mt-1 text-[10px] text-gray-700 flex justify-center gap-2">
+                            <span>P: {lunchGuests}</span>
+                            <span>C: {dinnerGuests}</span>
+                          </div>
+                        </div>
+                      )
+                    })
+
+                    return (
+                      <div>
+                        {dayHeader}
+                        <div className="grid grid-cols-7 gap-0">
+                          {cellEls}
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                {/* Dettagli Giorno Selezionato per Area */}
+                {calSelectedDate && (
+                  <div className="px-6 pb-6">
+                    <div className="bg-white rounded-lg border">
+                      <div className="px-6 py-4 border-b border-gray-200">
+                        <h3 className="text-lg font-semibold">Prenotazioni per {new Date(calSelectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'short' })}</h3>
+                      </div>
+                      <div className="p-6">
+                        {(() => {
+                          const isLunch = (t: string) => { const h = parseInt((t || '0').split(':')[0] || '0', 10); return h >= 11 && h < 16 }
+                          const isDinner = (t: string) => { const h = parseInt((t || '0').split(':')[0] || '0', 10); return h >= 18 && h <= 23 }
+                          let lunch = 0, dinner = 0
+                          bookings.filter(b => b.date === calSelectedDate && b.status !== 'cancelled').forEach(b => {
+                            if (isLunch(b.time)) lunch += b.partySize
+                            else if (isDinner(b.time)) dinner += b.partySize
+                          })
+                          return (
+                            <div className="grid md:grid-cols-2 gap-4 mb-6">
+                              <div className="border rounded-lg p-3">
+                                <div className="font-semibold text-gray-900 mb-1">🍽️ Pranzo</div>
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-700">Prenotati:</span>
+                                  <span className="font-bold text-gray-900">{lunch}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm mt-1">
+                                  <span className="text-gray-700">Passanti (walk-in):</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={calWalkins.lunch}
+                                    onChange={(e) => saveCalWalkins({ lunch: Math.max(0, parseInt(e.target.value || '0', 10)), dinner: calWalkins.dinner })}
+                                    className="w-20 px-2 py-1 border border-gray-300 rounded"
+                                  />
+                                </div>
+                              </div>
+                              <div className="border rounded-lg p-3">
+                                <div className="font-semibold text-gray-900 mb-1">🌙 Cena</div>
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-700">Prenotati:</span>
+                                  <span className="font-bold text-gray-900">{dinner}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm mt-1">
+                                  <span className="text-gray-700">Passanti (walk-in):</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={calWalkins.dinner}
+                                    onChange={(e) => saveCalWalkins({ lunch: calWalkins.lunch, dinner: Math.max(0, parseInt(e.target.value || '0', 10)) })}
+                                    className="w-20 px-2 py-1 border border-gray-300 rounded"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })()}
+
+                        {(() => {
+                          const dayBookings = bookings.filter(b => b.date === calSelectedDate)
+                          return dayBookings.length > 0 ? (
+                            <div className="space-y-4">
+                              {dayBookings.map((booking) => (
+                                <div key={booking.id} className="flex justify-between items-center p-4 bg-gray-50 rounded">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-3">
+                                      <h4 className="text-lg font-medium text-gray-900">{booking.customerName}</h4>
+                                      <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>{getStatusText(booking.status)}</span>
+                                    </div>
+                                    <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                                      <div><span className="font-medium">Ora:</span> {booking.time}</div>
+                                      <div><span className="font-medium">Persone:</span> {booking.partySize}</div>
+                                      <div><span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}</div>
+                                      <div><span className="font-medium">Telefono:</span> {booking.customerPhone}</div>
+                                    </div>
+                                    {booking.notes && (
+                                      <div className="mt-2 text-sm text-gray-600"><span className="font-medium">Note:</span> {booking.notes}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center text-gray-500 py-4">Nessuna prenotazione per questa data</div>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Lista Prenotazioni */}
             <div className="bg-white rounded-lg shadow">
