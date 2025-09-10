@@ -594,7 +594,7 @@ export default function BookingsPage() {
               <div>
                 {calSelectedDate && (
                   <div className="bg-white p-4 rounded-lg shadow h-full">
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center justify-center gap-2 mb-3">
                       <span>🚶</span>
                       <span className="font-semibold text-gray-900">Passanti</span>
                     </div>
