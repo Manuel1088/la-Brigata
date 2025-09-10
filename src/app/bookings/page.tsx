@@ -776,87 +776,32 @@ export default function BookingsPage() {
                 {/* Dettagli Giorno Selezionato per Area */}
                 {calSelectedDate && (
                   <div className="px-6 pb-6">
-                    <div className="bg-white rounded-lg border">
-                      <div className="px-6 py-4 border-b border-gray-200">
-                        <h3 className="text-lg font-semibold">Prenotazioni per {new Date(calSelectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'short' })}</h3>
-                      </div>
-                      <div className="p-6">
-                        {(() => {
-                          const isLunch = (t: string) => { const h = parseInt((t || '0').split(':')[0] || '0', 10); return h >= 11 && h < 16 }
-                          const isDinner = (t: string) => { const h = parseInt((t || '0').split(':')[0] || '0', 10); return h >= 18 && h <= 23 }
-                          let lunch = 0, dinner = 0
-                          bookings.filter(b => b.date === calSelectedDate && b.status !== 'cancelled').forEach(b => {
-                            if (isLunch(b.time)) lunch += b.partySize
-                            else if (isDinner(b.time)) dinner += b.partySize
-                          })
-                          return (
-                            <div className="grid md:grid-cols-2 gap-4 mb-6">
-                              <div className="border rounded-lg p-3">
-                                <div className="font-semibold text-gray-900 mb-1">🍽️ Pranzo</div>
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-gray-700">Prenotati:</span>
-                                  <span className="font-bold text-gray-900">{lunch}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm mt-1">
-                                  <span className="text-gray-700">Passanti (walk-in):</span>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={calWalkins.lunch}
-                                    onChange={(e) => saveCalWalkins({ lunch: Math.max(0, parseInt(e.target.value || '0', 10)), dinner: calWalkins.dinner })}
-                                    className="w-20 px-2 py-1 border border-gray-300 rounded"
-                                  />
-                                </div>
-                              </div>
-                              <div className="border rounded-lg p-3">
-                                <div className="font-semibold text-gray-900 mb-1">🌙 Cena</div>
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-gray-700">Prenotati:</span>
-                                  <span className="font-bold text-gray-900">{dinner}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm mt-1">
-                                  <span className="text-gray-700">Passanti (walk-in):</span>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={calWalkins.dinner}
-                                    onChange={(e) => saveCalWalkins({ lunch: calWalkins.lunch, dinner: Math.max(0, parseInt(e.target.value || '0', 10)) })}
-                                    className="w-20 px-2 py-1 border border-gray-300 rounded"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })()}
-
-                        {(() => {
-                          const dayBookings = bookings.filter(b => b.date === calSelectedDate)
-                          return dayBookings.length > 0 ? (
-                            <div className="space-y-4">
-                              {dayBookings.map((booking) => (
-                                <div key={booking.id} className="flex justify-between items-center p-4 bg-gray-50 rounded">
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-3">
-                                      <h4 className="text-lg font-medium text-gray-900">{booking.customerName}</h4>
-                                      <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>{getStatusText(booking.status)}</span>
-                                    </div>
-                                    <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                                      <div><span className="font-medium">Ora:</span> {booking.time}</div>
-                                      <div><span className="font-medium">Persone:</span> {booking.partySize}</div>
-                                      <div><span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}</div>
-                                      <div><span className="font-medium">Telefono:</span> {booking.customerPhone}</div>
-                                    </div>
-                                    {booking.notes && (
-                                      <div className="mt-2 text-sm text-gray-600"><span className="font-medium">Note:</span> {booking.notes}</div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-center text-gray-500 py-4">Nessuna prenotazione per questa data</div>
-                          )
-                        })()}
+                    <div className="flex justify-center">
+                      <div className="bg-white rounded-lg border p-4 w-full md:w-1/2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>🚶</span>
+                            <span className="font-semibold text-gray-900">Passanti</span>
+                          </div>
+                          {(() => {
+                            const hour = new Date().getHours()
+                            const value = hour >= 17 ? calWalkins.dinner : calWalkins.lunch
+                            return (
+                              <input
+                                type="number"
+                                min={0}
+                                value={value}
+                                onChange={(e) => {
+                                  const v = Math.max(0, parseInt(e.target.value || '0', 10))
+                                  const hourNow = new Date().getHours()
+                                  if (hourNow >= 17) saveCalWalkins({ lunch: calWalkins.lunch, dinner: v })
+                                  else saveCalWalkins({ lunch: v, dinner: calWalkins.dinner })
+                                }}
+                                className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
+                              />
+                            )
+                          })()}
+                        </div>
                       </div>
                     </div>
                   </div>
