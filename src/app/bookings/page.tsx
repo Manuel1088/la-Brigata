@@ -1059,7 +1059,7 @@ export default function BookingsPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tavolo (opzionale) — {areas.find(a => a.id === selectedAreaId)?.name || 'Sala non selezionata'}
+                        Tavolo
                       </label>
                       <select
                         value={bookingForm.tableNumber}
