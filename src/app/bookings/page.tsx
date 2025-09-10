@@ -621,9 +621,43 @@ export default function BookingsPage() {
                         })()}
                         <button
                           onClick={() => {
-                            const hourNow = new Date().getHours()
-                            if (hourNow >= 17) saveCalWalkins({ lunch: calWalkins.lunch, dinner: calWalkins.dinner + 1 })
-                            else saveCalWalkins({ lunch: calWalkins.lunch + 1, dinner: calWalkins.dinner })
+                            const now = new Date()
+                            const hourNow = now.getHours()
+                            // Aggiorna contatore walk-in (manteniamo l'attuale comportamento incrementale)
+                            if (hourNow >= 17) {
+                              saveCalWalkins({ lunch: calWalkins.lunch, dinner: calWalkins.dinner + 1 })
+                            } else {
+                              saveCalWalkins({ lunch: calWalkins.lunch + 1, dinner: calWalkins.dinner })
+                            }
+                            // Registra un nuovo tavolo walk-in per oggi nella sala selezionata
+                            const z = (n:number) => (n < 10 ? `0${n}` : `${n}`)
+                            const todayISO = `${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`
+                            const segment = hourNow >= 17 ? 'dinner' : 'lunch'
+                            const defaultTime = segment === 'dinner' ? '20:00' : '13:00'
+                            // Ricava coperti correnti per il segmento
+                            const covers = segment === 'dinner' ? calWalkins.dinner : calWalkins.lunch
+                            const area = areas.find(a => a.id === selectedAreaId)
+                            // Trova primo tavolo libero della sala selezionata per oggi
+                            const takenNumbers = new Set(
+                              bookings
+                                .filter(b => b.date === todayISO && ((segment === 'dinner' && (parseInt((b.time||'0').split(':')[0]||'0',10) >= 18)) || (segment === 'lunch' && (parseInt((b.time||'0').split(':')[0]||'0',10) >= 11 && parseInt((b.time||'0').split(':')[0]||'0',10) < 16))))
+                                .map(b => b.tableNumber)
+                                .filter(n => n !== null)
+                            ) as Set<number>
+                            const availableTable = floorTables.find(t => !takenNumbers.has(t.tableNumber))
+                            const newBooking = {
+                              id: Date.now().toString(),
+                              customerName: 'Walk-in',
+                              customerPhone: '',
+                              date: todayISO,
+                              time: defaultTime,
+                              partySize: Math.max(1, covers || 1),
+                              tableNumber: availableTable ? availableTable.tableNumber : null,
+                              status: 'confirmed',
+                              notes: `Passanti${area ? ' - ' + area.name : ''} (${segment === 'dinner' ? 'Cena' : 'Pranzo'})`,
+                              createdAt: new Date().toISOString()
+                            }
+                            setBookings(prev => [newBooking, ...prev])
                           }}
                           className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
                         >
