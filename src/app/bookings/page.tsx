@@ -615,38 +615,7 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            {/* Filtri */}
-            <div className="bg-white p-6 rounded-lg shadow mb-6">
-              <div className="flex flex-wrap items-center gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data
-                  </label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Stato
-                  </label>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">Tutti</option>
-                    <option value="confirmed">Confermate</option>
-                    <option value="pending">In Attesa</option>
-                    <option value="waiting">In Attesa Tavolo</option>
-                    <option value="cancelled">Cancellate</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+            
 
             {/* Calendario Prenotazioni per Area selezionata */}
             {!!selectedAreaId && (
