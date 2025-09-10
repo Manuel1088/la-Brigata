@@ -455,19 +455,19 @@ export default function BookingsPage() {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => router.push('/bookings/calendar')}
-                  className="bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition h-10 w-44 flex items-center justify-center"
+                  className="bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition h-10 w-36 flex items-center justify-center"
                 >
                   📅 Calendario
                 </button>
                 <button
                   onClick={() => setShowBookingModal(true)}
-                  className="bg-green-600 text-white rounded-lg hover:bg-green-700 transition h-10 w-44 flex items-center justify-center"
+                  className="bg-green-600 text-white rounded-lg hover:bg-green-700 transition h-10 w-36 flex items-center justify-center"
                 >
                   ➕ Nuova Prenotazione
                 </button>
                 <button
                   onClick={() => setShowTableModal(true)}
-                  className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition h-10 w-44 flex items-center justify-center"
+                  className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition h-10 w-36 flex items-center justify-center"
                 >
                   🪑 Gestisci Tavoli
                 </button>
