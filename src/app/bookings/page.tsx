@@ -37,7 +37,7 @@ export default function BookingsPage() {
   type AreaType = 'sala' | 'sala_colazioni' | 'bar' | 'ristorante' | 'terrazza' | 'privé' | 'altro'
   interface BookingArea { id: string; name: string; type: AreaType; quantity: number }
   const [areas, setAreas] = useState<BookingArea[]>([])
-  const [selectedAreaId, setSelectedAreaId] = useState<string>('all')
+  const [selectedAreaId, setSelectedAreaId] = useState<string>('')
   const [calCurrentMonth, setCalCurrentMonth] = useState<Date>(new Date())
   const [calSelectedDate, setCalSelectedDate] = useState<string>('')
   const [calWalkins, setCalWalkins] = useState<{ lunch: number; dinner: number }>({ lunch: 0, dinner: 0 })
@@ -79,7 +79,7 @@ export default function BookingsPage() {
 
   // Reimposta calendario quando si seleziona un'area
   useEffect(() => {
-    if (selectedAreaId === 'all') return
+    if (!selectedAreaId) return
     const now = new Date()
     setCalCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
     const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
@@ -88,7 +88,7 @@ export default function BookingsPage() {
 
   // Carica/salva walk-in per area+data
   useEffect(() => {
-    if (!calSelectedDate || selectedAreaId === 'all') return
+    if (!calSelectedDate || !selectedAreaId) return
     try {
       const raw = localStorage.getItem(`walkins_${selectedAreaId}_${calSelectedDate}`)
       if (raw) setCalWalkins(JSON.parse(raw))
@@ -100,7 +100,7 @@ export default function BookingsPage() {
 
   const saveCalWalkins = (next: { lunch: number; dinner: number }) => {
     setCalWalkins(next)
-    if (!calSelectedDate || selectedAreaId === 'all') return
+    if (!calSelectedDate || !selectedAreaId) return
     try { localStorage.setItem(`walkins_${selectedAreaId}_${calSelectedDate}`, JSON.stringify(next)) } catch {}
   }
 
@@ -369,12 +369,6 @@ export default function BookingsPage() {
               <div className="bg-white p-4 rounded-lg shadow mb-6">
                 <div className="text-sm font-medium text-gray-700 mb-2">Aree/Sale</div>
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    className={`px-3 py-1 rounded border text-sm ${selectedAreaId === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
-                    onClick={() => setSelectedAreaId('all')}
-                  >
-                    Tutte
-                  </button>
                   {areas.map(a => (
                     <button
                       key={a.id}
@@ -456,7 +450,7 @@ export default function BookingsPage() {
             </div>
 
             {/* Calendario Prenotazioni per Area selezionata */}
-            {selectedAreaId !== 'all' && (
+            {!!selectedAreaId && (
               <div className="bg-white rounded-lg shadow mb-6">
                 <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                   <div className="text-lg font-semibold text-gray-900">
