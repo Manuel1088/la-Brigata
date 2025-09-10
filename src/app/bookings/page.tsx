@@ -69,6 +69,7 @@ export default function BookingsPage() {
     const d = new Date(); const z = (n: number) => (n < 10 ? `0${n}` : `${n}`); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
   })
   const STORAGE_KEY_PREFIX = 'table_layout_v1_'
+  const [floorAddForm, setFloorAddForm] = useState<{ tableNumber: string; seats: string }>({ tableNumber: '', seats: '' })
   const [tableModalTab, setTableModalTab] = useState<'lista' | 'piano'>('lista')
   const [isLayoutEdit, setIsLayoutEdit] = useState<boolean>(false)
   
@@ -1143,6 +1144,34 @@ export default function BookingsPage() {
 
                   {tableModalTab === 'lista' && (
                     <div className="mb-3">
+                      {/* Form aggiunta tavolo */}
+                      <div className="flex flex-wrap items-end gap-2 mb-3">
+                        <div>
+                          <label className="block text-xs text-gray-700 mb-1">Numero Tavolo</label>
+                          <input
+                            type="number"
+                            value={floorAddForm.tableNumber}
+                            onChange={(e) => setFloorAddForm({ ...floorAddForm, tableNumber: e.target.value })}
+                            className="w-28 px-2 py-1 border border-gray-300 rounded"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-700 mb-1">Posti</label>
+                          <input
+                            type="number"
+                            value={floorAddForm.seats}
+                            onChange={(e) => setFloorAddForm({ ...floorAddForm, seats: e.target.value })}
+                            className="w-24 px-2 py-1 border border-gray-300 rounded"
+                          />
+                        </div>
+                        <button
+                          onClick={() => addFloorTable(floorAddForm.tableNumber, floorAddForm.seats, setFloorAddForm)}
+                          className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+                        >
+                          Aggiungi Tavolo
+                        </button>
+                      </div>
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {floorTables.length === 0 && (
                           <div className="col-span-full text-sm text-gray-500">Nessun tavolo presente per questa sala.</div>
