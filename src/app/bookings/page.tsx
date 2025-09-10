@@ -774,8 +774,8 @@ export default function BookingsPage() {
 
                     const dayHeader = (
                       <div className="grid grid-cols-7 text-xs text-gray-500 mb-1">
-                        {['L','M','M','G','V','S','D'].map(d => (
-                          <div key={d} className="px-2 py-1 text-center uppercase tracking-wide">{d}</div>
+                        {['L','M','M','G','V','S','D'].map((d, i) => (
+                          <div key={`${d}-${i}`} className="px-2 py-1 text-center uppercase tracking-wide">{d}</div>
                         ))}
                       </div>
                     )
