@@ -615,8 +615,9 @@ export default function BookingsPage() {
             {!!selectedAreaId && (
               <div className="bg-white rounded-lg shadow mb-6">
                 <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                  <div className="text-lg font-semibold text-gray-900">
-                    {areas.find(a => a.id === selectedAreaId)?.name || ''}
+                  <div className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <span>📅</span>
+                    <span>{areas.find(a => a.id === selectedAreaId)?.name || ''}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
