@@ -205,9 +205,9 @@ export function calculateDailyForecast(date: string, employees: EmployeeCost[] =
   const eventMultiplier = isEventDay ? events[0].expectedCoversMultiplier : 1
   
   // Calcola costi
-  const employeeCosts = calculateEmployeeCosts(employees)
+  const totalEmployeeCost = calculateEmployeeCosts(employees)
   const fixedCosts = calculateDailyFixedCosts()
-  const totalCosts = employeeCosts + fixedCosts
+  const totalCosts = totalEmployeeCost + fixedCosts
   
   // Calcola previsioni
   const basePattern = WEEKLY_PATTERNS[dayOfWeek]
@@ -224,8 +224,8 @@ export function calculateDailyForecast(date: string, employees: EmployeeCost[] =
     expectedCovers,
     averageTicket,
     expectedRevenue,
-    employeeCosts,
-    totalEmployeeCost: employeeCosts,
+    employeeCosts: employees,
+    totalEmployeeCost,
     fixedCosts,
     breakEvenCovers: breakEven.covers,
     breakEvenRevenue: breakEven.revenue,
