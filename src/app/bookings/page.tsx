@@ -70,6 +70,7 @@ export default function BookingsPage() {
   })
   const STORAGE_KEY_PREFIX = 'table_layout_v1_'
   const [floorAddForm, setFloorAddForm] = useState<{ tableNumber: string; seats: string }>({ tableNumber: '', seats: '' })
+  const [tableModalTab, setTableModalTab] = useState<'lista' | 'piano'>('lista')
 
   // Form data per nuova prenotazione
   const [bookingForm, setBookingForm] = useState({
@@ -1125,48 +1126,97 @@ export default function BookingsPage() {
                       </button>
                     </div>
                   </div>
-                  {/* Legend */}
-                  <div className="bg-white p-3 rounded border mb-3 flex items-center gap-6 text-sm">
-                    <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-green-200 border border-green-400"></span><span>Libero</span></div>
-                    <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-red-200 border border-red-400"></span><span>Occupato (giorno scelto)</span></div>
-                    <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-yellow-200 border border-yellow-400"></span><span>Capienza ≥ 6</span></div>
-                  </div>
-                  <div className="bg-white rounded-lg shadow p-4">
-                    <div className="mb-3 text-sm text-gray-700">Trascina i tavoli per riposizionarli. Salvataggio automatico per Sala.</div>
-                    <div
-                      ref={cellSizeRef}
-                      className="relative grid gap-1"
-                      style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${gridRows}, 60px)` }}
-                    >
-                      {/* Sfondo griglia */}
-                      {Array.from({ length: gridCols * gridRows }).map((_, idx) => (
-                        <div key={idx} className="border border-dashed border-gray-200" />
-                      ))}
-                      {/* Tavoli */}
-                      {floorTables.map(t => {
-                        const isOccupied = occupiedSet.has(String(t.tableNumber))
-                        const base = t.seats >= 6 ? 'bg-yellow-100 border-yellow-300' : 'bg-green-100 border-green-300'
-                        const busy = isOccupied ? 'bg-red-100 border-red-300' : base
-                        return (
-                          <div
-                            key={t.id}
-                            style={toGridStyle(t) as any}
-                            className={`absolute rounded-md border p-2 cursor-move select-none ${busy}`}
-                            onMouseDown={(e) => onMouseDownTable(e, t.id)}
-                          >
-                            <div className="flex justify-between items-center text-sm">
-                              <div className="font-semibold text-gray-900">Tavolo {t.tableNumber}</div>
-                              <button onClick={() => removeFloorTable(t.id)} className="text-xs text-red-600 hover:text-red-800">✕</button>
-                            </div>
-                            <div className="text-xs text-gray-700">{t.seats} posti</div>
-                            {isOccupied && (
-                              <div className="text-xs text-red-700 mt-1">Prenotato</div>
-                            )}
-                          </div>
-                        )
-                      })}
+                  {/* Tabs Lista/Piano */}
+                  <div className="mb-3 border-b border-gray-200">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setTableModalTab('lista')}
+                        className={`px-3 py-2 text-sm border-b-2 ${tableModalTab === 'lista' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
+                      >
+                        Lista Tavoli
+                      </button>
+                      <button
+                        onClick={() => setTableModalTab('piano')}
+                        className={`px-3 py-2 text-sm border-b-2 ${tableModalTab === 'piano' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
+                      >
+                        Piano Tavoli
+                      </button>
                     </div>
                   </div>
+
+                  {tableModalTab === 'lista' && (
+                    <div className="mb-3">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {floorTables.length === 0 && (
+                          <div className="col-span-full text-sm text-gray-500">Nessun tavolo presente per questa sala.</div>
+                        )}
+                        {floorTables.map(t => {
+                          const isOccupied = occupiedSet.has(String(t.tableNumber))
+                          return (
+                            <div key={t.id} className={`p-3 rounded border ${isOccupied ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+                              <div className="text-center">
+                                <p className="font-medium">Tavolo {t.tableNumber}</p>
+                                <p className="text-sm text-gray-600">{t.seats} posti</p>
+                                <span className={`inline-block px-2 py-1 rounded text-xs mt-1 ${isOccupied ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                  {isOccupied ? 'Occupato' : 'Libero'}
+                                </span>
+                              </div>
+                              <div className="mt-2 flex justify-center">
+                                <button onClick={() => removeFloorTable(t.id)} className="text-xs text-red-600 hover:text-red-800">Elimina</button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {tableModalTab === 'piano' && (
+                    <>
+                      {/* Legend */}
+                      <div className="bg-white p-3 rounded border mb-3 flex items-center gap-6 text-sm">
+                        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-green-200 border border-green-400"></span><span>Libero</span></div>
+                        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-red-200 border border-red-400"></span><span>Occupato (giorno scelto)</span></div>
+                        <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-yellow-200 border border-yellow-400"></span><span>Capienza ≥ 6</span></div>
+                      </div>
+                      <div className="bg-white rounded-lg shadow p-4">
+                        <div className="mb-3 text-sm text-gray-700">Trascina i tavoli per riposizionarli. Salvataggio automatico per Sala.</div>
+                        <div
+                          ref={cellSizeRef}
+                          className="relative grid gap-1"
+                          style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${gridRows}, 60px)` }}
+                        >
+                          {/* Sfondo griglia */}
+                          {Array.from({ length: gridCols * gridRows }).map((_, idx) => (
+                            <div key={idx} className="border border-dashed border-gray-200" />
+                          ))}
+                          {/* Tavoli */}
+                          {floorTables.map(t => {
+                            const isOccupied = occupiedSet.has(String(t.tableNumber))
+                            const base = t.seats >= 6 ? 'bg-yellow-100 border-yellow-300' : 'bg-green-100 border-green-300'
+                            const busy = isOccupied ? 'bg-red-100 border-red-300' : base
+                            return (
+                              <div
+                                key={t.id}
+                                style={toGridStyle(t) as any}
+                                className={`absolute rounded-md border p-2 cursor-move select-none ${busy}`}
+                                onMouseDown={(e) => onMouseDownTable(e, t.id)}
+                              >
+                                <div className="flex justify-between items-center text-sm">
+                                  <div className="font-semibold text-gray-900">Tavolo {t.tableNumber}</div>
+                                  <button onClick={() => removeFloorTable(t.id)} className="text-xs text-red-600 hover:text-red-800">✕</button>
+                                </div>
+                                <div className="text-xs text-gray-700">{t.seats} posti</div>
+                                {isOccupied && (
+                                  <div className="text-xs text-red-700 mt-1">Prenotato</div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
