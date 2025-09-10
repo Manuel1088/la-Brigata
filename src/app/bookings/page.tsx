@@ -390,9 +390,9 @@ export default function BookingsPage() {
           <div className="px-4 py-6 sm:px-0">
             {/* Aree/Sale (permanente) */}
             <div className="bg-white p-4 rounded-lg shadow mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-medium text-gray-700">Aree/Sale</div>
-                <div className="flex items-center gap-2">
+              <div className="relative mb-2">
+                <div className="text-sm font-medium text-gray-700 text-center">Sale</div>
+                <div className="absolute right-0 top-0 flex items-center gap-2">
                   <button
                     onClick={() => { setShowAddPanel(v => !v); if (!showAddPanel) setShowRemovePanel(false) }}
                     className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 text-gray-700 hover:bg-green-50"
