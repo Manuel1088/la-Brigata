@@ -719,7 +719,15 @@ export default function BookingsPage() {
                       return (
                         <div
                           key={dayISO}
-                          onClick={() => setCalSelectedDate(dayISO)}
+                          onClick={() => {
+                            if (calSelectedDate === dayISO) {
+                              setFloorDateISO(dayISO)
+                              setTableModalTab('piano')
+                              setShowTableModal(true)
+                            } else {
+                              setCalSelectedDate(dayISO)
+                            }
+                          }}
                           className={`p-2 h-20 cursor-pointer ${inMonth ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 rounded-lg transition`}
                           title={`${dayBookings.length} prenotazioni`}
                         >
