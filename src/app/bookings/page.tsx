@@ -819,39 +819,7 @@ export default function BookingsPage() {
                   })()}
                 </div>
 
-                {/* Dettagli Giorno Selezionato per Area */}
-                {calSelectedDate && (
-                  <div className="px-6 pb-6">
-                    <div className="flex justify-center">
-                      <div className="bg-white rounded-lg border p-4 w-full md:w-1/2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span>🚶</span>
-                            <span className="font-semibold text-gray-900">Passanti</span>
-                          </div>
-                          {(() => {
-                            const hour = new Date().getHours()
-                            const value = hour >= 17 ? calWalkins.dinner : calWalkins.lunch
-                            return (
-                              <input
-                                type="number"
-                                min={0}
-                                value={value}
-                                onChange={(e) => {
-                                  const v = Math.max(0, parseInt(e.target.value || '0', 10))
-                                  const hourNow = new Date().getHours()
-                                  if (hourNow >= 17) saveCalWalkins({ lunch: calWalkins.lunch, dinner: v })
-                                  else saveCalWalkins({ lunch: v, dinner: calWalkins.dinner })
-                                }}
-                                className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
-                              />
-                            )
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* (Riquadro Passanti eliminato su richiesta) */}
               </div>
             )}
 
