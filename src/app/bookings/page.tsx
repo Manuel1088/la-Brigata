@@ -623,8 +623,10 @@ export default function BookingsPage() {
                     <button
                       onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() - 1, 1))}
                       className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                      aria-label="Mese precedente"
+                      title="Mese precedente"
                     >
-                      ← Mese precedente
+                      ←
                     </button>
                     <div className="text-sm text-gray-900">
                       {calCurrentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
@@ -632,8 +634,10 @@ export default function BookingsPage() {
                     <button
                       onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() + 1, 1))}
                       className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                      aria-label="Mese successivo"
+                      title="Mese successivo"
                     >
-                      Mese successivo →
+                      →
                     </button>
                     <button
                       onClick={() => {
