@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
 
 interface Booking {
@@ -22,6 +22,17 @@ interface Table {
   tableNumber: number
   seats: number
   status: string
+}
+
+// Layout per la mappa tavoli
+interface TableItem {
+  id: string
+  tableNumber: number
+  seats: number
+  x: number
+  y: number
+  w: number
+  h: number
 }
 
 export default function BookingsPage() {
@@ -46,6 +57,19 @@ export default function BookingsPage() {
   const [newAreaType, setNewAreaType] = useState<AreaType>('sala')
   const [showAddPanel, setShowAddPanel] = useState<boolean>(false)
   const [showRemovePanel, setShowRemovePanel] = useState<boolean>(false)
+
+  // Stato per mappa tavoli per Sala (unifica Piano Tavoli)
+  const [gridCols] = useState<number>(12)
+  const [gridRows] = useState<number>(8)
+  const cellSizeRef = useRef<HTMLDivElement>(null)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number }>({ dx: 0, dy: 0 })
+  const [floorTables, setFloorTables] = useState<TableItem[]>([])
+  const [floorDateISO, setFloorDateISO] = useState<string>(() => {
+    const d = new Date(); const z = (n: number) => (n < 10 ? `0${n}` : `${n}`); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+  })
+  const STORAGE_KEY_PREFIX = 'table_layout_v1_'
+  const [floorAddForm, setFloorAddForm] = useState<{ tableNumber: string; seats: string }>({ tableNumber: '', seats: '' })
 
   // Form data per nuova prenotazione
   const [bookingForm, setBookingForm] = useState({
@@ -81,6 +105,25 @@ export default function BookingsPage() {
     window.addEventListener('booking_areas_updated', handler)
     return () => window.removeEventListener('booking_areas_updated', handler)
   }, [])
+
+  // Carica layout tavoli per Sala quando apro modal o cambio Sala
+  useEffect(() => {
+    if (!showTableModal) return
+    if (!selectedAreaId) return
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${selectedAreaId}`)
+      if (raw) setFloorTables(JSON.parse(raw))
+      else setFloorTables([])
+    } catch { setFloorTables([]) }
+    // Default data ISO alla data filtri se presente
+    if (selectedDate) setFloorDateISO(selectedDate)
+  }, [showTableModal, selectedAreaId])
+
+  // Salva layout tavoli per Sala
+  useEffect(() => {
+    if (!selectedAreaId) return
+    try { localStorage.setItem(`${STORAGE_KEY_PREFIX}${selectedAreaId}`, JSON.stringify(floorTables)) } catch {}
+  }, [floorTables, selectedAreaId])
 
   const saveAreas = (next: BookingArea[]) => {
     setAreas(next)
@@ -332,6 +375,49 @@ export default function BookingsPage() {
     return getFilteredBookings().filter(booking => booking.status === 'confirmed').length
   }
 
+  // Occupazione per mappa (set di tavoli occupati in quella data)
+  const occupiedSet = useMemo(() => new Set((getBookingsForDate(floorDateISO) || []).filter(b => b.status !== 'cancelled' && b.tableNumber).map(b => String(b.tableNumber))), [bookings, floorDateISO])
+
+  // Drag handlers per mappa tavoli
+  const onMouseDownTable = (e: React.MouseEvent, id: string) => {
+    const target = e.currentTarget as HTMLDivElement
+    const rect = target.getBoundingClientRect()
+    const container = cellSizeRef.current?.getBoundingClientRect()
+    if (!container) return
+    const cellW = container.width / gridCols
+    const cellH = container.height / gridRows
+    const dx = Math.round((e.clientX - rect.left) / cellW)
+    const dy = Math.round((e.clientY - rect.top) / cellH)
+    setDragId(id)
+    setDragOffset({ dx, dy })
+  }
+
+  const onMouseMoveTable = (e: React.MouseEvent) => {
+    if (!dragId) return
+    const container = cellSizeRef.current?.getBoundingClientRect()
+    if (!container) return
+    const cellW = container.width / gridCols
+    const cellH = container.height / gridRows
+    const x = Math.floor((e.clientX - container.left) / cellW) - dragOffset.dx
+    const y = Math.floor((e.clientY - container.top) / cellH) - dragOffset.dy
+    setFloorTables(prev => prev.map(t => t.id === dragId ? ({ ...t, x: Math.max(0, Math.min(gridCols - t.w, x)), y: Math.max(0, Math.min(gridRows - t.h, y)) }) : t))
+  }
+
+  const onMouseUpTable = () => setDragId(null)
+
+  const toGridStyle = (t: TableItem) => ({ gridColumn: `${t.x + 1} / span ${t.w}`, gridRow: `${t.y + 1} / span ${t.h}` })
+
+  const addFloorTable = (numStr: string, seatsStr: string, setter: (v: { tableNumber: string; seats: string }) => void) => {
+    const num = parseInt(numStr || '0', 10)
+    const seats = parseInt(seatsStr || '0', 10)
+    if (!num || !seats) return
+    const id = `t_${Date.now()}`
+    setFloorTables(prev => [...prev, { id, tableNumber: num, seats, x: 0, y: 0, w: seats >= 6 ? 2 : 1, h: 1 }])
+    setter({ tableNumber: '', seats: '' })
+  }
+
+  const removeFloorTable = (id: string) => setFloorTables(prev => prev.filter(t => t.id !== id))
+
   return (
     <PermissionGuard permission="turni_manage">
       <div className="min-h-screen bg-gray-50">
@@ -354,12 +440,6 @@ export default function BookingsPage() {
                 </h1>
               </div>
               <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => router.push('/bookings/floor')}
-                  className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition"
-                >
-                  🗺️ Piano Tavoli
-                </button>
                 <button
                   onClick={() => router.push('/bookings/calendar')}
                   className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
@@ -999,81 +1079,96 @@ export default function BookingsPage() {
           </div>
         )}
 
-        {/* Modal Gestione Tavoli */}
+        {/* Modal Gestione Tavoli (unificato con Piano Tavoli per Sala) */}
         {showTableModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4">🪑 Gestione Tavoli</h3>
-              
-              {/* Lista Tavoli Esistenti */}
-              <div className="mb-6">
-                <h4 className="font-medium mb-3">Tavoli Esistenti</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {tables.map((table) => (
-                    <div key={table.id} className={`p-3 rounded border ${
-                      table.status === 'occupied' ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
-                    }`}>
-                      <div className="text-center">
-                        <p className="font-medium">Tavolo {table.tableNumber}</p>
-                        <p className="text-sm text-gray-600">{table.seats} posti</p>
-                        <span className={`inline-block px-2 py-1 rounded text-xs mt-1 ${
-                          table.status === 'occupied' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                        }`}>
-                          {table.status === 'occupied' ? 'Occupato' : 'Libero'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-5xl w-full mx-4" onMouseMove={onMouseMoveTable} onMouseUp={onMouseUpTable}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">🪑 Gestione Tavoli — {areas.find(a => a.id === selectedAreaId)?.name || 'Seleziona una Sala'}</h3>
+                <button onClick={() => setShowTableModal(false)} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Chiudi</button>
               </div>
-
-              {/* Form Nuovo Tavolo */}
-              <form onSubmit={handleTableSubmit}>
-                <h4 className="font-medium mb-3">Aggiungi Nuovo Tavolo</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Numero Tavolo
-                    </label>
+              {!selectedAreaId ? (
+                <div className="text-sm text-gray-600">Seleziona una Sala nella pagina per gestire la mappa tavoli.</div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
                     <input
-                      type="number"
-                      min="1"
-                      value={tableForm.tableNumber}
-                      onChange={(e) => setTableForm({...tableForm, tableNumber: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
+                      type="date"
+                      value={floorDateISO}
+                      onChange={(e) => setFloorDateISO(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
+                    <div className="flex items-end gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-700 mb-1">Numero Tavolo</label>
+                        <input
+                          type="number"
+                          value={floorAddForm.tableNumber}
+                          onChange={(e) => setFloorAddForm({ ...floorAddForm, tableNumber: e.target.value })}
+                          className="w-28 px-2 py-1 border border-gray-300 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-700 mb-1">Posti</label>
+                        <input
+                          type="number"
+                          value={floorAddForm.seats}
+                          onChange={(e) => setFloorAddForm({ ...floorAddForm, seats: e.target.value })}
+                          className="w-24 px-2 py-1 border border-gray-300 rounded"
+                        />
+                      </div>
+                      <button
+                        onClick={() => addFloorTable(floorAddForm.tableNumber, floorAddForm.seats, setFloorAddForm)}
+                        className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+                      >
+                        Aggiungi
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Numero Posti
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={tableForm.seats}
-                      onChange={(e) => setTableForm({...tableForm, seats: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
+                  {/* Legend */}
+                  <div className="bg-white p-3 rounded border mb-3 flex items-center gap-6 text-sm">
+                    <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-green-200 border border-green-400"></span><span>Libero</span></div>
+                    <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-red-200 border border-red-400"></span><span>Occupato (giorno scelto)</span></div>
+                    <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded bg-yellow-200 border border-yellow-400"></span><span>Capienza ≥ 6</span></div>
                   </div>
-                </div>
-                <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setShowTableModal(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                  >
-                    Chiudi
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-                  >
-                    Aggiungi Tavolo
-                  </button>
-                </div>
-              </form>
+                  <div className="bg-white rounded-lg shadow p-4">
+                    <div className="mb-3 text-sm text-gray-700">Trascina i tavoli per riposizionarli. Salvataggio automatico per Sala.</div>
+                    <div
+                      ref={cellSizeRef}
+                      className="relative grid gap-1"
+                      style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${gridRows}, 60px)` }}
+                    >
+                      {/* Sfondo griglia */}
+                      {Array.from({ length: gridCols * gridRows }).map((_, idx) => (
+                        <div key={idx} className="border border-dashed border-gray-200" />
+                      ))}
+                      {/* Tavoli */}
+                      {floorTables.map(t => {
+                        const isOccupied = occupiedSet.has(String(t.tableNumber))
+                        const base = t.seats >= 6 ? 'bg-yellow-100 border-yellow-300' : 'bg-green-100 border-green-300'
+                        const busy = isOccupied ? 'bg-red-100 border-red-300' : base
+                        return (
+                          <div
+                            key={t.id}
+                            style={toGridStyle(t) as any}
+                            className={`absolute rounded-md border p-2 cursor-move select-none ${busy}`}
+                            onMouseDown={(e) => onMouseDownTable(e, t.id)}
+                          >
+                            <div className="flex justify-between items-center text-sm">
+                              <div className="font-semibold text-gray-900">Tavolo {t.tableNumber}</div>
+                              <button onClick={() => removeFloorTable(t.id)} className="text-xs text-red-600 hover:text-red-800">✕</button>
+                            </div>
+                            <div className="text-xs text-gray-700">{t.seats} posti</div>
+                            {isOccupied && (
+                              <div className="text-xs text-red-700 mt-1">Prenotato</div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
