@@ -652,6 +652,12 @@ export default function BookingsPage() {
                               createdAt: new Date().toISOString()
                             }
                             setBookings(prev => [newBooking, ...prev])
+                            // Dopo registrazione, resetta il valore coperti a 1
+                            if (segment === 'dinner') {
+                              saveCalWalkins({ lunch: calWalkins.lunch, dinner: 1 })
+                            } else {
+                              saveCalWalkins({ lunch: 1, dinner: calWalkins.dinner })
+                            }
                           }}
                           className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
                         >
