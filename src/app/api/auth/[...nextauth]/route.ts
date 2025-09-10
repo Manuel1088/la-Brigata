@@ -129,11 +129,12 @@ const handler = NextAuth({
         (session.user as any).avatar = token.avatar as string;
       }
       return session;
-    },
+    }
+  },
+  events: {
     async signOut({ token }) {
-      // Log del logout
       if (token?.sub) {
-        await logLogout(token.sub as string);
+        await logLogout(token.sub as string)
       }
     }
   }
