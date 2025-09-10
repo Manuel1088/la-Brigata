@@ -487,7 +487,7 @@ export default function BookingsPage() {
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             {/* Aree/Sale (permanente) */}
-            <div className="bg-white p-4 rounded-lg shadow mb-6">
+            <div className="bg-white p-4 rounded-lg shadow mb-6 w-full md:w-1/2 mx-auto">
               <div className="relative mb-2">
                 <div className="text-sm font-medium text-gray-700 text-center">Sale</div>
                 <div className="absolute right-0 top-0 flex items-center gap-2">
