@@ -373,10 +373,10 @@ export default function BookingsPage() {
       filtered = filtered.filter(booking => booking.status === filterStatus)
     }
 
-    // Filtro per area selezionata (mock: quando collegheremo tavoli->area, filtreremo su tableNumber/areaId)
-    if (selectedAreaId !== 'all') {
-      // Per ora non esiste relazione booking->area, quindi non applichiamo davvero il filtro sui dati mock.
-      // Manteniamo la selezione per UI.
+    // Filtro per sala selezionata: considera solo prenotazioni con tavolo della sala corrente
+    if (selectedAreaId) {
+      const tableSet = new Set(floorTables.map(t => t.tableNumber))
+      filtered = filtered.filter(b => b.tableNumber !== null && tableSet.has(b.tableNumber as number))
     }
 
     return filtered
