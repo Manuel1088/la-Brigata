@@ -1183,17 +1183,17 @@ export default function BookingsPage() {
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-4 text-sm text-gray-600">
-                                  <div><span className="font-medium">Ora:</span> {formatTime(booking.time)}</div>
-                                  <div className="text-center"><span className="font-medium">Persone:</span> {booking.partySize}</div>
-                                  <div className="text-center"><span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}</div>
+                                <div className="flex items-center gap-4 text-sm text-gray-600 w-full">
+                                  <div className=""><span className="font-medium">Ora:</span> {formatTime(booking.time)}</div>
+                                  <div className="flex-1 text-center"><span className="font-medium">Persone:</span> {booking.partySize}</div>
+                                  <div className="flex-1 text-center"><span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}</div>
                                 </div>
                               </div>
                               <div className="mt-2 flex items-start justify-between text-sm text-gray-600">
                                 <div className="bg-gray-50 rounded px-2 py-1">
                                   <span className="font-semibold">Note:</span> {((booking.notes || '').trim()) ? booking.notes : '—'}
                                 </div>
-                                <div className="flex flex-col items-end gap-2">
+                                <div className="flex items-center gap-2">
                                   {booking.status !== 'confirmed' && (
                                     <button
                                       onClick={() => updateBookingStatus(booking.id, 'confirmed')}
