@@ -1176,15 +1176,12 @@ export default function BookingsPage() {
                             </div>
                           ) : (
                             <>
-                              <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                                <div>
-                                  <span className="font-medium">Ora:</span> {formatTime(booking.time)}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Persone:</span> {booking.partySize}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}
+                              <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                                <div className="text-lg font-medium text-gray-900">{booking.customerName}</div>
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                  <div><span className="font-medium">Ora:</span> {formatTime(booking.time)}</div>
+                                  <div><span className="font-medium">Persone:</span> {booking.partySize}</div>
+                                  <div><span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}</div>
                                 </div>
                               </div>
                               {booking.notes && (
