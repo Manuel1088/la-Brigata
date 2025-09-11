@@ -72,6 +72,7 @@ export default function BookingsPage() {
   const [floorAddForm, setFloorAddForm] = useState<{ tableNumber: string; seats: string }>({ tableNumber: '', seats: '' })
   const [tableModalTab, setTableModalTab] = useState<'lista' | 'piano'>('lista')
   const [isLayoutEdit, setIsLayoutEdit] = useState<boolean>(false)
+  const [passantiWeekOffset, setPassantiWeekOffset] = useState<number>(0)
   
 
   // Form data per nuova prenotazione
@@ -675,10 +676,12 @@ export default function BookingsPage() {
                       const ref = calSelectedDate ? new Date(calSelectedDate) : new Date()
                       const lastYearSameDate = new Date(ref)
                       lastYearSameDate.setFullYear(ref.getFullYear() - 1)
-                      const weekMonday = getMonday(lastYearSameDate)
-                      const isoWeek = getISOWeekNumber(lastYearSameDate)
+                      const baseMonday = getMonday(lastYearSameDate)
+                      const weekMonday = new Date(baseMonday)
+                      weekMonday.setDate(baseMonday.getDate() + passantiWeekOffset * 7)
+                      const isoWeek = getISOWeekNumber(weekMonday)
 
-                      const dayLabels = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+                      const dayLabels = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
                       const daily = Array.from({ length: 7 }).map((_, i) => {
                         const d = new Date(weekMonday)
                         d.setDate(weekMonday.getDate() + i)
@@ -697,17 +700,41 @@ export default function BookingsPage() {
 
                       return (
                         <div className="mt-3 border-t border-gray-200 pt-2">
-                          <div className="text-[11px] text-gray-500 text-center mb-2">Anno scorso — Settimana {isoWeek}</div>
-                          <div className="space-y-1 text-[10px] text-gray-700">
+                          <div className="text-base font-medium text-gray-900 text-center mb-2">Anno scorso — Settimana {isoWeek}</div>
+                          <div className="space-y-1 text-xs text-gray-700">
                             {daily.map((v, i) => (
                               <div key={i} className="flex items-center justify-between">
-                                <div className="font-semibold">{dayLabels[i]}</div>
+                                <div className="font-semibold text-sm">{dayLabels[i]}</div>
                                 <div className="flex items-center gap-4">
-                                  <span>T: {v.tablesCount}</span>
-                                  <span>C: {v.coversCount}</span>
+                                  <span>Tavoli: {v.tablesCount}</span>
+                                  <span>Coperti: {v.coversCount}</span>
                                 </div>
                               </div>
                             ))}
+                            <div className="flex items-center justify-center gap-2 mt-2">
+                              <button
+                                onClick={() => setPassantiWeekOffset(o => o - 1)}
+                                className="px-3 py-1 rounded border text-xs hover:bg-gray-50"
+                                aria-label="Settimana precedente"
+                                title="Settimana precedente"
+                              >
+                                ←
+                              </button>
+                              <button
+                                onClick={() => setPassantiWeekOffset(0)}
+                                className="text-[11px] text-blue-700 hover:text-blue-900"
+                              >
+                                Oggi
+                              </button>
+                              <button
+                                onClick={() => setPassantiWeekOffset(o => o + 1)}
+                                className="px-3 py-1 rounded border text-xs hover:bg-gray-50"
+                                aria-label="Settimana successiva"
+                                title="Settimana successiva"
+                              >
+                                →
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )
