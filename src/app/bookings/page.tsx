@@ -583,7 +583,7 @@ export default function BookingsPage() {
                         <span className="font-semibold text-gray-900">Tavolo Passanti</span>
                       </div>
                       <button
-                        onClick={() => setShowPassantiStats(v => !v)}
+                        onClick={() => { setPassantiWeekOffset(0); setShowPassantiStats(v => !v) }}
                         className="absolute right-0 top-0 h-6 w-6 flex items-center justify-center text-gray-600 hover:text-gray-800"
                         title="Statistiche"
                       >
@@ -685,7 +685,7 @@ export default function BookingsPage() {
                         return 1 + Math.round((target.getTime() - firstThursday.getTime()) / (7 * 24 * 3600 * 1000))
                       }
 
-                      const ref = calSelectedDate ? new Date(calSelectedDate) : new Date()
+                      const ref = new Date()
                       const lastYearSameDate = new Date(ref)
                       lastYearSameDate.setFullYear(ref.getFullYear() - 1)
                       const baseMonday = getMonday(lastYearSameDate)
@@ -694,7 +694,7 @@ export default function BookingsPage() {
                       const isoWeek = getISOWeekNumber(weekMonday)
 
                       const dayLabels = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
-                      const refToday = calSelectedDate ? new Date(calSelectedDate) : new Date()
+                      const refToday = new Date()
                       const refWeekdayIdx = (refToday.getDay() + 6) % 7 // Lunedì=0
                       const daily = Array.from({ length: 7 }).map((_, i) => {
                         const d = new Date(weekMonday)
