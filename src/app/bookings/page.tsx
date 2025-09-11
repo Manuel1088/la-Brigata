@@ -93,7 +93,6 @@ export default function BookingsPage() {
 
   // Carica dati
   useEffect(() => {
-    loadBookings()
     loadTables()
     // Carica aree da Impostazioni e ascolta aggiornamenti
     const loadAreas = () => {
@@ -108,6 +107,35 @@ export default function BookingsPage() {
     window.addEventListener('booking_areas_updated', handler)
     return () => window.removeEventListener('booking_areas_updated', handler)
   }, [])
+
+  // Storage helpers per prenotazioni per Sala
+  const BOOKINGS_STORAGE_PREFIX = 'bookings_v1_'
+  const loadBookingsForArea = (areaId: string): Booking[] => {
+    try {
+      const raw = localStorage.getItem(`${BOOKINGS_STORAGE_PREFIX}${areaId}`)
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  }
+  const saveBookingsForArea = (areaId: string, list: Booking[]) => {
+    try { localStorage.setItem(`${BOOKINGS_STORAGE_PREFIX}${areaId}`, JSON.stringify(list)) } catch {}
+    try { window.dispatchEvent(new CustomEvent('bookings_updated')) } catch {}
+  }
+
+  // Ricarica prenotazioni quando cambia Sala
+  useEffect(() => {
+    if (!selectedAreaId) return
+    const list = loadBookingsForArea(selectedAreaId)
+    setBookings(list)
+  }, [selectedAreaId])
+
+  // Ascolta aggiornamenti esterni
+  useEffect(() => {
+    const handler = () => { if (selectedAreaId) setBookings(loadBookingsForArea(selectedAreaId)) }
+    window.addEventListener('bookings_updated', handler)
+    return () => window.removeEventListener('bookings_updated', handler)
+  }, [selectedAreaId])
 
   const loadFloorTablesFor = (areaId: string) => {
     try {
@@ -199,59 +227,7 @@ export default function BookingsPage() {
     try { localStorage.setItem(`walkins_${selectedAreaId}_${calSelectedDate}`, JSON.stringify(next)) } catch {}
   }
 
-  const loadBookings = () => {
-    // Dati mock per demo - in produzione verranno caricati dal database
-    setBookings([
-      {
-        id: '1',
-        customerName: 'Rossi',
-        customerPhone: '+39 123 456 7890',
-        date: '2024-01-15',
-        time: '19:30',
-        partySize: 4,
-        tableNumber: 5,
-        status: 'confirmed',
-        notes: 'Anniversario di matrimonio',
-        createdAt: '2024-01-10T10:00:00Z'
-      },
-      {
-        id: '2',
-        customerName: 'Bianchi',
-        customerPhone: '+39 098 765 4321',
-        date: '2024-01-15',
-        time: '20:00',
-        partySize: 2,
-        tableNumber: 3,
-        status: 'confirmed',
-        notes: '',
-        createdAt: '2024-01-12T14:30:00Z'
-      },
-      {
-        id: '3',
-        customerName: 'Verdi',
-        customerPhone: '+39 555 123 4567',
-        date: '2024-01-16',
-        time: '19:00',
-        partySize: 6,
-        tableNumber: 8,
-        status: 'pending',
-        notes: 'Cena di lavoro',
-        createdAt: '2024-01-14T16:45:00Z'
-      },
-      {
-        id: '4',
-        customerName: 'Neri',
-        customerPhone: '+39 333 987 6543',
-        date: '2024-01-16',
-        time: '20:30',
-        partySize: 3,
-        tableNumber: null,
-        status: 'waiting',
-        notes: 'In attesa di tavolo libero',
-        createdAt: '2024-01-15T18:20:00Z'
-      }
-    ])
-  }
+  // (mock disabilitato: si usa storage per persistenza)
 
   const loadTables = () => {
     // Dati mock per demo - in produzione verranno caricati dal database
@@ -325,7 +301,9 @@ export default function BookingsPage() {
       createdAt: new Date().toISOString()
     }
     
-    setBookings([newBooking, ...bookings])
+    const next = [newBooking, ...bookings]
+    setBookings(next)
+    if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
     // Imposta anche la data selezionata nel calendario corrente
     if (bookingForm.date) setCalSelectedDate(bookingForm.date)
     setBookingForm({
@@ -355,9 +333,11 @@ export default function BookingsPage() {
   }
 
   const updateBookingStatus = (bookingId: string, newStatus: string) => {
-    setBookings(bookings.map(booking => 
+    const next = bookings.map(booking => 
       booking.id === bookingId ? { ...booking, status: newStatus } : booking
-    ))
+    )
+    setBookings(next)
+    if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
   }
 
   const getFilteredBookings = () => {
@@ -651,7 +631,11 @@ export default function BookingsPage() {
                               notes: `Passanti${area ? ' - ' + area.name : ''} (${segment === 'dinner' ? 'Cena' : 'Pranzo'})`,
                               createdAt: new Date().toISOString()
                             }
-                            setBookings(prev => [newBooking, ...prev])
+                            setBookings(prev => {
+                              const next = [newBooking, ...prev]
+                              if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
+                              return next
+                            })
                             // Dopo registrazione, resetta il valore coperti a 1
                             if (segment === 'dinner') {
                               saveCalWalkins({ lunch: calWalkins.lunch, dinner: 1 })
