@@ -531,6 +531,12 @@ export default function BookingsPage() {
               </div>
               <div className="flex items-center space-x-4">
                 <button
+                  onClick={() => router.push('/customers')}
+                  className="bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition h-12 w-36 flex items-center justify-center"
+                >
+                  👤 Clienti
+                </button>
+                <button
                   onClick={() => setShowAreaSelectModal(true)}
                   className="bg-green-600 text-white rounded-lg hover:bg-green-700 transition h-12 w-36 flex items-center justify-center"
                 >
