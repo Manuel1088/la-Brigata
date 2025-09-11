@@ -445,7 +445,8 @@ export default function BookingsPage() {
     // Filtro per sala selezionata: considera solo prenotazioni con tavolo della sala corrente
     if (selectedAreaId) {
       const tableSet = new Set(floorTables.map(t => t.tableNumber))
-      filtered = filtered.filter(b => b.tableNumber !== null && tableSet.has(b.tableNumber as number))
+      // Mostra anche prenotazioni senza tavolo assegnato (appartengono comunque alla sala corrente perché salvate nello storage per area)
+      filtered = filtered.filter(b => b.tableNumber === null || tableSet.has((b.tableNumber ?? -1) as number))
     }
 
     return filtered
@@ -990,9 +991,9 @@ export default function BookingsPage() {
                         if (b.date !== dayISO) return false
                         if (b.status === 'cancelled') return false
                         if (!selectedAreaId) return true
-                        // Considera solo i tavoli appartenenti alla sala selezionata
+                        // Considera solo i tavoli appartenenti alla sala selezionata, ma includi anche prenotazioni senza tavolo
                         const num = b.tableNumber ?? -1
-                        return tableSet.has(num)
+                        return b.tableNumber === null || tableSet.has(num)
                       })
                       let lunchGuests = 0, dinnerGuests = 0
                       dayBookings.forEach(b => {
