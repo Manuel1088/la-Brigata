@@ -575,7 +575,7 @@ export default function BookingsPage() {
 
               <div>
                 {calSelectedDate && (
-                  <div className="bg-white p-4 rounded-lg shadow h-full">
+                  <div className="bg-white p-4 rounded-lg shadow h-full flex flex-col">
                     <div className="flex items-center justify-center gap-2 mb-3">
                       <span>🚶</span>
                       <span className="font-semibold text-gray-900">Tavolo Passanti</span>
@@ -711,34 +711,34 @@ export default function BookingsPage() {
                                 </div>
                               </div>
                             ))}
-                            <div className="flex items-center justify-center gap-2 mt-2">
-                              <button
-                                onClick={() => setPassantiWeekOffset(o => o - 1)}
-                                className="px-3 py-1 rounded border text-xs hover:bg-gray-50"
-                                aria-label="Settimana precedente"
-                                title="Settimana precedente"
-                              >
-                                ←
-                              </button>
-                              <button
-                                onClick={() => setPassantiWeekOffset(0)}
-                                className="text-[11px] text-blue-700 hover:text-blue-900"
-                              >
-                                Oggi
-                              </button>
-                              <button
-                                onClick={() => setPassantiWeekOffset(o => o + 1)}
-                                className="px-3 py-1 rounded border text-xs hover:bg-gray-50"
-                                aria-label="Settimana successiva"
-                                title="Settimana successiva"
-                              >
-                                →
-                              </button>
-                            </div>
                           </div>
                         </div>
                       )
                     })()}
+                    <div className="mt-auto pt-3 flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => setPassantiWeekOffset(o => o - 1)}
+                        className="px-3 py-1 rounded border text-xs hover:bg-gray-50"
+                        aria-label="Settimana precedente"
+                        title="Settimana precedente"
+                      >
+                        ←
+                      </button>
+                      <button
+                        onClick={() => setPassantiWeekOffset(0)}
+                        className="text-[11px] text-blue-700 hover:text-blue-900"
+                      >
+                        Oggi
+                      </button>
+                      <button
+                        onClick={() => setPassantiWeekOffset(o => o + 1)}
+                        className="px-3 py-1 rounded border text-xs hover:bg-gray-50"
+                        aria-label="Settimana successiva"
+                        title="Settimana successiva"
+                      >
+                        →
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
