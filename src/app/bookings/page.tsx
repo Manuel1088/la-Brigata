@@ -328,7 +328,7 @@ export default function BookingsPage() {
       time: bookingForm.time,
       partySize: parseInt(bookingForm.partySize),
       tableNumber: bookingForm.tableNumber ? parseInt(bookingForm.tableNumber) : null,
-      status: 'confirmed',
+      status: 'pending',
       notes: bookingForm.notes,
       createdAt: new Date().toISOString()
     }
@@ -716,7 +716,7 @@ export default function BookingsPage() {
                               time: defaultTime,
                               partySize: coversFromInput,
                               tableNumber: availableTable ? availableTable.tableNumber : null,
-                              status: 'confirmed',
+                              status: 'pending',
                               notes: `Passanti${area ? ' - ' + area.name : ''} (${segment === 'dinner' ? 'Cena' : 'Pranzo'})`,
                               createdAt: new Date().toISOString()
                             }
