@@ -577,7 +577,7 @@ export default function BookingsPage() {
                   <div className="bg-white p-4 rounded-lg shadow h-full">
                     <div className="flex items-center justify-center gap-2 mb-3">
                       <span>🚶</span>
-                      <span className="font-semibold text-gray-900">Passanti</span>
+                      <span className="font-semibold text-gray-900">Tavolo Passanti</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="text-xs font-bold text-gray-900">Coperti</div>
