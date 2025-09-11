@@ -1349,7 +1349,7 @@ export default function BookingsPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome Cliente
+                      Nominativo Cliente
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <input
