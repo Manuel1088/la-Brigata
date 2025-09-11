@@ -650,6 +650,59 @@ export default function BookingsPage() {
                         </button>
                       </div>
                     </div>
+                    {(() => {
+                      const toISO = (d: Date) => {
+                        const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                        return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
+                      }
+                      const getMonday = (d: Date) => {
+                        const copy = new Date(d)
+                        const day = (copy.getDay() + 6) % 7 // 0 = Monday
+                        copy.setDate(copy.getDate() - day)
+                        copy.setHours(0, 0, 0, 0)
+                        return copy
+                      }
+                      const getSunday = (monday: Date) => {
+                        const s = new Date(monday)
+                        s.setDate(s.getDate() + 6)
+                        s.setHours(23, 59, 59, 999)
+                        return s
+                      }
+                      const getISOWeekNumber = (date: Date) => {
+                        const target = new Date(date.valueOf())
+                        const dayNr = (target.getDay() + 6) % 7
+                        target.setDate(target.getDate() - dayNr + 3)
+                        const firstThursday = new Date(target.getFullYear(), 0, 4)
+                        const firstThursdayDayNr = (firstThursday.getDay() + 6) % 7
+                        firstThursday.setDate(firstThursday.getDate() - firstThursdayDayNr + 3)
+                        return 1 + Math.round((target.getTime() - firstThursday.getTime()) / (7 * 24 * 3600 * 1000))
+                      }
+
+                      const ref = calSelectedDate ? new Date(calSelectedDate) : new Date()
+                      const lastYearSameDate = new Date(ref)
+                      lastYearSameDate.setFullYear(ref.getFullYear() - 1)
+                      const weekMonday = getMonday(lastYearSameDate)
+                      const weekSunday = getSunday(weekMonday)
+                      const startISO = toISO(weekMonday)
+                      const endISO = toISO(weekSunday)
+
+                      const passantiBookings = bookings.filter((b) => {
+                        if (b.status === 'cancelled') return false
+                        if (!b.date || b.date < startISO || b.date > endISO) return false
+                        const name = (b.customerName || '').toLowerCase()
+                        const notes = (b.notes || '').toLowerCase()
+                        return name === 'walk-in' || notes.includes('passanti')
+                      })
+                      const tablesCount = passantiBookings.length
+                      const coversCount = passantiBookings.reduce((sum, b) => sum + (b.partySize || 0), 0)
+                      const isoWeek = getISOWeekNumber(lastYearSameDate)
+
+                      return (
+                        <div className="mt-3 border-t border-gray-200 pt-2 text-xs text-gray-700 text-center">
+                          Anno scorso — Settimana {isoWeek}: Tavoli {tablesCount} • Coperti {coversCount}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
