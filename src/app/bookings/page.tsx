@@ -1094,9 +1094,7 @@ export default function BookingsPage() {
                                 className="px-2 py-1 border border-gray-300 rounded text-sm"
                                 placeholder="Nome cliente"
                               />
-                            ) : (
-                              <h4 className="text-lg font-medium text-gray-900">{booking.customerName}</h4>
-                            )}
+                            ) : null}
                           </div>
                           {isEditing ? (
                             <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
