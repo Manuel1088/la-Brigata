@@ -94,6 +94,21 @@ export default function BookingsPage() {
     seats: ''
   })
 
+  // Reset form Nuova Prenotazione ad ogni apertura
+  useEffect(() => {
+    if (showBookingModal) {
+      setBookingForm({
+        customerName: '',
+        customerPhone: '',
+        date: '',
+        time: '',
+        partySize: '1',
+        tableNumber: '',
+        notes: ''
+      })
+    }
+  }, [showBookingModal])
+
   // Carica dati
   useEffect(() => {
     loadTables()
