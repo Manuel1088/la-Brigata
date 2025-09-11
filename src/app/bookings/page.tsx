@@ -871,7 +871,43 @@ export default function BookingsPage() {
               <div className="px-6 py-4 border-b border-gray-200">
                 <div className="grid grid-cols-3 items-center">
                   <div className="text-sm text-gray-900">
-                    {selectedDate ? formatDate(selectedDate) : ''}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (!selectedDate) return
+                          const d = new Date(selectedDate)
+                          d.setDate(d.getDate() - 1)
+                          const z = (n:number) => (n < 10 ? `0${n}` : `${n}`)
+                          const iso = `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+                          setSelectedDate(iso)
+                          setCalSelectedDate(iso)
+                        }}
+                        className="px-2 py-1 rounded border text-xs hover:bg-gray-50"
+                        aria-label="Giorno precedente"
+                        title="Giorno precedente"
+                      >
+                        ←
+                      </button>
+                      <span className={`${(() => { const t=new Date(); const z=(n:number)=> (n<10?`0${n}`:`${n}`); const today=`${t.getFullYear()}-${z(t.getMonth()+1)}-${z(t.getDate())}`; return selectedDate===today ? 'text-red-600' : 'text-gray-900' })()}`}>
+                        {selectedDate ? formatDate(selectedDate) : ''}
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (!selectedDate) return
+                          const d = new Date(selectedDate)
+                          d.setDate(d.getDate() + 1)
+                          const z = (n:number) => (n < 10 ? `0${n}` : `${n}`)
+                          const iso = `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+                          setSelectedDate(iso)
+                          setCalSelectedDate(iso)
+                        }}
+                        className="px-2 py-1 rounded border text-xs hover:bg-gray-50"
+                        aria-label="Giorno successivo"
+                        title="Giorno successivo"
+                      >
+                        →
+                      </button>
+                    </div>
                   </div>
                   <h3 className="text-lg font-semibold text-center text-gray-900">Prenotazioni</h3>
                   <div className="text-right text-sm text-gray-900">
