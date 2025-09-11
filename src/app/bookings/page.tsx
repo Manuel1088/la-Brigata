@@ -866,6 +866,188 @@ export default function BookingsPage() {
             
 
             
+            {/* Lista Prenotazioni (spostata sopra il Calendario) */}
+            <div className="bg-white rounded-lg shadow mb-6">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="grid grid-cols-3 items-center">
+                  <div className="text-sm text-gray-900">
+                    {selectedDate ? formatDate(selectedDate) : ''}
+                  </div>
+                  <h3 className="text-lg font-semibold text-center text-gray-900">Prenotazioni</h3>
+                  <div className="text-right text-sm text-gray-900">
+                    {(() => {
+                      const total = getFilteredBookings()
+                        .filter(b => b.status !== 'cancelled')
+                        .reduce((sum, b) => sum + b.partySize, 0)
+                      return `Totale coperti: ${total}`
+                    })()}
+                  </div>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-200">
+                {getFilteredBookings().map((booking) => {
+                  const isEditing = editingBookingId === booking.id
+                  return (
+                    <div key={booking.id} className="p-6 hover:bg-gray-50 cursor-pointer" onDoubleClick={() => startEditBooking(booking)}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editingForm.customerName}
+                                onChange={(e) => setEditingForm({ ...editingForm, customerName: e.target.value })}
+                                className="px-2 py-1 border border-gray-300 rounded text-sm"
+                                placeholder="Nome cliente"
+                              />
+                            ) : null}
+                          </div>
+                          {isEditing ? (
+                            <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              <div>
+                                <label className="block text-xs text-gray-700 mb-1">Data</label>
+                                <input
+                                  type="date"
+                                  value={editingForm.date}
+                                  onChange={(e) => setEditingForm({ ...editingForm, date: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-700 mb-1">Ora</label>
+                                <input
+                                  type="time"
+                                  value={editingForm.time}
+                                  onChange={(e) => setEditingForm({ ...editingForm, time: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-700 mb-1">Persone</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={editingForm.partySize}
+                                  onChange={(e) => setEditingForm({ ...editingForm, partySize: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-700 mb-1">Tavolo</label>
+                                <select
+                                  value={editingForm.tableNumber}
+                                  onChange={(e) => setEditingForm({ ...editingForm, tableNumber: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                >
+                                  <option value="">Non assegnato</option>
+                                  {floorTables
+                                    .slice()
+                                    .sort((a,b) => a.tableNumber - b.tableNumber)
+                                    .map((t) => (
+                                      <option key={t.id} value={t.tableNumber}>
+                                        Tavolo {t.tableNumber} ({t.seats} posti)
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
+                              <div className="col-span-2 md:col-span-4">
+                                <label className="block text-xs text-gray-700 mb-1">Telefono</label>
+                                <input
+                                  type="tel"
+                                  value={editingForm.customerPhone}
+                                  onChange={(e) => setEditingForm({ ...editingForm, customerPhone: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div className="col-span-2 md:col-span-4">
+                                <label className="block text-xs text-gray-700 mb-1">Email</label>
+                                <input
+                                  type="email"
+                                  value={editingForm.customerEmail}
+                                  onChange={(e) => setEditingForm({ ...editingForm, customerEmail: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div className="col-span-2 md:col-span-4">
+                                <label className="block text-xs text-gray-700 mb-1">Note</label>
+                                <textarea
+                                  value={editingForm.notes}
+                                  onChange={(e) => setEditingForm({ ...editingForm, notes: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                  rows={2}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="text-lg font-medium text-gray-900">{booking.customerName}</div>
+                                  {booking.status === 'confirmed' && (
+                                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>
+                                      {getStatusText(booking.status)}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                  <div><span className="font-medium">Ora:</span> {formatTime(booking.time)}</div>
+                                  <div><span className="font-medium">Persone:</span> {booking.partySize}</div>
+                                  <div><span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}</div>
+                                </div>
+                              </div>
+                              <div className="mt-2 flex items-start justify-between text-sm text-gray-600">
+                                <div className="bg-gray-50 rounded px-2 py-1">
+                                  <span className="font-semibold">Note:</span> {((booking.notes || '').trim()) ? booking.notes : '—'}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {booking.status !== 'confirmed' && (
+                                    <button
+                                      onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
+                                    >
+                                      Conferma
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => { booking.status !== 'confirmed' ? deleteBooking(booking.id) : updateBookingStatus(booking.id, 'cancelled') }}
+                                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
+                                  >
+                                    Cancella
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex space-x-2" onDoubleClick={(e) => e.stopPropagation()}>
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={confirmEditBooking}
+                                className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
+                              >
+                                Conferma
+                              </button>
+                              <button
+                                onClick={cancelEditBooking}
+                                className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                Annulla
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {getFilteredBookings().length === 0 && (
+                  <div className="p-6 text-center text-gray-500">
+                    Nessuna prenotazione trovata
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Calendario Prenotazioni per Area selezionata */}
             {!!selectedAreaId && (
