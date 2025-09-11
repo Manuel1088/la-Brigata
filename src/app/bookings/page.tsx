@@ -8,6 +8,7 @@ interface Booking {
   id: string
   customerName: string
   customerPhone: string
+  customerEmail?: string
   date: string
   time: string
   partySize: number
@@ -91,6 +92,7 @@ export default function BookingsPage() {
   const [bookingForm, setBookingForm] = useState({
     customerName: '',
     customerPhone: '',
+    customerEmail: '',
     date: '',
     time: '',
     partySize: '1',
@@ -110,6 +112,7 @@ export default function BookingsPage() {
       setBookingForm({
         customerName: '',
         customerPhone: '',
+        customerEmail: '',
         date: '',
         time: '',
         partySize: '1',
@@ -320,6 +323,7 @@ export default function BookingsPage() {
       id: Date.now().toString(),
       customerName: bookingForm.customerName,
       customerPhone: bookingForm.customerPhone,
+      customerEmail: bookingForm.customerEmail || undefined,
       date: bookingForm.date,
       time: bookingForm.time,
       partySize: parseInt(bookingForm.partySize),
@@ -337,6 +341,7 @@ export default function BookingsPage() {
     setBookingForm({
       customerName: '',
       customerPhone: '',
+      customerEmail: '',
       date: '',
       time: '',
       partySize: '',
@@ -1313,6 +1318,17 @@ export default function BookingsPage() {
                       type="tel"
                       value={bookingForm.customerPhone}
                       onChange={(e) => setBookingForm({...bookingForm, customerPhone: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={bookingForm.customerEmail}
+                      onChange={(e) => setBookingForm({...bookingForm, customerEmail: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
