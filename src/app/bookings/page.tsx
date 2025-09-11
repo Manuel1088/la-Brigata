@@ -76,6 +76,7 @@ export default function BookingsPage() {
   const [isLayoutEdit, setIsLayoutEdit] = useState<boolean>(false)
   const [passantiWeekOffset, setPassantiWeekOffset] = useState<number>(0)
   const [showPassantiStats, setShowPassantiStats] = useState<boolean>(false)
+  const [isWalkinSubmitting, setIsWalkinSubmitting] = useState<boolean>(false)
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null)
   const [editingForm, setEditingForm] = useState({
     customerName: '',
@@ -690,49 +691,57 @@ export default function BookingsPage() {
                       <div className="flex justify-end">
                         <button
                           onClick={() => {
-                            const now = new Date()
-                            const hourNow = now.getHours()
-                            const z = (n:number) => (n < 10 ? `0${n}` : `${n}`)
-                            const todayISO = `${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`
-                            const segment = hourNow >= 17 ? 'dinner' : 'lunch'
-                            const defaultTime = segment === 'dinner' ? '20:00' : '13:00'
-                            // Usa il numero inserito nel riquadro Coperti come numero di coperti del nuovo tavolo
-                            const coversFromInput = Math.max(1, (segment === 'dinner' ? calWalkins.dinner : calWalkins.lunch) || 0)
-                            const area = areas.find(a => a.id === selectedAreaId)
-                            // Trova primo tavolo libero della sala selezionata per oggi nel segmento
-                            const parseH = (t:string) => parseInt((t||'0').split(':')[0]||'0',10)
-                            const takenNumbers = new Set(
-                              bookings
-                                .filter(b => b.date === todayISO && ((segment === 'dinner' && (parseH(b.time) >= 18)) || (segment === 'lunch' && (parseH(b.time) >= 11 && parseH(b.time) < 16))))
-                                .map(b => b.tableNumber)
-                                .filter(n => n !== null)
-                            ) as Set<number>
-                            const availableTable = floorTables.find(t => !takenNumbers.has(t.tableNumber))
-                            const newBooking = {
-                              id: Date.now().toString(),
-                              customerName: 'Walk-in',
-                              customerPhone: '',
-                              date: todayISO,
-                              time: defaultTime,
-                              partySize: coversFromInput,
-                              tableNumber: availableTable ? availableTable.tableNumber : null,
-                              status: 'pending',
-                              notes: `Passanti${area ? ' - ' + area.name : ''} (${segment === 'dinner' ? 'Cena' : 'Pranzo'})`,
-                              createdAt: new Date().toISOString()
-                            }
-                            setBookings(prev => {
-                              const next = [newBooking, ...prev]
-                              if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
-                              return next
-                            })
-                            // Dopo registrazione, resetta il valore coperti a 1
-                            if (segment === 'dinner') {
-                              saveCalWalkins({ lunch: calWalkins.lunch, dinner: 1 })
-                            } else {
-                              saveCalWalkins({ lunch: 1, dinner: calWalkins.dinner })
+                            if (isWalkinSubmitting) return
+                            setIsWalkinSubmitting(true)
+                            try {
+                              const now = new Date()
+                              const hourNow = now.getHours()
+                              const z = (n:number) => (n < 10 ? `0${n}` : `${n}`)
+                              const todayISO = `${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`
+                              const segment = hourNow >= 17 ? 'dinner' : 'lunch'
+                              const defaultTime = segment === 'dinner' ? '20:00' : '13:00'
+                              // Usa il numero inserito nel riquadro Coperti come numero di coperti del nuovo tavolo
+                              const coversFromInput = Math.max(1, (segment === 'dinner' ? calWalkins.dinner : calWalkins.lunch) || 0)
+                              const area = areas.find(a => a.id === selectedAreaId)
+                              // Trova primo tavolo libero della sala selezionata per oggi nel segmento
+                              const parseH = (t:string) => parseInt((t||'0').split(':')[0]||'0',10)
+                              const takenNumbers = new Set(
+                                bookings
+                                  .filter(b => b.date === todayISO && ((segment === 'dinner' && (parseH(b.time) >= 18)) || (segment === 'lunch' && (parseH(b.time) >= 11 && parseH(b.time) < 16))))
+                                  .map(b => b.tableNumber)
+                                  .filter(n => n !== null)
+                              ) as Set<number>
+                              const availableTable = floorTables.find(t => !takenNumbers.has(t.tableNumber))
+                              const newBooking = {
+                                id: Date.now().toString(),
+                                customerName: 'Walk-in',
+                                customerPhone: '',
+                                date: todayISO,
+                                time: defaultTime,
+                                partySize: coversFromInput,
+                                tableNumber: availableTable ? availableTable.tableNumber : null,
+                                status: 'pending',
+                                notes: `Passanti${area ? ' - ' + area.name : ''} (${segment === 'dinner' ? 'Cena' : 'Pranzo'})`,
+                                createdAt: new Date().toISOString()
+                              }
+                              setBookings(prev => {
+                                const next = [newBooking, ...prev]
+                                if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
+                                return next
+                              })
+                              // Dopo registrazione, resetta il valore coperti a 1
+                              if (segment === 'dinner') {
+                                saveCalWalkins({ lunch: calWalkins.lunch, dinner: 1 })
+                              } else {
+                                saveCalWalkins({ lunch: 1, dinner: calWalkins.dinner })
+                              }
+                            } finally {
+                              // Un piccolo delay per evitare doppi click rapidissimi
+                              setTimeout(() => setIsWalkinSubmitting(false), 200)
                             }
                           }}
-                          className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                          disabled={isWalkinSubmitting}
+                          className={`px-3 py-1 rounded text-sm ${isWalkinSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white`}
                         >
                           Invia
                         </button>
