@@ -368,6 +368,12 @@ export default function BookingsPage() {
     if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
   }
 
+  const deleteBooking = (bookingId: string) => {
+    const next = bookings.filter(b => b.id !== bookingId)
+    setBookings(next)
+    if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
+  }
+
   const startEditBooking = (b: Booking) => {
     setEditingBookingId(b.id)
     setEditingForm({
@@ -1180,7 +1186,7 @@ export default function BookingsPage() {
                                 Modifica
                               </button>
                               <button
-                                onClick={() => updateBookingStatus(booking.id, 'cancelled')}
+                                onClick={() => { booking.status !== 'confirmed' ? deleteBooking(booking.id) : updateBookingStatus(booking.id, 'cancelled') }}
                                 className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
                               >
                                 Cancella
