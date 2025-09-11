@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 export default function CustomersPage() {
   const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [selected, setSelected] = useState<Customer | null>(null)
 
   useEffect(() => {
     const load = () => setCustomers(getCustomers())
@@ -54,7 +55,7 @@ export default function CustomersPage() {
               </thead>
               <tbody>
                 {customers.map(c => (
-                  <tr key={c.id} className="border-b hover:bg-gray-50">
+                  <tr key={c.id} className="border-b hover:bg-gray-50 cursor-pointer" onDoubleClick={() => setSelected(c)}>
                     <td className="py-2 pr-4 text-gray-900">{c.name}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.phone || '-'}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.email || '-'}</td>
@@ -74,6 +75,37 @@ export default function CustomersPage() {
             </table>
           </div>
         </div>
+        {selected && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setSelected(null)}>
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full mx-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">👤 Dettagli Cliente</h3>
+                <button onClick={() => setSelected(null)} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Chiudi</button>
+              </div>
+              <div className="space-y-2 text-sm text-gray-900">
+                <div><span className="font-medium">Nome:</span> {selected.name}</div>
+                <div><span className="font-medium">Telefono:</span> {selected.phone || '-'}</div>
+                <div><span className="font-medium">Email:</span> {selected.email || '-'}</div>
+                <div className="pt-2 border-t">
+                  <div className="font-medium mb-1">Allergie</div>
+                  <div className="text-gray-800">{selected.allergies || '—'}</div>
+                </div>
+                <div>
+                  <div className="font-medium mb-1">Ricorrenze</div>
+                  <div className="text-gray-800">{selected.recurrences || '—'}</div>
+                </div>
+                <div>
+                  <div className="font-medium mb-1">Preferenze</div>
+                  <div className="text-gray-800">{selected.preferences || '—'}</div>
+                </div>
+                <div>
+                  <div className="font-medium mb-1">Note</div>
+                  <div className="text-gray-800">{selected.notes || '—'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

@@ -10,6 +10,10 @@ export interface Customer {
   lastVisitDate: string // ISO yyyy-mm-dd
   lunchCount: number
   dinnerCount: number
+  allergies?: string
+  recurrences?: string
+  preferences?: string
+  notes?: string
 }
 
 export interface BookingLike {
