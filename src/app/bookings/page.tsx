@@ -662,12 +662,6 @@ export default function BookingsPage() {
                         copy.setHours(0, 0, 0, 0)
                         return copy
                       }
-                      const getSunday = (monday: Date) => {
-                        const s = new Date(monday)
-                        s.setDate(s.getDate() + 6)
-                        s.setHours(23, 59, 59, 999)
-                        return s
-                      }
                       const getISOWeekNumber = (date: Date) => {
                         const target = new Date(date.valueOf())
                         const dayNr = (target.getDay() + 6) % 7
@@ -682,24 +676,37 @@ export default function BookingsPage() {
                       const lastYearSameDate = new Date(ref)
                       lastYearSameDate.setFullYear(ref.getFullYear() - 1)
                       const weekMonday = getMonday(lastYearSameDate)
-                      const weekSunday = getSunday(weekMonday)
-                      const startISO = toISO(weekMonday)
-                      const endISO = toISO(weekSunday)
-
-                      const passantiBookings = bookings.filter((b) => {
-                        if (b.status === 'cancelled') return false
-                        if (!b.date || b.date < startISO || b.date > endISO) return false
-                        const name = (b.customerName || '').toLowerCase()
-                        const notes = (b.notes || '').toLowerCase()
-                        return name === 'walk-in' || notes.includes('passanti')
-                      })
-                      const tablesCount = passantiBookings.length
-                      const coversCount = passantiBookings.reduce((sum, b) => sum + (b.partySize || 0), 0)
                       const isoWeek = getISOWeekNumber(lastYearSameDate)
 
+                      const dayLabels = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+                      const daily = Array.from({ length: 7 }).map((_, i) => {
+                        const d = new Date(weekMonday)
+                        d.setDate(weekMonday.getDate() + i)
+                        const iso = toISO(d)
+                        const passantiBookings = bookings.filter((b) => {
+                          if (b.status === 'cancelled') return false
+                          if (b.date !== iso) return false
+                          const name = (b.customerName || '').toLowerCase()
+                          const notes = (b.notes || '').toLowerCase()
+                          return name === 'walk-in' || notes.includes('passanti')
+                        })
+                        const tablesCount = passantiBookings.length
+                        const coversCount = passantiBookings.reduce((sum, b) => sum + (b.partySize || 0), 0)
+                        return { tablesCount, coversCount }
+                      })
+
                       return (
-                        <div className="mt-3 border-t border-gray-200 pt-2 text-xs text-gray-700 text-center">
-                          Anno scorso — Settimana {isoWeek}: Tavoli {tablesCount} • Coperti {coversCount}
+                        <div className="mt-3 border-t border-gray-200 pt-2">
+                          <div className="text-[11px] text-gray-500 text-center mb-2">Anno scorso — Settimana {isoWeek}</div>
+                          <div className="grid grid-cols-7 gap-1 text-[10px] text-gray-700">
+                            {daily.map((v, i) => (
+                              <div key={i} className="text-center">
+                                <div className="font-semibold">{dayLabels[i]}</div>
+                                <div>T: {v.tablesCount}</div>
+                                <div>C: {v.coversCount}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )
                     })()}
