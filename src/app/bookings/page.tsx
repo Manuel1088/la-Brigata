@@ -1057,7 +1057,7 @@ export default function BookingsPage() {
                       const total = getFilteredBookings()
                         .filter(b => b.status !== 'cancelled')
                         .reduce((sum, b) => sum + b.partySize, 0)
-                      return total
+                      return `Totale coperti: ${total}`
                     })()}
                   </div>
                 </div>
