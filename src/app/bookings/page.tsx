@@ -590,9 +590,9 @@ export default function BookingsPage() {
                         📈
                       </button>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-bold text-gray-900">Coperti</div>
-                      <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-3 items-center">
+                      <div className="text-sm font-semibold text-gray-900">Coperti</div>
+                      <div className="flex justify-center">
                         {(() => {
                           const hour = new Date().getHours()
                           const value = hour >= 17 ? calWalkins.dinner : calWalkins.lunch
@@ -611,6 +611,8 @@ export default function BookingsPage() {
                             />
                           )
                         })()}
+                      </div>
+                      <div className="flex justify-end">
                         <button
                           onClick={() => {
                             const now = new Date()
