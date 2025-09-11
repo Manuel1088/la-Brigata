@@ -1163,6 +1163,14 @@ export default function BookingsPage() {
                             </>
                           ) : (
                             <>
+                              {booking.status !== 'confirmed' && (
+                                <button
+                                  onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                  className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
+                                >
+                                  Conferma
+                                </button>
+                              )}
                               <button
                                 onClick={() => startEditBooking(booking)}
                                 className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
@@ -1170,20 +1178,12 @@ export default function BookingsPage() {
                                 Modifica
                               </button>
                               {booking.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
-                                  >
-                                    Conferma
-                                  </button>
-                                  <button
-                                    onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
-                                  >
-                                    Cancella
-                                  </button>
-                                </>
+                                <button
+                                  onClick={() => updateBookingStatus(booking.id, 'cancelled')}
+                                  className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
+                                >
+                                  Cancella
+                                </button>
                               )}
                               {booking.status === 'waiting' && (
                                 <button
