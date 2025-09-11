@@ -698,12 +698,14 @@ export default function BookingsPage() {
                       return (
                         <div className="mt-3 border-t border-gray-200 pt-2">
                           <div className="text-[11px] text-gray-500 text-center mb-2">Anno scorso — Settimana {isoWeek}</div>
-                          <div className="grid grid-cols-7 gap-1 text-[10px] text-gray-700">
+                          <div className="space-y-1 text-[10px] text-gray-700">
                             {daily.map((v, i) => (
-                              <div key={i} className="text-center">
+                              <div key={i} className="flex items-center justify-between">
                                 <div className="font-semibold">{dayLabels[i]}</div>
-                                <div>T: {v.tablesCount}</div>
-                                <div>C: {v.coversCount}</div>
+                                <div className="flex items-center gap-4">
+                                  <span>T: {v.tablesCount}</span>
+                                  <span>C: {v.coversCount}</span>
+                                </div>
                               </div>
                             ))}
                           </div>
