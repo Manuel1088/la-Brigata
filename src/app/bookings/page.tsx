@@ -551,17 +551,18 @@ export default function BookingsPage() {
                             <div className="text-sm text-gray-500">Nessuna sala presente.</div>
                           )}
                           {areas.map(a => (
-                            <div key={a.id} className="flex items-center justify-between p-2 border rounded">
+                            <div key={a.id} className="flex items-center p-2 border rounded gap-2">
+                              <button
+                                onClick={() => removeArea(a.id)}
+                                className="text-red-600 hover:text-red-800 text-sm"
+                                title="Elimina"
+                              >
+                                ✕
+                              </button>
                               <div>
                                 <div className="font-medium text-gray-900">{a.name}</div>
                                 <div className="text-xs text-gray-600">{a.type}</div>
                               </div>
-                              <button
-                                onClick={() => removeArea(a.id)}
-                                className="px-3 py-1 rounded bg-red-600 text-white text-sm hover:bg-red-700"
-                              >
-                                Elimina
-                              </button>
                             </div>
                           ))}
                         </div>
