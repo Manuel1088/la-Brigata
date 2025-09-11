@@ -798,23 +798,23 @@ export default function BookingsPage() {
                         ←
                       </button>
                       <button
-                        onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() + 1, 1))}
-                        className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
-                        aria-label="Mese successivo"
-                        title="Mese successivo"
-                      >
-                        →
-                      </button>
-                      <button
                         onClick={() => {
                           const now = new Date()
                           setCalCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
                           const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
                           setCalSelectedDate(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
                         }}
-                        className="ml-2 text-xs text-blue-700 hover:text-blue-900"
+                        className="text-xs text-blue-700 hover:text-blue-900"
                       >
                         Oggi
+                      </button>
+                      <button
+                        onClick={() => setCalCurrentMonth(new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() + 1, 1))}
+                        className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                        aria-label="Mese successivo"
+                        title="Mese successivo"
+                      >
+                        →
                       </button>
                     </div>
                   </div>
