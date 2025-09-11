@@ -53,7 +53,7 @@ export default function CustomersPage() {
                   <th className="py-2 pr-4">Nome</th>
                   <th className="py-2 pr-4">Telefono</th>
                   <th className="py-2 pr-4">Email</th>
-                  <th className="py-2 pr-4">Totale prenotazioni</th>
+                  <th className="py-2 pr-4">N Prenotazioni</th>
                   <th className="py-2 pr-4">Ultima visita</th>
                   <th className="py-2 pr-4">Pranzi</th>
                   <th className="py-2 pr-4">Cene</th>
