@@ -1189,30 +1189,11 @@ export default function BookingsPage() {
                                   <div><span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}</div>
                                 </div>
                               </div>
-                              {booking.notes ? (
-                                <div className="mt-2 flex items-start justify-between text-sm text-gray-600">
-                                  <div>
-                                    <span className="font-medium">Note:</span> {booking.notes}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {booking.status !== 'confirmed' && (
-                                      <button
-                                        onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                                        className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
-                                      >
-                                        Conferma
-                                      </button>
-                                    )}
-                                    <button
-                                      onClick={() => { booking.status !== 'confirmed' ? deleteBooking(booking.id) : updateBookingStatus(booking.id, 'cancelled') }}
-                                      className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
-                                    >
-                                      Cancella
-                                    </button>
-                                  </div>
+                              <div className="mt-2 flex items-start justify-between text-sm text-gray-600">
+                                <div className="bg-gray-50 rounded px-2 py-1">
+                                  <span className="font-semibold">Note:</span> {((booking.notes || '').trim()) ? booking.notes : '—'}
                                 </div>
-                              ) : (
-                                <div className="mt-2 flex justify-end gap-2">
+                                <div className="flex items-center gap-2">
                                   {booking.status !== 'confirmed' && (
                                     <button
                                       onClick={() => updateBookingStatus(booking.id, 'confirmed')}
@@ -1228,7 +1209,7 @@ export default function BookingsPage() {
                                     Cancella
                                   </button>
                                 </div>
-                              )}
+                              </div>
                             </>
                           )}
                         </div>
