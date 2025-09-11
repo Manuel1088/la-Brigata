@@ -62,6 +62,7 @@ export default function BookingsPage() {
   const [gridCols] = useState<number>(12)
   const [gridRows] = useState<number>(8)
   const cellSizeRef = useRef<HTMLDivElement>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number }>({ dx: 0, dy: 0 })
   const [floorTables, setFloorTables] = useState<TableItem[]>([])
@@ -1082,6 +1083,51 @@ export default function BookingsPage() {
         {showBookingModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="mb-4">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = bookingForm.date ? new Date(bookingForm.date) : new Date()
+                      d.setDate(d.getDate() - 1)
+                      const z = (n:number) => (n < 10 ? `0${n}` : `${n}`)
+                      const next = `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+                      setBookingForm({ ...bookingForm, date: next })
+                    }}
+                    className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                    aria-label="Giorno precedente"
+                    title="Giorno precedente"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.focus()}
+                    className="text-sm font-semibold text-gray-900"
+                    title="Seleziona data"
+                  >
+                    {(() => {
+                      const d = bookingForm.date ? new Date(bookingForm.date) : new Date()
+                      return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                    })()}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = bookingForm.date ? new Date(bookingForm.date) : new Date()
+                      d.setDate(d.getDate() + 1)
+                      const z = (n:number) => (n < 10 ? `0${n}` : `${n}`)
+                      const next = `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+                      setBookingForm({ ...bookingForm, date: next })
+                    }}
+                    className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                    aria-label="Giorno successivo"
+                    title="Giorno successivo"
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
               <h3 className="text-lg font-semibold mb-4">📅 Nuova Prenotazione</h3>
               <form onSubmit={handleBookingSubmit}>
                 <div className="space-y-4">
@@ -1118,6 +1164,7 @@ export default function BookingsPage() {
                         value={bookingForm.date}
                         onChange={(e) => setBookingForm({...bookingForm, date: e.target.value})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        ref={dateInputRef}
                         required
                       />
                     </div>
