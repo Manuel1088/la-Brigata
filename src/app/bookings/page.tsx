@@ -863,38 +863,7 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            {/* Statistiche */}
-            <div className="grid md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-lg shadow">
-                <div className="text-3xl mb-4">📅</div>
-                <h3 className="text-lg font-semibold mb-2">Prenotazioni Oggi</h3>
-                <p className="text-2xl font-bold text-blue-600">{getBookingsForDate(selectedDate).length}</p>
-                <p className="text-sm text-gray-500">{getTotalGuests()} coperti</p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow">
-                <div className="text-3xl mb-4">✅</div>
-                <h3 className="text-lg font-semibold mb-2">Confermate</h3>
-                <p className="text-2xl font-bold text-green-600">{getConfirmedBookings()}</p>
-                <p className="text-sm text-gray-500">Prenotazioni confermate</p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow">
-                <div className="text-3xl mb-4">🪑</div>
-                <h3 className="text-lg font-semibold mb-2">Tavoli Occupati</h3>
-                <p className="text-2xl font-bold text-orange-600">{getOccupiedTables().length}</p>
-                <p className="text-sm text-gray-500">Su {tables.length} totali</p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow">
-                <div className="text-3xl mb-4">📊</div>
-                <h3 className="text-lg font-semibold mb-2">Occupazione</h3>
-                <p className="text-2xl font-bold text-purple-600">
-                  {Math.round((getOccupiedTables().length / tables.length) * 100)}%
-                </p>
-                <p className="text-sm text-gray-500">Tavoli occupati</p>
-              </div>
-            </div>
+            
 
             
 
@@ -1246,6 +1215,41 @@ export default function BookingsPage() {
             </div>
           </div>
         </main>
+
+        {/* Statistiche spostate in fondo */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <div className="grid md:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="text-3xl mb-4">📅</div>
+              <h3 className="text-lg font-semibold mb-2">Prenotazioni Oggi</h3>
+              <p className="text-2xl font-bold text-blue-600">{getBookingsForDate(selectedDate).length}</p>
+              <p className="text-sm text-gray-500">{getTotalGuests()} coperti</p>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="text-3xl mb-4">✅</div>
+              <h3 className="text-lg font-semibold mb-2">Confermate</h3>
+              <p className="text-2xl font-bold text-green-600">{getConfirmedBookings()}</p>
+              <p className="text-sm text-gray-500">Prenotazioni confermate</p>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="text-3xl mb-4">🪑</div>
+              <h3 className="text-lg font-semibold mb-2">Tavoli Occupati</h3>
+              <p className="text-2xl font-bold text-orange-600">{getOccupiedTables().length}</p>
+              <p className="text-sm text-gray-500">Su {tables.length} totali</p>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="text-3xl mb-4">📊</div>
+              <h3 className="text-lg font-semibold mb-2">Occupazione</h3>
+              <p className="text-2xl font-bold text-purple-600">
+                {Math.round((getOccupiedTables().length / tables.length) * 100)}%
+              </p>
+              <p className="text-sm text-gray-500">Tavoli occupati</p>
+            </div>
+          </div>
+        </section>
 
         {/* Modal Nuova Prenotazione */}
         {/* Modal Seleziona Sala per nuova prenotazione */}
