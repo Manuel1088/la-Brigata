@@ -81,6 +81,7 @@ export default function BookingsPage() {
   const [editingForm, setEditingForm] = useState({
     customerName: '',
     customerPhone: '',
+    customerEmail: '',
     date: '',
     time: '',
     partySize: '',
@@ -385,6 +386,7 @@ export default function BookingsPage() {
     setEditingForm({
       customerName: b.customerName || '',
       customerPhone: b.customerPhone || '',
+      customerEmail: b.customerEmail || '',
       date: b.date || '',
       time: b.time || '',
       partySize: String(b.partySize || ''),
@@ -395,7 +397,7 @@ export default function BookingsPage() {
 
   const cancelEditBooking = () => {
     setEditingBookingId(null)
-    setEditingForm({ customerName: '', customerPhone: '', date: '', time: '', partySize: '', tableNumber: '', notes: '' })
+    setEditingForm({ customerName: '', customerPhone: '', customerEmail: '', date: '', time: '', partySize: '', tableNumber: '', notes: '' })
   }
 
   const confirmEditBooking = () => {
@@ -406,6 +408,7 @@ export default function BookingsPage() {
         ...b,
         customerName: editingForm.customerName,
         customerPhone: editingForm.customerPhone,
+        customerEmail: editingForm.customerEmail || undefined,
         date: editingForm.date,
         time: editingForm.time,
         partySize: Math.max(1, parseInt(editingForm.partySize || '1', 10)),
@@ -1050,7 +1053,7 @@ export default function BookingsPage() {
                 {getFilteredBookings().map((booking) => {
                   const isEditing = editingBookingId === booking.id
                   return (
-                    <div key={booking.id} className="p-6 hover:bg-gray-50">
+                    <div key={booking.id} className="p-6 hover:bg-gray-50 cursor-pointer" onDoubleClick={() => startEditBooking(booking)}>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3">
@@ -1129,6 +1132,15 @@ export default function BookingsPage() {
                                 />
                               </div>
                               <div className="col-span-2 md:col-span-4">
+                                <label className="block text-xs text-gray-700 mb-1">Email</label>
+                                <input
+                                  type="email"
+                                  value={editingForm.customerEmail}
+                                  onChange={(e) => setEditingForm({ ...editingForm, customerEmail: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div className="col-span-2 md:col-span-4">
                                 <label className="block text-xs text-gray-700 mb-1">Note</label>
                                 <textarea
                                   value={editingForm.notes}
@@ -1159,6 +1171,11 @@ export default function BookingsPage() {
                                   <span className="font-medium">Telefono:</span> {booking.customerPhone}
                                 </div>
                               )}
+                              {booking.customerEmail && (
+                                <div className="mt-1 text-sm text-gray-600">
+                                  <span className="font-medium">Email:</span> {booking.customerEmail}
+                                </div>
+                              )}
                               {booking.notes && (
                                 <div className="mt-2 text-sm text-gray-600">
                                   <span className="font-medium">Note:</span> {booking.notes}
@@ -1167,7 +1184,7 @@ export default function BookingsPage() {
                             </>
                           )}
                         </div>
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-2" onDoubleClick={(e) => e.stopPropagation()}>
                           {isEditing ? (
                             <>
                               <button
@@ -1193,12 +1210,7 @@ export default function BookingsPage() {
                                   Conferma
                                 </button>
                               )}
-                              <button
-                                onClick={() => startEditBooking(booking)}
-                                className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                Modifica
-                              </button>
+                              
                               <button
                                 onClick={() => { booking.status !== 'confirmed' ? deleteBooking(booking.id) : updateBookingStatus(booking.id, 'cancelled') }}
                                 className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
