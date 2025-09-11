@@ -1177,7 +1177,14 @@ export default function BookingsPage() {
                           ) : (
                             <>
                               <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-                                <div className="text-lg font-medium text-gray-900">{booking.customerName}</div>
+                                <div className="flex items-center gap-2">
+                                  <div className="text-lg font-medium text-gray-900">{booking.customerName}</div>
+                                  {booking.status === 'confirmed' && (
+                                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>
+                                      {getStatusText(booking.status)}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-4 text-sm text-gray-600">
                                   <div><span className="font-medium">Ora:</span> {formatTime(booking.time)}</div>
                                   <div><span className="font-medium">Persone:</span> {booking.partySize}</div>
