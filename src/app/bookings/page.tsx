@@ -718,7 +718,7 @@ export default function BookingsPage() {
                           <div className="space-y-1 text-xs text-gray-700 mt-2">
                             {daily.map((v, i) => (
                               <div key={i} className="flex items-center w-full">
-                                <div className={`font-semibold text-sm w-1/2 ${i === refWeekdayIdx ? 'text-red-600' : ''}`}>{dayLabels[i]}</div>
+                                <div className={`font-semibold text-sm w-1/2 ${passantiWeekOffset === 0 && i === refWeekdayIdx ? 'text-red-600' : ''}`}>{dayLabels[i]}</div>
                                 <div className="w-1/2 flex items-center justify-between">
                                   <span>Tavoli: {v.tablesCount}</span>
                                   <span>Coperti: {v.coversCount}</span>
