@@ -53,7 +53,7 @@ export default function CustomersPage() {
                   <th className="py-2 pr-4">Nome</th>
                   <th className="py-2 pr-4">Telefono</th>
                   <th className="py-2 pr-4">Email</th>
-                  <th className="py-2 pr-4">Coperti totali</th>
+                  <th className="py-2 pr-4">Totale prenotazioni</th>
                   <th className="py-2 pr-4">Ultima visita</th>
                   <th className="py-2 pr-4">Pranzi</th>
                   <th className="py-2 pr-4">Cene</th>
@@ -66,7 +66,7 @@ export default function CustomersPage() {
                     <td className="py-2 pr-4 text-gray-900">{c.name}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.phone || '-'}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.email || '-'}</td>
-                    <td className="py-2 pr-4 text-gray-900">{c.totalGuests}</td>
+                    <td className="py-2 pr-4 text-gray-900">{c.totalBookings}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.lastVisitDate}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.lunchCount}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.dinnerCount}</td>
