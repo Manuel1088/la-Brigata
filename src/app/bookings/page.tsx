@@ -73,6 +73,7 @@ export default function BookingsPage() {
   const [tableModalTab, setTableModalTab] = useState<'lista' | 'piano'>('lista')
   const [isLayoutEdit, setIsLayoutEdit] = useState<boolean>(false)
   const [passantiWeekOffset, setPassantiWeekOffset] = useState<number>(0)
+  const [showPassantiStats, setShowPassantiStats] = useState<boolean>(false)
   
 
   // Form data per nuova prenotazione
@@ -576,9 +577,18 @@ export default function BookingsPage() {
               <div>
                 {calSelectedDate && (
                   <div className="bg-white p-4 rounded-lg shadow h-full flex flex-col">
-                    <div className="flex items-center justify-center gap-2 mb-3">
-                      <span>🚶</span>
-                      <span className="font-semibold text-gray-900">Tavolo Passanti</span>
+                    <div className="relative mb-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <span>🚶</span>
+                        <span className="font-semibold text-gray-900">Tavolo Passanti</span>
+                      </div>
+                      <button
+                        onClick={() => setShowPassantiStats(v => !v)}
+                        className="absolute right-0 top-0 h-6 w-6 flex items-center justify-center text-gray-600 hover:text-gray-800"
+                        title="Statistiche"
+                      >
+                        📈
+                      </button>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="text-xs font-bold text-gray-900">Coperti</div>
@@ -651,7 +661,7 @@ export default function BookingsPage() {
                         </button>
                       </div>
                     </div>
-                    {(() => {
+                    {showPassantiStats && (() => {
                       const toISO = (d: Date) => {
                         const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
                         return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
@@ -715,30 +725,32 @@ export default function BookingsPage() {
                         </div>
                       )
                     })()}
-                    <div className="mt-auto pt-3 flex items-center justify-center gap-3">
-                      <button
-                        onClick={() => setPassantiWeekOffset(o => o - 1)}
-                        className="px-4 py-2 rounded border text-sm hover:bg-gray-50"
-                        aria-label="Settimana precedente"
-                        title="Settimana precedente"
-                      >
-                        ←
-                      </button>
-                      <button
-                        onClick={() => setPassantiWeekOffset(0)}
-                        className="text-sm text-blue-700 hover:text-blue-900 focus:outline-none focus:ring-0"
-                      >
-                        Oggi
-                      </button>
-                      <button
-                        onClick={() => setPassantiWeekOffset(o => o + 1)}
-                        className="px-4 py-2 rounded border text-sm hover:bg-gray-50"
-                        aria-label="Settimana successiva"
-                        title="Settimana successiva"
-                      >
-                        →
-                      </button>
-                    </div>
+                    {showPassantiStats && (
+                      <div className="mt-auto pt-3 flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => setPassantiWeekOffset(o => o - 1)}
+                          className="px-4 py-2 rounded border text-sm hover:bg-gray-50"
+                          aria-label="Settimana precedente"
+                          title="Settimana precedente"
+                        >
+                          ←
+                        </button>
+                        <button
+                          onClick={() => setPassantiWeekOffset(0)}
+                          className="text-sm text-blue-700 hover:text-blue-900 focus:outline-none focus:ring-0"
+                        >
+                          Oggi
+                        </button>
+                        <button
+                          onClick={() => setPassantiWeekOffset(o => o + 1)}
+                          className="px-4 py-2 rounded border text-sm hover:bg-gray-50"
+                          aria-label="Settimana successiva"
+                          title="Settimana successiva"
+                        >
+                          →
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
