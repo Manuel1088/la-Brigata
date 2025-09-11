@@ -726,7 +726,7 @@ export default function BookingsPage() {
                       </button>
                       <button
                         onClick={() => setPassantiWeekOffset(0)}
-                        className="px-3 py-1.5 rounded border text-sm text-blue-700 hover:text-blue-900"
+                        className="text-sm text-blue-700 hover:text-blue-900 focus:outline-none focus:ring-0"
                       >
                         Oggi
                       </button>
