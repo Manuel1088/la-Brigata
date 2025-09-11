@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getCustomers, Customer } from '@/lib/customers'
+import { getCustomers, saveCustomers, Customer } from '@/lib/customers'
 import { useRouter } from 'next/navigation'
 
 export default function CustomersPage() {
   const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selected, setSelected] = useState<Customer | null>(null)
+  const [isEditing, setIsEditing] = useState<boolean>(false)
+  const [editForm, setEditForm] = useState<{ allergies: string; recurrences: string; preferences: string; notes: string }>({ allergies: '', recurrences: '', preferences: '', notes: '' })
 
   useEffect(() => {
     const load = () => setCustomers(getCustomers())
@@ -80,7 +82,31 @@ export default function CustomersPage() {
             <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full mx-4" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-gray-900">👤 Dettagli Cliente</h3>
-                <button onClick={() => setSelected(null)} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Chiudi</button>
+                <div className="flex items-center gap-2">
+                  {!isEditing && (
+                    <button onClick={() => { if (selected) setEditForm({ allergies: selected.allergies || '', recurrences: selected.recurrences || '', preferences: selected.preferences || '', notes: selected.notes || '' }); setIsEditing(true) }} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Modifica</button>
+                  )}
+                  {isEditing && (
+                    <>
+                      <button
+                        onClick={() => {
+                          if (!selected) return
+                          const updated = customers.map(c => c.id === selected.id ? { ...c, ...editForm } : c)
+                          setCustomers(updated)
+                          try { saveCustomers(updated) } catch {}
+                          const sel = updated.find(c => c.id === selected.id) || null
+                          setSelected(sel)
+                          setIsEditing(false)
+                        }}
+                        className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                      >
+                        Salva
+                      </button>
+                      <button onClick={() => { setIsEditing(false); if (selected) setEditForm({ allergies: selected.allergies || '', recurrences: selected.recurrences || '', preferences: selected.preferences || '', notes: selected.notes || '' }) }} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Annulla</button>
+                    </>
+                  )}
+                  <button onClick={() => { setIsEditing(false); setSelected(null) }} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Chiudi</button>
+                </div>
               </div>
               <div className="space-y-2 text-sm text-gray-900">
                 <div><span className="font-medium">Nome:</span> {selected.name}</div>
@@ -88,19 +114,35 @@ export default function CustomersPage() {
                 <div><span className="font-medium">Email:</span> {selected.email || '-'}</div>
                 <div className="pt-2 border-t">
                   <div className="font-medium mb-1">Allergie</div>
-                  <div className="text-gray-800">{selected.allergies || '—'}</div>
+                  {isEditing ? (
+                    <textarea value={editForm.allergies} onChange={(e) => setEditForm({ ...editForm, allergies: e.target.value })} className="w-full px-2 py-1 border border-gray-300 rounded" rows={2} />
+                  ) : (
+                    <div className="text-gray-800">{selected.allergies || '—'}</div>
+                  )}
                 </div>
                 <div>
                   <div className="font-medium mb-1">Ricorrenze</div>
-                  <div className="text-gray-800">{selected.recurrences || '—'}</div>
+                  {isEditing ? (
+                    <textarea value={editForm.recurrences} onChange={(e) => setEditForm({ ...editForm, recurrences: e.target.value })} className="w-full px-2 py-1 border border-gray-300 rounded" rows={2} />
+                  ) : (
+                    <div className="text-gray-800">{selected.recurrences || '—'}</div>
+                  )}
                 </div>
                 <div>
                   <div className="font-medium mb-1">Preferenze</div>
-                  <div className="text-gray-800">{selected.preferences || '—'}</div>
+                  {isEditing ? (
+                    <textarea value={editForm.preferences} onChange={(e) => setEditForm({ ...editForm, preferences: e.target.value })} className="w-full px-2 py-1 border border-gray-300 rounded" rows={2} />
+                  ) : (
+                    <div className="text-gray-800">{selected.preferences || '—'}</div>
+                  )}
                 </div>
                 <div>
                   <div className="font-medium mb-1">Note</div>
-                  <div className="text-gray-800">{selected.notes || '—'}</div>
+                  {isEditing ? (
+                    <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} className="w-full px-2 py-1 border border-gray-300 rounded" rows={2} />
+                  ) : (
+                    <div className="text-gray-800">{selected.notes || '—'}</div>
+                  )}
                 </div>
               </div>
             </div>
