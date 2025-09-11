@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
+import { addOrUpdateCustomerFromBooking } from '@/lib/customers'
 
 interface Booking {
   id: string
@@ -338,6 +339,7 @@ export default function BookingsPage() {
     const next = [newBooking, ...bookings]
     setBookings(next)
     if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
+    try { addOrUpdateCustomerFromBooking(newBooking as any) } catch {}
     // Imposta anche la data selezionata nel calendario corrente
     if (bookingForm.date) setCalSelectedDate(bookingForm.date)
     setBookingForm({
@@ -686,7 +688,7 @@ export default function BookingsPage() {
                                 if (hourNow >= 17) saveCalWalkins({ lunch: calWalkins.lunch, dinner: v })
                                 else saveCalWalkins({ lunch: v, dinner: calWalkins.dinner })
                               }}
-                              className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
+                              className="w-24 px-2 py-1 border border-gray-300 rounded text-right text-gray-900"
                             />
                           )
                         })()}
@@ -732,6 +734,7 @@ export default function BookingsPage() {
                                 if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
                                 return next
                               })
+                              try { addOrUpdateCustomerFromBooking(newBooking as any) } catch {}
                               // Dopo registrazione, resetta il valore coperti a 1
                               if (segment === 'dinner') {
                                 saveCalWalkins({ lunch: calWalkins.lunch, dinner: 1 })
