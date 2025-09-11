@@ -75,6 +75,16 @@ export default function BookingsPage() {
   const [isLayoutEdit, setIsLayoutEdit] = useState<boolean>(false)
   const [passantiWeekOffset, setPassantiWeekOffset] = useState<number>(0)
   const [showPassantiStats, setShowPassantiStats] = useState<boolean>(false)
+  const [editingBookingId, setEditingBookingId] = useState<string | null>(null)
+  const [editingForm, setEditingForm] = useState({
+    customerName: '',
+    customerPhone: '',
+    date: '',
+    time: '',
+    partySize: '',
+    tableNumber: '',
+    notes: ''
+  })
   
 
   // Form data per nuova prenotazione
@@ -356,6 +366,44 @@ export default function BookingsPage() {
     )
     setBookings(next)
     if (selectedAreaId) saveBookingsForArea(selectedAreaId, next)
+  }
+
+  const startEditBooking = (b: Booking) => {
+    setEditingBookingId(b.id)
+    setEditingForm({
+      customerName: b.customerName || '',
+      customerPhone: b.customerPhone || '',
+      date: b.date || '',
+      time: b.time || '',
+      partySize: String(b.partySize || ''),
+      tableNumber: b.tableNumber != null ? String(b.tableNumber) : '',
+      notes: b.notes || ''
+    })
+  }
+
+  const cancelEditBooking = () => {
+    setEditingBookingId(null)
+    setEditingForm({ customerName: '', customerPhone: '', date: '', time: '', partySize: '', tableNumber: '', notes: '' })
+  }
+
+  const confirmEditBooking = () => {
+    if (!editingBookingId) return
+    const updated = bookings.map(b => {
+      if (b.id !== editingBookingId) return b
+      return {
+        ...b,
+        customerName: editingForm.customerName,
+        customerPhone: editingForm.customerPhone,
+        date: editingForm.date,
+        time: editingForm.time,
+        partySize: Math.max(1, parseInt(editingForm.partySize || '1', 10)),
+        tableNumber: editingForm.tableNumber ? parseInt(editingForm.tableNumber, 10) : null,
+        notes: editingForm.notes,
+      }
+    })
+    setBookings(updated)
+    if (selectedAreaId) saveBookingsForArea(selectedAreaId, updated)
+    cancelEditBooking()
   }
 
   const getFilteredBookings = () => {
@@ -979,80 +1027,187 @@ export default function BookingsPage() {
                 <h3 className="text-lg font-semibold">Prenotazioni</h3>
               </div>
               <div className="divide-y divide-gray-200">
-                {getFilteredBookings().map((booking) => (
-                  <div key={booking.id} className="p-6 hover:bg-gray-50">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <h4 className="text-lg font-medium text-gray-900">
-                            {booking.customerName}
-                          </h4>
-                          <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>
-                            {getStatusText(booking.status)}
-                          </span>
+                {getFilteredBookings().map((booking) => {
+                  const isEditing = editingBookingId === booking.id
+                  return (
+                    <div key={booking.id} className="p-6 hover:bg-gray-50">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editingForm.customerName}
+                                onChange={(e) => setEditingForm({ ...editingForm, customerName: e.target.value })}
+                                className="px-2 py-1 border border-gray-300 rounded text-sm"
+                                placeholder="Nome cliente"
+                              />
+                            ) : (
+                              <h4 className="text-lg font-medium text-gray-900">{booking.customerName}</h4>
+                            )}
+                            <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>
+                              {getStatusText(booking.status)}
+                            </span>
+                          </div>
+                          {isEditing ? (
+                            <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              <div>
+                                <label className="block text-xs text-gray-700 mb-1">Data</label>
+                                <input
+                                  type="date"
+                                  value={editingForm.date}
+                                  onChange={(e) => setEditingForm({ ...editingForm, date: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-700 mb-1">Ora</label>
+                                <input
+                                  type="time"
+                                  value={editingForm.time}
+                                  onChange={(e) => setEditingForm({ ...editingForm, time: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-700 mb-1">Persone</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={editingForm.partySize}
+                                  onChange={(e) => setEditingForm({ ...editingForm, partySize: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-700 mb-1">Tavolo</label>
+                                <select
+                                  value={editingForm.tableNumber}
+                                  onChange={(e) => setEditingForm({ ...editingForm, tableNumber: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                >
+                                  <option value="">Non assegnato</option>
+                                  {floorTables
+                                    .slice()
+                                    .sort((a,b) => a.tableNumber - b.tableNumber)
+                                    .map((t) => (
+                                      <option key={t.id} value={t.tableNumber}>
+                                        Tavolo {t.tableNumber} ({t.seats} posti)
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
+                              <div className="col-span-2 md:col-span-4">
+                                <label className="block text-xs text-gray-700 mb-1">Telefono</label>
+                                <input
+                                  type="tel"
+                                  value={editingForm.customerPhone}
+                                  onChange={(e) => setEditingForm({ ...editingForm, customerPhone: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div className="col-span-2 md:col-span-4">
+                                <label className="block text-xs text-gray-700 mb-1">Note</label>
+                                <textarea
+                                  value={editingForm.notes}
+                                  onChange={(e) => setEditingForm({ ...editingForm, notes: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                  rows={2}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                                <div>
+                                  <span className="font-medium">Data:</span> {formatDate(booking.date)}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Ora:</span> {formatTime(booking.time)}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Persone:</span> {booking.partySize}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}
+                                </div>
+                              </div>
+                              {booking.customerPhone && (
+                                <div className="mt-2 text-sm text-gray-600">
+                                  <span className="font-medium">Telefono:</span> {booking.customerPhone}
+                                </div>
+                              )}
+                              {booking.notes && (
+                                <div className="mt-2 text-sm text-gray-600">
+                                  <span className="font-medium">Note:</span> {booking.notes}
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
-                        <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                          <div>
-                            <span className="font-medium">Data:</span> {formatDate(booking.date)}
-                          </div>
-                          <div>
-                            <span className="font-medium">Ora:</span> {formatTime(booking.time)}
-                          </div>
-                          <div>
-                            <span className="font-medium">Persone:</span> {booking.partySize}
-                          </div>
-                          <div>
-                            <span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}
-                          </div>
+                        <div className="flex space-x-2">
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={confirmEditBooking}
+                                className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
+                              >
+                                Conferma
+                              </button>
+                              <button
+                                onClick={cancelEditBooking}
+                                className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                Annulla
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => startEditBooking(booking)}
+                                className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                Modifica
+                              </button>
+                              {booking.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
+                                  >
+                                    Conferma
+                                  </button>
+                                  <button
+                                    onClick={() => updateBookingStatus(booking.id, 'cancelled')}
+                                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
+                                  >
+                                    Cancella
+                                  </button>
+                                </>
+                              )}
+                              {booking.status === 'waiting' && (
+                                <button
+                                  onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                  className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition text-sm"
+                                >
+                                  Assegna Tavolo
+                                </button>
+                              )}
+                              {booking.status === 'confirmed' && (
+                                <button
+                                  onClick={() => updateBookingStatus(booking.id, 'cancelled')}
+                                  className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
+                                >
+                                  Cancella
+                                </button>
+                              )}
+                            </>
+                          )}
                         </div>
-                        {booking.customerPhone && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            <span className="font-medium">Telefono:</span> {booking.customerPhone}
-                          </div>
-                        )}
-                        {booking.notes && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            <span className="font-medium">Note:</span> {booking.notes}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex space-x-2">
-                        {booking.status === 'pending' && (
-                          <>
-                            <button
-                              onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                              className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
-                            >
-                              Conferma
-                            </button>
-                            <button
-                              onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                              className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
-                            >
-                              Cancella
-                            </button>
-                          </>
-                        )}
-                        {booking.status === 'waiting' && (
-                          <button
-                            onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                            className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition text-sm"
-                          >
-                            Assegna Tavolo
-                          </button>
-                        )}
-                        {booking.status === 'confirmed' && (
-                          <button
-                            onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
-                          >
-                            Cancella
-                          </button>
-                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 {getFilteredBookings().length === 0 && (
                   <div className="p-6 text-center text-gray-500">
                     Nessuna prenotazione trovata
