@@ -1097,11 +1097,6 @@ export default function BookingsPage() {
                             ) : (
                               <h4 className="text-lg font-medium text-gray-900">{booking.customerName}</h4>
                             )}
-                            {booking.status === 'confirmed' && (
-                              <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>
-                                {getStatusText(booking.status)}
-                              </span>
-                            )}
                           </div>
                           {isEditing ? (
                             <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -1181,10 +1176,7 @@ export default function BookingsPage() {
                             </div>
                           ) : (
                             <>
-                              <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                                <div>
-                                  <span className="font-medium">Data:</span> {formatDate(booking.date)}
-                                </div>
+                              <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600">
                                 <div>
                                   <span className="font-medium">Ora:</span> {formatTime(booking.time)}
                                 </div>
@@ -1195,11 +1187,6 @@ export default function BookingsPage() {
                                   <span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}
                                 </div>
                               </div>
-                              {booking.customerPhone && (
-                                <div className="mt-2 text-sm text-gray-600">
-                                  <span className="font-medium">Telefono:</span> {booking.customerPhone}
-                                </div>
-                              )}
                               {booking.customerEmail && (
                                 <div className="mt-1 text-sm text-gray-600">
                                   <span className="font-medium">Email:</span> {booking.customerEmail}
