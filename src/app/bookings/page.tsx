@@ -694,6 +694,8 @@ export default function BookingsPage() {
                       const isoWeek = getISOWeekNumber(weekMonday)
 
                       const dayLabels = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
+                      const refToday = calSelectedDate ? new Date(calSelectedDate) : new Date()
+                      const refWeekdayIdx = (refToday.getDay() + 6) % 7 // Lunedì=0
                       const daily = Array.from({ length: 7 }).map((_, i) => {
                         const d = new Date(weekMonday)
                         d.setDate(weekMonday.getDate() + i)
@@ -716,7 +718,7 @@ export default function BookingsPage() {
                           <div className="space-y-1 text-xs text-gray-700 mt-2">
                             {daily.map((v, i) => (
                               <div key={i} className="flex items-center w-full">
-                                <div className="font-semibold text-sm w-1/2">{dayLabels[i]}</div>
+                                <div className={`font-semibold text-sm w-1/2 ${i === refWeekdayIdx ? 'text-red-600' : ''}`}>{dayLabels[i]}</div>
                                 <div className="w-1/2 flex items-center justify-between">
                                   <span>Tavoli: {v.tablesCount}</span>
                                   <span>Coperti: {v.coversCount}</span>
