@@ -551,8 +551,9 @@ export default function BookingsPage() {
                 </button>
                 <button
                   onClick={() => { setTableModalTab('lista'); if (selectedAreaId) loadFloorTablesFor(selectedAreaId); setShowTableModal(true) }}
-                  className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition h-12 w-36 flex items-center justify-center"
+                  className="text-gray-600 hover:text-gray-900 transition text-2xl"
                   title="Gestisci Tavoli"
+                  aria-label="Gestisci Tavoli"
                 >
                   ⚙️
                 </button>
