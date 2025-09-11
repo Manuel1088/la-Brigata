@@ -94,6 +94,8 @@ export default function BookingsPage() {
   // Form data per nuova prenotazione
   const [bookingForm, setBookingForm] = useState({
     customerName: '',
+    customerFirstName: '',
+    customerLastName: '',
     customerPhone: '',
     customerEmail: '',
     date: '',
@@ -114,6 +116,8 @@ export default function BookingsPage() {
     if (showBookingModal) {
       setBookingForm({
         customerName: '',
+        customerFirstName: '',
+        customerLastName: '',
         customerPhone: '',
         customerEmail: '',
         date: '',
@@ -324,7 +328,7 @@ export default function BookingsPage() {
     e.preventDefault()
     const newBooking: Booking = {
       id: Date.now().toString(),
-      customerName: bookingForm.customerName,
+      customerName: ((bookingForm.customerFirstName || '') + ' ' + (bookingForm.customerLastName || '')).trim() || bookingForm.customerName,
       customerPhone: bookingForm.customerPhone,
       customerEmail: bookingForm.customerEmail || undefined,
       date: bookingForm.date,
@@ -344,6 +348,8 @@ export default function BookingsPage() {
     if (bookingForm.date) setCalSelectedDate(bookingForm.date)
     setBookingForm({
       customerName: '',
+      customerFirstName: '',
+      customerLastName: '',
       customerPhone: '',
       customerEmail: '',
       date: '',
@@ -1345,13 +1351,24 @@ export default function BookingsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Nome Cliente
                     </label>
-                    <input
-                      type="text"
-                      value={bookingForm.customerName}
-                      onChange={(e) => setBookingForm({...bookingForm, customerName: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                      required
-                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Nome"
+                        value={bookingForm.customerFirstName}
+                        onChange={(e) => setBookingForm({...bookingForm, customerFirstName: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder="Cognome"
+                        value={bookingForm.customerLastName}
+                        onChange={(e) => setBookingForm({...bookingForm, customerLastName: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        required
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
