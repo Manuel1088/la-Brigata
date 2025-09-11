@@ -884,11 +884,13 @@ export default function BookingsPage() {
                       })
                       const isSelected = calSelectedDate === dayISO
                       const isToday = dayISO === todayISO
-                      const numberCls = isToday
-                        ? 'border border-red-600 text-red-600'
-                        : inMonth
-                          ? 'text-gray-900'
-                          : 'text-gray-400 opacity-50'
+                      const numberCls = isSelected
+                        ? 'bg-blue-600 text-white'
+                        : isToday
+                          ? 'border border-red-600 text-red-600'
+                          : inMonth
+                            ? 'text-gray-900'
+                            : 'text-gray-400 opacity-50'
 
                       return (
                         <div
