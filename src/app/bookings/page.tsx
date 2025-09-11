@@ -1220,9 +1220,9 @@ export default function BookingsPage() {
                           </div>
                           <div className="mt-2 flex justify-center">
                             {(() => {
-                              const hasPending = dayBookings.some(b => b.status === 'pending')
+                              const hasUnconfirmed = dayBookings.some(b => b.status !== 'confirmed' && b.status !== 'cancelled')
                               const allConfirmed = dayBookings.length > 0 && dayBookings.every(b => b.status === 'confirmed')
-                              const color = hasPending ? 'bg-yellow-500' : (allConfirmed ? 'bg-green-500' : '')
+                              const color = hasUnconfirmed ? 'bg-orange-500' : (allConfirmed ? 'bg-green-500' : '')
                               return color ? <span className={`w-2 h-2 rounded-full ${color}`}></span> : null
                             })()}
                           </div>
