@@ -1045,9 +1045,11 @@ export default function BookingsPage() {
                             ) : (
                               <h4 className="text-lg font-medium text-gray-900">{booking.customerName}</h4>
                             )}
-                            <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>
-                              {getStatusText(booking.status)}
-                            </span>
+                            {booking.status === 'confirmed' && (
+                              <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>
+                                {getStatusText(booking.status)}
+                              </span>
+                            )}
                           </div>
                           {isEditing ? (
                             <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -1177,30 +1179,12 @@ export default function BookingsPage() {
                               >
                                 Modifica
                               </button>
-                              {booking.status === 'pending' && (
-                                <button
-                                  onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                                  className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
-                                >
-                                  Cancella
-                                </button>
-                              )}
-                              {booking.status === 'waiting' && (
-                                <button
-                                  onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                                  className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition text-sm"
-                                >
-                                  Assegna Tavolo
-                                </button>
-                              )}
-                              {booking.status === 'confirmed' && (
-                                <button
-                                  onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                                  className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
-                                >
-                                  Cancella
-                                </button>
-                              )}
+                              <button
+                                onClick={() => updateBookingStatus(booking.id, 'cancelled')}
+                                className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
+                              >
+                                Cancella
+                              </button>
                             </>
                           )}
                         </div>
