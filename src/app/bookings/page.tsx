@@ -703,9 +703,9 @@ export default function BookingsPage() {
                           <div className="text-base font-medium text-gray-900 text-center mb-2">Anno scorso — Settimana {isoWeek}</div>
                           <div className="space-y-1 text-xs text-gray-700">
                             {daily.map((v, i) => (
-                              <div key={i} className="flex items-center justify-between">
+                              <div key={i} className="flex items-center gap-6">
                                 <div className="font-semibold text-sm">{dayLabels[i]}</div>
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-6">
                                   <span>Tavoli: {v.tablesCount}</span>
                                   <span>Coperti: {v.coversCount}</span>
                                 </div>
@@ -715,10 +715,10 @@ export default function BookingsPage() {
                         </div>
                       )
                     })()}
-                    <div className="mt-auto pt-3 flex items-center justify-center gap-2">
+                    <div className="mt-auto pt-3 flex items-center justify-center gap-3">
                       <button
                         onClick={() => setPassantiWeekOffset(o => o - 1)}
-                        className="px-3 py-1 rounded border text-xs hover:bg-gray-50"
+                        className="px-4 py-2 rounded border text-sm hover:bg-gray-50"
                         aria-label="Settimana precedente"
                         title="Settimana precedente"
                       >
@@ -726,13 +726,13 @@ export default function BookingsPage() {
                       </button>
                       <button
                         onClick={() => setPassantiWeekOffset(0)}
-                        className="text-[11px] text-blue-700 hover:text-blue-900"
+                        className="px-3 py-1.5 rounded border text-sm text-blue-700 hover:text-blue-900"
                       >
                         Oggi
                       </button>
                       <button
                         onClick={() => setPassantiWeekOffset(o => o + 1)}
-                        className="px-3 py-1 rounded border text-xs hover:bg-gray-50"
+                        className="px-4 py-2 rounded border text-sm hover:bg-gray-50"
                         aria-label="Settimana successiva"
                         title="Settimana successiva"
                       >
