@@ -1047,7 +1047,20 @@ export default function BookingsPage() {
             {/* Lista Prenotazioni */}
             <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold">Prenotazioni</h3>
+                <div className="grid grid-cols-3 items-center">
+                  <div className="text-sm text-gray-900">
+                    {selectedDate ? formatDate(selectedDate) : ''}
+                  </div>
+                  <h3 className="text-lg font-semibold text-center text-gray-900">Prenotazioni</h3>
+                  <div className="text-right text-sm text-gray-900">
+                    {(() => {
+                      const total = getFilteredBookings()
+                        .filter(b => b.status !== 'cancelled')
+                        .reduce((sum, b) => sum + b.partySize, 0)
+                      return total
+                    })()}
+                  </div>
+                </div>
               </div>
               <div className="divide-y divide-gray-200">
                 {getFilteredBookings().map((booking) => {
