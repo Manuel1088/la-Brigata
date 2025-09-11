@@ -1358,7 +1358,6 @@ export default function BookingsPage() {
                         value={bookingForm.customerFirstName}
                         onChange={(e) => setBookingForm({...bookingForm, customerFirstName: e.target.value})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        required
                       />
                       <input
                         type="text"
@@ -1366,7 +1365,6 @@ export default function BookingsPage() {
                         value={bookingForm.customerLastName}
                         onChange={(e) => setBookingForm({...bookingForm, customerLastName: e.target.value})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        required
                       />
                     </div>
                   </div>
