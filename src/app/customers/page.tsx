@@ -22,7 +22,7 @@ export default function CustomersPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/bookings')}
               className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
