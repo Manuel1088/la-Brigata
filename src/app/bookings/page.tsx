@@ -83,7 +83,7 @@ export default function BookingsPage() {
     customerPhone: '',
     date: '',
     time: '',
-    partySize: '',
+    partySize: '1',
     tableNumber: '',
     notes: ''
   })
@@ -1157,19 +1157,6 @@ export default function BookingsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Data
-                      </label>
-                      <input
-                        type="date"
-                        value={bookingForm.date}
-                        onChange={(e) => setBookingForm({...bookingForm, date: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        ref={dateInputRef}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Ora
                       </label>
                       <input
@@ -1178,6 +1165,15 @@ export default function BookingsPage() {
                         onChange={(e) => setBookingForm({...bookingForm, time: e.target.value})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         required
+                      />
+                    </div>
+                    <div className="hidden">
+                      {/* Input data tenuto per showPicker via ref */}
+                      <input
+                        type="date"
+                        value={bookingForm.date}
+                        onChange={(e) => setBookingForm({...bookingForm, date: e.target.value})}
+                        ref={dateInputRef}
                       />
                     </div>
                   </div>
