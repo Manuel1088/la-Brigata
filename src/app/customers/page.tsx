@@ -10,6 +10,11 @@ export default function CustomersPage() {
   const [selected, setSelected] = useState<Customer | null>(null)
   const [isEditing, setIsEditing] = useState<boolean>(false)
   const [editForm, setEditForm] = useState<{ allergies: string; recurrences: string; preferences: string; notes: string }>({ allergies: '', recurrences: '', preferences: '', notes: '' })
+  const deleteCustomer = (id: string) => {
+    const next = customers.filter(c => c.id !== id)
+    setCustomers(next)
+    try { saveCustomers(next) } catch {}
+  }
 
   useEffect(() => {
     const load = () => setCustomers(getCustomers())
@@ -48,11 +53,11 @@ export default function CustomersPage() {
                   <th className="py-2 pr-4">Nome</th>
                   <th className="py-2 pr-4">Telefono</th>
                   <th className="py-2 pr-4">Email</th>
-                  <th className="py-2 pr-4">Totale prenotazioni</th>
                   <th className="py-2 pr-4">Coperti totali</th>
                   <th className="py-2 pr-4">Ultima visita</th>
                   <th className="py-2 pr-4">Pranzi</th>
                   <th className="py-2 pr-4">Cene</th>
+                  <th className="py-2 pr-4"></th>
                 </tr>
               </thead>
               <tbody>
@@ -61,11 +66,13 @@ export default function CustomersPage() {
                     <td className="py-2 pr-4 text-gray-900">{c.name}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.phone || '-'}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.email || '-'}</td>
-                    <td className="py-2 pr-4 text-gray-900">{c.totalBookings}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.totalGuests}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.lastVisitDate}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.lunchCount}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.dinnerCount}</td>
+                    <td className="py-2 pr-0 text-right">
+                      <button onClick={(e) => { e.stopPropagation(); deleteCustomer(c.id) }} className="text-red-600 hover:text-red-800" title="Elimina">✕</button>
+                    </td>
                   </tr>
                 ))}
                 {customers.length === 0 && (
