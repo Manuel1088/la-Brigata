@@ -1,4 +1,4 @@
-'use client'
+"use client"
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -1031,11 +1031,13 @@ export default function BookingsPage() {
                           <div className="flex justify-center">
                             <div className={`w-7 h-7 flex items-center justify-center rounded-full text-sm ${numberCls}`}>{d.getDate()}</div>
                           </div>
-                          <div className="mt-2 flex justify-center gap-1">
-                            {dayBookings.slice(0,4).map(b => {
-                              const color = (dotColorByStatus as any)[b.status] || dotColorByStatus.default
-                              return <span key={b.id} className={`w-1.5 h-1.5 rounded-full ${color}`}></span>
-                            })}
+                          <div className="mt-2 flex justify-center">
+                            {(() => {
+                              const hasPending = dayBookings.some(b => b.status === 'pending')
+                              const allConfirmed = dayBookings.length > 0 && dayBookings.every(b => b.status === 'confirmed')
+                              const color = hasPending ? 'bg-yellow-500' : (allConfirmed ? 'bg-green-500' : '')
+                              return color ? <span className={`w-2 h-2 rounded-full ${color}`}></span> : null
+                            })()}
                           </div>
                           <div className={`mt-1 text-[10px] flex justify-center gap-2 ${inMonth ? 'text-gray-700' : 'text-gray-400 opacity-50'}`}>
                             <span>P: {lunchGuests}</span>
@@ -1183,10 +1185,10 @@ export default function BookingsPage() {
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-4 text-sm text-gray-600 w-full">
-                                  <div className=""><span className="font-medium">Ora:</span> {formatTime(booking.time)}</div>
-                                  <div className="flex-1 text-center"><span className="font-medium">Persone:</span> {booking.partySize}</div>
-                                  <div className="flex-1 text-center"><span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}</div>
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                  <div><span className="font-medium">Ora:</span> {formatTime(booking.time)}</div>
+                                  <div><span className="font-medium">Persone:</span> {booking.partySize}</div>
+                                  <div><span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}</div>
                                 </div>
                               </div>
                               <div className="mt-2 flex items-start justify-between text-sm text-gray-600">
