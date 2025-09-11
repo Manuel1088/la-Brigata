@@ -1187,11 +1187,6 @@ export default function BookingsPage() {
                                   <span className="font-medium">Tavolo:</span> {booking.tableNumber || 'Non assegnato'}
                                 </div>
                               </div>
-                              {booking.customerEmail && (
-                                <div className="mt-1 text-sm text-gray-600">
-                                  <span className="font-medium">Email:</span> {booking.customerEmail}
-                                </div>
-                              )}
                               {booking.notes && (
                                 <div className="mt-2 text-sm text-gray-600">
                                   <span className="font-medium">Note:</span> {booking.notes}
