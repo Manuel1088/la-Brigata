@@ -701,7 +701,7 @@ export default function BookingsPage() {
                       return (
                         <div className="mt-3 border-t border-gray-200 pt-2">
                           <div className="text-base font-medium text-gray-900 text-center mb-2">Anno scorso — Settimana {isoWeek}</div>
-                          <div className="space-y-1 text-xs text-gray-700">
+                          <div className="space-y-1 text-xs text-gray-700 mt-2">
                             {daily.map((v, i) => (
                               <div key={i} className="flex items-center w-full">
                                 <div className="font-semibold text-sm w-1/2">{dayLabels[i]}</div>
@@ -884,13 +884,11 @@ export default function BookingsPage() {
                       })
                       const isSelected = calSelectedDate === dayISO
                       const isToday = dayISO === todayISO
-                      const numberCls = isSelected
-                        ? 'bg-blue-600 text-white'
-                        : isToday
-                          ? 'border border-red-600 text-red-600'
-                          : inMonth
-                            ? 'text-gray-900'
-                            : 'text-gray-400 opacity-50'
+                      const numberCls = isToday
+                        ? 'border border-red-600 text-red-600'
+                        : inMonth
+                          ? 'text-gray-900'
+                          : 'text-gray-400 opacity-50'
 
                       return (
                         <div
