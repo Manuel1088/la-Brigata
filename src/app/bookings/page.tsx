@@ -506,8 +506,8 @@ export default function BookingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="border rounded p-3">
                         <div className="font-medium text-gray-900 mb-2">Aggiungi Sala</div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                          <div className="sm:col-span-2">
+                        <div className="space-y-3">
+                          <div>
                             <label className="block text-xs text-gray-700 mb-1">Nome</label>
                             <input
                               type="text"
@@ -533,7 +533,7 @@ export default function BookingsPage() {
                               <option value="altro">Altro</option>
                             </select>
                           </div>
-                          <div className="sm:col-span-3">
+                          <div>
                             <button
                               onClick={addArea}
                               className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
