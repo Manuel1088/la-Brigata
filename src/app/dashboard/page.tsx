@@ -165,12 +165,14 @@ export default function DashboardPage() {
                   >
                     💰 Mance
                   </button>
-                  <button 
-                    onClick={() => router.push('/bookings')}
-                    className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition flex items-center gap-2"
-                  >
-                    📋 Prenotazioni
-                  </button>
+                  {!isEmployee && (
+                    <button 
+                      onClick={() => router.push('/bookings')}
+                      className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition flex items-center gap-2"
+                    >
+                      📋 Prenotazioni
+                    </button>
+                  )}
                 </div>
 
                 {/* Widget Break-Even per Direttore e Manager */}
