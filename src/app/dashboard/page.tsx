@@ -146,9 +146,6 @@ export default function DashboardPage() {
                   {canManageEmployees() && (
                     <button onClick={() => router.push('/employees')} className="bg-fuchsia-600 text-white px-4 py-3 rounded-lg hover:bg-fuchsia-700 transition">👥 Dipendenti</button>
                   )}
-                  {canAccessAdmin() && (
-                    <button onClick={() => router.push('/admin')} className="bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition">🛡️ Pannello Admin</button>
-                  )}
                   {canViewBreakEven && (
                     <button onClick={() => router.push('/calendar')} className="bg-teal-600 text-white px-4 py-3 rounded-lg hover:bg-teal-700 transition">📆 Calendario Aziendale</button>
                   )}
