@@ -209,14 +209,25 @@ export default function ShiftsPage() {
     return () => window.removeEventListener('employees_updated', reload)
   }, [])
 
-  // Determina reparto utente corrente (match su nome, fallback 'sala')
+  // Determina reparto utente corrente (match su nome, fallback da ruolo)
   useEffect(() => {
-    if (!session?.user?.name) return
+    if (!session?.user) return
     const me = employees.find(e => e.name === session.user?.name)
     if (me?.department) {
       setUserDepartment(me.department)
+      return
     }
-  }, [employees, session?.user?.name])
+    const role = (session.user as any)?.role as string | undefined
+    const upperRole = (role || '').toUpperCase()
+    const roleToDept: Record<string, string> = {
+      HEAD_CHEF: 'cucina',
+      RESPONSABILE_SALA: 'sala',
+      CASSIERE: 'sala'
+    }
+    if (upperRole && roleToDept[upperRole]) {
+      setUserDepartment(roleToDept[upperRole])
+    }
+  }, [employees, session?.user])
 
   // Calcola capacità di gestione
   const canManageAll = useMemo(() => {
