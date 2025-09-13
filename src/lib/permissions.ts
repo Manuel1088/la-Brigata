@@ -337,6 +337,7 @@ PERMISSIONS['customers_manage'] = {
 // Configurazione permessi per ruolo
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   PROPRIETARIO: Object.keys(PERMISSIONS), // Tutti i permessi
+  ADMIN: Object.keys(PERMISSIONS),
   DIRETTORE: [
     'personale_view', 'personale_create', 'personale_edit', 'personale_activate', 'personale_export', 'personale_salary', 'personale_skills',
     'mance_view', 'mance_manage', 'mance_calculate', 'mance_approve', 'mance_history', 'mance_export',

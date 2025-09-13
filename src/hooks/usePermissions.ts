@@ -25,6 +25,7 @@ export function usePermissions() {
   // Funzioni di controllo permessi
   const can = (permission: string): boolean => {
     if (!userRole) return false
+    if (userRole === 'ADMIN' || userRole === 'PROPRIETARIO') return true
     // Role-based + override per utente
     return canAccess(userRole, userLevel, permission) || getUserOverrides().includes(permission)
   }
