@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface Booking {
   id: string
@@ -26,6 +27,7 @@ interface CalendarDay {
 export default function BookingCalendarPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { can } = usePermissions()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([])
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -249,7 +251,7 @@ export default function BookingCalendarPage() {
   }
 
   return (
-    <PermissionGuard permission="turni_manage">
+    <PermissionGuard permission="bookings_view">
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-white shadow">
@@ -475,6 +477,7 @@ export default function BookingCalendarPage() {
                               value={walkins.lunch}
                               onChange={(e) => saveWalkins({ lunch: Math.max(0, parseInt(e.target.value || '0', 10)), dinner: walkins.dinner })}
                               className="w-20 px-2 py-1 border border-gray-300 rounded"
+                              disabled={!can('bookings_manage')}
                             />
                           </div>
                         </div>
@@ -492,6 +495,7 @@ export default function BookingCalendarPage() {
                               value={walkins.dinner}
                               onChange={(e) => saveWalkins({ lunch: walkins.lunch, dinner: Math.max(0, parseInt(e.target.value || '0', 10)) })}
                               className="w-20 px-2 py-1 border border-gray-300 rounded"
+                              disabled={!can('bookings_manage')}
                             />
                           </div>
                         </div>
