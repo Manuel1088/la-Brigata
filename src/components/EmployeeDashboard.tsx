@@ -261,30 +261,7 @@ export default function EmployeeDashboard({ userId, userName }: EmployeeDashboar
         </div>
       </div>
 
-      {/* Azioni Rapide */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-4">⚡ Azioni Rapide</h3>
-        <div className="grid md:grid-cols-3 gap-4">
-          <button 
-            onClick={() => router.push('/leaves/new')}
-            className="bg-indigo-600 text-white px-4 py-3 rounded hover:bg-indigo-700 transition"
-          >
-            🏖️ Richiedi Ferie
-          </button>
-          <button 
-            onClick={() => router.push('/shifts')}
-            className="bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700 transition"
-          >
-            📅 Vedi Turni
-          </button>
-          <button 
-            onClick={() => router.push('/tips')}
-            className="bg-green-600 text-white px-4 py-3 rounded hover:bg-green-700 transition"
-          >
-            💰 Vedi Mance
-          </button>
-        </div>
-      </div>
+      
     </div>
   )
 }
