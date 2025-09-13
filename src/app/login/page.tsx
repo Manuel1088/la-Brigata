@@ -80,8 +80,12 @@ export default function LoginPage() {
           <p className="text-sm text-gray-600 mb-3 font-medium">🔑 Account Demo:</p>
           <div className="space-y-2 text-xs">
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">👑 Proprietario:</span>
+              <span className="text-gray-600">👑 Proprietario (1):</span>
               <span className="text-gray-500">admin@brigata.it / admin123</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">👑 Proprietario (2):</span>
+              <span className="text-gray-500">proprietario@brigata.it / prop123</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">👔 Direttore:</span>
@@ -92,6 +96,14 @@ export default function LoginPage() {
               <span className="text-gray-500">manager@brigata.it / mgr123</span>
             </div>
             <div className="flex justify-between items-center">
+              <span className="text-gray-600">🍽️ Responsabile Sala:</span>
+              <span className="text-gray-500">responsabile@brigata.it / resp123</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">👨‍🍳 Head Chef:</span>
+              <span className="text-gray-500">headchef@brigata.it / chef123</span>
+            </div>
+            <div className="flex justify-between items-center">
               <span className="text-gray-600">💰 Cassiere:</span>
               <span className="text-gray-500">cassiere@brigata.it / cassa123</span>
             </div>
@@ -99,6 +111,9 @@ export default function LoginPage() {
               <span className="text-gray-600">👤 Dipendente:</span>
               <span className="text-gray-500">dipendente@brigata.it / dip123</span>
             </div>
+          </div>
+          <div className="mt-3 text-[11px] text-gray-500">
+            Per ogni dipendente reale puoi accedere con la sua email aziendale (es. <span className="font-mono">nome.cognome@brigata.it</span>) e password <span className="font-mono">demo</span>.
           </div>
         </div>
       </div>
