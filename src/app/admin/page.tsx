@@ -541,6 +541,20 @@ export default function AdminPage() {
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-gray-900">⚙️ Impostazioni Sistema</h2>
                 
+                {/* Collegamento Inquadramenti CCNL */}
+                <div className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
+                  <div>
+                    <div className="text-lg font-semibold text-gray-900">📑 Inquadramenti CCNL</div>
+                    <div className="text-sm text-gray-600">Gestisci livelli e retribuzioni secondo CCNL Turismo.</div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/admin/ccnl')}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Apri CCNL
+                  </button>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Sicurezza */}
                   <div className="bg-white rounded-lg shadow p-6">
