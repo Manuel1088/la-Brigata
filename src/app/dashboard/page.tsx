@@ -130,7 +130,7 @@ export default function DashboardPage() {
                 {/* Azioni Rapide */}
                 <div className="flex flex-wrap justify-center gap-4 mb-8">
                   <button 
-                    onClick={() => router.push('/bookings')}
+                    onClick={() => router.push('/sale')}
                     className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-2"
                   >
                     🏬 Sale
