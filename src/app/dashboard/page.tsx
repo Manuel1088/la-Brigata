@@ -166,6 +166,14 @@ export default function DashboardPage() {
                       📋 Prenotazioni
                     </button>
                   )}
+                  {canAccessAdmin() && (
+                    <button 
+                      onClick={() => router.push('/admin/permissions')}
+                      className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition flex items-center gap-2"
+                    >
+                      🧩 Permessi
+                    </button>
+                  )}
                 </div>
 
                 {/* Widget Break-Even per Direttore e Manager */}
