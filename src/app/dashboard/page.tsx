@@ -22,6 +22,7 @@ export default function DashboardPage() {
     canManageLeaves,
     canViewReports, 
     canAccessAdmin,
+    userRole,
     canCreateEmployee,
     canInsertTips,
     canCreateShift,
@@ -72,6 +73,8 @@ export default function DashboardPage() {
   }, [session?.user?.id])
 
   const isSectionVisible = (section: 'bookings' | 'sale' | 'customers' | 'leaves' | 'shifts' | 'rest' | 'tips' | 'admin'): boolean => {
+    const upperRole = (userRole || '').toString().toUpperCase()
+    if (upperRole === 'ADMIN' || upperRole === 'PROPRIETARIO') return true
     const value = dashboardVisibility?.[section]
     return value === undefined ? true : !!value
   }
