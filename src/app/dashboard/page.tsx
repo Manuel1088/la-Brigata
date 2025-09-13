@@ -137,14 +137,7 @@ export default function DashboardPage() {
                       🏬 Sale
                     </button>
                   )}
-                  {canManageEmployees() && (
-                    <button 
-                      onClick={() => router.push('/employees')}
-                      className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2"
-                    >
-                      👥 Dipendenti
-                    </button>
-                  )}
+                  {/* Pulsante Dipendenti rimosso dalle azioni rapide */}
                   <button 
                     onClick={() => router.push('/shifts')}
                     className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
