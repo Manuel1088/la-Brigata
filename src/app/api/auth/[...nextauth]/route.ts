@@ -27,6 +27,17 @@ const demoAccounts = {
       avatar: '👑'
     } 
   },
+  'proprietario': {
+    password: 'prop123',
+    user: {
+      id: '10',
+      email: 'proprietario@brigata.it',
+      name: 'Proprietario Demo',
+      role: 'PROPRIETARIO',
+      level: 10,
+      avatar: '👑'
+    }
+  },
   'direttore': { 
     password: 'dir123', 
     user: { 
@@ -54,7 +65,7 @@ const demoAccounts = {
     user: {
       id: '7',
       email: 'responsabile@brigata.it',
-      name: 'Rita Responsabile Sala',
+      name: 'Responsabile Sala Demo',
       role: 'RESPONSABILE_SALA',
       level: 7,
       avatar: '🍽️'
@@ -65,7 +76,7 @@ const demoAccounts = {
     user: {
       id: '8',
       email: 'headchef@brigata.it',
-      name: 'Carlo Head Chef',
+      name: 'Head Chef Demo',
       role: 'HEAD_CHEF',
       level: 7,
       avatar: '👨‍🍳'
@@ -120,33 +131,34 @@ const handler = NextAuth({
             return account.user
           }
         }
-        // Verifica account demo per dipendenti esistenti (password universale: demo123)
+
+        // Login demo per ogni dipendente: usa la loro email e password "demo"
         try {
           const employees = getEmployeesFullClient()
-          const emp = employees.find(e => e.email.toLowerCase() === credentials.email.toLowerCase())
-          if (emp && credentials.password === 'demo123') {
-            // Mappa ruolo employee a ruoli del sistema permessi
-            const mapRole = (r: string): keyof typeof roleConfig => {
-              const key = r.toUpperCase()
-              if (key.includes('RESPONSABILE') && key.includes('SALA')) return 'RESPONSABILE_SALA'
-              if (key.includes('CHEF')) return 'HEAD_CHEF'
-              if (key.includes('CASSIERE')) return 'CASSIERE'
-              return 'DIPENDENTE'
+          const found = employees.find(e => e.email.toLowerCase() === credentials.email.toLowerCase())
+          if (found && credentials.password === 'demo') {
+            // Mappa i ruoli dei dipendenti alle categorie della piattaforma
+            const roleMap: Record<string, string> = {
+              EXECUTIVE_CHEF: 'HEAD_CHEF',
+              SOUS_CHEF: 'HEAD_CHEF',
+              CHEF_DE_PARTIE: 'DIPENDENTE',
+              DIPENDENTE_SALA: 'DIPENDENTE',
+              DIPENDENTE_BAR: 'DIPENDENTE'
             }
-            const mapped = mapRole(emp.role)
+            const mappedRole = roleMap[found.role] || 'DIPENDENTE'
             const user = {
-              id: emp.id,
-              email: emp.email,
-              name: emp.name,
-              role: mapped,
-              level: roleConfig[mapped]?.level ?? emp.level ?? 5,
-              avatar: emp.avatar || roleConfig[mapped]?.avatar || '👤'
+              id: `emp-${found.id}`,
+              email: found.email,
+              name: found.name,
+              role: mappedRole,
+              level: found.level || 5,
+              avatar: found.avatar || '👤'
             }
             await logLogin(user.id)
             return user as any
           }
         } catch {}
-
+        
         return null
       }
     })
