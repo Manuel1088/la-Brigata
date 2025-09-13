@@ -426,6 +426,10 @@ export default function BookingsPage() {
     })
     setBookings(updated)
     if (selectedAreaId) saveBookingsForArea(selectedAreaId, updated)
+    try {
+      const justUpdated = updated.find(b => b.id === editingBookingId)
+      if (justUpdated) addOrUpdateCustomerFromBooking(justUpdated as any)
+    } catch {}
     cancelEditBooking()
   }
 
@@ -577,8 +581,8 @@ export default function BookingsPage() {
                     >
                       Modifica
                     </button>
-                  </div>
-                </div>
+              </div>
+              </div>
                 <div className="flex flex-wrap gap-2 justify-center">
                   {areas.map(a => (
                     <button
@@ -593,31 +597,31 @@ export default function BookingsPage() {
                   {areas.length === 0 && (
                     <div className="text-sm text-gray-500 text-center w-full">Nessuna area. Usa “+” per aggiungere.</div>
                   )}
-                </div>
-
+              </div>
+              
                 {showManagePanel && (
                   <div className="mt-4 border-t border-gray-200 pt-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="font-medium text-gray-900">Gestisci Sale</div>
                       <button onClick={() => setShowManagePanel(false)} className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Chiudi</button>
-                    </div>
+              </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="border rounded p-3">
                         <div className="font-medium text-gray-900 mb-2">Aggiungi Sala</div>
                         <div className="space-y-3">
-                          <div>
+                <div>
                             <label className="block text-xs text-gray-700 mb-1">Nome</label>
-                            <input
+                  <input
                               type="text"
                               value={newAreaName}
                               onChange={(e) => setNewAreaName(e.target.value)}
                               placeholder="Es. Mirabelle"
                               className="w-full px-2 py-1 border border-gray-300 rounded"
-                            />
-                          </div>
-                          <div>
+                  />
+                </div>
+                <div>
                             <label className="block text-xs text-gray-700 mb-1">Tipo</label>
-                            <select
+                  <select
                               value={newAreaType}
                               onChange={(e) => setNewAreaType(e.target.value as AreaType)}
                               className="w-full px-2 py-1 border border-gray-300 rounded"
@@ -629,8 +633,8 @@ export default function BookingsPage() {
                               <option value="terrazza">Terrazza</option>
                               <option value="privé">Privé</option>
                               <option value="altro">Altro</option>
-                            </select>
-                          </div>
+                  </select>
+                </div>
                           <div>
                             <button
                               onClick={addArea}
@@ -639,7 +643,7 @@ export default function BookingsPage() {
                             >
                               Aggiungi
                             </button>
-                          </div>
+              </div>
                         </div>
                       </div>
                       <div className="border rounded p-3">
@@ -668,7 +672,7 @@ export default function BookingsPage() {
                     </div>
                   </div>
                 )}
-              </div>
+            </div>
 
               <div>
                 {calSelectedDate && (
@@ -927,9 +931,9 @@ export default function BookingsPage() {
                   const isEditing = editingBookingId === booking.id
                   return (
                     <div key={booking.id} className="p-6 hover:bg-gray-50 cursor-pointer" onDoubleClick={() => startEditBooking(booking)}>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
                             {isEditing ? (
                               <input
                                 type="text"
@@ -939,10 +943,10 @@ export default function BookingsPage() {
                                 placeholder="Nome cliente"
                               />
                             ) : null}
-                          </div>
+                        </div>
                           {isEditing ? (
                             <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              <div>
+                          <div>
                                 <label className="block text-xs text-gray-700 mb-1">Data</label>
                                 <input
                                   type="date"
@@ -950,8 +954,8 @@ export default function BookingsPage() {
                                   onChange={(e) => setEditingForm({ ...editingForm, date: e.target.value })}
                                   className="w-full px-2 py-1 border border-gray-300 rounded"
                                 />
-                              </div>
-                              <div>
+                          </div>
+                          <div>
                                 <label className="block text-xs text-gray-700 mb-1">Ora</label>
                                 <input
                                   type="time"
@@ -959,8 +963,8 @@ export default function BookingsPage() {
                                   onChange={(e) => setEditingForm({ ...editingForm, time: e.target.value })}
                                   className="w-full px-2 py-1 border border-gray-300 rounded"
                                 />
-                              </div>
-                              <div>
+                          </div>
+                          <div>
                                 <label className="block text-xs text-gray-700 mb-1">Persone</label>
                                 <input
                                   type="number"
@@ -969,8 +973,8 @@ export default function BookingsPage() {
                                   onChange={(e) => setEditingForm({ ...editingForm, partySize: e.target.value })}
                                   className="w-full px-2 py-1 border border-gray-300 rounded"
                                 />
-                              </div>
-                              <div>
+                          </div>
+                          <div>
                                 <label className="block text-xs text-gray-700 mb-1">Tavolo</label>
                                 <select
                                   value={editingForm.tableNumber}
@@ -987,7 +991,7 @@ export default function BookingsPage() {
                                       </option>
                                     ))}
                                 </select>
-                              </div>
+                          </div>
                               <div className="col-span-2 md:col-span-4">
                                 <label className="block text-xs text-gray-700 mb-1">Telefono</label>
                                 <input
@@ -996,7 +1000,7 @@ export default function BookingsPage() {
                                   onChange={(e) => setEditingForm({ ...editingForm, customerPhone: e.target.value })}
                                   className="w-full px-2 py-1 border border-gray-300 rounded"
                                 />
-                              </div>
+                        </div>
                               <div className="col-span-2 md:col-span-4">
                                 <label className="block text-xs text-gray-700 mb-1">Email</label>
                                 <input
@@ -1005,7 +1009,7 @@ export default function BookingsPage() {
                                   onChange={(e) => setEditingForm({ ...editingForm, customerEmail: e.target.value })}
                                   className="w-full px-2 py-1 border border-gray-300 rounded"
                                 />
-                              </div>
+                          </div>
                               <div className="col-span-2 md:col-span-4">
                                 <label className="block text-xs text-gray-700 mb-1">Note</label>
                                 <textarea
@@ -1014,8 +1018,8 @@ export default function BookingsPage() {
                                   className="w-full px-2 py-1 border border-gray-300 rounded"
                                   rows={2}
                                 />
-                              </div>
-                            </div>
+                          </div>
+                      </div>
                           ) : (
                             <>
                               <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
@@ -1039,44 +1043,44 @@ export default function BookingsPage() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {booking.status !== 'confirmed' && (
-                                    <button
-                                      onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
-                                    >
-                                      Conferma
-                                    </button>
+                            <button
+                              onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                              className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
+                            >
+                              Conferma
+                            </button>
                                   )}
-                                  <button
+                            <button
                                     onClick={() => { booking.status !== 'confirmed' ? deleteBooking(booking.id) : updateBookingStatus(booking.id, 'cancelled') }}
-                                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
-                                  >
-                                    Cancella
-                                  </button>
+                              className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-sm"
+                            >
+                              Cancella
+                            </button>
                                 </div>
                               </div>
-                            </>
-                          )}
+                          </>
+                        )}
                         </div>
                         <div className="flex space-x-2" onDoubleClick={(e) => e.stopPropagation()}>
                           {isEditing ? (
                             <>
-                              <button
+                          <button
                                 onClick={confirmEditBooking}
                                 className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
-                              >
+                          >
                                 Conferma
-                              </button>
-                              <button
+                          </button>
+                          <button
                                 onClick={cancelEditBooking}
                                 className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
-                              >
+                          >
                                 Annulla
-                              </button>
+                          </button>
                             </>
                           ) : null}
-                        </div>
                       </div>
                     </div>
+                  </div>
                   )
                 })}
                 {getFilteredBookings().length === 0 && (
@@ -1379,12 +1383,12 @@ export default function BookingsPage() {
                       Nominativo Cliente
                     </label>
                     <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="text"
+                    <input
+                      type="text"
                         placeholder="Nome"
                         value={bookingForm.customerFirstName}
                         onChange={(e) => setBookingForm({...bookingForm, customerFirstName: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                       <input
                         type="text"
@@ -1406,17 +1410,17 @@ export default function BookingsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                       Email
-                    </label>
-                    <input
+                      </label>
+                      <input
                       type="email"
                       value={bookingForm.customerEmail}
                       onChange={(e) => setBookingForm({...bookingForm, customerEmail: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1470,8 +1474,8 @@ export default function BookingsPage() {
                           .map((t) => (
                             <option key={t.id} value={t.tableNumber}>
                               Tavolo {t.tableNumber} ({t.seats} posti)
-                            </option>
-                          ))}
+                          </option>
+                        ))}
                         {floorTables.length === 0 && (
                           <option value="" disabled>Nessun tavolo definito per questa sala</option>
                         )}
@@ -1526,9 +1530,9 @@ export default function BookingsPage() {
                     <span>Indietro</span>
                   </button>
                   <h3 className="text-lg font-semibold">🪑 Gestione Tavoli — {areas.find(a => a.id === selectedAreaId)?.name || 'Seleziona una Sala'}</h3>
-                </div>
+                      </div>
                 <button onClick={() => setShowTableModal(false)} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Chiudi</button>
-              </div>
+                    </div>
               {!selectedAreaId ? (
                 <div className="text-sm text-gray-600">Seleziona una Sala nella pagina per gestire la mappa tavoli.</div>
               ) : (
@@ -1543,7 +1547,7 @@ export default function BookingsPage() {
                           className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       )}
-                    </div>
+                </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setTableModalTab('lista')}
@@ -1566,7 +1570,7 @@ export default function BookingsPage() {
                           {isLayoutEdit ? 'Disabilita spostamento' : 'Abilita spostamento'}
                         </button>
                       )}
-                    </div>
+              </div>
                   </div>
                   <div className="mb-3 border-b border-gray-200" />
 
@@ -1574,31 +1578,31 @@ export default function BookingsPage() {
                     <div className="mb-3">
                       {/* Form aggiunta tavolo */}
                       <div className="flex flex-wrap items-end gap-2 mb-3">
-                        <div>
+                  <div>
                           <label className="block text-xs text-gray-700 mb-1">Numero Tavolo</label>
-                          <input
-                            type="number"
+                    <input
+                      type="number"
                             value={floorAddForm.tableNumber}
                             onChange={(e) => setFloorAddForm({ ...floorAddForm, tableNumber: e.target.value })}
                             className="w-28 px-2 py-1 border border-gray-300 rounded"
-                          />
-                        </div>
-                        <div>
+                    />
+                  </div>
+                  <div>
                           <label className="block text-xs text-gray-700 mb-1">Posti</label>
-                          <input
-                            type="number"
+                    <input
+                      type="number"
                             value={floorAddForm.seats}
                             onChange={(e) => setFloorAddForm({ ...floorAddForm, seats: e.target.value })}
                             className="w-24 px-2 py-1 border border-gray-300 rounded"
-                          />
-                        </div>
-                        <button
+                    />
+                  </div>
+                  <button
                           onClick={() => addFloorTable(floorAddForm.tableNumber, floorAddForm.seats, setFloorAddForm)}
                           className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
-                        >
-                          Aggiungi Tavolo
-                        </button>
-                      </div>
+                  >
+                    Aggiungi Tavolo
+                  </button>
+                </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {floorTables.length === 0 && (

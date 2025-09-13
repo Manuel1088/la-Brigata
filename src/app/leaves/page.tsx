@@ -104,7 +104,7 @@ export default function LeavesPage() {
                   <span>Indietro</span>
                 </button>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  🏖️ Gestione Ferie e Permessi
+                  🏖️ Gestione Richieste
                 </h1>
               </div>
               <div className="flex items-center space-x-4">

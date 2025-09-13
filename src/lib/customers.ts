@@ -25,6 +25,7 @@ export interface BookingLike {
   time: string
   partySize: number
   status: string
+  notes?: string
 }
 
 const STORAGE_KEY = 'customers_v1'
@@ -63,6 +64,20 @@ export const addOrUpdateCustomerFromBooking = (b: BookingLike) => {
   const hour = parseInt((b.time || '0').split(':')[0] || '0', 10)
   const lunch = hour >= 11 && hour < 16
 
+  const note = (b.notes || '').trim()
+  const lowered = note.toLowerCase()
+  const allergyKeywords = ['allergia', 'allergie', 'celiaco', 'celiachia', 'intolleranza', 'intolleranze']
+  const containsAllergy = allergyKeywords.some(k => lowered.includes(k))
+
+  const mergeText = (a?: string, b?: string) => {
+    const left = (a || '').trim()
+    const right = (b || '').trim()
+    if (!left) return right || undefined
+    if (!right) return left || undefined
+    if (left.toLowerCase().includes(right.toLowerCase())) return left
+    return `${left}; ${right}`
+  }
+
   if (idx >= 0) {
     const c = customers[idx]
     c.totalBookings += 1
@@ -72,6 +87,11 @@ export const addOrUpdateCustomerFromBooking = (b: BookingLike) => {
     // aggiorna eventuali contatti
     if (phone) c.phone = phone
     if (email) c.email = email
+    // sincronizza note/allergie
+    if (note) {
+      if (containsAllergy) c.allergies = mergeText(c.allergies, note)
+      else c.notes = mergeText(c.notes, note)
+    }
     customers[idx] = c
   } else {
     customers.push({
@@ -84,6 +104,8 @@ export const addOrUpdateCustomerFromBooking = (b: BookingLike) => {
       lastVisitDate: b.date,
       lunchCount: lunch ? 1 : 0,
       dinnerCount: lunch ? 0 : 1,
+      allergies: containsAllergy && note ? note : undefined,
+      notes: !containsAllergy && note ? note : undefined,
     })
   }
 
