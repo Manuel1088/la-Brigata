@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { logLogin, logLogout } from '@/lib/audit'
+import { getEmployeesFullClient } from '@/lib/employees'
 
 // Configurazione ruoli e livelli gerarchici
 const roleConfig = {
@@ -47,6 +48,28 @@ const demoAccounts = {
       level: 8,
       avatar: '📊'
     } 
+  },
+  'responsabile': {
+    password: 'resp123',
+    user: {
+      id: '7',
+      email: 'responsabile@brigata.it',
+      name: 'Rita Responsabile Sala',
+      role: 'RESPONSABILE_SALA',
+      level: 7,
+      avatar: '🍽️'
+    }
+  },
+  'headchef': {
+    password: 'chef123',
+    user: {
+      id: '8',
+      email: 'headchef@brigata.it',
+      name: 'Carlo Head Chef',
+      role: 'HEAD_CHEF',
+      level: 7,
+      avatar: '👨‍🍳'
+    }
   },
   'cassiere': { 
     password: 'cassa123', 
@@ -97,7 +120,33 @@ const handler = NextAuth({
             return account.user
           }
         }
-        
+        // Verifica account demo per dipendenti esistenti (password universale: demo123)
+        try {
+          const employees = getEmployeesFullClient()
+          const emp = employees.find(e => e.email.toLowerCase() === credentials.email.toLowerCase())
+          if (emp && credentials.password === 'demo123') {
+            // Mappa ruolo employee a ruoli del sistema permessi
+            const mapRole = (r: string): keyof typeof roleConfig => {
+              const key = r.toUpperCase()
+              if (key.includes('RESPONSABILE') && key.includes('SALA')) return 'RESPONSABILE_SALA'
+              if (key.includes('CHEF')) return 'HEAD_CHEF'
+              if (key.includes('CASSIERE')) return 'CASSIERE'
+              return 'DIPENDENTE'
+            }
+            const mapped = mapRole(emp.role)
+            const user = {
+              id: emp.id,
+              email: emp.email,
+              name: emp.name,
+              role: mapped,
+              level: roleConfig[mapped]?.level ?? emp.level ?? 5,
+              avatar: emp.avatar || roleConfig[mapped]?.avatar || '👤'
+            }
+            await logLogin(user.id)
+            return user as any
+          }
+        } catch {}
+
         return null
       }
     })
