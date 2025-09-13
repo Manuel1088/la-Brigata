@@ -127,54 +127,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                {/* Azioni Rapide */}
-                <div className="flex flex-wrap justify-center gap-4 mb-8">
-                  {!isEmployee && (
-                    <button 
-                      onClick={() => router.push('/sale')}
-                      className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-2"
-                    >
-                      🏬 Sale
-                    </button>
-                  )}
-                  {/* Pulsante Dipendenti rimosso dalle azioni rapide */}
-                  <button 
-                    onClick={() => router.push('/shifts')}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-                  >
-                    📅 Turni
-                  </button>
-                  {canManageLeaves() && (
-                    <button 
-                      onClick={() => router.push('/leaves')}
-                      className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition flex items-center gap-2"
-                    >
-                      🏖️ Ferie
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => router.push('/tips')}
-                    className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition flex items-center gap-2"
-                  >
-                    💰 Mance
-                  </button>
-                  {!isEmployee && (
-                    <button 
-                      onClick={() => router.push('/bookings')}
-                      className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition flex items-center gap-2"
-                    >
-                      📋 Prenotazioni
-                    </button>
-                  )}
-                  {canAccessAdmin() && (
-                    <button 
-                      onClick={() => router.push('/admin/permissions')}
-                      className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition flex items-center gap-2"
-                    >
-                      🧩 Permessi
-                    </button>
-                  )}
-                </div>
+                
 
                 {/* Widget Break-Even per Direttore e Manager */}
                 {canViewBreakEven && (
