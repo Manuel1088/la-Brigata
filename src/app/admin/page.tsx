@@ -211,6 +211,23 @@ export default function AdminPage() {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
+            {/* Shortcut Abilitazioni */}
+            {canManageUsers() && (
+              <div className="mb-6">
+                <div className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
+                  <div>
+                    <div className="text-lg font-semibold text-gray-900">🧩 Abilitazioni</div>
+                    <div className="text-sm text-gray-600">Concedi permessi specifici a singoli utenti (per reparto o globali).</div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/admin/permissions')}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+                  >
+                    Apri
+                  </button>
+                </div>
+              </div>
+            )}
             
             {/* Tab: Gestione Utenti */}
             {activeTab === 'users' && canManageUsers() && (

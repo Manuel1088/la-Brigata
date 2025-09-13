@@ -7,11 +7,26 @@ export function usePermissions() {
   
   const userRole = (session?.user as any)?.role
   const userLevel = (session?.user as any)?.level || 0
+  const userId = session?.user?.id as string | undefined
+
+  // Lettura override permessi per-utente da localStorage
+  const getUserOverrides = (): string[] => {
+    if (!userId) return []
+    try {
+      const raw = localStorage.getItem('user_permissions_v1')
+      if (!raw) return []
+      const map = JSON.parse(raw) as Record<string, { permissions: string[] }>
+      return map[userId]?.permissions || []
+    } catch {
+      return []
+    }
+  }
 
   // Funzioni di controllo permessi
   const can = (permission: string): boolean => {
     if (!userRole) return false
-    return canAccess(userRole, userLevel, permission)
+    // Role-based + override per utente
+    return canAccess(userRole, userLevel, permission) || getUserOverrides().includes(permission)
   }
 
   const canAny = (permissions: string[]): boolean => {
