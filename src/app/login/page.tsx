@@ -112,6 +112,17 @@ export default function LoginPage() {
               <span className="text-gray-500">dipendente@brigata.it / dip123</span>
             </div>
           </div>
+          <div className="mt-3 p-3 bg-white rounded border text-xs space-y-1">
+            <div className="font-medium text-gray-700">Mappatura demo → dipendente:</div>
+            <div className="flex justify-between"><span className="text-gray-600">admin</span><span className="text-gray-800">Giuseppe Rossi (id 1)</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">proprietario</span><span className="text-gray-800">Giuseppe Rossi (id 1)</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">direttore</span><span className="text-gray-800">Anna Bianchi (id 2)</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">manager</span><span className="text-gray-800">Anna Bianchi (id 2)</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">headchef</span><span className="text-gray-800">Giuseppe Rossi (id 1)</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">responsabile</span><span className="text-gray-800">Sofia Neri (id 4)</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">cassiere</span><span className="text-gray-800">Luca Blu (id 5)</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">dipendente</span><span className="text-gray-800">Marco Verdi (id 3)</span></div>
+          </div>
           <div className="mt-3 text-[11px] text-gray-500">
             Per ogni dipendente reale puoi accedere con la sua email aziendale (es. <span className="font-mono">nome.cognome@brigata.it</span>) e password <span className="font-mono">demo</span>.
           </div>
