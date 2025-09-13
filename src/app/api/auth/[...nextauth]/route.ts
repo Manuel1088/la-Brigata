@@ -126,9 +126,23 @@ const handler = NextAuth({
         if (demoAccounts[username as keyof typeof demoAccounts]) {
           const account = demoAccounts[username as keyof typeof demoAccounts]
           if (account.password === credentials.password) {
-            // Log del login
-            await logLogin(account.user.id)
-            return account.user
+            // Mappa gli account demo a un dipendente reale (per gestione accessi)
+            const loginToEmployeeId: Record<string, string> = {
+              // Direzione
+              admin: '1',
+              proprietario: '1',
+              direttore: '2',
+              manager: '2',
+              // Reparti
+              headchef: '1', // EXECUTIVE_CHEF
+              responsabile: '4', // DIPENDENTE_SALA (usata come responsabile demo)
+              cassiere: '5', // DIPENDENTE_BAR
+              dipendente: '3', // CHEF_DE_PARTIE
+            }
+            const mappedId = loginToEmployeeId[username]
+            const user = { ...account.user, id: mappedId || account.user.id }
+            await logLogin(user.id)
+            return user as any
           }
         }
 
@@ -147,7 +161,7 @@ const handler = NextAuth({
             }
             const mappedRole = roleMap[found.role] || 'DIPENDENTE'
             const user = {
-              id: `emp-${found.id}`,
+              id: found.id,
               email: found.email,
               name: found.name,
               role: mappedRole,
