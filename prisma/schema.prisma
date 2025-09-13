@@ -45,6 +45,10 @@ model User {
   contractType   String?  @map("contract_type") // full-time, part-time
   startDate      DateTime? @map("start_date")
   avatar         String?  @default("👤")
+  // CCNL Inquadramento
+  ccnlLevel      CCNLLevel? @map("ccnl_level")
+  position       String?
+  baseSalary     Decimal?   @map("base_salary")
   
   // Informazioni personali
   fiscalCode     String?  @map("fiscal_code")
@@ -69,6 +73,7 @@ model User {
   skills           EmployeeSkill[]
   userPermissions  UserPermission[]
   auditLogs        AuditLog[]
+  payrolls         Payroll[]
   
   @@map("users")
 }
@@ -118,6 +123,39 @@ model TipDistribution {
   user         User      @relation(fields: [userId], references: [id])
   
   @@map("tip_distributions")
+}
+
+// Buste paga mensili
+model Payroll {
+  id                String    @id @default(cuid())
+  employeeId        String    @map("employee_id")
+  employee          User      @relation(fields: [employeeId], references: [id])
+  
+  month             Int       // 1-12
+  year              Int
+  
+  // Ore lavorate
+  regularHours      Float     @default(0) @map("regular_hours")
+  overtimeHours     Float     @default(0) @map("overtime_hours")
+  nightHours        Float     @default(0) @map("night_hours")
+  holidayHours      Float     @default(0) @map("holiday_hours")
+  
+  // Calcoli retributivi
+  basePay           Decimal   @map("base_pay")
+  overtimePay       Decimal   @map("overtime_pay")
+  nightPay          Decimal   @map("night_pay")
+  holidayPay        Decimal   @map("holiday_pay")
+  grossPay          Decimal   @map("gross_pay")
+  
+  // Trattenute
+  inpsTax           Decimal   @map("inps_tax")
+  irpefTax          Decimal   @map("irpef_tax")
+  netPay            Decimal   @map("net_pay")
+  
+  createdAt         DateTime  @default(now()) @map("created_at")
+  
+  @@unique([employeeId, month, year])
+  @@map("payrolls")
 }
 
 model LeaveRequest {
@@ -381,6 +419,18 @@ enum ContractType {
   FULL_TIME
   PART_TIME
   STAGIONALE
+}
+
+// Livelli CCNL Turismo
+enum CCNLLevel {
+  LIVELLO_1Q
+  LIVELLO_2Q
+  LIVELLO_3
+  LIVELLO_4
+  LIVELLO_5
+  LIVELLO_6
+  LIVELLO_7
+  LIVELLO_8
 }
 
 enum LeaveType {
