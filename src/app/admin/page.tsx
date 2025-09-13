@@ -217,23 +217,7 @@ export default function AdminPage() {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
-            {/* Shortcut Gestione Accessi */}
-            {canManageUsers() && (
-              <div className="mb-6">
-                <div className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
-                  <div>
-                    <div className="text-lg font-semibold text-gray-900">🧩 Gestione Accessi</div>
-                    <div className="text-sm text-gray-600">Configura cosa vedono i sottoposti in dashboard e i permessi sulle pagine.</div>
-                  </div>
-                  <button
-                    onClick={() => router.push('/admin/access')}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
-                  >
-                    Apri Gestione
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Shortcut Gestione Accessi rimosso: ora pagina indipendente /access */}
             
             {/* Tab: Gestione Utenti */}
             {activeTab === 'users' && canManageUsers() && (

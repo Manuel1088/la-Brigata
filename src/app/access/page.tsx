@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -19,7 +19,7 @@ interface AccessConfig {
 
 type AccessStore = Record<string, AccessConfig>
 
-export default function AccessManagementPage() {
+export default function AccessManagementStandalonePage() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const { canAccessAdmin } = usePermissions()
@@ -55,12 +55,6 @@ export default function AccessManagementPage() {
     return null
   }
 
-  // Redirect permanently to the new independent page
-  if (typeof window !== 'undefined') {
-    router.replace('/access')
-    return null
-  }
-
   const updateAccess = (userId: string, updater: (prev: AccessConfig) => AccessConfig) => {
     setAccessMap(prev => {
       const next: AccessStore = { ...prev, [userId]: updater(prev[userId] || {}) }
@@ -90,7 +84,7 @@ export default function AccessManagementPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              <button onClick={() => router.push('/admin')} className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition">
+              <button onClick={() => router.push('/dashboard')} className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 <span>Indietro</span>
               </button>
@@ -182,5 +176,6 @@ export default function AccessManagementPage() {
     </div>
   )
 }
+
 
 

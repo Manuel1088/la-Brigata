@@ -140,7 +140,7 @@ export default function DashboardPage() {
                   <button onClick={() => router.push('/shifts/rest')} className="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition">😴 Regole Riposi</button>
                   <button onClick={() => router.push('/tips')} className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">💰 Mance</button>
                   {canAccessAdmin() && (
-                    <button onClick={() => router.push('/admin/access')} className="bg-rose-600 text-white px-4 py-3 rounded-lg hover:bg-rose-700 transition">🧩 Gestione Accessi</button>
+                    <button onClick={() => router.push('/access')} className="bg-rose-600 text-white px-4 py-3 rounded-lg hover:bg-rose-700 transition">🧩 Gestione Accessi</button>
                   )}
                   
                   {canManageEmployees() && (
