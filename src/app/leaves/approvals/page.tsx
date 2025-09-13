@@ -29,6 +29,12 @@ export default function LeaveApprovalsPage() {
   const [proposedEnd, setProposedEnd] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
 
+  const toSafeDate = (value: any): Date | null => {
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : value
+    const d = new Date(value)
+    return isNaN(d.getTime()) ? null : d
+  }
+
   useEffect(() => {
     if (status === 'loading') return
     if (!session) {
@@ -68,7 +74,9 @@ export default function LeaveApprovalsPage() {
       // Crea notifica di approvazione
       const request = pendingRequests.find(r => r.id === requestId)
       if (request) {
-        const days = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        const s = toSafeDate(request.startDate)
+        const e = toSafeDate(request.endDate)
+        const days = s && e ? Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 0
         const employeeName = `Dipendente ${request.userId}`
         notifyLeaveApproved(employeeName, days)
       }
@@ -126,7 +134,9 @@ export default function LeaveApprovalsPage() {
       const request = pendingRequests.find(r => r.id === requestId)
       if (request) {
         const employeeName = `Dipendente ${request.userId}`
-        notifyLeaveProposed(employeeName, new Date(proposedStart).toLocaleDateString('it-IT'), new Date(proposedEnd).toLocaleDateString('it-IT'), comment)
+        const ps = toSafeDate(proposedStart)?.toLocaleDateString('it-IT') || '-'
+        const pe = toSafeDate(proposedEnd)?.toLocaleDateString('it-IT') || '-'
+        notifyLeaveProposed(employeeName, ps, pe, comment)
       }
       setComment('')
       setProposedStart('')
@@ -273,7 +283,9 @@ export default function LeaveApprovalsPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {pendingRequests.map((request) => {
                       const config = LEAVE_TYPES[request.type]
-                      const days = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+                      const s = toSafeDate(request.startDate)
+                      const e = toSafeDate(request.endDate)
+                      const days = s && e ? Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 0
                       
                       return (
                         <tr key={request.id} className="hover:bg-gray-50">
@@ -296,7 +308,7 @@ export default function LeaveApprovalsPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {request.startDate.toLocaleDateString('it-IT')} - {request.endDate.toLocaleDateString('it-IT')}
+                            {(s?.toLocaleDateString('it-IT')) || '-'} - {(e?.toLocaleDateString('it-IT')) || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {days} giorni
@@ -315,7 +327,7 @@ export default function LeaveApprovalsPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {request.createdAt.toLocaleDateString('it-IT')}
+                            {(toSafeDate(request.createdAt)?.toLocaleDateString('it-IT')) || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             {request.status === 'PENDING' && canApproveLeave() ? (
