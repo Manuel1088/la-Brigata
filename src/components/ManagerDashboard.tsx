@@ -509,12 +509,6 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
             📅 Gestisci Prenotazioni
           </button>
           <button 
-            onClick={() => router.push('/bookings/calendar')}
-            className="bg-teal-600 text-white px-4 py-3 rounded hover:bg-teal-700 transition"
-          >
-            📊 Calendario Prenotazioni
-          </button>
-          <button 
             onClick={() => router.push('/shifts/ai')}
             className="bg-purple-600 text-white px-4 py-3 rounded hover:bg-purple-700 transition"
           >
