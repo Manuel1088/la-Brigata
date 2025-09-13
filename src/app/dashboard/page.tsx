@@ -138,6 +138,30 @@ export default function DashboardPage() {
                   </div>
                 )}
 
+                {/* Navigazione rapida a tutte le pagine principali */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
+                  <button onClick={() => router.push('/bookings')} className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition">📋 Prenotazioni</button>
+                  <button onClick={() => router.push('/sale')} className="bg-gray-700 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition">🏬 Sale</button>
+                  <button onClick={() => router.push('/customers')} className="bg-slate-600 text-white px-4 py-3 rounded-lg hover:bg-slate-700 transition">📒 Clienti</button>
+                  <button onClick={() => router.push('/leaves')} className="bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition">🏖️ Ferie e Permessi</button>
+                  <button onClick={() => router.push('/leaves/approvals')} className="bg-amber-600 text-white px-4 py-3 rounded-lg hover:bg-amber-700 transition">✅ Approvazioni Ferie</button>
+                  <button onClick={() => router.push('/shifts')} className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition">📅 Turni</button>
+                  <button onClick={() => router.push('/shifts/rest')} className="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition">😴 Regole Riposi</button>
+                  <button onClick={() => router.push('/tips')} className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">💰 Mance</button>
+                  {canManageEmployees() && (
+                    <button onClick={() => router.push('/employees')} className="bg-fuchsia-600 text-white px-4 py-3 rounded-lg hover:bg-fuchsia-700 transition">👥 Dipendenti</button>
+                  )}
+                  {canAccessAdmin() && (
+                    <button onClick={() => router.push('/admin')} className="bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition">🛡️ Pannello Admin</button>
+                  )}
+                  {canAccessAdmin() && (
+                    <button onClick={() => router.push('/admin/permissions')} className="bg-rose-600 text-white px-4 py-3 rounded-lg hover:bg-rose-700 transition">🧩 Permessi</button>
+                  )}
+                  {canViewBreakEven && (
+                    <button onClick={() => router.push('/calendar')} className="bg-teal-600 text-white px-4 py-3 rounded-lg hover:bg-teal-700 transition">📆 Calendario Aziendale</button>
+                  )}
+                </div>
+
                 
 
                 {/* Widget Break-Even per Direttore e Manager */}
