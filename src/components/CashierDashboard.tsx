@@ -220,24 +220,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
           <p className="text-sm text-gray-500">Dipendenti in servizio</p>
         </div>
         
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="text-3xl mb-4">⚡</div>
-          <h3 className="text-lg font-semibold mb-2">Azioni Rapide</h3>
-          <div className="space-y-2">
-            <button 
-              onClick={() => setShowTipModal(true)}
-              className="w-full bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition text-sm"
-            >
-              ➕ Inserisci Mance
-            </button>
-            <button 
-              onClick={() => setShowShiftModal(true)}
-              className="w-full bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition text-sm"
-            >
-              📅 Aggiungi Turno
-            </button>
-          </div>
-        </div>
+        
       </div>
 
       {/* Sezioni Principali */}
@@ -311,36 +294,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
         </div>
       </div>
 
-      {/* Azioni Rapide */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-4">⚡ Azioni Rapide</h3>
-        <div className="grid md:grid-cols-4 gap-4">
-          <button 
-            onClick={() => setShowTipModal(true)}
-            className="bg-green-600 text-white px-4 py-3 rounded hover:bg-green-700 transition"
-          >
-            💰 Inserisci Mance
-          </button>
-          <button 
-            onClick={() => setShowShiftModal(true)}
-            className="bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700 transition"
-          >
-            📅 Aggiungi Turno
-          </button>
-          <button 
-            onClick={() => router.push('/tips')}
-            className="bg-purple-600 text-white px-4 py-3 rounded hover:bg-purple-700 transition"
-          >
-            📊 Vedi Report Mance
-          </button>
-          <button 
-            onClick={() => router.push('/shifts')}
-            className="bg-orange-600 text-white px-4 py-3 rounded hover:bg-orange-700 transition"
-          >
-            📅 Vedi Calendario Turni
-          </button>
-        </div>
-      </div>
+      
 
       {/* Modal Inserimento Mance */}
       {showTipModal && (
