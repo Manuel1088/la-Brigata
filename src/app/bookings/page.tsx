@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
+import { usePermissions } from '@/hooks/usePermissions'
 import { addOrUpdateCustomerFromBooking } from '@/lib/customers'
 
 interface Booking {
@@ -40,6 +41,7 @@ interface TableItem {
 export default function BookingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { can } = usePermissions()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [tables, setTables] = useState<Table[]>([])
   const [showBookingModal, setShowBookingModal] = useState(false)
@@ -520,7 +522,7 @@ export default function BookingsPage() {
   const removeFloorTable = (id: string) => setFloorTables(prev => prev.filter(t => t.id !== id))
 
   return (
-    <PermissionGuard permission="turni_manage">
+    <PermissionGuard permission="bookings_view">
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-white shadow">
@@ -547,12 +549,15 @@ export default function BookingsPage() {
                 >
                   👤 Clienti
                 </button>
+                {can('bookings_manage') && (
                 <button
                   onClick={() => setShowAreaSelectModal(true)}
                   className="bg-green-600 text-white rounded-lg hover:bg-green-700 transition h-12 w-36 flex items-center justify-center"
                 >
                   ➕ Nuova Prenotazione
                 </button>
+                )}
+                {can('areas_manage') && (
                 <button
                   onClick={() => { setTableModalTab('lista'); if (selectedAreaId) loadFloorTablesFor(selectedAreaId); setShowTableModal(true) }}
                   className="text-gray-600 hover:text-gray-900 transition text-2xl"
@@ -561,6 +566,7 @@ export default function BookingsPage() {
                 >
                   ⚙️
                 </button>
+                )}
               </div>
             </div>
           </div>

@@ -297,6 +297,43 @@ export const PERMISSIONS: Record<string, Permission> = {
   }
 }
 
+// Permessi aggiuntivi per pagine/azioni
+PERMISSIONS['bookings_view'] = {
+  id: 'bookings_view',
+  name: 'Visualizzare Prenotazioni',
+  description: 'Accedere alla pagina prenotazioni',
+  category: 'report',
+  level: 5
+}
+PERMISSIONS['bookings_manage'] = {
+  id: 'bookings_manage',
+  name: 'Gestire Prenotazioni',
+  description: 'Creare, modificare, confermare e cancellare prenotazioni',
+  category: 'report',
+  level: 7
+}
+PERMISSIONS['areas_manage'] = {
+  id: 'areas_manage',
+  name: 'Gestire Sale',
+  description: 'Creare e modificare aree/sale',
+  category: 'admin',
+  level: 8
+}
+PERMISSIONS['customers_view'] = {
+  id: 'customers_view',
+  name: 'Visualizzare Clienti',
+  description: 'Accedere alla lista clienti',
+  category: 'report',
+  level: 6
+}
+PERMISSIONS['customers_manage'] = {
+  id: 'customers_manage',
+  name: 'Gestire Clienti',
+  description: 'Modificare dettagli e cancellare clienti',
+  category: 'report',
+  level: 7
+}
+
 // Configurazione permessi per ruolo
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   PROPRIETARIO: Object.keys(PERMISSIONS), // Tutti i permessi
@@ -306,41 +343,47 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'turni_view', 'turni_manage', 'turni_assign', 'turni_approve', 'turni_export',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_view_all', 'ferie_export', 'ferie_calendar', 'ferie_balance',
     'report_basic', 'report_advanced', 'report_financial', 'report_export', 'report_schedule',
-    'admin_audit'
+    'admin_audit',
+    'bookings_view','bookings_manage','areas_manage','customers_view','customers_manage'
   ],
   MANAGER: [
     'personale_view', 'personale_create', 'personale_edit', 'personale_activate', 'personale_export', 'personale_skills',
     'mance_view', 'mance_manage', 'mance_calculate', 'mance_approve', 'mance_history', 'mance_export',
     'turni_view', 'turni_manage', 'turni_assign', 'turni_approve', 'turni_export',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_view_all', 'ferie_export', 'ferie_calendar', 'ferie_balance',
-    'report_basic', 'report_advanced', 'report_export'
+    'report_basic', 'report_advanced', 'report_export',
+    'bookings_view','bookings_manage','areas_manage','customers_view','customers_manage'
   ],
   RESPONSABILE_SALA: [
     'personale_view', 'personale_export',
     'mance_view', 'mance_manage', 'mance_calculate',
     'turni_view', 'turni_manage', 'turni_assign',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_calendar',
-    'report_basic', 'report_export'
+    'report_basic', 'report_export',
+    'bookings_view','bookings_manage','customers_view'
   ],
   HEAD_CHEF: [
     'personale_view', 'personale_export',
     'mance_view', 'mance_manage', 'mance_calculate',
     'turni_view', 'turni_manage', 'turni_assign',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_calendar',
-    'report_basic', 'report_export'
+    'report_basic', 'report_export',
+    'bookings_view','customers_view'
   ],
   CASSIERE: [
     'personale_view',
     'mance_view', 'mance_manage', 'mance_calculate',
     'turni_view',
     'ferie_view', 'ferie_request',
-    'report_basic'
+    'report_basic',
+    'bookings_view','customers_view'
   ],
   DIPENDENTE: [
     'personale_view',
     'mance_view',
     'turni_view',
-    'ferie_view', 'ferie_request'
+    'ferie_view', 'ferie_request',
+    'bookings_view'
   ]
 }
 

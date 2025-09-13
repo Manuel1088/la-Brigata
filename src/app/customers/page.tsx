@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { getCustomers, saveCustomers, Customer } from '@/lib/customers'
 import { useRouter } from 'next/navigation'
+import { PermissionGuard } from '@/components/PermissionGuard'
+import { usePermissions } from '@/hooks/usePermissions'
 
 export default function CustomersPage() {
   const router = useRouter()
@@ -10,6 +12,7 @@ export default function CustomersPage() {
   const [selected, setSelected] = useState<Customer | null>(null)
   const [isEditing, setIsEditing] = useState<boolean>(false)
   const [editForm, setEditForm] = useState<{ allergies: string; recurrences: string; preferences: string; notes: string }>({ allergies: '', recurrences: '', preferences: '', notes: '' })
+  const { can } = usePermissions()
   const deleteCustomer = (id: string) => {
     const next = customers.filter(c => c.id !== id)
     setCustomers(next)
@@ -25,6 +28,7 @@ export default function CustomersPage() {
   }, [])
 
   return (
+    <PermissionGuard permission="customers_view">
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -71,7 +75,9 @@ export default function CustomersPage() {
                     <td className="py-2 pr-4 text-gray-900">{c.lunchCount}</td>
                     <td className="py-2 pr-4 text-gray-900">{c.dinnerCount}</td>
                     <td className="py-2 pr-0 text-right">
-                      <button onClick={(e) => { e.stopPropagation(); deleteCustomer(c.id) }} className="text-red-600 hover:text-red-800" title="Elimina">✕</button>
+                      {can('customers_manage') && (
+                        <button onClick={(e) => { e.stopPropagation(); deleteCustomer(c.id) }} className="text-red-600 hover:text-red-800" title="Elimina">✕</button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -90,11 +96,12 @@ export default function CustomersPage() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-gray-900">👤 Dettagli Cliente</h3>
                 <div className="flex items-center gap-2">
-                  {!isEditing && (
+                  {!isEditing && can('customers_manage') && (
                     <button onClick={() => { if (selected) setEditForm({ allergies: selected.allergies || '', recurrences: selected.recurrences || '', preferences: selected.preferences || '', notes: selected.notes || '' }); setIsEditing(true) }} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Modifica</button>
                   )}
                   {isEditing && (
                     <>
+                      {can('customers_manage') && (
                       <button
                         onClick={() => {
                           if (!selected) return
@@ -109,6 +116,7 @@ export default function CustomersPage() {
                       >
                         Salva
                       </button>
+                      )}
                       <button onClick={() => { setIsEditing(false); if (selected) setEditForm({ allergies: selected.allergies || '', recurrences: selected.recurrences || '', preferences: selected.preferences || '', notes: selected.notes || '' }) }} className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Annulla</button>
                     </>
                   )}
@@ -157,6 +165,7 @@ export default function CustomersPage() {
         )}
       </main>
     </div>
+    </PermissionGuard>
   )
 }
 

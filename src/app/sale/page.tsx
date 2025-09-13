@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import { PermissionGuard } from '@/components/PermissionGuard'
 import { useRouter } from 'next/navigation'
 
 type AreaType = 'sala' | 'sala_colazioni' | 'bar' | 'ristorante' | 'terrazza' | 'privé' | 'altro'
@@ -108,6 +109,7 @@ export default function SalePage() {
   }
 
   return (
+    <PermissionGuard permission="areas_manage">
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
@@ -324,6 +326,7 @@ export default function SalePage() {
         </div>
       </main>
     </div>
+    </PermissionGuard>
   )
 }
 
