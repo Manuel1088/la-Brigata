@@ -282,6 +282,13 @@ export default function ShiftsPage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const isCurrentWeekDisplayed = today >= shownWeekStart && today <= shownWeekEnd
+  const getDayIndexInShownWeek = (date: Date) => {
+    const diff = Math.floor((date.getTime() - shownWeekStart.getTime()) / (1000 * 60 * 60 * 24))
+    if (diff < 0) return 0
+    if (diff > 6) return 6
+    return diff
+  }
+  const dayIndexToShow = isCurrentWeekDisplayed ? getDayIndexInShownWeek(today) : 0
 
   // Persistenza locale dei turni per settimana (localStorage)
   const getWeekKey = () => `shifts_${toISODate(shownWeekStart)}`
@@ -584,6 +591,37 @@ export default function ShiftsPage() {
             <div className="mt-4 flex justify-end">
               {/* Rimosso bottone Genera Turni con AI (legacy) */}
               {/* Rimosso pulsante Compila automaticamente */}
+            </div>
+          </div>
+          {/* Riepilogo turni del giorno per gli account presenti */}
+          <div className="bg-white p-4 rounded-lg shadow mb-6">
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">🗓️ Turni di oggi</h4>
+            <div className="grid md:grid-cols-3 gap-2 text-sm">
+              {employees
+                .filter(employee => {
+                  if (canManageAll) {
+                    return selectedDepartment === 'all' || employee.department === selectedDepartment
+                  }
+                  return employee.department === userDepartment
+                })
+                .map(employee => {
+                  const key = `${employee.name}-${dayIndexToShow}`
+                  const shift = shifts[key]
+                  const isRest = shift?.time === 'RIPOSO'
+                  const color = employee.department === 'cucina' ? 'text-red-700' : employee.department === 'sala' ? 'text-blue-700' : 'text-green-700'
+                  return (
+                    <div key={employee.name} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${employee.department === 'cucina' ? 'bg-red-500' : employee.department === 'sala' ? 'bg-blue-500' : 'bg-green-500'}`}></span>
+                        <span className="font-medium text-gray-900">{employee.name}</span>
+                        <span className="text-gray-500 text-xs">({employee.department})</span>
+                      </div>
+                      <div className={`text-xs font-semibold ${color}`}>
+                        {shift ? (isRest ? '😴 Riposo' : shift.time) : '—'}
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
           </div>
           {/* Tabella Turni */}
