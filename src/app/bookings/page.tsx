@@ -58,7 +58,7 @@ export default function BookingsPage() {
   // Form Aree/Sale inline
   const [newAreaName, setNewAreaName] = useState<string>('')
   const [newAreaType, setNewAreaType] = useState<AreaType>('sala')
-  const [showManagePanel, setShowManagePanel] = useState<boolean>(false)
+  
 
   // Stato per mappa tavoli per Sala (unifica Piano Tavoli)
   const [gridCols] = useState<number>(12)
@@ -571,18 +571,9 @@ export default function BookingsPage() {
             {/* Aree/Sale (permanente) + Passanti affiancati */}
             <div className="grid md:grid-cols-2 gap-6 mb-6 items-stretch">
               <div className="bg-white p-4 rounded-lg shadow h-full">
-                <div className="relative mb-2">
+                <div className="mb-2">
                   <div className="font-semibold text-gray-900 text-center">Sale</div>
-                  <div className="absolute right-0 top-0 flex items-center gap-2">
-                    <button
-                      onClick={() => setShowManagePanel(v => !v)}
-                      className="h-6 px-2 text-xs text-gray-600 hover:text-gray-800"
-                      title="Gestisci sale"
-                    >
-                      Modifica
-                    </button>
-              </div>
-              </div>
+                </div>
                 <div className="flex flex-wrap gap-2 justify-center">
                   {areas.map(a => (
                     <button
@@ -595,83 +586,10 @@ export default function BookingsPage() {
                     </button>
                   ))}
                   {areas.length === 0 && (
-                    <div className="text-sm text-gray-500 text-center w-full">Nessuna area. Usa “+” per aggiungere.</div>
+                    <div className="text-sm text-gray-500 text-center w-full">Nessuna area. Aggiungi sale dalla pagina “Sale”.</div>
                   )}
               </div>
               
-                {showManagePanel && (
-                  <div className="mt-4 border-t border-gray-200 pt-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="font-medium text-gray-900">Gestisci Sale</div>
-                      <button onClick={() => setShowManagePanel(false)} className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Chiudi</button>
-              </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="border rounded p-3">
-                        <div className="font-medium text-gray-900 mb-2">Aggiungi Sala</div>
-                        <div className="space-y-3">
-                <div>
-                            <label className="block text-xs text-gray-700 mb-1">Nome</label>
-                  <input
-                              type="text"
-                              value={newAreaName}
-                              onChange={(e) => setNewAreaName(e.target.value)}
-                              placeholder="Es. Mirabelle"
-                              className="w-full px-2 py-1 border border-gray-300 rounded"
-                  />
-                </div>
-                <div>
-                            <label className="block text-xs text-gray-700 mb-1">Tipo</label>
-                  <select
-                              value={newAreaType}
-                              onChange={(e) => setNewAreaType(e.target.value as AreaType)}
-                              className="w-full px-2 py-1 border border-gray-300 rounded"
-                            >
-                              <option value="sala">Sala</option>
-                              <option value="sala_colazioni">Sala Colazioni</option>
-                              <option value="bar">Bar</option>
-                              <option value="ristorante">Ristorante</option>
-                              <option value="terrazza">Terrazza</option>
-                              <option value="privé">Privé</option>
-                              <option value="altro">Altro</option>
-                  </select>
-                </div>
-                          <div>
-                            <button
-                              onClick={addArea}
-                              className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
-                              title="Aggiungi sala"
-                            >
-                              Aggiungi
-                            </button>
-              </div>
-                        </div>
-                      </div>
-                      <div className="border rounded p-3">
-                        <div className="font-medium text-gray-900 mb-2">Sale esistenti</div>
-                        <div className="space-y-2 max-h-64 overflow-auto">
-                          {areas.length === 0 && (
-                            <div className="text-sm text-gray-500">Nessuna sala presente.</div>
-                          )}
-                          {areas.map(a => (
-                            <div key={a.id} className="flex items-center justify-between p-2 border rounded">
-                              <div>
-                                <div className="font-medium text-gray-900">{a.name}</div>
-                                <div className="text-xs text-gray-600">{a.type}</div>
-                              </div>
-                              <button
-                                onClick={() => removeArea(a.id)}
-                                className="text-red-600 hover:text-red-800 text-sm"
-                                title="Elimina"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
             </div>
 
               <div>
