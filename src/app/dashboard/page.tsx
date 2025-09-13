@@ -43,6 +43,8 @@ export default function DashboardPage() {
   const { logReadAction } = useAudit()
   
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false)
+  // Visibilità sezioni dashboard gestite da Gestione Accessi (/access)
+  const [dashboardVisibility, setDashboardVisibility] = useState<Record<string, boolean> | null>(null)
 
   // Redirect se non autenticato e log accesso dashboard
   useEffect(() => {
@@ -55,6 +57,24 @@ export default function DashboardPage() {
     // Log accesso alla dashboard
     logReadAction('dashboard')
   }, [session, status, router, logReadAction])
+
+  // Carica visibilità dashboard da localStorage (user_access_controls_v1)
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) return
+    try {
+      const raw = localStorage.getItem('user_access_controls_v1')
+      const map = raw ? JSON.parse(raw) as Record<string, { dashboard?: Record<string, boolean> }> : {}
+      setDashboardVisibility(map[userId]?.dashboard || {})
+    } catch {
+      setDashboardVisibility({})
+    }
+  }, [session?.user?.id])
+
+  const isSectionVisible = (section: 'bookings' | 'sale' | 'customers' | 'leaves' | 'shifts' | 'rest' | 'tips' | 'admin'): boolean => {
+    const value = dashboardVisibility?.[section]
+    return value === undefined ? true : !!value
+  }
 
   if (status === 'loading') {
     return (
@@ -131,15 +151,28 @@ export default function DashboardPage() {
 
                 {/* Navigazione rapida a tutte le pagine principali */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
-                  <button onClick={() => router.push('/bookings')} className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition">📋 Prenotazioni</button>
-                  <button onClick={() => router.push('/sale')} className="bg-gray-700 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition">🏬 Sale</button>
-                  <button onClick={() => router.push('/customers')} className="bg-slate-600 text-white px-4 py-3 rounded-lg hover:bg-slate-700 transition">📒 Clienti</button>
-                  <button onClick={() => router.push('/leaves')} className="bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition">🏖️ Ferie e Permessi</button>
-                  
-                  <button onClick={() => router.push('/shifts')} className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition">📅 Turni</button>
-                  <button onClick={() => router.push('/shifts/rest')} className="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition">😴 Regole Riposi</button>
-                  <button onClick={() => router.push('/tips')} className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">💰 Mance</button>
-                  {canAccessAdmin() && (
+                  {isSectionVisible('bookings') && (
+                    <button onClick={() => router.push('/bookings')} className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition">📋 Prenotazioni</button>
+                  )}
+                  {isSectionVisible('sale') && (
+                    <button onClick={() => router.push('/sale')} className="bg-gray-700 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition">🏬 Sale</button>
+                  )}
+                  {isSectionVisible('customers') && (
+                    <button onClick={() => router.push('/customers')} className="bg-slate-600 text-white px-4 py-3 rounded-lg hover:bg-slate-700 transition">📒 Clienti</button>
+                  )}
+                  {isSectionVisible('leaves') && (
+                    <button onClick={() => router.push('/leaves')} className="bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition">🏖️ Ferie e Permessi</button>
+                  )}
+                  {isSectionVisible('shifts') && (
+                    <button onClick={() => router.push('/shifts')} className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition">📅 Turni</button>
+                  )}
+                  {isSectionVisible('rest') && (
+                    <button onClick={() => router.push('/shifts/rest')} className="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition">😴 Regole Riposi</button>
+                  )}
+                  {isSectionVisible('tips') && (
+                    <button onClick={() => router.push('/tips')} className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">💰 Mance</button>
+                  )}
+                  {canAccessAdmin() && isSectionVisible('admin') && (
                     <button onClick={() => router.push('/access')} className="bg-rose-600 text-white px-4 py-3 rounded-lg hover:bg-rose-700 transition">🧩 Gestione Accessi</button>
                   )}
                   
