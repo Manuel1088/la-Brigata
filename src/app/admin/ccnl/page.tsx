@@ -7,7 +7,7 @@ import { CCNLManagement } from '@/components/CCNLManagement'
 export default function CCNLPage() {
   const router = useRouter()
   return (
-    <PermissionGuard permissions={['admin_settings']}>
+    <PermissionGuard permission="admin_settings">
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -22,7 +22,7 @@ export default function CCNLPage() {
                   </svg>
                   <span>Indietro</span>
                 </button>
-                <h1 className="text-3xl font-bold text-gray-900">⚖️ CCNL Turismo</h1>
+                <h1 className="text-3xl font-bold text-gray-900">📑 Inquadramenti CCNL</h1>
               </div>
             </div>
           </div>
