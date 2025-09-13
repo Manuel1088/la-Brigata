@@ -419,12 +419,6 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">🏖️ Gestione Ferie/ROL/Permessi</h3>
-          <button 
-            onClick={() => router.push('/leaves/approvals')}
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition text-sm"
-          >
-            📋 Gestisci Tutte
-          </button>
         </div>
         <div className="space-y-3">
           {leaveRequests.map((request) => (

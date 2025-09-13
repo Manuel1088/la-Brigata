@@ -144,7 +144,7 @@ export default function DashboardPage() {
                   <button onClick={() => router.push('/sale')} className="bg-gray-700 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition">🏬 Sale</button>
                   <button onClick={() => router.push('/customers')} className="bg-slate-600 text-white px-4 py-3 rounded-lg hover:bg-slate-700 transition">📒 Clienti</button>
                   <button onClick={() => router.push('/leaves')} className="bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition">🏖️ Ferie e Permessi</button>
-                  <button onClick={() => router.push('/leaves/approvals')} className="bg-amber-600 text-white px-4 py-3 rounded-lg hover:bg-amber-700 transition">✅ Approvazioni Ferie</button>
+                  
                   <button onClick={() => router.push('/shifts')} className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition">📅 Turni</button>
                   <button onClick={() => router.push('/shifts/rest')} className="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition">😴 Regole Riposi</button>
                   <button onClick={() => router.push('/tips')} className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">💰 Mance</button>
