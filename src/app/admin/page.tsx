@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAudit } from '@/hooks/useAudit'
 import { PermissionGuard } from '@/components/PermissionGuard'
@@ -77,35 +77,35 @@ export default function AdminPage() {
   const [auditStats, setAuditStats] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Carica dati audit
-  useEffect(() => {
-    const loadAuditData = async () => {
-      setIsLoading(true)
-      try {
-        const [logs, stats] = await Promise.all([
-          getLogs({ limit: 50 }),
-          getStats()
-        ])
-        setAuditLogs(logs)
-        setAuditStats(stats)
-      } catch (error) {
-        console.error('Errore nel caricamento dati audit:', error)
-      } finally {
-        setIsLoading(false)
-      }
+  // ✅ FIX 1: Carica dati audit - RIMOSSO le funzioni dalle dipendenze
+  const loadAuditData = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const [logs, stats] = await Promise.all([
+        getLogs({ limit: 50 }),
+        getStats()
+      ])
+      setAuditLogs(logs)
+      setAuditStats(stats)
+    } catch (error) {
+      console.error('Errore nel caricamento dati audit:', error)
+    } finally {
+      setIsLoading(false)
     }
+  }, []) // ← Array vuoto - la funzione è stabile
 
+  useEffect(() => {
     if (canViewAudit()) {
       loadAuditData()
     }
-  }, [getLogs, getStats, canViewAudit])
+  }, [activeTab]) // ← Solo quando cambia tab audit
 
-  // Log accesso alla pagina admin
+  // ✅ FIX 2: Log accesso - SOLO una volta per sessione
   useEffect(() => {
-    if (session) {
+    if (session?.user) {
       logReadAction('admin')
     }
-  }, [session, logReadAction])
+  }, [session?.user?.id]) // ← Solo quando cambia l'utente, non la funzione
 
   if (status === 'loading') {
     return (
@@ -182,7 +182,13 @@ export default function AdminPage() {
               )}
               {canViewAudit() && (
                 <button
-                  onClick={() => setActiveTab('audit')}
+                  onClick={() => {
+                    setActiveTab('audit')
+                    // Ricarica i dati quando si clicca sul tab audit
+                    if (activeTab !== 'audit') {
+                      loadAuditData()
+                    }
+                  }}
                   className={`py-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'audit'
                       ? 'border-orange-500 text-orange-600'
@@ -211,19 +217,19 @@ export default function AdminPage() {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
-            {/* Shortcut Abilitazioni */}
+            {/* Shortcut Gestione Accessi */}
             {canManageUsers() && (
               <div className="mb-6">
                 <div className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
                   <div>
-                    <div className="text-lg font-semibold text-gray-900">🧩 Abilitazioni</div>
-                    <div className="text-sm text-gray-600">Concedi permessi specifici a singoli utenti (per reparto o globali).</div>
+                    <div className="text-lg font-semibold text-gray-900">🧩 Gestione Accessi</div>
+                    <div className="text-sm text-gray-600">Configura cosa vedono i sottoposti in dashboard e i permessi sulle pagine.</div>
                   </div>
                   <button
-                    onClick={() => router.push('/admin/permissions')}
+                    onClick={() => router.push('/admin/access')}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
                   >
-                    Apri
+                    Apri Gestione
                   </button>
                 </div>
               </div>
