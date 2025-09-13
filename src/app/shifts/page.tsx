@@ -2,7 +2,8 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { usePermissions } from '@/hooks/usePermissions'
 // import legacy AI generator rimosso
 import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
@@ -57,8 +58,11 @@ export default function ShiftsPage() {
     return [...predefined.slice(0, -2), ...custom, ...predefined.slice(-2)] // Inserisce custom prima di riposo e personalizzato
   }
 
-  // canManageShifts deve essere sempre nello scope della funzione
-  const canManageShifts = ['PROPRIETARIO', 'DIRETTORE', 'MANAGER'].includes((session?.user as any)?.role || '')
+  // Permessi granulari per gestione turni
+  const { canCreateShift, canAssignShift, canApproveShift } = usePermissions()
+  const userRole = (session?.user as any)?.role || ''
+  const userName = session?.user?.name || ''
+  const isEmployee = userRole === 'DIPENDENTE'
 
   // Funzioni validazione CCNL
   const calculateWeeklyHours = (employeeName: string) => {
@@ -195,6 +199,7 @@ export default function ShiftsPage() {
 
   // Dipendenti del ristorante
   const [employees, setEmployees] = useState<SimpleEmployee[]>(getEmployeesClient())
+  const [userDepartment, setUserDepartment] = useState<string>('sala')
   useEffect(() => {
     const reload = () => setEmployees(getEmployeesClient())
     window.addEventListener('employees_updated', reload)
@@ -203,6 +208,33 @@ export default function ShiftsPage() {
     window.addEventListener('rest_rules_updated', reloadRest)
     return () => window.removeEventListener('employees_updated', reload)
   }, [])
+
+  // Determina reparto utente corrente (match su nome, fallback 'sala')
+  useEffect(() => {
+    if (!session?.user?.name) return
+    const me = employees.find(e => e.name === session.user?.name)
+    if (me?.department) {
+      setUserDepartment(me.department)
+    }
+  }, [employees, session?.user?.name])
+
+  // Calcola capacità di gestione
+  const canManageAll = useMemo(() => {
+    // chi ha approvazione turni o ruoli alti gestisce tutti i reparti
+    return canApproveShift() || ['PROPRIETARIO', 'DIRETTORE', 'MANAGER'].includes(userRole)
+  }, [canApproveShift, userRole])
+
+  const canManageDept = useMemo(() => {
+    // chi può creare/assegnare ma non approvare gestisce solo il proprio reparto
+    return (canCreateShift() || canAssignShift()) && !canManageAll
+  }, [canCreateShift, canAssignShift, canManageAll])
+
+  // Imposta filtro reparto coerente con i permessi
+  useEffect(() => {
+    if (canManageAll) return // libero
+    // Dipendenti e responsabili reparto vedono solo il proprio reparto
+    setSelectedDepartment(userDepartment)
+  }, [canManageAll, userDepartment])
 
   // trigger per ricaricare regole riposi
   const [restVersion, setRestVersion] = useState(0)
@@ -369,7 +401,9 @@ export default function ShiftsPage() {
   })
 
   const handleCellClick = (employee: string, dayIndex: number) => {
-    if (!canManageShifts) return
+    const employeeDept = employees.find(e => e.name === employee)?.department
+    const canEdit = canManageAll || (canManageDept && employeeDept === userDepartment)
+    if (!canEdit) return
     const shiftKey = `${employee}-${dayIndex}`
     const existingShift = shifts[shiftKey]
     // Blocca edit se turno è "bloccato" (assegnato e passato mezzanotte non ancora) - opzionale: per ora blocco solo se assegnato manualmente? Manteniamo semplice: consentiamo edit sempre ai manager
@@ -386,7 +420,9 @@ export default function ShiftsPage() {
   // Funzione per click destro (elimina turno)
   const handleCellRightClick = (e: React.MouseEvent, employee: string, dayIndex: number) => {
     e.preventDefault()
-    if (!canManageShifts) return
+    const employeeDept = employees.find(e => e.name === employee)?.department
+    const canEdit = canManageAll || (canManageDept && employeeDept === userDepartment)
+    if (!canEdit) return
     const shiftKey = `${employee}-${dayIndex}`
     const confirmed = confirm('Vuoi eliminare questo turno?')
     if (confirmed) {
@@ -477,30 +513,41 @@ export default function ShiftsPage() {
         <div className="px-4 py-6 sm:px-0">
           {/* Pulsanti filtro reparto */}
           <div className="flex space-x-3 mb-6">
-            <button
-              className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'all' ? 'bg-orange-500 text-white' : 'bg-white hover:bg-orange-100'}`}
-              onClick={() => setSelectedDepartment('all')}
-            >
-              Tutti
-            </button>
-            <button
-              className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'cucina' ? 'bg-red-500 text-white' : 'bg-white hover:bg-red-100'}`}
-              onClick={() => setSelectedDepartment('cucina')}
-            >
-              🔥 Cucina
-            </button>
-            <button
-              className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'sala' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-blue-100'}`}
-              onClick={() => setSelectedDepartment('sala')}
-            >
-              🍽️ Sala
-            </button>
-            <button
-              className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'bar' ? 'bg-green-500 text-white' : 'bg-white hover:bg-green-100'}`}
-              onClick={() => setSelectedDepartment('bar')}
-            >
-              🍹 Bar
-            </button>
+            {canManageAll ? (
+              <>
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'all' ? 'bg-orange-500 text-white' : 'bg-white hover:bg-orange-100'}`}
+                  onClick={() => setSelectedDepartment('all')}
+                >
+                  Tutti
+                </button>
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'cucina' ? 'bg-red-500 text-white' : 'bg-white hover:bg-red-100'}`}
+                  onClick={() => setSelectedDepartment('cucina')}
+                >
+                  🔥 Cucina
+                </button>
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'sala' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-blue-100'}`}
+                  onClick={() => setSelectedDepartment('sala')}
+                >
+                  🍽️ Sala
+                </button>
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'bar' ? 'bg-green-500 text-white' : 'bg-white hover:bg-green-100'}`}
+                  onClick={() => setSelectedDepartment('bar')}
+                >
+                  🍹 Bar
+                </button>
+              </>
+            ) : (
+              <button
+                className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm text-gray-700 bg-gray-100 cursor-default`}
+                disabled
+              >
+                {userDepartment === 'cucina' ? '🔥 Cucina' : userDepartment === 'sala' ? '🍽️ Sala' : '🍹 Bar'}
+              </button>
+            )}
           </div>
           {/* Week Navigator Migliorato */}
           <div className="bg-white p-6 rounded-lg shadow mb-6">
@@ -560,7 +607,12 @@ export default function ShiftsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {employees
-                  .filter(employee => selectedDepartment === 'all' || employee.department === selectedDepartment)
+                  .filter(employee => {
+                    if (canManageAll) {
+                      return selectedDepartment === 'all' || employee.department === selectedDepartment
+                    }
+                    return employee.department === userDepartment
+                  })
                   .map((employee) => (
                     <tr key={employee.name} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -588,7 +640,7 @@ export default function ShiftsPage() {
                         const isFixedRest = !!(restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any))
                         const leaveInfo = getApprovedLeaveInfo(employee.name, dateISO)
                         const isDerivedBlocked = isFixedRest || !!leaveInfo
-                        const canClickCell = canManageShifts && !isDerivedBlocked
+                        const canClickCell = (canManageAll || (canManageDept && employee.department === userDepartment)) && !isDerivedBlocked
                         return (
                           <td 
                             key={dayIndex}
@@ -644,7 +696,7 @@ export default function ShiftsPage() {
                                     <div className="text-xs text-gray-900">Giorno fisso</div>
                                   </>
                                 ) : (
-                                  <span className="text-gray-900">{canManageShifts ? '+ Assegna' : '-'}</span>
+                                  <span className="text-gray-900">{(canManageAll || (canManageDept && employee.department === userDepartment)) ? '+ Assegna' : '-'}</span>
                                 )}
                               </div>
                             )}
@@ -785,7 +837,7 @@ export default function ShiftsPage() {
                 <h3 className="text-sm font-semibold text-gray-700">
                   ⏰ Turni {selectedDepartment === 'all' ? 'Tutti i Reparti' : selectedDepartment.toUpperCase()}:
                 </h3>
-                {selectedDepartment !== 'all' && canManageShifts && (
+                {selectedDepartment !== 'all' && (canManageAll || canManageDept) && (
                   <button
                     onClick={() => handleAddCustomShift(selectedDepartment)}
                     className="w-6 h-6 bg-orange-500 text-white rounded-full text-sm hover:bg-orange-600 transition flex items-center justify-center"
