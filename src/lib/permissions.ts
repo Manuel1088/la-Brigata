@@ -389,26 +389,30 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
 }
 
 // Funzioni di utilità per i permessi
+function normalizeRole(role: string): string {
+  return (role || '').toString().toUpperCase()
+}
+
 export function hasPermission(userRole: string, permission: string): boolean {
-  const rolePermissions = ROLE_PERMISSIONS[userRole] || []
+  const rolePermissions = ROLE_PERMISSIONS[normalizeRole(userRole)] || []
   return rolePermissions.includes(permission)
 }
 
 export function hasAnyPermission(userRole: string, permissions: string[]): boolean {
-  return permissions.some(permission => hasPermission(userRole, permission))
+  return permissions.some(permission => hasPermission(normalizeRole(userRole), permission))
 }
 
 export function hasAllPermissions(userRole: string, permissions: string[]): boolean {
-  return permissions.every(permission => hasPermission(userRole, permission))
+  return permissions.every(permission => hasPermission(normalizeRole(userRole), permission))
 }
 
 export function getUserPermissions(userRole: string): Permission[] {
-  const permissionIds = ROLE_PERMISSIONS[userRole] || []
+  const permissionIds = ROLE_PERMISSIONS[normalizeRole(userRole)] || []
   return permissionIds.map(id => PERMISSIONS[id]).filter(Boolean)
 }
 
 export function getPermissionsByCategory(userRole: string, category: string): Permission[] {
-  return getUserPermissions(userRole).filter(p => p.category === category)
+  return getUserPermissions(normalizeRole(userRole)).filter(p => p.category === category)
 }
 
 // Controllo livello minimo
@@ -422,5 +426,8 @@ export function canAccess(userRole: string, userLevel: number, permission: strin
   const perm = Object.values(PERMISSIONS).find(p => p.id === permission)
   if (!perm) return false
   
-  return hasPermission(userRole, permission) && hasMinimumLevel(userLevel, perm.level)
+  const role = normalizeRole(userRole)
+  // Superuser: ADMIN o PROPRIETARIO hanno sempre accesso
+  if (role === 'ADMIN' || role === 'PROPRIETARIO') return true
+  return hasPermission(role, permission) && hasMinimumLevel(userLevel, perm.level)
 }
