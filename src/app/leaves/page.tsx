@@ -191,7 +191,7 @@ export default function LeavesPage() {
                   </div>
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                  <div className="font-bold text-gray-900 mr-2">
+                  <div className="font-bold text-red-600 mr-2">
                     {(() => {
                       const label = calendarDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
                       return label.charAt(0).toUpperCase() + label.slice(1)
