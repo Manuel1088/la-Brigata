@@ -1,9 +1,8 @@
 'use client'
-// Test comment added by AI assistant - prova modifica GitHub
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-// import type { UserRole } from '@/lib/permissions'
+import { UserRole } from '@/types/roles'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAudit } from '@/hooks/useAudit'
 import { getRestRuleFor } from '@/lib/restRules'
@@ -31,18 +30,20 @@ export default function DashboardPage() {
     canRequestLeave
   } = usePermissions()
   
+  // Type-safe role access
+  const role = session?.user?.role as UserRole | undefined
+  
   // Controlla se l'utente può vedere il break-even (Direttore e Manager)
-  const role = (session?.user as any)?.role as import('@/types/roles').UserRole | undefined
-  const canViewBreakEven = role === 'DIRETTORE' || role === 'MANAGER'
+  const canViewBreakEven = role === UserRole.DIRETTORE || role === UserRole.MANAGER
   
   // Controlla se l'utente è un dipendente per mostrare dashboard personale
-  const isEmployee = role === 'DIPENDENTE'
+  const isEmployee = role === UserRole.DIPENDENTE
   
   // Controlla se l'utente è un cassiere per mostrare dashboard cassiere
-  const isCashier = role === 'CASSIERE'
+  const isCashier = role === UserRole.CASSIERE
   
   // Controlla se l'utente è un manager o proprietario per mostrare dashboard manageriale
-  const isManager = role === 'MANAGER' || role === 'PROPRIETARIO'
+  const isManager = role === UserRole.MANAGER || role === UserRole.PROPRIETARIO
   
   const { logReadAction } = useAudit()
   
@@ -81,7 +82,7 @@ export default function DashboardPage() {
 
   const isSectionVisible = (section: 'bookings' | 'sale' | 'customers' | 'leaves' | 'shifts' | 'rest' | 'tips' | 'admin'): boolean => {
     const upperRole = (userRole || '').toString().toUpperCase()
-    if (upperRole === 'ADMIN' || upperRole === 'PROPRIETARIO') return true
+    if (upperRole === UserRole.ADMIN || upperRole === UserRole.PROPRIETARIO) return true
     const value = dashboardVisibility?.[section]
     return value === undefined ? true : !!value
   }
@@ -95,10 +96,12 @@ export default function DashboardPage() {
     d.setDate(d.getDate() + diff)
     return d
   }
+  
   const toISODate = (d: Date) => {
     const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
     return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
   }
+  
   useEffect(() => {
     if (!session?.user?.name) return
     try {
@@ -127,7 +130,9 @@ export default function DashboardPage() {
         setTodayShiftIsRest(true)
         setTodayShiftTime(null)
       }
-    } catch {}
+    } catch (error) {
+      console.error('Errore caricamento turno:', error)
+    }
   }, [session?.user?.name])
 
   if (status === 'loading') {
@@ -150,139 +155,158 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
               <h1 className="text-3xl font-bold text-gray-900">
-                🍝 LA BRIGATA
+                🍽️ LA BRIGATA
               </h1>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <span className="text-2xl">{(session.user as any)?.avatar}</span>
-                         <div className="text-gray-700 font-medium">
-                           Ciao, {session.user?.name}!
-                         <div className="text-xs text-gray-500">
-                           Livello {(session.user as any)?.level}
-                         </div>
-                       </div>
-                     </div>
-                     <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
-                       {(session.user as any)?.role}
-                     </span>
-                     
-                     {/* Centro Notifiche */}
-                     <NotificationBadge 
-                       userId={session.user?.id}
-                       onClick={() => setIsNotificationCenterOpen(true)}
-                     />
-                     
-                     <button
-                       onClick={() => signOut({ callbackUrl: '/' })}
-                       className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-                     >
-                       Logout
-                     </button>
-                   </div>
+                <span className="text-2xl">{session.user?.avatar as any}</span>
+                <div className="text-gray-700 font-medium">
+                  Ciao, {session.user?.name}!
+                  <div className="text-xs text-gray-500">
+                    Livello {session.user?.level as any}
+                  </div>
+                </div>
+              </div>
+              <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                {session.user?.role}
+              </span>
+              
+              {/* Centro Notifiche */}
+              <NotificationBadge 
+                userId={session.user?.id}
+                onClick={() => setIsNotificationCenterOpen(true)}
+              />
+              
+              <button
+                onClick={() => signOut({ callbackUrl: '/' })}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
+
       {/* Dashboard Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-                          <div className="text-center mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    {isEmployee ? 'La Mia Dashboard Personale' : 
-                     isCashier ? 'Dashboard Cassiere' : 
-                     isManager ? 'Dashboard Manageriale' :
-                     'Benvenuto nella Dashboard!'}
-                  </h2>
-                  <p className="text-gray-600">
-                    {isEmployee ? 'Gestisci i tuoi turni, mance e richieste' : 
-                     isCashier ? 'Gestisci mance e turni del ristorante' :
-                     isManager ? 'Gestisci prenotazioni, turni e personale' :
-                     `Sistema di gestione per ${(session.user as any)?.role}`}
-                  </p>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              {isEmployee ? 'La Mia Dashboard Personale' : 
+               isCashier ? 'Dashboard Cassiere' : 
+               isManager ? 'Dashboard Manageriale' :
+               'Benvenuto nella Dashboard!'}
+            </h2>
+            <p className="text-gray-600">
+              {isEmployee ? 'Gestisci i tuoi turni, mance e richieste' : 
+               isCashier ? 'Gestisci mance e turni del ristorante' :
+               isManager ? 'Gestisci prenotazioni, turni e personale' :
+               `Sistema di gestione per ${session.user?.role}`}
+            </p>
+          </div>
+
+          {/* Navigazione rapida a tutte le pagine principali */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
+            {isSectionVisible('bookings') && (
+              <button onClick={() => router.push('/bookings')} className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition">
+                📋 Prenotazioni
+              </button>
+            )}
+            {isSectionVisible('sale') && (
+              <button onClick={() => router.push('/sale')} className="bg-gray-700 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition">
+                🏬 Sale
+              </button>
+            )}
+            {isSectionVisible('customers') && (
+              <button onClick={() => router.push('/customers')} className="bg-slate-600 text-white px-4 py-3 rounded-lg hover:bg-slate-700 transition">
+                👥 Clienti
+              </button>
+            )}
+            {isSectionVisible('leaves') && (
+              <button onClick={() => router.push('/leaves')} className="bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition">
+                🏖️ Ferie e Permessi
+              </button>
+            )}
+            {isSectionVisible('shifts') && (
+              <button onClick={() => router.push('/shifts')} className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition">
+                📅 Turni
+              </button>
+            )}
+            {isSectionVisible('rest') && (
+              <button onClick={() => router.push('/shifts/rest')} className="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition">
+                😴 Regole Riposi
+              </button>
+            )}
+            {isSectionVisible('tips') && (
+              <button onClick={() => router.push('/tips')} className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">
+                💰 Mance
+              </button>
+            )}
+            {canAccessAdmin() && isSectionVisible('admin') && (
+              <button onClick={() => router.push('/access')} className="bg-rose-600 text-white px-4 py-3 rounded-lg hover:bg-rose-700 transition">
+                🔧 Gestione Accessi
+              </button>
+            )}
+            
+            {canManageEmployees() && (
+              <button onClick={() => router.push('/employees')} className="bg-fuchsia-600 text-white px-4 py-3 rounded-lg hover:bg-fuchsia-700 transition">
+                👥 Dipendenti
+              </button>
+            )}
+            {canViewBreakEven && (
+              <button onClick={() => router.push('/calendar')} className="bg-teal-600 text-white px-4 py-3 rounded-lg hover:bg-teal-700 transition">
+                📆 Calendario Aziendale
+              </button>
+            )}
+            <button
+              onClick={() => session.user?.id && router.push(`/employees/${session.user.id}`)}
+              className="bg-gray-200 text-gray-900 px-4 py-3 rounded-lg hover:bg-gray-300 transition"
+            >
+              👤 Il mio profilo
+            </button>
+          </div>
+
+          {/* Riquadro Turno di Oggi (personale) */}
+          {isSectionVisible('shifts') && (
+            <div className="bg-white rounded-lg shadow p-4 mb-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">⏰</span>
+                  <div>
+                    <div className="text-sm text-gray-500">Turno di oggi</div>
+                    <div className="text-lg font-semibold text-gray-900">{session.user?.name}</div>
+                  </div>
                 </div>
-
-                
-
-                {/* Navigazione rapida a tutte le pagine principali */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
-                  {isSectionVisible('bookings') && (
-                    <button onClick={() => router.push('/bookings')} className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition">📋 Prenotazioni</button>
-                  )}
-                  {isSectionVisible('sale') && (
-                    <button onClick={() => router.push('/sale')} className="bg-gray-700 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition">🏬 Sale</button>
-                  )}
-                  {isSectionVisible('customers') && (
-                    <button onClick={() => router.push('/customers')} className="bg-slate-600 text-white px-4 py-3 rounded-lg hover:bg-slate-700 transition">📒 Clienti</button>
-                  )}
-                  {isSectionVisible('leaves') && (
-                    <button onClick={() => router.push('/leaves')} className="bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition">🏖️ Ferie e Permessi</button>
-                  )}
-                  {isSectionVisible('shifts') && (
-                    <button onClick={() => router.push('/shifts')} className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition">📅 Turni</button>
-                  )}
-                  {isSectionVisible('rest') && (
-                    <button onClick={() => router.push('/shifts/rest')} className="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition">😴 Regole Riposi</button>
-                  )}
-                  {isSectionVisible('tips') && (
-                    <button onClick={() => router.push('/tips')} className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">💰 Mance</button>
-                  )}
-                  {canAccessAdmin() && isSectionVisible('admin') && (
-                    <button onClick={() => router.push('/access')} className="bg-rose-600 text-white px-4 py-3 rounded-lg hover:bg-rose-700 transition">🧩 Gestione Accessi</button>
-                  )}
-                  
-                  {canManageEmployees() && (
-                    <button onClick={() => router.push('/employees')} className="bg-fuchsia-600 text-white px-4 py-3 rounded-lg hover:bg-fuchsia-700 transition">👥 Dipendenti</button>
-                  )}
-                  {canViewBreakEven && (
-                    <button onClick={() => router.push('/calendar')} className="bg-teal-600 text-white px-4 py-3 rounded-lg hover:bg-teal-700 transition">📆 Calendario Aziendale</button>
+                <div className="text-right">
+                  {todayShiftTime ? (
+                    <div className="text-lg font-bold text-blue-700">{todayShiftTime}</div>
+                  ) : todayShiftIsRest ? (
+                    <div className="text-lg font-bold text-gray-700">😴 Riposo</div>
+                  ) : (
+                    <div className="text-sm text-gray-500">Nessun turno assegnato</div>
                   )}
                   <button
-                    onClick={() => session.user?.id && router.push(`/employees/${session.user.id}`)}
-                    className="bg-gray-200 text-gray-900 px-4 py-3 rounded-lg hover:bg-gray-300 transition"
+                    onClick={() => router.push('/shifts')}
+                    className="mt-1 inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition"
                   >
-                    👤 Il mio profilo
+                    Apri Turni
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
 
-                {/* Riquadro Turno di Oggi (personale) */}
-                {isSectionVisible('shifts') && (
-                  <div className="bg-white rounded-lg shadow p-4 mb-8">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">⏰</span>
-                        <div>
-                          <div className="text-sm text-gray-500">Turno di oggi</div>
-                          <div className="text-lg font-semibold text-gray-900">{session.user?.name}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {todayShiftTime ? (
-                          <div className="text-lg font-bold text-blue-700">{todayShiftTime}</div>
-                        ) : todayShiftIsRest ? (
-                          <div className="text-lg font-bold text-gray-700">😴 Riposo</div>
-                        ) : (
-                          <div className="text-sm text-gray-500">Nessun turno assegnato</div>
-                        )}
-                        <button
-                          onClick={() => router.push('/shifts')}
-                          className="mt-1 inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition"
-                        >
-                          Apri Turni
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Widget Break-Even per Direttore e Manager */}
-                {canViewBreakEven && (
-                  <div className="mb-8">
-                    <BreakEvenWidget 
-                      userId={session.user?.id}
-                      userRole={(session.user as any)?.role}
-                    />
-                  </div>
-                )}
+          {/* Widget Break-Even per Direttore e Manager */}
+          {canViewBreakEven && (
+            <div className="mb-8">
+              <BreakEvenWidget 
+                userId={session.user?.id}
+                userRole={session.user?.role}
+              />
+            </div>
+          )}
 
           {/* Dashboard Content - Diversa per Ruoli */}
           {isEmployee ? (
@@ -302,18 +326,18 @@ export default function DashboardPage() {
             <ManagerDashboard 
               userId={session.user?.id || ''}
               userName={session.user?.name || ''}
-              userRole={(session.user as any)?.role || ''}
+              userRole={session.user?.role || ''}
             />
           ) : null}
-                  </div>
-        </main>
-        
-        {/* Centro Notifiche */}
-        <NotificationCenter
-          isOpen={isNotificationCenterOpen}
-          onClose={() => setIsNotificationCenterOpen(false)}
-          userId={session.user?.id}
-        />
-      </div>
-    )
-  }
+        </div>
+      </main>
+      
+      {/* Centro Notifiche */}
+      <NotificationCenter
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+        userId={session.user?.id}
+      />
+    </div>
+  )
+}
