@@ -36,7 +36,7 @@ export default function LeavesPage() {
   } = usePermissions()
   
   const { logReadAction } = useAudit()
-  const { notifyProposalAccepted, notifyProposalRejected } = useNotifications()
+  const { notifyProposalAccepted, notifyProposalRejected, notifyLeaveProposed } = useNotifications()
   
   const [balances, setBalances] = useState<LeaveBalance[]>([])
   const [requests, setRequests] = useState<LeaveRequest[]>([])
@@ -578,7 +578,11 @@ export default function LeavesPage() {
                                   if (!ns || !ne) return
                                   const res = proposeLeaveDates(r.id, session?.user?.id as string, new Date(ns), new Date(ne))
                                   if (!res.success) alert('Errore modifica: ' + (res.error || ''))
-                                  else loadData()
+                                  else {
+                                    const employeeName = (userIdToName.get(r.userId) || 'Dipendente') as string
+                                    notifyLeaveProposed(employeeName, ns, ne)
+                                    loadData()
+                                  }
                                 }}
                                 className="px-2 py-1 bg-blue-600 text-white rounded mr-2 hover:bg-blue-700"
                               >Modifica</button>
