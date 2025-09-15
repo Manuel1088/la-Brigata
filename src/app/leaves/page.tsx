@@ -573,23 +573,25 @@ export default function LeavesPage() {
                               >Approva</button>
                               <button
                                 onClick={() => {
-                                  const res = updateLeaveRequestStatus(r.id, 'REJECTED', session?.user?.id as string)
-                                  if (!res.success) alert('Errore rifiuto')
-                                  else loadData()
-                                }}
-                                className="px-2 py-1 bg-red-600 text-white rounded mr-2 hover:bg-red-700"
-                              >Rifiuta</button>
-                              <button
-                                onClick={() => {
                                   const ns = prompt('Nuova data inizio (YYYY-MM-DD)')
                                   const ne = prompt('Nuova data fine (YYYY-MM-DD)')
                                   if (!ns || !ne) return
                                   const res = proposeLeaveDates(r.id, session?.user?.id as string, new Date(ns), new Date(ne))
-                                  if (!res.success) alert('Errore proposta: ' + (res.error || ''))
+                                  if (!res.success) alert('Errore modifica: ' + (res.error || ''))
                                   else loadData()
                                 }}
-                                className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                              >Proponi Date</button>
+                                className="px-2 py-1 bg-blue-600 text-white rounded mr-2 hover:bg-blue-700"
+                              >Modifica</button>
+                              <button
+                                onClick={() => {
+                                  const confirmed = confirm('Sei sicuro di voler cancellare questa richiesta?')
+                                  if (!confirmed) return
+                                  const res = updateLeaveRequestStatus(r.id, 'REJECTED', session?.user?.id as string)
+                                  if (!res.success) alert('Errore cancellazione')
+                                  else loadData()
+                                }}
+                                className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                              >Cancella</button>
                             </>
                           )}
                         </td>
