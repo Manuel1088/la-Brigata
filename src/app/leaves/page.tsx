@@ -166,7 +166,31 @@ export default function LeavesPage() {
             {/* Calendario Assenze Reparto */}
             <div className="bg-white rounded-lg shadow mb-6">
               <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center justify-end gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                  <span className="text-lg">📅</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'cucina' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
+                      onClick={() => setSelectedDept('cucina')}
+                    >
+                      🔥 Cucina
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'sala' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
+                      onClick={() => setSelectedDept('sala')}
+                    >
+                      🍽️ Sala
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'bar' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50'}`}
+                      onClick={() => setSelectedDept('bar')}
+                    >
+                      🍹 Bar
+                    </button>
+                  </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
                   <div className="font-bold text-gray-900 mr-2">
                     {(() => {
                       const label = calendarDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
@@ -200,28 +224,6 @@ export default function LeavesPage() {
                   >
                     →
                   </button>
-                </div>
-                <div className="mt-2 flex items-center justify-start gap-3">
-                  <span className="text-lg">📅</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'cucina' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
-                      onClick={() => setSelectedDept('cucina')}
-                    >
-                      🔥 Cucina
-                    </button>
-                    <button
-                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'sala' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
-                      onClick={() => setSelectedDept('sala')}
-                    >
-                      🍽️ Sala
-                    </button>
-                    <button
-                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'bar' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50'}`}
-                      onClick={() => setSelectedDept('bar')}
-                    >
-                      🍹 Bar
-                    </button>
                   </div>
                 </div>
               </div>
