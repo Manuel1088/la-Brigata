@@ -37,6 +37,7 @@ export default function LeavesPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([])
   const [stats, setStats] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'balances' | 'requests' | 'calendar'>('balances')
+  const [showBalanceDetails, setShowBalanceDetails] = useState(false)
   // Stato calendario
   const [calendarDate, setCalendarDate] = useState(() => {
     const d = new Date()
@@ -237,9 +238,20 @@ export default function LeavesPage() {
             {activeTab === 'balances' && (
               <div className="bg-white rounded-lg shadow">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">💳 I Miei Saldi Ferie</h2>
-                  <p className="text-sm text-gray-600">Visualizza i tuoi saldi per ogni tipologia di ferie e permessi</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">💳 I Miei Saldi Ferie</h2>
+                      <p className="text-sm text-gray-600">Visualizza i tuoi saldi per ogni tipologia di ferie e permessi</p>
+                    </div>
+                    <button
+                      onClick={() => setShowBalanceDetails(v => !v)}
+                      className="px-3 py-1 rounded text-sm bg-blue-100 text-blue-800 hover:bg-blue-200 transition"
+                    >
+                      {showBalanceDetails ? 'Nascondi' : 'Dettagli'}
+                    </button>
+                  </div>
                 </div>
+                {showBalanceDetails && (
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {balances.map((balance) => {
@@ -300,6 +312,7 @@ export default function LeavesPage() {
                     })}
                   </div>
                 </div>
+                )}
               </div>
             )}
 
