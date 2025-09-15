@@ -81,8 +81,7 @@ export default function DashboardPage() {
   }, [session?.user?.id])
 
   const isSectionVisible = (section: 'bookings' | 'sale' | 'customers' | 'leaves' | 'shifts' | 'rest' | 'tips' | 'admin'): boolean => {
-    const upperRole = (userRole || '').toString().toUpperCase()
-    if (upperRole === UserRole.ADMIN || upperRole === UserRole.PROPRIETARIO) return true
+    if (userRole === UserRole.ADMIN || userRole === UserRole.PROPRIETARIO) return true
     const value = dashboardVisibility?.[section]
     return value === undefined ? true : !!value
   }

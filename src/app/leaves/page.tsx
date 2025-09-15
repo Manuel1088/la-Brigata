@@ -18,6 +18,7 @@ import {
   counterProposeLeaveDates 
 } from '@/lib/leaveSystem'
 import { getEmployeesFullClient } from '@/lib/employees'
+import { UserRole } from '@/types/roles'
 
 export default function LeavesPage() {
   const { data: session, status } = useSession()
@@ -51,7 +52,7 @@ export default function LeavesPage() {
   const [filterEmployee, setFilterEmployee] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [selectedDept, setSelectedDept] = useState<'cucina' | 'sala' | 'bar'>('sala')
-  const isHeadChef = (userRole || '').toUpperCase() === 'HEAD_CHEF'
+  const isHeadChef = userRole === UserRole.HEAD_CHEF
 
   // Helper per date sicure
   const toSafeDate = (value: any): Date | null => {
