@@ -2,6 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { getLeaveBalances } from '@/lib/leaveSystem'
 
 // Configurazione ruoli e livelli (stessa del form nuovo)
 const roleConfig = {
@@ -65,6 +66,9 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [newSkill, setNewSkill] = useState('')
+  // Saldi Ferie/ROL
+  const [prevVacationCarry, setPrevVacationCarry] = useState<number>(0)
+  const [prevRolCarry, setPrevRolCarry] = useState<number>(0)
 
   // Redirect se non autenticato
   useEffect(() => {
@@ -74,6 +78,21 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
       return
     }
   }, [session, status, router])
+
+  // Carica eventuale residuo anno precedente da localStorage (opzionale)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('leave_carryover_v1')
+      if (raw) {
+        const map = JSON.parse(raw) as Record<string, { vacationPrev?: number; rolPrev?: number }>
+        const me = map[employee.id]
+        if (me) {
+          setPrevVacationCarry(me.vacationPrev || 0)
+          setPrevRolCarry(me.rolPrev || 0)
+        }
+      }
+    } catch {}
+  }, [employee.id])
 
   // Gestione competenze
   const addSkill = () => {
@@ -184,6 +203,13 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
   const isOwner = session?.user?.id === employee.id
   const canEditPersonal = isOwner
   const canEditWork = false // i dati lavorativi restano sola lettura per i dipendenti
+
+  // Saldi Ferie/ROL correnti
+  const leaveBalances = getLeaveBalances(employee.id)
+  const vacationBal = leaveBalances.find(b => b.type === 'VACATION') || { total: 26, used: 0, remaining: 26, percentage: 0 }
+  const rolBal = leaveBalances.find(b => b.type === 'ROL') || { total: 32, used: 0, remaining: 32, percentage: 0 }
+  const vacationMatured = Math.max(0, vacationBal.total - prevVacationCarry)
+  const rolMatured = Math.max(0, rolBal.total - prevRolCarry)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -306,6 +332,29 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
 
             {/* Colonna Destra - Dettagli */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Ferie e ROL */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Ferie */}
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">🏖️ Ferie</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-600">Residue anno precedente</span><span className="font-semibold">{prevVacationCarry} gg</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Maturate</span><span className="font-semibold">{vacationMatured} gg</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Godute</span><span className="font-semibold">{vacationBal.used} gg</span></div>
+                    <div className="flex justify-between border-t pt-2"><span className="text-gray-900">Residue totali</span><span className="font-bold text-blue-700">{vacationBal.remaining} gg</span></div>
+                  </div>
+                </div>
+                {/* ROL */}
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">⏰ ROL</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-600">Residue anno precedente</span><span className="font-semibold">{prevRolCarry} h</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Maturate</span><span className="font-semibold">{rolMatured} h</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Godute</span><span className="font-semibold">{rolBal.used} h</span></div>
+                    <div className="flex justify-between border-t pt-2"><span className="text-gray-900">Residue totali</span><span className="font-bold text-blue-700">{rolBal.remaining} h</span></div>
+                  </div>
+                </div>
+              </div>
               
               {/* Informazioni di Contatto */}
               <div className="bg-white rounded-lg shadow p-6">
