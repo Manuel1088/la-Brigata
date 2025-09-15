@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 
@@ -135,7 +135,7 @@ const departments = {
 export default function EmployeesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { canCreateEmployee, canEditEmployee, canDeleteEmployee, canExportEmployees } = usePermissions()
+  const { canCreateEmployee, canEditEmployee, canDeleteEmployee, canExportEmployees, userRole } = usePermissions()
   
   // Stati
   const [searchTerm, setSearchTerm] = useState('')
@@ -145,6 +145,22 @@ export default function EmployeesPage() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
   const [employees, setEmployees] = useState<any[]>(employeesDefault)
   const [filteredEmployees, setFilteredEmployees] = useState<any[]>(employeesDefault)
+
+  // Determina reparto effettivo dell'utente (nome → employees; fallback dal ruolo)
+  const effectiveUserDepartment = useMemo(() => {
+    const me = session?.user?.name ? employees.find(e => e.name === session.user?.name) : undefined
+    if (me?.department) return me.department as string
+    const role = (session?.user as any)?.role as string | undefined
+    const upper = (role || '').toUpperCase()
+    if (upper === 'HEAD_CHEF') return 'cucina'
+    if (upper === 'RESPONSABILE_SALA' || upper === 'CASSIERE') return 'sala'
+    return 'all'
+  }, [employees, session?.user])
+
+  const manageAll = useMemo(() => {
+    const upper = (userRole || '').toUpperCase()
+    return ['PROPRIETARIO','DIRETTORE','MANAGER','ADMIN'].includes(upper)
+  }, [userRole])
 
   useEffect(() => {
     const reload = () => {
@@ -174,7 +190,13 @@ export default function EmployeesPage() {
 
   // Filtri in tempo reale
   useEffect(() => {
-    let filtered = employees
+    // Base dataset visibile in base ai permessi
+    let base = employees
+    if (!manageAll && effectiveUserDepartment !== 'all') {
+      base = base.filter(emp => emp.department === effectiveUserDepartment)
+    }
+
+    let filtered = base
 
     // Filtro ricerca
     if (searchTerm) {
@@ -185,9 +207,10 @@ export default function EmployeesPage() {
       )
     }
 
-    // Filtro dipartimento
-    if (selectedDepartment !== 'all') {
-      filtered = filtered.filter(emp => emp.department === selectedDepartment)
+    // Filtro dipartimento (forza reparto utente se non manageAll)
+    const deptForFilter = manageAll ? selectedDepartment : (effectiveUserDepartment || 'all')
+    if (deptForFilter !== 'all') {
+      filtered = filtered.filter(emp => emp.department === deptForFilter)
     }
 
     // Filtro livello
@@ -201,17 +224,22 @@ export default function EmployeesPage() {
     }
 
     setFilteredEmployees(filtered)
-  }, [searchTerm, selectedDepartment, selectedLevel, showActiveOnly])
+  }, [employees, searchTerm, selectedDepartment, selectedLevel, showActiveOnly, manageAll, effectiveUserDepartment])
 
   // Calcoli statistiche
+  const visibleEmployees = useMemo(() => {
+    if (manageAll || effectiveUserDepartment === 'all') return employees
+    return employees.filter(emp => emp.department === effectiveUserDepartment)
+  }, [employees, manageAll, effectiveUserDepartment])
+
   const stats = {
-    total: employees.length,
-    active: employees.filter(emp => emp.isActive).length,
+    total: visibleEmployees.length,
+    active: visibleEmployees.filter(emp => emp.isActive).length,
     byDepartment: Object.keys(departments).reduce((acc, dept) => {
-      acc[dept] = employees.filter(emp => emp.department === dept && emp.isActive).length
+      acc[dept] = visibleEmployees.filter(emp => emp.department === dept && emp.isActive).length
       return acc
     }, {} as Record<string, number>),
-    monthlyCost: employees.filter(emp => emp.isActive).reduce((total, emp) => {
+    monthlyCost: visibleEmployees.filter(emp => emp.isActive).reduce((total, emp) => {
       const hours = emp.contractType === 'full-time' ? 160 : 80
       return total + (emp.hourlyRate * hours)
     }, 0)
