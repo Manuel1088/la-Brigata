@@ -700,7 +700,7 @@ export default function ShiftsPage() {
                         const isFixedRest = !!(restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any))
                         const leaveInfo = getApprovedLeaveInfo(employee.name, dateISO)
                         const isDerivedBlocked = isFixedRest || !!leaveInfo
-                        const canClickCell = (manageAll || (manageDept && employee.department === userDepartment)) && !isDerivedBlocked
+                        const canClickCell = (manageAll || (manageDept && employee.department === effectiveUserDepartment)) && (!isDerivedBlocked || !!shift)
                         return (
                           <td 
                             key={dayIndex}
