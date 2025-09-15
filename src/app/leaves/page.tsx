@@ -148,50 +148,7 @@ export default function LeavesPage() {
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             
-            {/* Statistiche Generali */}
-            {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <div className="text-3xl text-blue-600">📋</div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Totale Richieste</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.totalRequests}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <div className="text-3xl text-yellow-600">⏳</div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">In Attesa</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.pendingRequests}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <div className="text-3xl text-green-600">✅</div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Approvate</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.approvedRequests}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <div className="text-3xl text-red-600">🚨</div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Urgenti</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.urgentRequests}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Statistiche Generali rimosse su richiesta */}
 
             {/* Tabs Navigation rimossa: sezioni visibili in sequenza */}
 
