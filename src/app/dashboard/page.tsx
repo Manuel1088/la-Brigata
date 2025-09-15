@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 // import type { UserRole } from '@/lib/permissions'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAudit } from '@/hooks/useAudit'
+import { getRestRuleFor } from '@/lib/restRules'
 import { NotificationCenter } from '@/components/NotificationCenter'
 import { NotificationBadge } from '@/components/NotificationBadge'
 import { BreakEvenWidget } from '@/components/BreakEvenWidget'
@@ -109,13 +110,22 @@ export default function DashboardPage() {
       const dayIndex = Math.max(0, Math.min(6, Math.floor((new Date().getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24))))
       const shiftKey = `${session.user.name}-${dayIndex}`
       const shift = map[shiftKey]
-      if (!shift || !shift.time) return
-      if (shift.time === 'RIPOSO') {
+      if (shift?.time) {
+        if (shift.time === 'RIPOSO') {
+          setTodayShiftIsRest(true)
+          setTodayShiftTime(null)
+        } else {
+          setTodayShiftIsRest(false)
+          setTodayShiftTime(shift.time)
+        }
+        return
+      }
+      // Fallback: se giorno di riposo fisso da regole, mostra Riposo
+      const restRule = getRestRuleFor(session.user.name || '')
+      const isFixedRest = !!(restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any))
+      if (isFixedRest) {
         setTodayShiftIsRest(true)
         setTodayShiftTime(null)
-      } else {
-        setTodayShiftIsRest(false)
-        setTodayShiftTime(shift.time)
       }
     } catch {}
   }, [session?.user?.name])
@@ -226,6 +236,12 @@ export default function DashboardPage() {
                   {canViewBreakEven && (
                     <button onClick={() => router.push('/calendar')} className="bg-teal-600 text-white px-4 py-3 rounded-lg hover:bg-teal-700 transition">📆 Calendario Aziendale</button>
                   )}
+                  <button
+                    onClick={() => session.user?.id && router.push(`/employees/${session.user.id}`)}
+                    className="bg-gray-200 text-gray-900 px-4 py-3 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    👤 Il mio profilo
+                  </button>
                 </div>
 
                 {/* Riquadro Turno di Oggi (personale) */}

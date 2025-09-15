@@ -180,6 +180,11 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
   const departmentInfo = departments[roleInfo?.department as keyof typeof departments]
   const availableSkills = roleInfo ? commonSkills[roleInfo.department as keyof typeof commonSkills] || [] : []
 
+  // Limitazioni: un dipendente può modificare solo il proprio profilo personale
+  const isOwner = session?.user?.id === employee.id
+  const canEditPersonal = isOwner
+  const canEditWork = false // i dati lavorativi restano sola lettura per i dipendenti
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -296,7 +301,8 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">📞 Contatti</h3>
                   <button
-                    onClick={() => setIsEditing(!isEditing)}
+                    onClick={() => canEditPersonal && setIsEditing(!isEditing)}
+                    disabled={!canEditPersonal}
                     className="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 transition"
                   >
                     {isEditing ? 'Annulla' : '✏️ Modifica'}
@@ -396,7 +402,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
                 </div>
 
                 {/* Aggiungi Competenze (solo in modalità editing) */}
-                {isEditing && (
+                {isEditing && canEditPersonal && (
                   <div className="space-y-4">
                     {/* Competenze Comuni */}
                     {availableSkills.length > 0 && (
@@ -468,7 +474,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
               </div>
 
               {/* Azioni */}
-              {isEditing && (
+              {isEditing && canEditPersonal && (
                 <div className="bg-white rounded-lg shadow p-6">
                   <div className="flex justify-end space-x-3">
                     <button
