@@ -48,6 +48,7 @@ export default function LeavesPage() {
   const [selectedDayISO, setSelectedDayISO] = useState<string | null>(null)
   const [filterEmployee, setFilterEmployee] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
+  const [selectedDept, setSelectedDept] = useState<'cucina' | 'sala' | 'bar'>('sala')
 
   // Helper per date sicure
   const toSafeDate = (value: any): Date | null => {
@@ -81,6 +82,15 @@ export default function LeavesPage() {
       setStats(systemStats)
     }
   }
+  
+  useEffect(() => {
+    try {
+      const employees = getEmployeesFullClient()
+      const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
+      const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
+      setSelectedDept(dept)
+    } catch {}
+  }, [session?.user?.id, session?.user?.name])
 
   if (status === 'loading') {
     return (
@@ -156,73 +166,69 @@ export default function LeavesPage() {
             {/* Calendario Assenze Reparto */}
             <div className="bg-white rounded-lg shadow mb-6">
               <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <span>📅</span>
-                    {(() => {
-                      const employees = getEmployeesFullClient()
-                      const uniqueDepts = Array.from(new Set(
-                        employees.map(e => e.department).filter(Boolean)
-                      )) as Array<'cucina'|'sala'|'bar'>
-                      const labels = uniqueDepts.length > 0 ? uniqueDepts : ['sala']
-                      const renderLabel = (d: string) => (
-                        d === 'cucina' ? '🔥 Cucina' : d === 'sala' ? '🍽️ Sala' : '🍹 Bar'
-                      )
-                      return (
-                        <span>
-                          {labels.map((d, i) => (
-                            <span key={`${d}-${i}`}>
-                              {i > 0 && ' • '}
-                              {renderLabel(d)}
-                            </span>
-                          ))}
-                        </span>
-                      )
-                    })()}
-                  </div>
+                <div className="flex items-center justify-center gap-3">
+                  <span className="text-lg">📅</span>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))}
-                      className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
-                      aria-label="Mese precedente"
-                      title="Mese precedente"
+                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'cucina' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
+                      onClick={() => setSelectedDept('cucina')}
                     >
-                      ←
+                      🔥 Cucina
                     </button>
                     <button
-                      onClick={() => {
-                        const now = new Date()
-                        setCalendarDate(new Date(now.getFullYear(), now.getMonth(), 1))
-                        const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-                        setSelectedDayISO(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
-                      }}
-                      className="text-xs text-blue-700 hover:text-blue-900"
+                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'sala' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
+                      onClick={() => setSelectedDept('sala')}
                     >
-                      Oggi
+                      🍽️ Sala
                     </button>
                     <button
-                      onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))}
-                      className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
-                      aria-label="Mese successivo"
-                      title="Mese successivo"
+                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'bar' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50'}`}
+                      onClick={() => setSelectedDept('bar')}
                     >
-                      →
+                      🍹 Bar
                     </button>
                   </div>
                 </div>
-                <div className="mt-2 text-center font-bold text-gray-900">
-                  {(() => {
-                    const label = calendarDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
-                    return label.charAt(0).toUpperCase() + label.slice(1)
-                  })()}
+                <div className="mt-2 flex items-center justify-end gap-2">
+                  <div className="font-bold text-gray-900 mr-2">
+                    {(() => {
+                      const label = calendarDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+                      return label.charAt(0).toUpperCase() + label.slice(1)
+                    })()}
+                  </div>
+                  <button
+                    onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))}
+                    className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                    aria-label="Mese precedente"
+                    title="Mese precedente"
+                  >
+                    ←
+                  </button>
+                  <button
+                    onClick={() => {
+                      const now = new Date()
+                      setCalendarDate(new Date(now.getFullYear(), now.getMonth(), 1))
+                      const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                      setSelectedDayISO(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
+                    }}
+                    className="text-xs text-blue-700 hover:text-blue-900"
+                  >
+                    Oggi
+                  </button>
+                  <button
+                    onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))}
+                    className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                    aria-label="Mese successivo"
+                    title="Mese successivo"
+                  >
+                    →
+                  </button>
                 </div>
               </div>
               <div className="p-6">
                 {(() => {
                   const employees = getEmployeesFullClient()
-                  const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
-                  const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
-                  const deptUserIds = new Set(employees.filter(e => e.department === dept).map(e => e.id))
+                  const deptUserIds = new Set(employees.filter(e => e.department === selectedDept).map(e => e.id))
 
                   const allRequests = getLeaveRequests()
 
