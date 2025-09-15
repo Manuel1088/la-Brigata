@@ -354,21 +354,23 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          {/* Distribuzione per Reparto */}
-          <div className="bg-white p-6 rounded-lg shadow mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900">📊 Distribuzione per Reparto</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {Object.entries(departments).map(([key, dept]) => (
-                <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-2xl mr-3">{dept.icon}</span>
-                    <span className="font-medium text-gray-900">{dept.name}</span>
+          {/* Distribuzione per Reparto (solo per chi può vedere tutti i reparti) */}
+          {manageAll && (
+            <div className="bg-white p-6 rounded-lg shadow mb-8">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">📊 Distribuzione per Reparto</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {Object.entries(departments).map(([key, dept]) => (
+                  <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-3">{dept.icon}</span>
+                      <span className="font-medium text-gray-900">{dept.name}</span>
+                    </div>
+                    <span className="text-2xl font-bold text-gray-900">{stats.byDepartment[key] || 0}</span>
                   </div>
-                  <span className="text-2xl font-bold text-gray-900">{stats.byDepartment[key] || 0}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Filtri e Controlli */}
           <div className="bg-white p-6 rounded-lg shadow mb-6">
