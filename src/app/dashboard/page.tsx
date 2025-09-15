@@ -31,16 +31,17 @@ export default function DashboardPage() {
   } = usePermissions()
   
   // Controlla se l'utente può vedere il break-even (Direttore e Manager)
-  const canViewBreakEven = (session?.user as any)?.role === 'DIRETTORE' || (session?.user as any)?.role === 'MANAGER'
+  const role = (session?.user as any)?.role as import('@/types/roles').UserRole | undefined
+  const canViewBreakEven = role === 'DIRETTORE' || role === 'MANAGER'
   
   // Controlla se l'utente è un dipendente per mostrare dashboard personale
-  const isEmployee = (session?.user as any)?.role === 'DIPENDENTE'
+  const isEmployee = role === 'DIPENDENTE'
   
   // Controlla se l'utente è un cassiere per mostrare dashboard cassiere
-  const isCashier = (session?.user as any)?.role === 'CASSIERE'
+  const isCashier = role === 'CASSIERE'
   
   // Controlla se l'utente è un manager o proprietario per mostrare dashboard manageriale
-  const isManager = (session?.user as any)?.role === 'MANAGER' || (session?.user as any)?.role === 'PROPRIETARIO'
+  const isManager = role === 'MANAGER' || role === 'PROPRIETARIO'
   
   const { logReadAction } = useAudit()
   
