@@ -15,7 +15,9 @@ import {
   LeaveRequest,
   acceptLeaveProposal,
   rejectLeaveProposal,
-  counterProposeLeaveDates 
+  counterProposeLeaveDates,
+  proposeLeaveDates,
+  updateLeaveRequestStatus 
 } from '@/lib/leaveSystem'
 import { getEmployeesFullClient } from '@/lib/employees'
 import { UserRole } from '@/types/roles'
@@ -461,8 +463,8 @@ export default function LeavesPage() {
                 <div className="mt-3 flex items-center justify-center gap-4 text-xs text-gray-700">
                   <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span><span>Approvate</span></div>
                   <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span><span>Da approvare</span></div>
-                </div>
-              </div>
+                    </div>
+                  </div>
                 </div>
                 
             {isDayModalOpen && selectedDayISO && (
@@ -516,7 +518,93 @@ export default function LeavesPage() {
                 </div>
               </div>
             )}
-            {/* Sezione: I Miei Saldi */}
+
+    {/* Gestione Richieste del Team */}
+    {(isHeadChef || canApproveLeave()) && (
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">👥 Richieste del Team</h2>
+          <p className="text-sm text-gray-600">Approva, rifiuta o proponi nuove date per il personale che gestisci</p>
+        </div>
+        <div className="p-6 overflow-x-auto">
+          {(() => {
+            const employees = getEmployeesFullClient()
+            const upper = (userRole || '').toString().toUpperCase()
+            let scopeDepts: Array<'cucina'|'sala'|'bar'> = ['cucina','sala','bar']
+            if (upper === 'HEAD_CHEF') scopeDepts = ['cucina']
+            if (upper === 'RESPONSABILE_SALA' || upper === 'CASSIERE') scopeDepts = ['sala']
+            const managedUserIds = new Set(employees.filter(e => scopeDepts.includes((e.department as any) || 'sala')).map(e => e.id))
+            const userIdToName = new Map<string, string>(employees.map(e => [e.id, e.name]))
+            const teamReqs = getLeaveRequests().filter(r => managedUserIds.has(r.userId))
+            if (teamReqs.length === 0) {
+              return <div className="text-sm text-gray-600">Nessuna richiesta del team da gestire.</div>
+            }
+            return (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dipendente</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Periodo</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Stato</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {teamReqs.map(r => {
+                    const cfg = LEAVE_TYPES[r.type]
+                    const statusCls = r.status === 'APPROVED' ? 'bg-green-100 text-green-800' : r.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : r.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                    return (
+                      <tr key={r.id}>
+                        <td className="px-4 py-2 text-sm text-gray-900">{userIdToName.get(r.userId) || r.userId}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 flex items-center gap-2"><span>{cfg.icon}</span><span>{cfg.name}</span></td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{r.startDate.toLocaleDateString('it-IT')} → {r.endDate.toLocaleDateString('it-IT')}</td>
+                        <td className="px-4 py-2"><span className={`text-xs px-2 py-0.5 rounded-full ${statusCls}`}>{r.status}</span></td>
+                        <td className="px-4 py-2 text-right text-sm">
+                          {r.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  const res = updateLeaveRequestStatus(r.id, 'APPROVED', session?.user?.id as string)
+                                  if (!res.success) alert('Errore approvazione')
+                                  else loadData()
+                                }}
+                                className="px-2 py-1 bg-green-600 text-white rounded mr-2 hover:bg-green-700"
+                              >Approva</button>
+                              <button
+                                onClick={() => {
+                                  const res = updateLeaveRequestStatus(r.id, 'REJECTED', session?.user?.id as string)
+                                  if (!res.success) alert('Errore rifiuto')
+                                  else loadData()
+                                }}
+                                className="px-2 py-1 bg-red-600 text-white rounded mr-2 hover:bg-red-700"
+                              >Rifiuta</button>
+                              <button
+                                onClick={() => {
+                                  const ns = prompt('Nuova data inizio (YYYY-MM-DD)')
+                                  const ne = prompt('Nuova data fine (YYYY-MM-DD)')
+                                  if (!ns || !ne) return
+                                  const res = proposeLeaveDates(r.id, session?.user?.id as string, new Date(ns), new Date(ne))
+                                  if (!res.success) alert('Errore proposta: ' + (res.error || ''))
+                                  else loadData()
+                                }}
+                                className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                              >Proponi Date</button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )
+          })()}
+        </div>
+      </div>
+    )}
+
+    {/* Sezione: I Miei Saldi */}
               <div className="bg-white rounded-lg shadow mt-6">
                 <div className="px-6 py-4 border-b border-gray-200">
                   <div className="flex items-center justify-between">
@@ -530,7 +618,7 @@ export default function LeavesPage() {
                     >
                       {showBalanceDetails ? 'Nascondi' : 'Dettagli'}
                     </button>
-                  </div>
+            </div>
                 </div>
                 {showBalanceDetails && (
                 <div className="p-6">
