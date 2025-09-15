@@ -17,6 +17,7 @@ import {
   rejectLeaveProposal,
   counterProposeLeaveDates 
 } from '@/lib/leaveSystem'
+import { getEmployeesFullClient } from '@/lib/employees'
 
 export default function LeavesPage() {
   const { data: session, status } = useSession()
@@ -113,6 +114,158 @@ export default function LeavesPage() {
                 <h1 className="text-3xl font-bold text-gray-900">
                   🏖️ Ferie e Permessi
                 </h1>
+              </div>
+
+              {/* Calendario Assenze Reparto */}
+              <div className="bg-white rounded-lg shadow mt-6">
+                <div className="px-6 py-4 border-b border-gray-200 relative">
+                  {(() => {
+                    const employees = getEmployeesFullClient()
+                    const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
+                    const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
+                    return (
+                      <div className="flex items-center justify-between">
+                        <div className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                          <span>📅</span>
+                          <span>Calendario Assenze — {dept === 'cucina' ? '🔥 Cucina' : dept === 'sala' ? '🍽️ Sala' : '🍹 Bar'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))}
+                            className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                            aria-label="Mese precedente"
+                            title="Mese precedente"
+                          >
+                            ←
+                          </button>
+                          <button
+                            onClick={() => {
+                              const now = new Date()
+                              setCalendarDate(new Date(now.getFullYear(), now.getMonth(), 1))
+                              const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                              setSelectedDayISO(`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())}`)
+                            }}
+                            className="text-xs text-blue-700 hover:text-blue-900"
+                          >
+                            Oggi
+                          </button>
+                          <button
+                            onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))}
+                            className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                            aria-label="Mese successivo"
+                            title="Mese successivo"
+                          >
+                            →
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-base font-bold text-gray-900">
+                      {(() => {
+                        const label = calendarDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+                        return label.charAt(0).toUpperCase() + label.slice(1)
+                      })()}
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6">
+                  {(() => {
+                    const employees = getEmployeesFullClient()
+                    const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
+                    const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
+                    const deptUserIds = new Set(employees.filter(e => e.department === dept).map(e => e.id))
+
+                    const allRequests = getLeaveRequests()
+
+                    const toLocalISO = (d: Date) => {
+                      const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                      return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+                    }
+                    const todayISO = toLocalISO(new Date())
+                    const firstDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1)
+                    const startDay = (firstDay.getDay() + 6) % 7 // Lunedì
+                    const gridStart = new Date(firstDay)
+                    gridStart.setDate(firstDay.getDate() - startDay)
+                    gridStart.setHours(0,0,0,0)
+                    const cells: Date[] = []
+                    for (let i = 0; i < 42; i++) {
+                      const d = new Date(gridStart)
+                      d.setDate(gridStart.getDate() + i)
+                      cells.push(d)
+                    }
+
+                    const dayHeader = (
+                      <div className="grid grid-cols-7 text-xs text-gray-500 mb-1">
+                        {['L','M','M','G','V','S','D'].map((d, i) => (
+                          <div key={`${d}-${i}`} className="px-2 py-1 text-center uppercase tracking-wide">{d}</div>
+                        ))}
+                      </div>
+                    )
+
+                    const dayHas = (dateObj: Date) => {
+                      const d0 = new Date(dateObj); d0.setHours(0,0,0,0)
+                      let hasApproved = false
+                      let hasPending = false
+                      for (const r of allRequests) {
+                        if (!deptUserIds.has(r.userId)) continue
+                        const s = new Date(r.startDate); s.setHours(0,0,0,0)
+                        const e = new Date(r.endDate); e.setHours(0,0,0,0)
+                        if (d0 >= s && d0 <= e) {
+                          if (r.status === 'APPROVED') hasApproved = true
+                          if (r.status === 'PENDING' || r.status === 'PROPOSED') hasPending = true
+                          if (hasApproved && hasPending) break
+                        }
+                      }
+                      return { hasApproved, hasPending }
+                    }
+
+                    const cellEls = cells.map(d => {
+                      const inMonth = d.getMonth() === calendarDate.getMonth()
+                      const dayISO = toLocalISO(d)
+                      const isSelected = selectedDayISO === dayISO
+                      const isToday = dayISO === todayISO
+                      const numberCls = isSelected
+                        ? 'bg-blue-600 text-white'
+                        : isToday
+                          ? 'border border-red-600 text-red-600'
+                          : inMonth
+                            ? 'text-gray-900'
+                            : 'text-gray-400 opacity-50'
+                      const { hasApproved, hasPending } = dayHas(d)
+                      return (
+                        <div
+                          key={dayISO}
+                          onClick={() => setSelectedDayISO(dayISO)}
+                          className={`p-2 h-20 cursor-pointer ${inMonth ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 rounded-lg transition`}
+                          title={`${hasApproved ? 'Assenze approvate' : ''}${hasApproved && hasPending ? ' • ' : ''}${hasPending ? 'Assenze da approvare' : ''}`}
+                        >
+                          <div className="flex justify-center">
+                            <div className={`w-7 h-7 flex items-center justify-center rounded-full text-sm ${numberCls}`}>{d.getDate()}</div>
+                          </div>
+                          <div className="mt-2 flex justify-center gap-1">
+                            {hasApproved && <span className="w-2 h-2 rounded-full bg-green-500"></span>}
+                            {hasPending && <span className="w-2 h-2 rounded-full bg-yellow-500"></span>}
+                          </div>
+                        </div>
+                      )
+                    })
+
+                    return (
+                      <div>
+                        {dayHeader}
+                        <div className="grid grid-cols-7 gap-0">
+                          {cellEls}
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  <div className="mt-3 flex items-center justify-center gap-4 text-xs text-gray-700">
+                    <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span><span>Approvate</span></div>
+                    <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span><span>Da approvare</span></div>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center space-x-4">
                 {canRequestLeave() && (
