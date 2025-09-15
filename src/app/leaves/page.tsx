@@ -255,6 +255,23 @@ export default function LeavesPage() {
                     return { hasApproved, hasPending }
                   }
 
+                  const PERMESSO_TYPES = new Set(['ROL','PAID_LEAVE','UNPAID_LEAVE','STUDY_LEAVE','UNION_LEAVE','PARENTAL_LEAVE'])
+                  const dayCounts = (dateObj: Date) => {
+                    const d0 = new Date(dateObj); d0.setHours(0,0,0,0)
+                    let ferieCount = 0
+                    let permessiCount = 0
+                    for (const r of allRequests) {
+                      if (!deptUserIds.has(r.userId)) continue
+                      const s = new Date(r.startDate); s.setHours(0,0,0,0)
+                      const e = new Date(r.endDate); e.setHours(0,0,0,0)
+                      if (d0 >= s && d0 <= e) {
+                        if (r.type === 'VACATION') ferieCount++
+                        else if (PERMESSO_TYPES.has(r.type)) permessiCount++
+                      }
+                    }
+                    return { ferieCount, permessiCount }
+                  }
+
                   const cellEls = daysInMonth.map((d, idx) => {
                     const dayISO = toLocalISO(d)
                     const isSelected = selectedDayISO === dayISO
@@ -265,6 +282,7 @@ export default function LeavesPage() {
                         ? 'border border-red-600 text-red-600'
                         : 'text-gray-900'
                     const { hasApproved, hasPending } = dayHas(d)
+                    const { ferieCount, permessiCount } = dayCounts(d)
                     const colStartStyle = idx === 0 ? { gridColumnStart: startDay + 1 } as React.CSSProperties : undefined
                     return (
                       <div
@@ -280,6 +298,10 @@ export default function LeavesPage() {
                         <div className="mt-2 flex justify-center gap-1">
                           {hasApproved && <span className="w-2 h-2 rounded-full bg-green-500"></span>}
                           {hasPending && <span className="w-2 h-2 rounded-full bg-yellow-500"></span>}
+                        </div>
+                        <div className="mt-1 text-[10px] text-gray-700 flex justify-center gap-2">
+                          <span>f {ferieCount}</span>
+                          <span>p {permessiCount}</span>
                         </div>
                       </div>
                     )
