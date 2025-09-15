@@ -240,6 +240,25 @@ export default function ShiftsPage() {
     return (canCreateShift() || canAssignShift()) && !canManageAll
   }, [canCreateShift, canAssignShift, canManageAll])
 
+  // Override da Gestione Accessi (/access): viewScope + canEdit
+  const [accessScope, setAccessScope] = useState<'own' | 'department' | 'all' | null>(null)
+  const [accessCanEdit, setAccessCanEdit] = useState<boolean | null>(null)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('user_access_controls_v1')
+      const map = raw ? JSON.parse(raw) as Record<string, { shifts?: { viewScope?: 'own'|'department'|'all', canEdit?: boolean } }> : {}
+      const cfg = map[(session?.user?.id as string) || '']?.shifts
+      if (cfg) {
+        setAccessScope(cfg.viewScope || null)
+        setAccessCanEdit(typeof cfg.canEdit === 'boolean' ? cfg.canEdit : null)
+      }
+    } catch {}
+  }, [session?.user?.id])
+
+  // Applica override: se configurato in /access, quello prevale
+  const manageAll = accessScope ? (accessScope === 'all' && accessCanEdit === true) : canManageAll
+  const manageDept = accessScope ? (accessScope === 'department' && accessCanEdit === true) : canManageDept
+
   // Imposta filtro reparto coerente con i permessi
   useEffect(() => {
     if (canManageAll) return // libero
@@ -531,7 +550,7 @@ export default function ShiftsPage() {
         <div className="px-4 py-6 sm:px-0">
           {/* Pulsanti filtro reparto */}
           <div className="flex space-x-3 mb-6">
-            {canManageAll ? (
+            {manageAll ? (
               <>
                 <button
                   className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'all' ? 'bg-orange-500 text-white' : 'bg-white hover:bg-orange-100'}`}
@@ -627,7 +646,7 @@ export default function ShiftsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {employees
                   .filter(employee => {
-                    if (canManageAll) {
+                    if (manageAll) {
                       return selectedDepartment === 'all' || employee.department === selectedDepartment
                     }
                     return employee.department === userDepartment
@@ -659,7 +678,7 @@ export default function ShiftsPage() {
                         const isFixedRest = !!(restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any))
                         const leaveInfo = getApprovedLeaveInfo(employee.name, dateISO)
                         const isDerivedBlocked = isFixedRest || !!leaveInfo
-                        const canClickCell = (canManageAll || (canManageDept && employee.department === userDepartment)) && !isDerivedBlocked
+                        const canClickCell = (manageAll || (manageDept && employee.department === userDepartment)) && !isDerivedBlocked
                         return (
                           <td 
                             key={dayIndex}
