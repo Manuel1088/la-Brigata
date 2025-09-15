@@ -325,6 +325,47 @@ export default function ShiftsPage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const isCurrentWeekDisplayed = today >= shownWeekStart && today <= shownWeekEnd
+  // Stato compliance aggregato per CCNL (per colorare il pannello)
+  const employeesInView = useMemo(() => {
+    // Stessa logica della tabella: se globale, rispetta filtro; altrimenti solo reparto utente
+    if (manageAll) {
+      if (selectedDepartment === 'all') return employees
+      return employees.filter(e => e.department === selectedDepartment)
+    }
+    return employees.filter(e => e.department === effectiveUserDepartment)
+  }, [employees, manageAll, selectedDepartment, effectiveUserDepartment])
+
+  const anyOvertime = useMemo(() => {
+    return employeesInView.some(e => calculateWeeklyHours(e.name) > 48)
+  }, [employeesInView])
+
+  const anyUndertime = useMemo(() => {
+    return employeesInView.some(e => {
+      const wh = calculateWeeklyHours(e.name)
+      return wh < 20 && wh > 0
+    })
+  }, [employeesInView])
+
+  const anyRestConflicts = useMemo(() => {
+    for (let day = 1; day < 7; day++) {
+      for (const emp of employeesInView) {
+        const warnings = checkRestTime(emp.name, day)
+        if (warnings.length > 0) return true
+      }
+    }
+    return false
+  }, [employeesInView])
+
+  const ccnlHeaderBg = anyOvertime || anyRestConflicts
+    ? 'bg-red-50'
+    : anyUndertime
+    ? 'bg-yellow-50'
+    : 'bg-green-50'
+  const ccnlHeaderText = anyOvertime || anyRestConflicts
+    ? 'text-red-800'
+    : anyUndertime
+    ? 'text-yellow-800'
+    : 'text-green-800'
   const getDayIndexInShownWeek = (date: Date) => {
     const diff = Math.floor((date.getTime() - shownWeekStart.getTime()) / (1000 * 60 * 60 * 24))
     if (diff < 0) return 0
@@ -772,9 +813,9 @@ export default function ShiftsPage() {
           </div>
           {/* Warnings CCNL */}
           <div className="bg-white rounded-lg shadow mt-6">
-            <div className="px-6 py-4 border-b bg-yellow-50">
+            <div className={`px-6 py-4 border-b ${ccnlHeaderBg}`}>
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-yellow-800">⚖️ Controlli Compliance CCNL</h3>
+                <h3 className={`text-lg font-semibold ${ccnlHeaderText}`}>⚖️ Controlli Compliance CCNL</h3>
                 <button
                   onClick={() => setShowCcnlDetails(v => !v)}
                   className="px-3 py-1 rounded text-sm bg-yellow-200 text-yellow-900 hover:bg-yellow-300 transition"
