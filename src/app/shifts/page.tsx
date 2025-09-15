@@ -209,25 +209,17 @@ export default function ShiftsPage() {
     return () => window.removeEventListener('employees_updated', reload)
   }, [])
 
-  // Determina reparto utente corrente (match su nome, fallback da ruolo)
-  useEffect(() => {
-    if (!session?.user) return
+  // Calcola reparto utente (nome → employees, altrimenti mappa ruolo)
+  const effectiveUserDepartment = useMemo(() => {
+    if (!session?.user) return userDepartment
     const me = employees.find(e => e.name === session.user?.name)
-    if (me?.department) {
-      setUserDepartment(me.department)
-      return
-    }
+    if (me?.department) return me.department
     const role = (session.user as any)?.role as string | undefined
     const upperRole = (role || '').toUpperCase()
-    const roleToDept: Record<string, string> = {
-      HEAD_CHEF: 'cucina',
-      RESPONSABILE_SALA: 'sala',
-      CASSIERE: 'sala'
-    }
-    if (upperRole && roleToDept[upperRole]) {
-      setUserDepartment(roleToDept[upperRole])
-    }
-  }, [employees, session?.user])
+    if (upperRole === 'HEAD_CHEF') return 'cucina'
+    if (upperRole === 'RESPONSABILE_SALA' || upperRole === 'CASSIERE') return 'sala'
+    return userDepartment
+  }, [employees, session?.user, userDepartment])
 
   // Calcola capacità di gestione
   const canManageAll = useMemo(() => {
@@ -261,10 +253,9 @@ export default function ShiftsPage() {
 
   // Imposta filtro reparto coerente con i permessi
   useEffect(() => {
-    if (canManageAll) return // libero
-    // Dipendenti e responsabili reparto vedono solo il proprio reparto
-    setSelectedDepartment(userDepartment)
-  }, [canManageAll, userDepartment])
+    if (manageAll) return // libero
+    setSelectedDepartment(effectiveUserDepartment)
+  }, [manageAll, effectiveUserDepartment])
 
   // trigger per ricaricare regole riposi
   const [restVersion, setRestVersion] = useState(0)
@@ -872,19 +863,19 @@ export default function ShiftsPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {userDepartment === 'cucina' && (
+                  {effectiveUserDepartment === 'cucina' && (
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
                       <span className="text-sm text-gray-600">🔥 Cucina ({employees.filter(e => e.department === 'cucina').length} dipendenti)</span>
                     </div>
                   )}
-                  {userDepartment === 'sala' && (
+                  {effectiveUserDepartment === 'sala' && (
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
                       <span className="text-sm text-gray-600">🍽️ Sala ({employees.filter(e => e.department === 'sala').length} dipendenti)</span>
                     </div>
                   )}
-                  {userDepartment === 'bar' && (
+                  {effectiveUserDepartment === 'bar' && (
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
                       <span className="text-sm text-gray-600">🍹 Bar ({employees.filter(e => e.department === 'bar').length} dipendenti)</span>
