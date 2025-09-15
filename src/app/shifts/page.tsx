@@ -593,37 +593,7 @@ export default function ShiftsPage() {
               {/* Rimosso pulsante Compila automaticamente */}
             </div>
           </div>
-          {/* Riepilogo turni del giorno per gli account presenti */}
-          <div className="bg-white p-4 rounded-lg shadow mb-6">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">🗓️ Turni di oggi</h4>
-            <div className="grid md:grid-cols-3 gap-2 text-sm">
-              {employees
-                .filter(employee => {
-                  if (canManageAll) {
-                    return selectedDepartment === 'all' || employee.department === selectedDepartment
-                  }
-                  return employee.department === userDepartment
-                })
-                .map(employee => {
-                  const key = `${employee.name}-${dayIndexToShow}`
-                  const shift = shifts[key]
-                  const isRest = shift?.time === 'RIPOSO'
-                  const color = employee.department === 'cucina' ? 'text-red-700' : employee.department === 'sala' ? 'text-blue-700' : 'text-green-700'
-                  return (
-                    <div key={employee.name} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${employee.department === 'cucina' ? 'bg-red-500' : employee.department === 'sala' ? 'bg-blue-500' : 'bg-green-500'}`}></span>
-                        <span className="font-medium text-gray-900">{employee.name}</span>
-                        <span className="text-gray-500 text-xs">({employee.department})</span>
-                      </div>
-                      <div className={`text-xs font-semibold ${color}`}>
-                        {shift ? (isRest ? '😴 Riposo' : shift.time) : '—'}
-                      </div>
-                    </div>
-                  )
-                })}
-            </div>
-          </div>
+          
           {/* Tabella Turni */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-6 py-4 border-b bg-gray-50">
