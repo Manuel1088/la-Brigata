@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+// import type { UserRole } from '@/lib/permissions'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAudit } from '@/hooks/useAudit'
 import { NotificationCenter } from '@/components/NotificationCenter'

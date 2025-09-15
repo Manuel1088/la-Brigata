@@ -1,0 +1,14 @@
+export enum UserRole {
+  PROPRIETARIO = 'PROPRIETARIO',
+  ADMIN = 'ADMIN',
+  DIRETTORE = 'DIRETTORE',
+  MANAGER = 'MANAGER',
+  RESPONSABILE_SALA = 'RESPONSABILE_SALA',
+  HEAD_CHEF = 'HEAD_CHEF',
+  CASSIERE = 'CASSIERE',
+  DIPENDENTE = 'DIPENDENTE',
+}
+
+export type UserRoleString = `${UserRole}`
+
+
