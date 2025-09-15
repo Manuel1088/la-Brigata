@@ -70,7 +70,8 @@ export default function DashboardPage() {
       const raw = localStorage.getItem('user_access_controls_v1')
       const map = raw ? JSON.parse(raw) as Record<string, { dashboard?: Record<string, boolean> }> : {}
       setDashboardVisibility(map[userId]?.dashboard || {})
-    } catch {
+    } catch (error) {
+      console.error('Errore caricamento preferenze:', error)
       setDashboardVisibility({})
     }
   }, [session?.user?.id])
