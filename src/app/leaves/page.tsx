@@ -47,6 +47,7 @@ export default function LeavesPage() {
     return d
   })
   const [selectedDayISO, setSelectedDayISO] = useState<string | null>(null)
+  const [isDayModalOpen, setIsDayModalOpen] = useState<boolean>(false)
   const [filterEmployee, setFilterEmployee] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [selectedDept, setSelectedDept] = useState<'cucina' | 'sala' | 'bar'>('sala')
@@ -318,6 +319,7 @@ export default function LeavesPage() {
                       <div
                         key={dayISO}
                         onClick={() => setSelectedDayISO(dayISO)}
+                        onDoubleClick={() => { setSelectedDayISO(dayISO); setIsDayModalOpen(true) }}
                         className={`p-2 h-20 cursor-pointer bg-white hover:bg-gray-100 rounded-lg transition`}
                         style={colStartStyle}
                         title={`${hasApproved ? 'Assenze approvate' : ''}${hasApproved && hasPending ? ' • ' : ''}${hasPending ? 'Assenze da approvare' : ''}`}
@@ -332,8 +334,8 @@ export default function LeavesPage() {
                         <div className="mt-1 text-[10px] text-gray-700 flex justify-center gap-2">
                           <span>F {ferieCount}</span>
                           <span>P {permessiCount}</span>
-                  </div>
-                </div>
+                        </div>
+                      </div>
                     )
                   })
 
@@ -352,6 +354,58 @@ export default function LeavesPage() {
                 </div>
               </div>
             </div>
+
+            {isDayModalOpen && selectedDayISO && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+                  <div className="px-6 py-4 border-b flex items-center justify-between">
+                    <div className="font-semibold text-gray-900">
+                      Richieste del {(() => { const [yy,mm,dd] = selectedDayISO.split('-').map(Number); return new Date(yy,(mm||1)-1,dd||1).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) })()}
+                    </div>
+                    <button onClick={() => setIsDayModalOpen(false)} className="text-gray-500 hover:text-gray-700 text-xl">×</button>
+                  </div>
+                  <div className="p-6">
+                    {(() => {
+                      const employees = getEmployeesFullClient()
+                      const userIdToName = new Map<string, string>(employees.map(e => [e.id, e.name]))
+                      const deptUserIds = new Set(employees.filter(e => e.department === selectedDept).map(e => e.id))
+                      const allReq = getLeaveRequests().filter(r => deptUserIds.has(r.userId))
+                      const [yy,mm,dd] = selectedDayISO.split('-').map(Number)
+                      const cd = new Date(yy,(mm||1)-1,dd||1); cd.setHours(0,0,0,0)
+                      const dayReqs = allReq.filter(r => {
+                        const s = new Date(r.startDate); s.setHours(0,0,0,0)
+                        const e = new Date(r.endDate); e.setHours(0,0,0,0)
+                        return cd >= s && cd <= e
+                      })
+                      if (dayReqs.length === 0) {
+                        return <div className="text-sm text-gray-600">Nessuna richiesta per questo giorno.</div>
+                      }
+                      return (
+                        <div className="space-y-3">
+                          {dayReqs.map(r => {
+                            const cfg = LEAVE_TYPES[r.type]
+                            return (
+                              <div key={r.id} className="border rounded p-3 flex items-start justify-between">
+                                <div>
+                                  <div className="font-medium text-gray-900 flex items-center gap-2">
+                                    <span className="text-lg">{cfg?.icon}</span>
+                                    <span>{cfg?.name}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${r.status === 'APPROVED' ? 'bg-green-100 text-green-700' : r.status === 'PENDING' || r.status === 'PROPOSED' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{r.status}</span>
+                                  </div>
+                                  <div className="text-xs text-gray-700 mt-1">
+                                    {userIdToName.get(r.userId) || `Utente ${r.userId}`} • {r.startDate.toLocaleDateString('it-IT')} → {r.endDate.toLocaleDateString('it-IT')}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Sezione: Le Mie Richieste */}
               <div className="bg-white rounded-lg shadow">
