@@ -237,19 +237,45 @@ export default function ShiftsPage() {
   const [accessCanEdit, setAccessCanEdit] = useState<boolean | null>(null)
   useEffect(() => {
     try {
+      const userId = (session?.user?.id as string) || ''
+      // Nuovo formato /access
       const raw = localStorage.getItem('user_access_controls_v1')
       const map = raw ? JSON.parse(raw) as Record<string, { shifts?: { viewScope?: 'own'|'department'|'all', canEdit?: boolean } }> : {}
-      const cfg = map[(session?.user?.id as string) || '']?.shifts
+      const cfg = map[userId]?.shifts
       if (cfg) {
         setAccessScope(cfg.viewScope || null)
         setAccessCanEdit(typeof cfg.canEdit === 'boolean' ? cfg.canEdit : null)
+        return
+      }
+      // Backward compat: vecchio formato user_access_config_v1
+      const rawOld = localStorage.getItem('user_access_config_v1')
+      if (rawOld) {
+        const oldMap = JSON.parse(rawOld) as Record<string, { shiftPermissions?: { viewOwnShifts?: boolean; manageOwnDepartmentShifts?: boolean; manageAllShifts?: boolean } }>
+        const oldCfg = oldMap[userId]?.shiftPermissions
+        if (oldCfg) {
+          if (oldCfg.manageAllShifts) {
+            setAccessScope('all')
+            setAccessCanEdit(true)
+            return
+          }
+          if (oldCfg.manageOwnDepartmentShifts) {
+            setAccessScope('department')
+            setAccessCanEdit(true)
+            return
+          }
+          if (oldCfg.viewOwnShifts) {
+            setAccessScope('own')
+            setAccessCanEdit(false)
+            return
+          }
+        }
       }
     } catch {}
   }, [session?.user?.id])
 
   // Applica override: se configurato in /access, quello prevale
-  const manageAll = accessScope ? (accessScope === 'all' && accessCanEdit === true) : canManageAll
-  const manageDept = accessScope ? (accessScope === 'department' && accessCanEdit === true) : canManageDept
+  const manageAll = accessScope !== null ? (accessScope === 'all' && accessCanEdit !== false) : canManageAll
+  const manageDept = accessScope !== null ? (accessScope === 'department' && accessCanEdit !== false) : canManageDept
 
   // Imposta filtro reparto coerente con i permessi
   useEffect(() => {
