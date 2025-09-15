@@ -290,6 +290,8 @@ export default function ShiftsPage() {
 
   // trigger per ricaricare regole riposi
   const [restVersion, setRestVersion] = useState(0)
+  // Toggle dettagli pannello CCNL
+  const [showCcnlDetails, setShowCcnlDetails] = useState(false)
 
   // Giorni della settimana
   const getDaysOfWeek = (date: Date) => {
@@ -323,29 +325,6 @@ export default function ShiftsPage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const isCurrentWeekDisplayed = today >= shownWeekStart && today <= shownWeekEnd
-  // Stato compliance aggregato per colorare l'header
-  const employeesInView = useMemo(() => {
-    return employees.filter(e => selectedDepartment === 'all' || e.department === selectedDepartment)
-  }, [employees, selectedDepartment])
-  const anyOvertime = useMemo(() => {
-    return employeesInView.some(e => calculateWeeklyHours(e.name) > 48)
-  }, [employeesInView])
-  const anyUndertime = useMemo(() => {
-    return employeesInView.some(e => {
-      const wh = calculateWeeklyHours(e.name)
-      return wh < 20 && wh > 0
-    })
-  }, [employeesInView])
-  const anyRestConflicts = useMemo(() => {
-    for (let day = 1; day < 7; day++) {
-      for (const employee of employeesInView) {
-        const warnings = checkRestTime(employee.name, day)
-        if (warnings.length > 0) return true
-      }
-    }
-    return false
-  }, [employeesInView])
-  const allComplianceOk = !anyOvertime && !anyUndertime && !anyRestConflicts
   const getDayIndexInShownWeek = (date: Date) => {
     const diff = Math.floor((date.getTime() - shownWeekStart.getTime()) / (1000 * 60 * 60 * 24))
     if (diff < 0) return 0
@@ -793,10 +772,19 @@ export default function ShiftsPage() {
           </div>
           {/* Warnings CCNL */}
           <div className="bg-white rounded-lg shadow mt-6">
-            <div className={`px-6 py-4 border-b ${allComplianceOk ? 'bg-green-50' : 'bg-yellow-50'}`}>
-              <h3 className="text-lg font-semibold text-yellow-800">⚖️ Controlli Compliance CCNL</h3>
+            <div className="px-6 py-4 border-b bg-yellow-50">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-yellow-800">⚖️ Controlli Compliance CCNL</h3>
+                <button
+                  onClick={() => setShowCcnlDetails(v => !v)}
+                  className="px-3 py-1 rounded text-sm bg-yellow-200 text-yellow-900 hover:bg-yellow-300 transition"
+                >
+                  {showCcnlDetails ? 'Nascondi' : 'Dettagli'}
+                </button>
+              </div>
               {/* Metriche AutoScheduler rimosse */}
             </div>
+            {showCcnlDetails && (
             <div className="p-6">
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Ore settimanali */}
@@ -864,8 +852,8 @@ export default function ShiftsPage() {
                   </div>
                 </div>
               </div>
-              
             </div>
+            )}
           </div>
           {/* Legenda e Turni Predefiniti */}
           <div className="grid md:grid-cols-3 gap-6 mt-6">
