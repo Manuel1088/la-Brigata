@@ -166,6 +166,115 @@ export default function LeavesPage() {
 
             {/* Tabs Navigation rimossa: sezioni visibili in sequenza */}
 
+            {/* Sezione: Le Mie Richieste */}
+              <div className="bg-white rounded-lg shadow mb-6">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">📋 Le Mie Richieste</h2>
+                  <p className="text-sm text-gray-600">Storico delle tue richieste di ferie e permessi</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tipo
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Periodo
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Giorni
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Data Richiesta
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Azioni
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {requests.map((request) => {
+                        const config = LEAVE_TYPES[request.type]
+                        const s = toSafeDate(request.startDate)
+                        const e = toSafeDate(request.endDate)
+                        const days = s && e ? Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 0
+                        
+                        return (
+                          <tr key={request.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                                <span className="text-xl mr-2">{config?.icon}</span>
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{config?.name}</div>
+                                  {request.isUrgent && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                      🚨 Urgente
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {(s?.toLocaleDateString('it-IT')) || '-'} - {(e?.toLocaleDateString('it-IT')) || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {days} giorni
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                request.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                request.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                request.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                request.status === 'PROPOSED' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {request.status === 'APPROVED' ? '✅ Approvata' :
+                                 request.status === 'PENDING' ? '⏳ In Attesa' :
+                                 request.status === 'REJECTED' ? '❌ Rifiutata' :
+                                 request.status === 'PROPOSED' ? '✏️ Proposta' :
+                                 request.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {(toSafeDate(request.createdAt)?.toLocaleDateString('it-IT')) || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <button className="text-blue-600 hover:text-blue-900 mr-3">
+                                👁️ Vedi
+                              </button>
+                              {request.status === 'PENDING' && (
+                                <button className="text-red-600 hover:text-red-900">
+                                  🗑️ Annulla
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                  {requests.length === 0 && (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-4">📋</div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna richiesta</h3>
+                      <p className="text-gray-500 mb-4">Non hai ancora inviato richieste di ferie o permessi</p>
+                      {canRequestLeave() && (
+                        <button
+                          onClick={() => router.push('/leaves/new')}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                        >
+                          ➕ Prima Richiesta
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
             {/* Calendario Assenze Reparto */}
             <div className="bg-white rounded-lg shadow mb-6">
               <div className="px-6 py-4 border-b border-gray-200">
@@ -334,8 +443,8 @@ export default function LeavesPage() {
                         <div className="mt-1 text-[10px] text-gray-700 flex justify-center gap-2">
                           <span>F {ferieCount}</span>
                           <span>P {permessiCount}</span>
-                        </div>
-                      </div>
+                  </div>
+                </div>
                     )
                   })
 
@@ -353,8 +462,8 @@ export default function LeavesPage() {
                   <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span><span>Da approvare</span></div>
                 </div>
               </div>
-            </div>
-
+                </div>
+                
             {isDayModalOpen && selectedDayISO && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white rounded-lg w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
