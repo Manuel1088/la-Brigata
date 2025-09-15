@@ -273,9 +273,14 @@ export default function ShiftsPage() {
     } catch {}
   }, [session?.user?.id])
 
-  // Applica override: se configurato in /access, quello prevale
-  const manageAll = accessScope !== null ? (accessScope === 'all' && accessCanEdit !== false) : canManageAll
-  const manageDept = accessScope !== null ? (accessScope === 'department' && accessCanEdit !== false) : canManageDept
+  // Applica override: se configurato in /access, quello prevale, ma ADMIN/PROPRIETARIO restano globali
+  const upperUserRole = (userRole || '').toUpperCase()
+  const manageAll = upperUserRole === 'ADMIN' || upperUserRole === 'PROPRIETARIO'
+    ? true
+    : (accessScope !== null ? (accessScope === 'all' && accessCanEdit !== false) : canManageAll)
+  const manageDept = upperUserRole === 'ADMIN' || upperUserRole === 'PROPRIETARIO'
+    ? true
+    : (accessScope !== null ? (accessScope === 'department' && accessCanEdit !== false) : canManageDept)
 
   // Imposta filtro reparto coerente con i permessi
   useEffect(() => {
