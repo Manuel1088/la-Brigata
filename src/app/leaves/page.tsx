@@ -28,7 +28,8 @@ export default function LeavesPage() {
     canViewAllLeaves, 
     canExportLeaves,
     canViewLeaveCalendar,
-    canManageLeaveBalance
+    canManageLeaveBalance,
+    userRole
   } = usePermissions()
   
   const { logReadAction } = useAudit()
@@ -49,6 +50,7 @@ export default function LeavesPage() {
   const [filterEmployee, setFilterEmployee] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [selectedDept, setSelectedDept] = useState<'cucina' | 'sala' | 'bar'>('sala')
+  const isHeadChef = (userRole || '').toUpperCase() === 'HEAD_CHEF'
 
   // Helper per date sicure
   const toSafeDate = (value: any): Date | null => {
@@ -88,9 +90,9 @@ export default function LeavesPage() {
       const employees = getEmployeesFullClient()
       const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
       const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
-      setSelectedDept(dept)
+      setSelectedDept(isHeadChef ? 'cucina' : dept)
     } catch {}
-  }, [session?.user?.id, session?.user?.name])
+  }, [session?.user?.id, session?.user?.name, isHeadChef])
 
   if (status === 'loading') {
     return (
@@ -170,24 +172,30 @@ export default function LeavesPage() {
                   <div className="flex items-center gap-3">
                   <span className="text-lg">📅</span>
                   <div className="flex items-center gap-2">
-                    <button
-                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'cucina' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
-                      onClick={() => setSelectedDept('cucina')}
-                    >
-                      🔥 Cucina
-                    </button>
-                    <button
-                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'sala' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
-                      onClick={() => setSelectedDept('sala')}
-                    >
-                      🍽️ Sala
-                    </button>
-                    <button
-                      className={`px-3 py-1 rounded text-sm border ${selectedDept === 'bar' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50'}`}
-                      onClick={() => setSelectedDept('bar')}
-                    >
-                      🍹 Bar
-                    </button>
+                    {isHeadChef ? (
+                      <span className="px-3 py-1 rounded text-sm font-semibold text-red-600">🔥 Cucina</span>
+                    ) : (
+                      <>
+                        <button
+                          className={`px-3 py-1 rounded text-sm border ${selectedDept === 'cucina' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
+                          onClick={() => setSelectedDept('cucina')}
+                        >
+                          🔥 Cucina
+                        </button>
+                        <button
+                          className={`px-3 py-1 rounded text-sm border ${selectedDept === 'sala' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
+                          onClick={() => setSelectedDept('sala')}
+                        >
+                          🍽️ Sala
+                        </button>
+                        <button
+                          className={`px-3 py-1 rounded text-sm border ${selectedDept === 'bar' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50'}`}
+                          onClick={() => setSelectedDept('bar')}
+                        >
+                          🍹 Bar
+                        </button>
+                      </>
+                    )}
                   </div>
                   </div>
                   <div className="flex items-center justify-end gap-2">
