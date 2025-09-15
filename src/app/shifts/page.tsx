@@ -841,36 +841,7 @@ export default function ShiftsPage() {
                   </div>
                 </div>
               </div>
-              {/* Summary */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold text-gray-900 mb-2">📋 Riepilogo Settimana</h4>
-                <div className="grid md:grid-cols-4 gap-4 text-sm">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {employees.filter(e => calculateWeeklyHours(e.name) >= 20 && calculateWeeklyHours(e.name) <= 48).length}
-                    </div>
-                    <div className="text-gray-600">Conforme CCNL</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">
-                      {employees.filter(e => calculateWeeklyHours(e.name) > 48).length}
-                    </div>
-                    <div className="text-gray-600">Ore eccessive</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-yellow-600">
-                      {employees.filter(e => calculateWeeklyHours(e.name) < 20 && calculateWeeklyHours(e.name) > 0).length}
-                    </div>
-                    <div className="text-gray-600">Ore ridotte</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-600">
-                      {Object.values(shifts).filter(s => s.time === 'RIPOSO').length}
-                    </div>
-                    <div className="text-gray-600">Giorni riposo</div>
-                  </div>
-                </div>
-              </div>
+              
             </div>
           </div>
           {/* Legenda e Turni Predefiniti */}
