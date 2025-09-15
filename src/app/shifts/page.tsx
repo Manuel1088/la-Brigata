@@ -573,7 +573,7 @@ export default function ShiftsPage() {
                 className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm text-gray-700 bg-gray-100 cursor-default`}
                 disabled
               >
-                {userDepartment === 'cucina' ? '🔥 Cucina' : userDepartment === 'sala' ? '🍽️ Sala' : '🍹 Bar'}
+                {effectiveUserDepartment === 'cucina' ? '🔥 Cucina' : effectiveUserDepartment === 'sala' ? '🍽️ Sala' : '🍹 Bar'}
               </button>
             )}
           </div>
@@ -582,20 +582,20 @@ export default function ShiftsPage() {
             <div className="flex justify-between items-center">
               <button
                 onClick={goToPreviousWeek}
+                aria-label="Settimana precedente"
                 className="flex items-center px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition"
               >
-                <span className="text-xl mr-2">←</span>
-                Settimana Precedente
+                <span className="text-xl">←</span>
               </button>
               <div className={`text-lg font-bold ${isCurrentWeekDisplayed ? 'text-red-600' : 'text-gray-900'}`}>
                 {weekDays[0].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })} - {weekDays[6].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })}
               </div>
               <button
                 onClick={goToNextWeek}
+                aria-label="Settimana successiva"
                 className="flex items-center px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition"
               >
-                Settimana Successiva
-                <span className="text-xl ml-2">→</span>
+                <span className="text-xl">→</span>
               </button>
             </div>
             <div className="mt-4 flex justify-end">
@@ -640,7 +640,7 @@ export default function ShiftsPage() {
                     if (manageAll) {
                       return selectedDepartment === 'all' || employee.department === selectedDepartment
                     }
-                    return employee.department === userDepartment
+                    return employee.department === effectiveUserDepartment
                   })
                   .map((employee) => (
                     <tr key={employee.name} className="hover:bg-gray-50">
