@@ -161,12 +161,23 @@ export default function LeavesPage() {
                     <span>📅</span>
                     {(() => {
                       const employees = getEmployeesFullClient()
-                      const uniqueDepts = Array.from(new Set(employees.map(e => e.department).filter(Boolean))) as Array<'cucina'|'sala'|'bar'>
-                      if (uniqueDepts.length > 1) {
-                        return <span>Calendario Assenze — Tutti</span>
-                      }
-                      const only = (uniqueDepts[0] || 'sala') as 'cucina'|'sala'|'bar'
-                      return <span>Calendario Assenze — {only === 'cucina' ? '🔥 Cucina' : only === 'sala' ? '🍽️ Sala' : '🍹 Bar'}</span>
+                      const uniqueDepts = Array.from(new Set(
+                        employees.map(e => e.department).filter(Boolean)
+                      )) as Array<'cucina'|'sala'|'bar'>
+                      const labels = uniqueDepts.length > 0 ? uniqueDepts : ['sala']
+                      const renderLabel = (d: string) => (
+                        d === 'cucina' ? '🔥 Cucina' : d === 'sala' ? '🍽️ Sala' : '🍹 Bar'
+                      )
+                      return (
+                        <span>
+                          {labels.map((d, i) => (
+                            <span key={`${d}-${i}`}>
+                              {i > 0 && ' • '}
+                              {renderLabel(d)}
+                            </span>
+                          ))}
+                        </span>
+                      )
                     })()}
                   </div>
                   <div className="flex items-center gap-2">
@@ -209,14 +220,9 @@ export default function LeavesPage() {
               <div className="p-6">
                 {(() => {
                   const employees = getEmployeesFullClient()
-                  const uniqueDepts = Array.from(new Set(employees.map(e => e.department).filter(Boolean))) as Array<'cucina'|'sala'|'bar'>
-                  const showAll = uniqueDepts.length > 1
-                  const selectedDept = showAll ? null : (uniqueDepts[0] || 'sala') as 'cucina'|'sala'|'bar'
-                  const deptUserIds = new Set(
-                    showAll
-                      ? employees.map(e => e.id)
-                      : employees.filter(e => e.department === selectedDept).map(e => e.id)
-                  )
+                  const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
+                  const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
+                  const deptUserIds = new Set(employees.filter(e => e.department === dept).map(e => e.id))
 
                   const allRequests = getLeaveRequests()
 
@@ -310,8 +316,8 @@ export default function LeavesPage() {
                         <div className="mt-1 text-[10px] text-gray-700 flex justify-center gap-2">
                           <span>F {ferieCount}</span>
                           <span>P {permessiCount}</span>
-                        </div>
-                      </div>
+                  </div>
+                </div>
                     )
                   })
 
@@ -514,7 +520,7 @@ export default function LeavesPage() {
                       )}
                     </div>
                   )}
-                </div>
+              </div>
             </div>
 
             {/* Sezione: I Miei Saldi */}
