@@ -111,7 +111,7 @@ export default function LeavesPage() {
                   <span>Indietro</span>
                 </button>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  🏖️ Gestione Richieste
+                  🏖️ Ferie e Permessi
                 </h1>
               </div>
               <div className="flex items-center space-x-4">
@@ -241,7 +241,7 @@ export default function LeavesPage() {
                   <p className="text-sm text-gray-600">Visualizza i tuoi saldi per ogni tipologia di ferie e permessi</p>
                 </div>
                 <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {balances.map((balance) => {
                       const config = LEAVE_TYPES[balance.type]
                       if (!config) return null
