@@ -46,6 +46,9 @@ export default function DashboardPage() {
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false)
   // Visibilità sezioni dashboard gestite da Gestione Accessi (/access)
   const [dashboardVisibility, setDashboardVisibility] = useState<Record<string, boolean> | null>(null)
+  // Turno di oggi per l'utente (se presente nei turni)
+  const [todayShiftTime, setTodayShiftTime] = useState<string | null>(null)
+  const [todayShiftIsRest, setTodayShiftIsRest] = useState<boolean>(false)
 
   // Redirect se non autenticato e log accesso dashboard
   useEffect(() => {
@@ -78,6 +81,41 @@ export default function DashboardPage() {
     const value = dashboardVisibility?.[section]
     return value === undefined ? true : !!value
   }
+
+  // Utilità calcolo settimana corrente (lunedì) e caricamento turno di oggi
+  const getWeekStart = (date: Date) => {
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = (day === 0 ? -6 : 1) - day // porta a lunedì
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + diff)
+    return d
+  }
+  const toISODate = (d: Date) => {
+    const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
+  }
+  useEffect(() => {
+    if (!session?.user?.name) return
+    try {
+      const weekStart = getWeekStart(new Date())
+      const key = `shifts_${toISODate(weekStart)}`
+      const raw = localStorage.getItem(key)
+      if (!raw) return
+      const map = JSON.parse(raw) as Record<string, { employee: string; time?: string }>
+      const dayIndex = Math.max(0, Math.min(6, Math.floor((new Date().getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24))))
+      const shiftKey = `${session.user.name}-${dayIndex}`
+      const shift = map[shiftKey]
+      if (!shift || !shift.time) return
+      if (shift.time === 'RIPOSO') {
+        setTodayShiftIsRest(true)
+        setTodayShiftTime(null)
+      } else {
+        setTodayShiftIsRest(false)
+        setTodayShiftTime(shift.time)
+      }
+    } catch {}
+  }, [session?.user?.name])
 
   if (status === 'loading') {
     return (
@@ -187,7 +225,35 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                
+                {/* Riquadro Turno di Oggi (personale) */}
+                {isSectionVisible('shifts') && (
+                  <div className="bg-white rounded-lg shadow p-4 mb-8">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">⏰</span>
+                        <div>
+                          <div className="text-sm text-gray-500">Turno di oggi</div>
+                          <div className="text-lg font-semibold text-gray-900">{session.user?.name}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {todayShiftTime ? (
+                          <div className="text-lg font-bold text-blue-700">{todayShiftTime}</div>
+                        ) : todayShiftIsRest ? (
+                          <div className="text-lg font-bold text-gray-700">😴 Riposo</div>
+                        ) : (
+                          <div className="text-sm text-gray-500">Nessun turno assegnato</div>
+                        )}
+                        <button
+                          onClick={() => router.push('/shifts')}
+                          className="mt-1 inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition"
+                        >
+                          Apri Turni
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Widget Break-Even per Direttore e Manager */}
                 {canViewBreakEven && (
