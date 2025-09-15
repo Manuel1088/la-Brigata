@@ -193,7 +193,18 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => isOwner ? router.push('/dashboard') : router.push('/employees')}
+                onClick={() => {
+                  const fromEmployees = typeof document !== 'undefined' && !!document.referrer && document.referrer.includes('/employees')
+                  if (fromEmployees) {
+                    router.back()
+                    return
+                  }
+                  if (isOwner) {
+                    router.push('/dashboard')
+                  } else {
+                    router.push('/employees')
+                  }
+                }}
                 className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
