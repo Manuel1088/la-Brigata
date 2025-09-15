@@ -224,7 +224,7 @@ export default function ShiftsPage() {
   // Calcola capacità di gestione
   const canManageAll = useMemo(() => {
     // chi ha approvazione turni o ruoli alti gestisce tutti i reparti
-    return canApproveShift() || ['PROPRIETARIO', 'DIRETTORE', 'MANAGER'].includes(userRole)
+    return canApproveShift() || ['PROPRIETARIO', 'DIRETTORE', 'MANAGER', 'ADMIN'].includes(userRole)
   }, [canApproveShift, userRole])
 
   const canManageDept = useMemo(() => {
@@ -915,7 +915,7 @@ export default function ShiftsPage() {
                 <h3 className="text-sm font-semibold text-gray-700">
                   ⏰ Turni {selectedDepartment === 'all' ? 'Tutti i Reparti' : selectedDepartment.toUpperCase()}:
                 </h3>
-                {selectedDepartment !== 'all' && (canManageAll || canManageDept) && (
+                {selectedDepartment !== 'all' && (manageAll || manageDept) && (
                   <button
                     onClick={() => handleAddCustomShift(selectedDepartment)}
                     className="w-6 h-6 bg-orange-500 text-white rounded-full text-sm hover:bg-orange-600 transition flex items-center justify-center"
