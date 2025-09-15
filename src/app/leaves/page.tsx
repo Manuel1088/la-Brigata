@@ -240,7 +240,7 @@ export default function LeavesPage() {
                 <div className="px-6 py-4 border-b border-gray-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900">💳 I Miei Saldi Ferie</h2>
+                      <h2 className="text-lg font-semibold text-gray-900">💳 I Miei Saldi Permessi</h2>
                       <p className="text-sm text-gray-600">Visualizza i tuoi saldi per ogni tipologia di ferie e permessi</p>
                     </div>
                     <button
