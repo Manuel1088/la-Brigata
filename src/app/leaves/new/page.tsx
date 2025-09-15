@@ -31,6 +31,7 @@ export default function NewLeaveRequestPage() {
   const [errors, setErrors] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [balances, setBalances] = useState<any[]>([])
+  const [lockedType, setLockedType] = useState<boolean>(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -43,6 +44,7 @@ export default function NewLeaveRequestPage() {
     const typeParam = searchParams.get('type')
     if (typeParam && LEAVE_TYPES[typeParam]) {
       setSelectedType(typeParam)
+      setLockedType(true)
     }
     
     // Carica saldi utente
@@ -209,6 +211,18 @@ export default function NewLeaveRequestPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tipo di Richiesta *
                   </label>
+                  {lockedType && selectedType ? (
+                    <div className="p-4 border rounded-lg bg-gray-50">
+                      <div className="flex items-center">
+                        <span className="text-2xl mr-3">{LEAVE_TYPES[selectedType].icon}</span>
+                        <div>
+                          <div className="font-medium text-gray-900">{LEAVE_TYPES[selectedType].name}</div>
+                          <div className="text-sm text-gray-500">{LEAVE_TYPES[selectedType].description}</div>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500">Tipo fissato dalla selezione precedente</p>
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {Object.entries(LEAVE_TYPES).map(([key, config]) => {
                       const balance = getBalanceForType(key)
@@ -255,6 +269,7 @@ export default function NewLeaveRequestPage() {
                       )
                     })}
                   </div>
+                  )}
                 </div>
 
                 {/* Date */}
