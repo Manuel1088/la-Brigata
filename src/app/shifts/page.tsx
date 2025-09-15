@@ -618,7 +618,7 @@ export default function ShiftsPage() {
             <div className="px-6 py-4 border-b bg-gray-50">
               <h3 className="text-lg font-semibold text-gray-900">
                 {selectedDepartment === 'all' 
-                  ? '🏢 Tutti i Reparti' 
+                  ? '📋 Legenda Turni' 
                   : selectedDepartment === 'cucina' 
                   ? '🔥 Reparto Cucina'
                   : selectedDepartment === 'sala'
