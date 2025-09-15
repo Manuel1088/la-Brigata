@@ -219,14 +219,15 @@ export default function LeavesPage() {
                   const todayISO = toLocalISO(new Date())
                   const firstDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1)
                   const startDay = (firstDay.getDay() + 6) % 7 // Lunedì
-                  const gridStart = new Date(firstDay)
-                  gridStart.setDate(firstDay.getDate() - startDay)
-                  gridStart.setHours(0,0,0,0)
-                  const cells: Date[] = []
-                  for (let i = 0; i < 42; i++) {
-                    const d = new Date(gridStart)
-                    d.setDate(gridStart.getDate() + i)
-                    cells.push(d)
+                  const lastDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0)
+                  const daysInMonth: Date[] = []
+                  {
+                    const cursor = new Date(firstDay)
+                    cursor.setHours(0,0,0,0)
+                    while (cursor <= lastDay) {
+                      daysInMonth.push(new Date(cursor))
+                      cursor.setDate(cursor.getDate() + 1)
+                    }
                   }
 
                   const dayHeader = (
@@ -254,8 +255,7 @@ export default function LeavesPage() {
                     return { hasApproved, hasPending }
                   }
 
-                  const cellEls = cells.map(d => {
-                    const inMonth = d.getMonth() === calendarDate.getMonth()
+                  const cellEls = daysInMonth.map((d, idx) => {
                     const dayISO = toLocalISO(d)
                     const isSelected = selectedDayISO === dayISO
                     const isToday = dayISO === todayISO
@@ -263,15 +263,15 @@ export default function LeavesPage() {
                       ? 'bg-blue-600 text-white'
                       : isToday
                         ? 'border border-red-600 text-red-600'
-                        : inMonth
-                          ? 'text-gray-900'
-                          : 'text-gray-400 opacity-50'
+                        : 'text-gray-900'
                     const { hasApproved, hasPending } = dayHas(d)
+                    const colStartStyle = idx === 0 ? { gridColumnStart: startDay + 1 } as React.CSSProperties : undefined
                     return (
                       <div
                         key={dayISO}
                         onClick={() => setSelectedDayISO(dayISO)}
-                        className={`p-2 h-20 cursor-pointer ${inMonth ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 rounded-lg transition`}
+                        className={`p-2 h-20 cursor-pointer bg-white hover:bg-gray-100 rounded-lg transition`}
+                        style={colStartStyle}
                         title={`${hasApproved ? 'Assenze approvate' : ''}${hasApproved && hasPending ? ' • ' : ''}${hasPending ? 'Assenze da approvare' : ''}`}
                       >
                         <div className="flex justify-center">
