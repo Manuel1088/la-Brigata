@@ -300,8 +300,8 @@ export default function LeavesPage() {
                           {hasPending && <span className="w-2 h-2 rounded-full bg-yellow-500"></span>}
                         </div>
                         <div className="mt-1 text-[10px] text-gray-700 flex justify-center gap-2">
-                          <span>f {ferieCount}</span>
-                          <span>p {permessiCount}</span>
+                          <span>F {ferieCount}</span>
+                          <span>P {permessiCount}</span>
                         </div>
                       </div>
                     )
