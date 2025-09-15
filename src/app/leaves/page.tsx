@@ -124,14 +124,6 @@ export default function LeavesPage() {
                   </button>
                 )}
                 
-                {canViewLeaveCalendar() && (
-                  <button
-                    onClick={() => setActiveTab('calendar')}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-                  >
-                    📅 Calendario
-                  </button>
-                )}
                 {canExportLeaves() && (
                   <button
                     onClick={() => {
