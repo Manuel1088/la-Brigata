@@ -457,10 +457,20 @@ export default function EmployeesPage() {
 
           {/* Risultati */}
           <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold">
+            <div className="px-6 py-4 border-b flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <h3 className="text-lg font-semibold text-gray-900">
                 Dipendenti ({filteredEmployees.length})
               </h3>
+              {/* Ricerca rapida dentro il riquadro */}
+              <div className="w-full md:w-80">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Cerca: nome, email, telefono..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
             </div>
             
             {viewMode === 'cards' ? (
