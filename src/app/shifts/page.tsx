@@ -456,7 +456,7 @@ export default function ShiftsPage() {
 
   const handleCellClick = (employee: string, dayIndex: number) => {
     const employeeDept = employees.find(e => e.name === employee)?.department
-    const canEdit = canManageAll || (canManageDept && employeeDept === userDepartment)
+    const canEdit = manageAll || (manageDept && employeeDept === effectiveUserDepartment)
     if (!canEdit) return
     const shiftKey = `${employee}-${dayIndex}`
     const existingShift = shifts[shiftKey]
@@ -475,7 +475,7 @@ export default function ShiftsPage() {
   const handleCellRightClick = (e: React.MouseEvent, employee: string, dayIndex: number) => {
     e.preventDefault()
     const employeeDept = employees.find(e => e.name === employee)?.department
-    const canEdit = canManageAll || (canManageDept && employeeDept === userDepartment)
+    const canEdit = manageAll || (manageDept && employeeDept === effectiveUserDepartment)
     if (!canEdit) return
     const shiftKey = `${employee}-${dayIndex}`
     const confirmed = confirm('Vuoi eliminare questo turno?')
@@ -751,7 +751,7 @@ export default function ShiftsPage() {
                                     <div className="text-xs text-gray-900">Giorno fisso</div>
                                   </>
                                 ) : (
-                                  <span className="text-gray-900">{(canManageAll || (canManageDept && employee.department === userDepartment)) ? '+ Assegna' : '-'}</span>
+                                  <span className="text-gray-900">{(manageAll || (manageDept && employee.department === effectiveUserDepartment)) ? '+ Assegna' : '-'}</span>
                                 )}
                               </div>
                             )}
