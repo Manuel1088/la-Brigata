@@ -462,13 +462,14 @@ export default function EmployeesPage() {
                 Dipendenti ({filteredEmployees.length})
               </h3>
               {/* Ricerca rapida dentro il riquadro */}
-              <div className="w-full md:w-80">
+              <div className="w-full md:w-auto flex items-center gap-2">
+                <span className="text-sm text-gray-700">🔍 Ricerca</span>
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Cerca: nome, email, telefono..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full md:w-80 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
             </div>
