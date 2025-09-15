@@ -161,9 +161,12 @@ export default function LeavesPage() {
                     <span>📅</span>
                     {(() => {
                       const employees = getEmployeesFullClient()
-                      const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
-                      const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
-                      return <span>Calendario Assenze — {dept === 'cucina' ? '🔥 Cucina' : dept === 'sala' ? '🍽️ Sala' : '🍹 Bar'}</span>
+                      const uniqueDepts = Array.from(new Set(employees.map(e => e.department).filter(Boolean))) as Array<'cucina'|'sala'|'bar'>
+                      if (uniqueDepts.length > 1) {
+                        return <span>Calendario Assenze — Tutti</span>
+                      }
+                      const only = (uniqueDepts[0] || 'sala') as 'cucina'|'sala'|'bar'
+                      return <span>Calendario Assenze — {only === 'cucina' ? '🔥 Cucina' : only === 'sala' ? '🍽️ Sala' : '🍹 Bar'}</span>
                     })()}
                   </div>
                   <div className="flex items-center gap-2">
@@ -206,9 +209,14 @@ export default function LeavesPage() {
               <div className="p-6">
                 {(() => {
                   const employees = getEmployeesFullClient()
-                  const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
-                  const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
-                  const deptUserIds = new Set(employees.filter(e => e.department === dept).map(e => e.id))
+                  const uniqueDepts = Array.from(new Set(employees.map(e => e.department).filter(Boolean))) as Array<'cucina'|'sala'|'bar'>
+                  const showAll = uniqueDepts.length > 1
+                  const selectedDept = showAll ? null : (uniqueDepts[0] || 'sala') as 'cucina'|'sala'|'bar'
+                  const deptUserIds = new Set(
+                    showAll
+                      ? employees.map(e => e.id)
+                      : employees.filter(e => e.department === selectedDept).map(e => e.id)
+                  )
 
                   const allRequests = getLeaveRequests()
 
