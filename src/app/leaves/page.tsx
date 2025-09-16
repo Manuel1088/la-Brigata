@@ -55,6 +55,7 @@ export default function LeavesPage() {
   const [filterType, setFilterType] = useState<string>('all')
   const [selectedDept, setSelectedDept] = useState<'cucina' | 'sala' | 'bar'>('sala')
   const isHeadChef = userRole === UserRole.HEAD_CHEF
+  const isDeptLocked = isHeadChef || (!canViewAllLeaves() && !canApproveLeave())
 
   // Helper per date sicure
   const toSafeDate = (value: any): Date | null => {
@@ -94,6 +95,7 @@ export default function LeavesPage() {
       const employees = getEmployeesFullClient()
       const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
       const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
+      // Se il dipendente è Head Chef blocchiamo su cucina; se non può vedere tutto/approvare, blocchiamo sul proprio reparto
       setSelectedDept(isHeadChef ? 'cucina' : dept)
     } catch {}
   }, [session?.user?.id, session?.user?.name, isHeadChef])
@@ -285,8 +287,14 @@ export default function LeavesPage() {
                   <div className="flex items-center gap-3">
                   <span className="text-lg">📅</span>
                   <div className="flex items-center gap-2">
-                    {isHeadChef ? (
-                      <span className="px-3 py-1 rounded text-sm font-semibold text-red-600">🔥 Cucina</span>
+                    {isDeptLocked ? (
+                      selectedDept === 'cucina' ? (
+                        <span className="px-3 py-1 rounded text-sm font-semibold text-red-600">🔥 Cucina</span>
+                      ) : selectedDept === 'sala' ? (
+                        <span className="px-3 py-1 rounded text-sm font-semibold text-blue-600">🍽️ Sala</span>
+                      ) : (
+                        <span className="px-3 py-1 rounded text-sm font-semibold text-green-600">🍹 Bar</span>
+                      )
                     ) : (
                       <>
                         <button
