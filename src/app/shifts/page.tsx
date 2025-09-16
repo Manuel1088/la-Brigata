@@ -601,14 +601,6 @@ export default function ShiftsPage() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              {(manageAll || manageDept) && (
-                <button
-                  onClick={() => router.push('/shifts/rest')}
-                  className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition text-sm"
-                >
-                  😴 Regole Riposi
-                </button>
-              )}
               <span className="text-gray-900">
                 {session?.user?.name}
               </span>
@@ -621,41 +613,51 @@ export default function ShiftsPage() {
       </header>
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Pulsanti filtro reparto */}
-          <div className="flex space-x-3 mb-6">
-            {manageAll ? (
-              <>
+          {/* Pulsanti filtro reparto + Regole Riposi */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex space-x-3">
+              {manageAll ? (
+                <>
+                  <button
+                    className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'all' ? 'bg-orange-500 text-white' : 'bg-white hover:bg-orange-100'}`}
+                    onClick={() => setSelectedDepartment('all')}
+                  >
+                    Tutti
+                  </button>
+                  <button
+                    className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'cucina' ? 'bg-red-500 text-white' : 'bg-white hover:bg-red-100'}`}
+                    onClick={() => setSelectedDepartment('cucina')}
+                  >
+                    🔥 Cucina
+                  </button>
+                  <button
+                    className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'sala' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-blue-100'}`}
+                    onClick={() => setSelectedDepartment('sala')}
+                  >
+                    🍽️ Sala
+                  </button>
+                  <button
+                    className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'bar' ? 'bg-green-500 text-white' : 'bg-white hover:bg-green-100'}`}
+                    onClick={() => setSelectedDepartment('bar')}
+                  >
+                    🍹 Bar
+                  </button>
+                </>
+              ) : (
                 <button
-                  className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'all' ? 'bg-orange-500 text-white' : 'bg-white hover:bg-orange-100'}`}
-                  onClick={() => setSelectedDepartment('all')}
+                  className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm text-gray-700 bg-gray-100 cursor-default`}
+                  disabled
                 >
-                  Tutti
+                  {effectiveUserDepartment === 'cucina' ? '🔥 Cucina' : effectiveUserDepartment === 'sala' ? '🍽️ Sala' : '🍹 Bar'}
                 </button>
-                <button
-                  className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'cucina' ? 'bg-red-500 text-white' : 'bg-white hover:bg-red-100'}`}
-                  onClick={() => setSelectedDepartment('cucina')}
-                >
-                  🔥 Cucina
-                </button>
-                <button
-                  className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'sala' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-blue-100'}`}
-                  onClick={() => setSelectedDepartment('sala')}
-                >
-                  🍽️ Sala
-                </button>
-                <button
-                  className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 ${selectedDepartment === 'bar' ? 'bg-green-500 text-white' : 'bg-white hover:bg-green-100'}`}
-                  onClick={() => setSelectedDepartment('bar')}
-                >
-                  🍹 Bar
-                </button>
-              </>
-            ) : (
+              )}
+            </div>
+            {(manageAll || manageDept) && (
               <button
-                className={`px-4 py-2 rounded-lg font-semibold transition border border-gray-300 shadow-sm text-gray-700 bg-gray-100 cursor-default`}
-                disabled
+                onClick={() => router.push('/shifts/rest')}
+                className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition text-sm"
               >
-                {effectiveUserDepartment === 'cucina' ? '🔥 Cucina' : effectiveUserDepartment === 'sala' ? '🍽️ Sala' : '🍹 Bar'}
+                😴 Regole Riposi
               </button>
             )}
           </div>
