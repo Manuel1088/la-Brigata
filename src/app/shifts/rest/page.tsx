@@ -168,54 +168,81 @@ export default function RestRulesPage() {
                   const emp = employees.find(e => e.name === rule.employeeName)
                   return (emp?.department || 'sala') === selectedDepartment
                 })
-                .filter(() => {
-                  // Se modalità è riposo a scalare, non mostrare la lista per quel reparto
-                  if (selectedDepartment === 'all') return true
-                  return deptConfigs[selectedDepartment].mode === 'fixed'
-                })
                 .map(rule => (
                 <div key={rule.employeeName} className="border rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="text-gray-900 font-medium">{rule.employeeName}</div>
                       <div className="text-sm text-gray-500">Riposi settimanali: {deptConfigs[(employees.find(e => e.name === rule.employeeName)?.department || 'sala') as 'cucina'|'sala'|'bar']?.weeklyRestDays || rule.weeklyRestDays}</div>
-                      <div className="text-sm text-gray-500">
-                        Giorni fissi: {rule.fixedDayIndices && rule.fixedDayIndices.length ? rule.fixedDayIndices.map(i => dayNames[i]).join(', ') : 'Nessuno'}
-                      </div>
+                      {deptConfigs[(employees.find(e => e.name === rule.employeeName)?.department || 'sala') as 'cucina'|'sala'|'bar']?.mode === 'fixed' ? (
+                        <div className="text-sm text-gray-500">
+                          Giorni fissi: {rule.fixedDayIndices && rule.fixedDayIndices.length ? rule.fixedDayIndices.map(i => dayNames[i]).join(', ') : 'Nessuno'}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">
+                          Giorno iniziale rotazione: {typeof rule.rotatingStartDayIndex === 'number' ? dayNames[rule.rotatingStartDayIndex] : 'Non impostato'}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center space-x-4">
-                      <div className="text-sm text-gray-900">Seleziona fino a {selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : 2} giorni fissi:</div>
-                      <div className="flex flex-wrap gap-3">
-                        {dayNames.map((d, idx) => {
-                          const checked = !!rule.fixedDayIndices?.includes(idx as any)
-                          return (
-                            <label key={d} className="flex items-center space-x-1 text-gray-900">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  const current = new Set(rule.fixedDayIndices || [])
-                                  if (e.target.checked) {
-                                    const target = selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : 2
-                                    if (current.size < target) current.add(idx as any)
-                                  } else {
-                                    current.delete(idx as any)
-                                  }
-                                  const arr = Array.from(current) as any
-                                  const targetDays: 1|2 = (selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : (arr.length > 1 ? 2 : 1)) as 1|2
-                                  const updated = updateRestRule(rule.employeeName, {
-                                    fixedDayIndices: arr,
-                                    weeklyRestDays: targetDays
-                                  })
-                                  setRules(prev => prev.map(r => r.employeeName === rule.employeeName ? updated : r))
-                                }}
-                                className="h-4 w-4"
-                              />
-                              <span>{d}</span>
-                            </label>
-                          )
-                        })}
-                      </div>
+                      {deptConfigs[(employees.find(e => e.name === rule.employeeName)?.department || 'sala') as 'cucina'|'sala'|'bar']?.mode === 'fixed' ? (
+                        <>
+                          <div className="text-sm text-gray-900">Seleziona fino a {selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : 2} giorni fissi:</div>
+                          <div className="flex flex-wrap gap-3">
+                            {dayNames.map((d, idx) => {
+                              const checked = !!rule.fixedDayIndices?.includes(idx as any)
+                              return (
+                                <label key={d} className="flex items-center space-x-1 text-gray-900">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      const current = new Set(rule.fixedDayIndices || [])
+                                      if (e.target.checked) {
+                                        const target = selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : 2
+                                        if (current.size < target) current.add(idx as any)
+                                      } else {
+                                        current.delete(idx as any)
+                                      }
+                                      const arr = Array.from(current) as any
+                                      const targetDays: 1|2 = (selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : (arr.length > 1 ? 2 : 1)) as 1|2
+                                      const updated = updateRestRule(rule.employeeName, {
+                                        fixedDayIndices: arr,
+                                        weeklyRestDays: targetDays
+                                      })
+                                      setRules(prev => prev.map(r => r.employeeName === rule.employeeName ? updated : r))
+                                    }}
+                                    className="h-4 w-4"
+                                  />
+                                  <span>{d}</span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm text-gray-900">Seleziona giorno iniziale rotazione:</div>
+                          <div className="flex flex-wrap gap-3">
+                            {dayNames.map((d, idx) => (
+                              <label key={d} className="flex items-center space-x-1 text-gray-900">
+                                <input
+                                  type="radio"
+                                  name={`rotatingStart-${rule.employeeName}`}
+                                  checked={rule.rotatingStartDayIndex === (idx as any)}
+                                  onChange={() => {
+                                    const updated = updateRestRule(rule.employeeName, {
+                                      rotatingStartDayIndex: (idx as any)
+                                    })
+                                    setRules(prev => prev.map(r => r.employeeName === rule.employeeName ? updated : r))
+                                  }}
+                                />
+                                <span>{d}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

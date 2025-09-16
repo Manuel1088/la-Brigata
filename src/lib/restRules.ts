@@ -4,6 +4,8 @@ export interface RestRule {
   employeeName: string
   weeklyRestDays: 1 | 2
   fixedDayIndices?: FixedDayIndex[] // opzionale: fino a 2 giorni fissi di riposo (0=Lunedì)
+  // Per riposo a scalare: giorno iniziale della rotazione (0=Lunedì)
+  rotatingStartDayIndex?: FixedDayIndex
 }
 
 // Mock storage in-memory. In produzione: DB.
@@ -35,7 +37,8 @@ function normalizeAndMigrateRules(list: RestRule[]): RestRule[] {
     migrated.push({
       employeeName: newName,
       weeklyRestDays: (r.weeklyRestDays || 1) as 1 | 2,
-      fixedDayIndices: r.fixedDayIndices as any
+      fixedDayIndices: r.fixedDayIndices as any,
+      rotatingStartDayIndex: r.rotatingStartDayIndex as any
     })
   }
   return migrated

@@ -368,7 +368,7 @@ export default function ShiftsPage() {
   }, [])
 
   // Calcola giorni di riposo "a scalare" per il reparto e settimana mostrata
-  const getRotatingRestDayIndices = (department: string): number[] => {
+  const getRotatingRestDayIndices = (department: string, employeeName?: string): number[] => {
     const cfg = deptConfigs[(department as 'cucina'|'sala'|'bar') || 'sala']
     if (!cfg || cfg.mode !== 'rotating') return []
     const baseDays = cfg.weeklyRestDays === 2 ? [0, 3] : [0] // base: lunedì (+ giovedì se 2 giorni)
@@ -380,7 +380,19 @@ export default function ShiftsPage() {
     if ((cfg.rotateDirection || 'forward') === 'backward') {
       offset = (7 - offset) % 7
     }
-    return baseDays.map(d => (d + offset) % 7)
+    let initialShift = 0
+    try {
+      // Carica giorno iniziale per dipendente (rotatingStartDayIndex)
+      const raw = localStorage.getItem('rest_rules')
+      if (raw && employeeName) {
+        const list = JSON.parse(raw) as Array<{ employeeName: string; rotatingStartDayIndex?: number }>
+        const found = list.find(r => r.employeeName === employeeName)
+        if (typeof found?.rotatingStartDayIndex === 'number') {
+          initialShift = found.rotatingStartDayIndex
+        }
+      }
+    } catch {}
+    return baseDays.map(d => (d + offset + initialShift) % 7)
   }
 
   // Carica i turni salvati quando cambia la settimana
@@ -418,7 +430,7 @@ export default function ShiftsPage() {
       const key = `${e.name}-${dayIndex}`
       const rule = getRestRuleFor(e.name)
       const dept = e.department as string
-      const rotatingDays = getRotatingRestDayIndices(dept)
+      const rotatingDays = getRotatingRestDayIndices(dept, e.name)
       const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes(dayIndex as any)) || rotatingDays.includes(dayIndex)
       const hasLeave = isOnApprovedLeave(e.name, dateISO)
       const alreadyAssigned = !!shifts[key]?.time
@@ -734,7 +746,7 @@ export default function ShiftsPage() {
                         const isRestDay = shift?.time === 'RIPOSO'
                         const dateISO = toISODate(d)
                         const restRule = getRestRuleFor(employee.name)
-                        const rotatingDays = getRotatingRestDayIndices(employee.department as string)
+                        const rotatingDays = getRotatingRestDayIndices(employee.department as string, employee.name)
                         const isFixedRest = !!(restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any)) || rotatingDays.includes(dayIndex)
                         const leaveInfo = getApprovedLeaveInfo(employee.name, dateISO)
                         const isDerivedBlocked = isFixedRest || !!leaveInfo
