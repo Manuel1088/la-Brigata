@@ -371,6 +371,22 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'report_basic', 'report_export',
     'bookings_view','customers_view'
   ],
+  HEAD_BARMAN: [
+    'personale_view', 'personale_export',
+    'mance_view', 'mance_manage', 'mance_calculate',
+    'turni_view', 'turni_manage', 'turni_assign',
+    'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_calendar',
+    'report_basic', 'report_export',
+    'bookings_view','customers_view'
+  ],
+  HEAD_SOMMELIER: [
+    'personale_view', 'personale_export',
+    'mance_view', 'mance_manage', 'mance_calculate',
+    'turni_view', 'turni_manage', 'turni_assign',
+    'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_calendar',
+    'report_basic', 'report_export',
+    'bookings_view','customers_view'
+  ],
   CASSIERE: [
     'personale_view',
     'mance_view', 'mance_manage', 'mance_calculate',

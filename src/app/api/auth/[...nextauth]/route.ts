@@ -10,6 +10,8 @@ const roleConfig = {
   MANAGER: { level: 8, name: 'Manager', avatar: '📊' },
   RESPONSABILE_SALA: { level: 7, name: 'Responsabile Sala', avatar: '🍽️' },
   HEAD_CHEF: { level: 7, name: 'Head Chef', avatar: '👨‍🍳' },
+  HEAD_BARMAN: { level: 7, name: 'Head Barman', avatar: '🍸' },
+  HEAD_SOMMELIER: { level: 7, name: 'Head Sommelier', avatar: '🍷' },
   CASSIERE: { level: 6, name: 'Cassiere', avatar: '💰' },
   DIPENDENTE: { level: 5, name: 'Dipendente', avatar: '👤' }
 }

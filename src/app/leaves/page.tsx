@@ -541,6 +541,7 @@ export default function LeavesPage() {
             let scopeDepts: Array<'cucina'|'sala'|'bar'> = ['cucina','sala','bar']
             if (upper === 'HEAD_CHEF') scopeDepts = ['cucina']
             if (upper === 'RESPONSABILE_SALA' || upper === 'CASSIERE') scopeDepts = ['sala']
+            if (upper === 'HEAD_BARMAN' || upper === 'HEAD_SOMMELIER') scopeDepts = ['bar']
             const managedUserIds = new Set(employees.filter(e => scopeDepts.includes((e.department as any) || 'sala')).map(e => e.id))
             const userIdToName = new Map<string, string>(employees.map(e => [e.id, e.name]))
             const teamReqs = getLeaveRequests().filter(r => managedUserIds.has(r.userId))

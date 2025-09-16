@@ -218,6 +218,7 @@ export default function ShiftsPage() {
     const upperRole = (role || '').toUpperCase()
     if (upperRole === 'HEAD_CHEF') return 'cucina'
     if (upperRole === 'RESPONSABILE_SALA' || upperRole === 'CASSIERE') return 'sala'
+    if (upperRole === 'HEAD_BARMAN' || upperRole === 'HEAD_SOMMELIER') return 'bar'
     return userDepartment
   }, [employees, session?.user, userDepartment])
 
