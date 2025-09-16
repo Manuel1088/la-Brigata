@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getLeaveBalances } from '@/lib/leaveSystem'
+import { getEmployeesFullClient, type EmployeeFull } from '@/lib/employees'
 
 // Configurazione ruoli e livelli (stessa del form nuovo)
 const roleConfig = {
@@ -61,7 +62,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
   const router = useRouter()
   
   // Stati
-  const [employee, setEmployee] = useState(mockEmployee)
+  const [employee, setEmployee] = useState<EmployeeFull>(mockEmployee as unknown as EmployeeFull)
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -78,6 +79,20 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
       return
     }
   }, [session, status, router])
+
+  // Carica dipendente dal parametro ID o sessione
+  useEffect(() => {
+    if (status === 'loading') return
+    try {
+      const list = getEmployeesFullClient()
+      const byParam = list.find(e => e.id === params.id)
+      const bySession = list.find(e => e.id === (session?.user?.id || ''))
+      const resolved = byParam || bySession
+      if (resolved) {
+        setEmployee(resolved as EmployeeFull)
+      }
+    } catch {}
+  }, [params.id, session?.user?.id, status])
 
   // Carica eventuale residuo anno precedente da localStorage (opzionale)
   useEffect(() => {
