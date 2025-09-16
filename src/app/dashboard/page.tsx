@@ -3,8 +3,8 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { UserRole } from '@/types/roles'
 import { usePermissions } from '@/hooks/usePermissions'
+import { UserRole } from '@/types/roles'
 import { useAudit } from '@/hooks/useAudit'
 import { getRestRuleFor } from '@/lib/restRules'
 import { NotificationCenter } from '@/components/NotificationCenter'
@@ -33,7 +33,7 @@ export default function DashboardPage() {
   } = usePermissions()
   
   // Type-safe role access
-  const role = session?.user?.role as UserRole | undefined
+  const role = session?.user?.role
   
   // Controlla se l'utente può vedere il break-even (Direttore e Manager)
   const canViewBreakEven = role === UserRole.DIRETTORE || role === UserRole.MANAGER
