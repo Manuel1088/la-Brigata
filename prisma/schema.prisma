@@ -451,3 +451,38 @@ enum LeaveStatus {
   CANCELLED       // Annullata dal dipendente
   EXPIRED         // Scaduta (non approvata in tempo)
 }
+
+model Company {
+  id               String   @id @default(cuid())
+  name             String
+  fiscalCode       String   @unique @map("fiscal_code")
+  address          String?
+  phone            String?
+  email            String?
+  subscriptionType String  @default("BASIC") @map("subscription_type")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now())
+  
+  // Relazioni
+  users           User[] @relation("CompanyUsers")
+  informalTeams   InformalCompany[]
+  
+  @@map("companies")
+}
+
+model InformalCompany {
+  id              String   @id @default(cuid())
+  name            String
+  address         String?
+  city            String?
+  type            String?
+  description     String?
+  linkedCompanyId String? @map("linked_company_id")
+  linkedCompany   Company? @relation(fields: [linkedCompanyId], references: [id])
+  isVerified      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  
+  users           User[] @relation("InformalCompanyUsers")
+  
+  @@map("informal_companies")
+}
