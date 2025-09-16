@@ -26,6 +26,7 @@ export default function AccessManagementPage() {
 
   const [employees, setEmployees] = useState<any[]>([])
   const [accessMap, setAccessMap] = useState<AccessStore>({})
+  const [permMap, setPermMap] = useState<Record<string, { permissions: string[] }>>({})
 
   useEffect(() => {
     try { setEmployees(getEmployeesFullClient()) } catch {}
@@ -37,6 +38,15 @@ export default function AccessManagementPage() {
       setAccessMap(raw ? JSON.parse(raw) : {})
     } catch {
       setAccessMap({})
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('user_permissions_v1')
+      setPermMap(raw ? JSON.parse(raw) : {})
+    } catch {
+      setPermMap({})
     }
   }, [])
 
@@ -67,6 +77,20 @@ export default function AccessManagementPage() {
       try { localStorage.setItem('user_access_controls_v1', JSON.stringify(next)) } catch {}
       return next
     })
+  }
+
+  const setPermissionOverride = (userId: string, permission: string, enabled: boolean) => {
+    setPermMap(prev => {
+      const existing = prev[userId]?.permissions || []
+      const nextPerms = enabled ? Array.from(new Set([...existing, permission])) : existing.filter(p => p !== permission)
+      const nextMap = { ...prev, [userId]: { permissions: nextPerms } }
+      try { localStorage.setItem('user_permissions_v1', JSON.stringify(nextMap)) } catch {}
+      return nextMap
+    })
+  }
+
+  const hasOverride = (userId: string, permission: string): boolean => {
+    return !!permMap[userId]?.permissions?.includes(permission)
   }
 
   const toggleSection = (userId: string, section: DashboardSection) => {
@@ -170,6 +194,64 @@ export default function AccessManagementPage() {
                           <input type="checkbox" checked={!!shifts.canEdit} onChange={(e)=> setShiftEdit(emp.id, e.target.checked)} />
                           Può modificare i turni
                         </label>
+                      </div>
+                    </div>
+
+                    {/* Altri Permessi Granulari */}
+                    <div className="mt-4 grid md:grid-cols-2 gap-4">
+                      <div>
+                        <div className="font-medium text-sm text-gray-900 mb-2">Ferie e Permessi</div>
+                        <label className="inline-flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={hasOverride(emp.id, 'ferie_approve')}
+                            onChange={(e)=> setPermissionOverride(emp.id, 'ferie_approve', e.target.checked)}
+                          />
+                          Può approvare richieste ferie
+                        </label>
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm text-gray-900 mb-2">Mance</div>
+                        <label className="inline-flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={hasOverride(emp.id, 'mance_manage')}
+                            onChange={(e)=> setPermissionOverride(emp.id, 'mance_manage', e.target.checked)}
+                          />
+                          Può inserire/modificare mance
+                        </label>
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm text-gray-900 mb-2">Prenotazioni</div>
+                        <label className="inline-flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={hasOverride(emp.id, 'bookings_manage')}
+                            onChange={(e)=> setPermissionOverride(emp.id, 'bookings_manage', e.target.checked)}
+                          />
+                          Può inserire/modificare prenotazioni
+                        </label>
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm text-gray-900 mb-2">Dipendenti</div>
+                        <div className="flex flex-col gap-2 text-sm">
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={hasOverride(emp.id, 'personale_create')}
+                              onChange={(e)=> setPermissionOverride(emp.id, 'personale_create', e.target.checked)}
+                            />
+                            Può assumere (creare dipendenti)
+                          </label>
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={hasOverride(emp.id, 'personale_delete')}
+                              onChange={(e)=> setPermissionOverride(emp.id, 'personale_delete', e.target.checked)}
+                            />
+                            Può licenziare (eliminare dipendenti)
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
