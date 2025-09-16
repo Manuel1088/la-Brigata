@@ -163,7 +163,7 @@ export const PERMISSIONS: Record<string, Permission> = {
     name: 'Visualizzare Ferie',
     description: 'Visualizzare le proprie richieste di ferie e permessi',
     category: 'ferie',
-    level: 5
+    level: 1
   },
   FERIE_REQUEST: {
     id: 'ferie_request',
