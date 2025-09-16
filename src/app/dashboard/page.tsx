@@ -273,11 +273,7 @@ export default function DashboardPage() {
                 📅 Turni
               </button>
             )}
-            {isSectionVisible('rest') && (
-              <button onClick={() => router.push('/shifts/rest')} className="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition">
-                😴 Regole Riposi
-              </button>
-            )}
+            
             {isSectionVisible('tips') && (
               <button onClick={() => router.push('/tips')} className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">
                 💰 Mance
