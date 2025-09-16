@@ -8,14 +8,38 @@ export interface RestRule {
 
 // Mock storage in-memory. In produzione: DB.
 const defaultRules: RestRule[] = [
-  { employeeName: 'Giuseppe Chef', weeklyRestDays: 1 },
-  { employeeName: 'Maria Cameriera', weeklyRestDays: 1 },
-  { employeeName: 'Luca Barista', weeklyRestDays: 1 },
-  { employeeName: 'Anna Sous Chef', weeklyRestDays: 1 },
-  { employeeName: 'Marco Cameriere', weeklyRestDays: 1 }
+  { employeeName: 'Giuseppe Rossi', weeklyRestDays: 1 }, // cucina
+  { employeeName: 'Anna Bianchi', weeklyRestDays: 1 },   // cucina
+  { employeeName: 'Marco Verdi', weeklyRestDays: 1 },    // cucina
+  { employeeName: 'Sofia Neri', weeklyRestDays: 1 },     // sala
+  { employeeName: 'Luca Blu', weeklyRestDays: 1 }        // bar
 ]
 
 const STORAGE_KEY = 'rest_rules'
+
+function normalizeAndMigrateRules(list: RestRule[]): RestRule[] {
+  // Mappa nomi legacy ai nomi attuali presenti in lib/employees
+  const LEGACY_NAME_MAP: Record<string, string> = {
+    'Giuseppe Chef': 'Giuseppe Rossi',
+    'Maria Cameriera': 'Sofia Neri',
+    'Luca Barista': 'Luca Blu',
+    'Anna Sous Chef': 'Anna Bianchi',
+    'Marco Cameriere': 'Marco Verdi'
+  }
+  const seen = new Set<string>()
+  const migrated: RestRule[] = []
+  for (const r of list) {
+    const newName = LEGACY_NAME_MAP[r.employeeName] || r.employeeName
+    if (seen.has(newName)) continue
+    seen.add(newName)
+    migrated.push({
+      employeeName: newName,
+      weeklyRestDays: (r.weeklyRestDays || 1) as 1 | 2,
+      fixedDayIndices: r.fixedDayIndices as any
+    })
+  }
+  return migrated
+}
 
 function loadRules(): RestRule[] {
   if (typeof window === 'undefined') return [...defaultRules]
@@ -24,7 +48,12 @@ function loadRules(): RestRule[] {
     if (!raw) return [...defaultRules]
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return [...defaultRules]
-    return parsed
+    const normalized = normalizeAndMigrateRules(parsed)
+    // Se è cambiato rispetto ai dati salvati, aggiorna lo storage
+    if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+    }
+    return normalized
   } catch {
     return [...defaultRules]
   }
