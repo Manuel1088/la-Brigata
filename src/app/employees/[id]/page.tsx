@@ -1,6 +1,6 @@
 'use client'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getLeaveBalances } from '@/lib/leaveSystem'
 import { getEmployeesFullClient, type EmployeeFull } from '@/lib/employees'
@@ -57,9 +57,11 @@ const mockEmployee = {
   notes: 'Chef esperto con 15 anni di esperienza. Specializzato in cucina tradizionale italiana.'
 }
 
-export default function EmployeeDetailPage({ params }: { params: { id: string } }) {
+export default function EmployeeDetailPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const params = useParams()
+  const paramId = (params?.id as string) || ''
   
   // Stati
   const [employee, setEmployee] = useState<EmployeeFull>(mockEmployee as unknown as EmployeeFull)
@@ -85,14 +87,14 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
     if (status === 'loading') return
     try {
       const list = getEmployeesFullClient()
-      const byParam = list.find(e => e.id === params.id)
+      const byParam = list.find(e => e.id === paramId)
       const bySession = list.find(e => e.id === (session?.user?.id || ''))
       const resolved = byParam || bySession
       if (resolved) {
         setEmployee(resolved as EmployeeFull)
       }
     } catch {}
-  }, [params.id, session?.user?.id, status])
+  }, [paramId, session?.user?.id, status])
 
   // Carica eventuale residuo anno precedente da localStorage (opzionale)
   useEffect(() => {
