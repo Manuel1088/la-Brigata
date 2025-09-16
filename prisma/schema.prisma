@@ -39,6 +39,13 @@ model User {
   lastLogin      DateTime? @map("last_login")
   createdAt      DateTime @default(now())
   
+  // Tipologia utente e affiliazioni
+  userType          UserType @default(EMPLOYEE) @map("user_type")
+  companyId         String?  @map("company_id")
+  informalCompanyId String?  @map("informal_company_id")
+  teamCode          String?  @map("team_code")
+  isJobSeeking      Boolean  @default(false) @map("is_job_seeking")
+  
   // Nuovi campi per gestione dipendenti
   phone          String?
   hourlyRate     Decimal? @map("hourly_rate")
@@ -64,6 +71,8 @@ model User {
   contractTypeEnum   ContractType?            @map("contract_type_enum")
   
   restaurant       Restaurant @relation(fields: [restaurantId], references: [id])
+  company          Company?         @relation("CompanyUsers", fields: [companyId], references: [id])
+  informalCompany  InformalCompany? @relation("InformalCompanyUsers", fields: [informalCompanyId], references: [id])
   shifts           Shift[]
   tipDistributions TipDistribution[]
   leaveRequests    LeaveRequest[]
@@ -450,6 +459,12 @@ enum LeaveStatus {
   REJECTED        // Rifiutata
   CANCELLED       // Annullata dal dipendente
   EXPIRED         // Scaduta (non approvata in tempo)
+}
+
+enum UserType {
+  EMPLOYEE
+  CANDIDATE
+  OWNER
 }
 
 model Company {
