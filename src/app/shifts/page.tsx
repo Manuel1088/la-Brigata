@@ -279,7 +279,7 @@ export default function ShiftsPage() {
 
   // Applica override: se configurato in /access, quello prevale, ma ADMIN/PROPRIETARIO restano globali
   const upperUserRole = (userRole || '').toUpperCase()
-  const manageAll = upperUserRole === 'ADMIN' || upperUserRole === 'PROPRIETARIO'
+  const manageAll = ['ADMIN','PROPRIETARIO','DIRETTORE','MANAGER'].includes(upperUserRole)
     ? true
     : (accessScope !== null ? (accessScope === 'all' && accessCanEdit !== false) : canManageAll)
   const manageDept = upperUserRole === 'ADMIN' || upperUserRole === 'PROPRIETARIO'
