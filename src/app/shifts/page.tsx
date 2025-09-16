@@ -663,28 +663,43 @@ export default function ShiftsPage() {
           </div>
           {/* Week Navigator Migliorato */}
           <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <div className="flex justify-between items-center">
-              <button
-                onClick={goToPreviousWeek}
-                aria-label="Settimana precedente"
-                className="flex items-center px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition"
-              >
-                <span className="text-xl">←</span>
-              </button>
-              <div className={`text-lg font-bold ${isCurrentWeekDisplayed ? 'text-red-600' : 'text-gray-900'}`}>
-                {weekDays[0].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })} - {weekDays[6].toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' })}
+            <div className="flex items-center justify-between">
+              {/* A sinistra: numero settimana */}
+              <div className="text-sm font-semibold text-gray-900">
+                {(() => {
+                  const temp = new Date(shownWeekStart)
+                  // ISO week number
+                  const target = new Date(temp.valueOf())
+                  const dayNr = (temp.getDay() + 6) % 7
+                  target.setDate(target.getDate() - dayNr + 3)
+                  const firstThursday = new Date(target.getFullYear(), 0, 4)
+                  const weekNo = 1 + Math.round(((target.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getDay() + 6) % 7)) / 7)
+                  return `Settimana N° ${weekNo}`
+                })()}
               </div>
-              <button
-                onClick={goToNextWeek}
-                aria-label="Settimana successiva"
-                className="flex items-center px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition"
-              >
-                <span className="text-xl">→</span>
-              </button>
-            </div>
-            <div className="mt-4 flex justify-end">
-              {/* Rimosso bottone Genera Turni con AI (legacy) */}
-              {/* Rimosso pulsante Compila automaticamente */}
+
+              {/* Centro: intervallo con mese in lettere */}
+              <div className={`text-lg font-bold ${isCurrentWeekDisplayed ? 'text-red-600' : 'text-gray-900'}`}>
+                {weekDays[0].toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })} - {weekDays[6].toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
+              </div>
+
+              {/* Destra: frecce ravvicinate */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={goToPreviousWeek}
+                  aria-label="Settimana precedente"
+                  className="flex items-center px-3 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition"
+                >
+                  <span className="text-xl">←</span>
+                </button>
+                <button
+                  onClick={goToNextWeek}
+                  aria-label="Settimana successiva"
+                  className="flex items-center px-3 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition"
+                >
+                  <span className="text-xl">→</span>
+                </button>
+              </div>
             </div>
           </div>
           
