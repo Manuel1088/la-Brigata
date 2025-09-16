@@ -8,7 +8,7 @@ export default function RestRulesPage() {
   const router = useRouter()
   const [rules, setRules] = useState<RestRule[]>([])
   const [employees, setEmployees] = useState<any[]>([])
-  const [selectedDepartment, setSelectedDepartment] = useState<'all' | 'cucina' | 'sala' | 'bar'>('all')
+  const [selectedDepartment, setSelectedDepartment] = useState<'cucina' | 'sala' | 'bar'>('sala')
   const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }>>({
     cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
     sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
@@ -71,10 +71,6 @@ export default function RestRulesPage() {
               {/* Filtro Reparti */}
               <div className="flex items-center gap-2 mb-2">
                 <button
-                  className={`px-3 py-1 rounded border text-sm ${selectedDepartment === 'all' ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-orange-50'}`}
-                  onClick={() => setSelectedDepartment('all')}
-                >Tutti</button>
-                <button
                   className={`px-3 py-1 rounded border text-sm ${selectedDepartment === 'cucina' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
                   onClick={() => setSelectedDepartment('cucina')}
                 >🔥 Cucina</button>
@@ -89,7 +85,7 @@ export default function RestRulesPage() {
               </div>
 
               {/* Regole del Reparto */}
-              {selectedDepartment !== 'all' && (
+              {selectedDepartment && (
                 <div className="mb-4 p-4 border rounded-lg bg-gray-50">
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="text-sm font-medium text-gray-900">Reparto: {selectedDepartment === 'cucina' ? '🔥 Cucina' : selectedDepartment === 'sala' ? '🍽️ Sala' : '🍹 Bar'}</div>
@@ -164,7 +160,6 @@ export default function RestRulesPage() {
 
               {rules
                 .filter(rule => {
-                  if (selectedDepartment === 'all') return true
                   const emp = employees.find(e => e.name === rule.employeeName)
                   return (emp?.department || 'sala') === selectedDepartment
                 })
@@ -187,7 +182,7 @@ export default function RestRulesPage() {
                     <div className="flex items-center space-x-4">
                       {deptConfigs[(employees.find(e => e.name === rule.employeeName)?.department || 'sala') as 'cucina'|'sala'|'bar']?.mode === 'fixed' ? (
                         <>
-                          <div className="text-sm text-gray-900">Seleziona fino a {selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : 2} giorni fissi:</div>
+                          <div className="text-sm text-gray-900">Seleziona fino a {deptConfigs[selectedDepartment].weeklyRestDays} giorni fissi:</div>
                           <div className="flex flex-wrap gap-3">
                             {dayNames.map((d, idx) => {
                               const checked = !!rule.fixedDayIndices?.includes(idx as any)
@@ -199,13 +194,13 @@ export default function RestRulesPage() {
                                     onChange={(e) => {
                                       const current = new Set(rule.fixedDayIndices || [])
                                       if (e.target.checked) {
-                                        const target = selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : 2
+                                        const target = deptConfigs[selectedDepartment].weeklyRestDays
                                         if (current.size < target) current.add(idx as any)
                                       } else {
                                         current.delete(idx as any)
                                       }
                                       const arr = Array.from(current) as any
-                                      const targetDays: 1|2 = (selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : (arr.length > 1 ? 2 : 1)) as 1|2
+                                      const targetDays: 1|2 = deptConfigs[selectedDepartment].weeklyRestDays as 1|2
                                       const updated = updateRestRule(rule.employeeName, {
                                         fixedDayIndices: arr,
                                         weeklyRestDays: targetDays
