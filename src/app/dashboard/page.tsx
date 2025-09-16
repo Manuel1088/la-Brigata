@@ -12,6 +12,7 @@ import { BreakEvenWidget } from '@/components/BreakEvenWidget'
 import EmployeeDashboard from '@/components/EmployeeDashboard'
 import CashierDashboard from '@/components/CashierDashboard'
 import ManagerDashboard from '@/components/ManagerDashboard'
+import { getEmployeesFullClient } from '@/lib/employees'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -53,6 +54,7 @@ export default function DashboardPage() {
   // Turno di oggi per l'utente (se presente nei turni)
   const [todayShiftTime, setTodayShiftTime] = useState<string | null>(null)
   const [todayShiftIsRest, setTodayShiftIsRest] = useState<boolean>(false)
+  const [userDepartment, setUserDepartment] = useState<string>('sala')
 
   // Redirect se non autenticato e log accesso dashboard
   useEffect(() => {
@@ -104,6 +106,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!session?.user?.name) return
     try {
+      // Dipartimento utente (per etichetta turno)
+      const employees = getEmployeesFullClient()
+      const me = employees.find(e => e.id === (session?.user?.id as any) || e.name === (session?.user?.name || ''))
+      if (me?.department) setUserDepartment(me.department as string)
+
       const weekStart = getWeekStart(new Date())
       const key = `shifts_${toISODate(weekStart)}`
       const raw = localStorage.getItem(key)
@@ -140,6 +147,31 @@ export default function DashboardPage() {
       console.error('Errore caricamento turno:', error)
     }
   }, [session?.user?.name])
+
+  const getShiftLabel = (dept: string, time: string): string => {
+    const map: Record<string, Record<string, string>> = {
+      cucina: {
+        '06:00-14:00': 'Prep',
+        '08:00-16:00': 'Servizio',
+        '15:00-23:00': 'Servizio',
+        '10:00-22:00': 'Chef'
+      },
+      sala: {
+        '07:00-15:00': 'Apertura',
+        '11:00-16:00': 'Pranzo',
+        '17:00-01:00': 'Cena',
+        '11:00-23:00': 'Completo'
+      },
+      bar: {
+        '06:00-14:00': 'Mattino',
+        '17:00-21:00': 'Aperitivo',
+        '20:00-02:00': 'Dopocena',
+        '16:00-02:00': 'Completo'
+      }
+    }
+    const d = (dept || 'sala').toLowerCase()
+    return map[d]?.[time] || 'Turno'
+  }
 
   if (status === 'loading') {
     return (
@@ -287,7 +319,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-right">
                   {todayShiftTime ? (
-                    <div className="text-lg font-bold text-blue-700">{todayShiftTime}</div>
+                    <div className="text-lg font-bold text-blue-700">
+                      <span className="mr-2 text-gray-800">{getShiftLabel(userDepartment, todayShiftTime)}</span>
+                      {todayShiftTime}
+                    </div>
                   ) : todayShiftIsRest ? (
                     <div className="text-lg font-bold text-gray-700">😴 Riposo</div>
                   ) : (
