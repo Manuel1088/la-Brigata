@@ -2,6 +2,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useAutoScheduler } from '@/lib/autoScheduler'
 import { useEffect, useMemo, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 // import legacy AI generator rimosso
@@ -22,6 +23,8 @@ export default function ShiftsPage() {
   const router = useRouter()
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const { generateSchedule, analyzePatterns } = useAutoScheduler()
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{name: string, dayIndex: number, isEdit?: boolean} | null>(null)
   // rimosso generatore AI legacy
@@ -654,12 +657,36 @@ export default function ShiftsPage() {
               )}
             </div>
             {(manageAll || manageDept) && (
-              <button
-                onClick={() => router.push('/shifts/rest')}
-                className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition text-sm"
-              >
-                😴 Regole Riposi
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    setIsGenerating(true)
+                    try {
+                      const result = await generateSchedule(shownWeekStart)
+                      if (result.success && result.schedule) {
+                        const confirmApply = window.confirm('Turni generati! Vuoi applicarli?')
+                        if (confirmApply) {
+                          setShifts(result.schedule)
+                          saveWeekShifts(result.schedule)
+                        }
+                      }
+                    } catch (error) {
+                      alert('Errore generazione turni')
+                    }
+                    setIsGenerating(false)
+                  }}
+                  disabled={isGenerating}
+                  className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-red-600 transition text-sm"
+                >
+                  {isGenerating ? 'Generando...' : '🤖 Auto-Genera Turni'}
+                </button>
+                <button
+                  onClick={() => router.push('/shifts/rest')}
+                  className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition text-sm"
+                >
+                  😴 Regole Riposi
+                </button>
+              </div>
             )}
           </div>
           {/* Week Navigator Migliorato */}
