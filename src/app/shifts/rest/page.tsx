@@ -9,10 +9,10 @@ export default function RestRulesPage() {
   const [rules, setRules] = useState<RestRule[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<'all' | 'cucina' | 'sala' | 'bar'>('all')
-  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2 }>>({
-    cucina: { mode: 'fixed', weeklyRestDays: 1 },
-    sala: { mode: 'fixed', weeklyRestDays: 1 },
-    bar: { mode: 'fixed', weeklyRestDays: 1 }
+  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string }>>({
+    cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06' },
+    sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06' },
+    bar: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06' }
   })
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function RestRulesPage() {
     } catch {}
   }, [])
 
-  const saveDeptConfigs = (next: Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2 }>) => {
+  const saveDeptConfigs = (next: Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string }>) => {
     setDeptConfigs(next)
     try {
       localStorage.setItem('rest_rules_department_v1', JSON.stringify(next))
@@ -122,6 +122,15 @@ export default function RestRulesPage() {
                           onChange={() => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], mode: 'rotating' }})}
                         /> Riposo a scalare
                       </label>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-700">Data inizio rotazione:</span>
+                      <input
+                        type="date"
+                        value={deptConfigs[selectedDepartment].baseStartDate || ''}
+                        onChange={(e) => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], baseStartDate: e.target.value || undefined } })}
+                        className="px-3 py-1 border border-gray-300 rounded text-sm"
+                      />
                     </div>
                   </div>
                   {deptConfigs[selectedDepartment].mode === 'rotating' && (
