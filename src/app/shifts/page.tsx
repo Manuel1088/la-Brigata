@@ -351,11 +351,11 @@ export default function ShiftsPage() {
   }
 
   // Configurazione riposi di reparto (fisso/rotazione + giorni settimanali)
-  type DeptConfig = { mode: 'fixed' | 'rotating'; weeklyRestDays: 1 | 2; baseStartDate?: string }
+  type DeptConfig = { mode: 'fixed' | 'rotating'; weeklyRestDays: 1 | 2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }
   const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', DeptConfig>>({
-    cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06' },
-    sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06' },
-    bar: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06' }
+    cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
+    sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
+    bar: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' }
   })
   useEffect(() => {
     try {
@@ -376,7 +376,10 @@ export default function ShiftsPage() {
     const baseStart = new Date(by || 2025, (bm || 1) - 1, bd || 6) // default: lun 6/1/2025
     baseStart.setHours(0,0,0,0)
     const weekOffset = Math.floor((shownWeekStart.getTime() - baseStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
-    const offset = ((weekOffset % 7) + 7) % 7
+    let offset = ((weekOffset % 7) + 7) % 7
+    if ((cfg.rotateDirection || 'forward') === 'backward') {
+      offset = (7 - offset) % 7
+    }
     return baseDays.map(d => (d + offset) % 7)
   }
 

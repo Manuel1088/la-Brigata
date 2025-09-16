@@ -9,10 +9,10 @@ export default function RestRulesPage() {
   const [rules, setRules] = useState<RestRule[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<'all' | 'cucina' | 'sala' | 'bar'>('all')
-  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string }>>({
-    cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06' },
-    sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06' },
-    bar: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06' }
+  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }>>({
+    cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
+    sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
+    bar: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' }
   })
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function RestRulesPage() {
     } catch {}
   }, [])
 
-  const saveDeptConfigs = (next: Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string }>) => {
+  const saveDeptConfigs = (next: Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }>) => {
     setDeptConfigs(next)
     try {
       localStorage.setItem('rest_rules_department_v1', JSON.stringify(next))
@@ -136,7 +136,28 @@ export default function RestRulesPage() {
                     )}
                   </div>
                   {deptConfigs[selectedDepartment].mode === 'rotating' && (
-                    <div className="mt-3 text-sm text-gray-600">Con riposo a scalare non è necessario impostare giorni fissi per dipendente.</div>
+                    <>
+                      <div className="mt-3 text-sm text-gray-600">Con riposo a scalare non è necessario impostare giorni fissi per dipendente.</div>
+                      <div className="mt-3 flex items-center gap-3">
+                        <span className="text-sm text-gray-700">Direzione rotazione:</span>
+                        <label className="flex items-center gap-1 text-sm text-gray-900">
+                          <input
+                            type="radio"
+                            name="rotateDirection"
+                            checked={(deptConfigs[selectedDepartment].rotateDirection || 'forward') === 'forward'}
+                            onChange={() => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], rotateDirection: 'forward' }})}
+                          /> In avanti (es. Mar → Mer)
+                        </label>
+                        <label className="flex items-center gap-1 text-sm text-gray-900">
+                          <input
+                            type="radio"
+                            name="rotateDirection"
+                            checked={deptConfigs[selectedDepartment].rotateDirection === 'backward'}
+                            onChange={() => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], rotateDirection: 'backward' }})}
+                          /> All'indietro (es. Mar → Lun)
+                        </label>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
