@@ -15,20 +15,28 @@ export default function HomePage() {
             Gestione digitale per la ristorazione italiana
           </p>
           
-          <div className="max-w-md mx-auto">
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <h2 className="text-2xl font-semibold mb-4">🔐 Accesso Sistema</h2>
-              <p className="text-gray-600 mb-6">
-                Entra nel sistema di gestione del ristorante
-              </p>
-              <button 
-                onClick={() => router.push('/login')}
-                className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-4 rounded-lg hover:from-orange-700 hover:to-red-700 transition text-lg font-medium"
-              >
-                Accedi
-              </button>
+          <div className="max-w-md mx-auto space-y-4">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <h2 className="text-xl font-semibold mb-4">Accesso Sistema</h2>
+              
+              <div className="space-y-3">
+                <button 
+                  onClick={() => router.push('/login')}
+                  className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-3 rounded-lg hover:from-orange-700 hover:to-red-700 transition font-medium"
+                >
+                  🔐 Accedi
+                </button>
+                
+                <button 
+                  onClick={() => router.push('/register')}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition font-medium"
+                >
+                  ✨ Registrati
+                </button>
+              </div>
+              
               <p className="text-xs text-gray-500 mt-4">
-                Per tutto il personale: manager, chef, camerieri, barista
+                Per ristoratori, dipendenti e candidati
               </p>
             </div>
           </div>
