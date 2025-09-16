@@ -371,7 +371,6 @@ export default function ShiftsPage() {
   const getRotatingRestDayIndices = (department: string, employeeName?: string): number[] => {
     const cfg = deptConfigs[(department as 'cucina'|'sala'|'bar') || 'sala']
     if (!cfg || cfg.mode !== 'rotating') return []
-    const baseDays = cfg.weeklyRestDays === 2 ? [0, 3] : [0] // base: lunedì (+ giovedì se 2 giorni)
     const [by, bm, bd] = (cfg.baseStartDate || '2025-01-06').split('-').map(Number)
     const baseStart = new Date(by || 2025, (bm || 1) - 1, bd || 6) // default: lun 6/1/2025
     baseStart.setHours(0,0,0,0)
@@ -380,19 +379,20 @@ export default function ShiftsPage() {
     if ((cfg.rotateDirection || 'forward') === 'backward') {
       offset = (7 - offset) % 7
     }
-    let initialShift = 0
+    // Giorno iniziale scelto a livello dipendente (0=Lunedì)
+    let startDay = 0
     try {
       // Carica giorno iniziale per dipendente (rotatingStartDayIndex)
       const raw = localStorage.getItem('rest_rules')
       if (raw && employeeName) {
         const list = JSON.parse(raw) as Array<{ employeeName: string; rotatingStartDayIndex?: number }>
         const found = list.find(r => r.employeeName === employeeName)
-        if (typeof found?.rotatingStartDayIndex === 'number') {
-          initialShift = found.rotatingStartDayIndex
-        }
+        if (typeof found?.rotatingStartDayIndex === 'number') startDay = found.rotatingStartDayIndex
       }
     } catch {}
-    return baseDays.map(d => (d + offset + initialShift) % 7)
+    // Costruisce i giorni di riposo partendo dal giorno iniziale; se 2 giorni, aggiunge anche il giorno successivo
+    const baseDays = cfg.weeklyRestDays === 2 ? [startDay, (startDay + 1) % 7] : [startDay]
+    return baseDays.map(d => (d + offset) % 7)
   }
 
   // Carica i turni salvati quando cambia la settimana
