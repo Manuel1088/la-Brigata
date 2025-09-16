@@ -1,11 +1,13 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { getRestRules, updateRestRule, type RestRule } from '@/lib/restRules'
 import { getEmployeesFullClient } from '@/lib/employees'
 
 export default function RestRulesPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [rules, setRules] = useState<RestRule[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<'cucina' | 'sala' | 'bar'>('sala')
@@ -29,6 +31,25 @@ export default function RestRulesPage() {
       }
     } catch {}
   }, [])
+
+  // Permessi base: limita i reparti visibili/modificabili in base al ruolo
+  const { allowedDepartments, manageAll } = useMemo(() => {
+    const role = ((session?.user as any)?.role || '').toString().toUpperCase()
+    if (['PROPRIETARIO','DIRETTORE','MANAGER','ADMIN'].includes(role)) {
+      return { allowedDepartments: ['cucina','sala','bar'] as Array<'cucina'|'sala'|'bar'>, manageAll: true }
+    }
+    if (role === 'HEAD_CHEF') return { allowedDepartments: ['cucina'] as Array<'cucina'|'sala'|'bar'>, manageAll: false }
+    if (role === 'RESPONSABILE_SALA' || role === 'CASSIERE') return { allowedDepartments: ['sala'] as Array<'cucina'|'sala'|'bar'>, manageAll: false }
+    // Fallback: bar
+    return { allowedDepartments: ['bar'] as Array<'cucina'|'sala'|'bar'>, manageAll: false }
+  }, [session?.user])
+
+  useEffect(() => {
+    // forza reparto selezionato se non permesso
+    if (!allowedDepartments.includes(selectedDepartment)) {
+      setSelectedDepartment(allowedDepartments[0])
+    }
+  }, [allowedDepartments, selectedDepartment])
 
   const saveDeptConfigs = (next: Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }>) => {
     setDeptConfigs(next)
@@ -70,18 +91,27 @@ export default function RestRulesPage() {
             <div className="p-6 space-y-4">
               {/* Filtro Reparti */}
               <div className="flex items-center gap-2 mb-2">
-                <button
-                  className={`px-3 py-1 rounded border text-sm ${selectedDepartment === 'cucina' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
-                  onClick={() => setSelectedDepartment('cucina')}
-                >🔥 Cucina</button>
-                <button
-                  className={`px-3 py-1 rounded border text-sm ${selectedDepartment === 'sala' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
-                  onClick={() => setSelectedDepartment('sala')}
-                >🍽️ Sala</button>
-                <button
-                  className={`px-3 py-1 rounded border text-sm ${selectedDepartment === 'bar' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50'}`}
-                  onClick={() => setSelectedDepartment('bar')}
-                >🍹 Bar</button>
+                {allowedDepartments.includes('cucina') && (
+                  <button
+                    className={`px-3 py-1 rounded border text-sm ${selectedDepartment === 'cucina' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
+                    onClick={() => setSelectedDepartment('cucina')}
+                  >🔥 Cucina</button>
+                )}
+                {allowedDepartments.includes('sala') && (
+                  <button
+                    className={`px-3 py-1 rounded border text-sm ${selectedDepartment === 'sala' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
+                    onClick={() => setSelectedDepartment('sala')}
+                  >🍽️ Sala</button>
+                )}
+                {allowedDepartments.includes('bar') && (
+                  <button
+                    className={`px-3 py-1 rounded border text-sm ${selectedDepartment === 'bar' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50'}`}
+                    onClick={() => setSelectedDepartment('bar')}
+                  >🍹 Bar</button>
+                )}
+                {!manageAll && allowedDepartments.length === 1 && (
+                  <span className="ml-2 text-xs text-gray-500">(accesso limitato al tuo reparto)</span>
+                )}
               </div>
 
               {/* Regole del Reparto */}
