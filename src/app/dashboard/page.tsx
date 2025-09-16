@@ -109,9 +109,16 @@ export default function DashboardPage() {
       const raw = localStorage.getItem(key)
       if (!raw) return
       const map = JSON.parse(raw) as Record<string, { employee: string; time?: string }>
-      const dayIndex = Math.max(0, Math.min(6, Math.floor((new Date().getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24))))
+      // Calcolo robusto dell'indice del giorno (0=lunedì ... 6=domenica)
+      const dayIndex = ((new Date().getDay() + 6) % 7)
       const shiftKey = `${session.user.name}-${dayIndex}`
-      const shift = map[shiftKey]
+      let shift = map[shiftKey]
+      // Fallback: ricerca per employee e dayIndex se la chiave esatta non c'è (es. differenze di nome)
+      if (!shift) {
+        const suffix = `-${dayIndex}`
+        const entry = Object.entries(map).find(([k, v]) => k.endsWith(suffix) && v.employee === session.user?.name)
+        if (entry) shift = entry[1]
+      }
       if (shift?.time) {
         if (shift.time === 'RIPOSO') {
           setTodayShiftIsRest(true)
