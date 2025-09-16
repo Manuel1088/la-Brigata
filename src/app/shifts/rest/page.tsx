@@ -123,15 +123,17 @@ export default function RestRulesPage() {
                         /> Riposo a scalare
                       </label>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-700">Data inizio rotazione:</span>
-                      <input
-                        type="date"
-                        value={deptConfigs[selectedDepartment].baseStartDate || ''}
-                        onChange={(e) => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], baseStartDate: e.target.value || undefined } })}
-                        className="px-3 py-1 border border-gray-300 rounded text-sm"
-                      />
-                    </div>
+                    {deptConfigs[selectedDepartment].mode === 'rotating' && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-gray-700">Data inizio rotazione:</span>
+                        <input
+                          type="date"
+                          value={deptConfigs[selectedDepartment].baseStartDate || ''}
+                          onChange={(e) => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], baseStartDate: e.target.value || undefined } })}
+                          className="px-3 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                    )}
                   </div>
                   {deptConfigs[selectedDepartment].mode === 'rotating' && (
                     <div className="mt-3 text-sm text-gray-600">Con riposo a scalare non è necessario impostare giorni fissi per dipendente.</div>
