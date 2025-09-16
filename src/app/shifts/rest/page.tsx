@@ -9,13 +9,34 @@ export default function RestRulesPage() {
   const [rules, setRules] = useState<RestRule[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<'all' | 'cucina' | 'sala' | 'bar'>('all')
+  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2 }>>({
+    cucina: { mode: 'fixed', weeklyRestDays: 1 },
+    sala: { mode: 'fixed', weeklyRestDays: 1 },
+    bar: { mode: 'fixed', weeklyRestDays: 1 }
+  })
 
   useEffect(() => {
     setRules(getRestRules())
     try {
       setEmployees(getEmployeesFullClient())
     } catch {}
+    // carica config reparto
+    try {
+      const raw = localStorage.getItem('rest_rules_department_v1')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        setDeptConfigs(prev => ({ ...prev, ...parsed }))
+      }
+    } catch {}
   }, [])
+
+  const saveDeptConfigs = (next: Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2 }>) => {
+    setDeptConfigs(next)
+    try {
+      localStorage.setItem('rest_rules_department_v1', JSON.stringify(next))
+      window.dispatchEvent(new CustomEvent('rest_rules_updated'))
+    } catch {}
+  }
 
   const dayNames = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
 
@@ -67,24 +88,71 @@ export default function RestRulesPage() {
                 >🍹 Bar</button>
               </div>
 
+              {/* Regole del Reparto */}
+              {selectedDepartment !== 'all' && (
+                <div className="mb-4 p-4 border rounded-lg bg-gray-50">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="text-sm font-medium text-gray-900">Reparto: {selectedDepartment === 'cucina' ? '🔥 Cucina' : selectedDepartment === 'sala' ? '🍽️ Sala' : '🍹 Bar'}</div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-700">Giorni di riposo settimanali:</span>
+                      <button
+                        className={`px-3 py-1 rounded border text-sm ${deptConfigs[selectedDepartment].weeklyRestDays === 1 ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                        onClick={() => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], weeklyRestDays: 1 }})}
+                      >1</button>
+                      <button
+                        className={`px-3 py-1 rounded border text-sm ${deptConfigs[selectedDepartment].weeklyRestDays === 2 ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                        onClick={() => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], weeklyRestDays: 2 }})}
+                      >2</button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-700">Modalità:</span>
+                      <label className="flex items-center gap-1 text-sm text-gray-900">
+                        <input
+                          type="radio"
+                          name="mode"
+                          checked={deptConfigs[selectedDepartment].mode === 'fixed'}
+                          onChange={() => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], mode: 'fixed' }})}
+                        /> Riposo fisso
+                      </label>
+                      <label className="flex items-center gap-1 text-sm text-gray-900">
+                        <input
+                          type="radio"
+                          name="mode"
+                          checked={deptConfigs[selectedDepartment].mode === 'rotating'}
+                          onChange={() => saveDeptConfigs({ ...deptConfigs, [selectedDepartment]: { ...deptConfigs[selectedDepartment], mode: 'rotating' }})}
+                        /> Riposo a scalare
+                      </label>
+                    </div>
+                  </div>
+                  {deptConfigs[selectedDepartment].mode === 'rotating' && (
+                    <div className="mt-3 text-sm text-gray-600">Con riposo a scalare non è necessario impostare giorni fissi per dipendente.</div>
+                  )}
+                </div>
+              )}
+
               {rules
                 .filter(rule => {
                   if (selectedDepartment === 'all') return true
                   const emp = employees.find(e => e.name === rule.employeeName)
                   return (emp?.department || 'sala') === selectedDepartment
                 })
+                .filter(() => {
+                  // Se modalità è riposo a scalare, non mostrare la lista per quel reparto
+                  if (selectedDepartment === 'all') return true
+                  return deptConfigs[selectedDepartment].mode === 'fixed'
+                })
                 .map(rule => (
                 <div key={rule.employeeName} className="border rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="text-gray-900 font-medium">{rule.employeeName}</div>
-                      <div className="text-sm text-gray-500">Riposi settimanali: {rule.weeklyRestDays}</div>
+                      <div className="text-sm text-gray-500">Riposi settimanali: {deptConfigs[(employees.find(e => e.name === rule.employeeName)?.department || 'sala') as 'cucina'|'sala'|'bar']?.weeklyRestDays || rule.weeklyRestDays}</div>
                       <div className="text-sm text-gray-500">
                         Giorni fissi: {rule.fixedDayIndices && rule.fixedDayIndices.length ? rule.fixedDayIndices.map(i => dayNames[i]).join(', ') : 'Nessuno'}
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
-                      <div className="text-sm text-gray-900">Seleziona fino a 2 giorni fissi:</div>
+                      <div className="text-sm text-gray-900">Seleziona fino a {selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : 2} giorni fissi:</div>
                       <div className="flex flex-wrap gap-3">
                         {dayNames.map((d, idx) => {
                           const checked = !!rule.fixedDayIndices?.includes(idx as any)
@@ -96,14 +164,16 @@ export default function RestRulesPage() {
                                 onChange={(e) => {
                                   const current = new Set(rule.fixedDayIndices || [])
                                   if (e.target.checked) {
-                                    if (current.size < 2) current.add(idx as any)
+                                    const target = selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : 2
+                                    if (current.size < target) current.add(idx as any)
                                   } else {
                                     current.delete(idx as any)
                                   }
                                   const arr = Array.from(current) as any
+                                  const targetDays: 1|2 = (selectedDepartment !== 'all' ? deptConfigs[selectedDepartment].weeklyRestDays : (arr.length > 1 ? 2 : 1)) as 1|2
                                   const updated = updateRestRule(rule.employeeName, {
                                     fixedDayIndices: arr,
-                                    weeklyRestDays: (arr.length === 0 ? (rule.weeklyRestDays || 1) : (Math.min(arr.length, 2) as 1 | 2))
+                                    weeklyRestDays: targetDays
                                   })
                                   setRules(prev => prev.map(r => r.employeeName === rule.employeeName ? updated : r))
                                 }}
