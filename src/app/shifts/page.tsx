@@ -601,12 +601,14 @@ export default function ShiftsPage() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/shifts/rest')}
-                className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition text-sm"
-              >
-                😴 Regole Riposi
-              </button>
+              {(manageAll || manageDept) && (
+                <button
+                  onClick={() => router.push('/shifts/rest')}
+                  className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition text-sm"
+                >
+                  😴 Regole Riposi
+                </button>
+              )}
               <span className="text-gray-900">
                 {session?.user?.name}
               </span>
