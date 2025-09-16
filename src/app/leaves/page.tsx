@@ -54,8 +54,8 @@ export default function LeavesPage() {
   const [filterEmployee, setFilterEmployee] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [selectedDept, setSelectedDept] = useState<'cucina' | 'sala' | 'bar'>('sala')
-  const isHeadChef = userRole === UserRole.HEAD_CHEF
-  const isDeptLocked = isHeadChef || (!canViewAllLeaves() && !canApproveLeave())
+  const isGlobalManager = [UserRole.PROPRIETARIO, UserRole.ADMIN, UserRole.DIRETTORE, UserRole.MANAGER].includes(userRole as UserRole)
+  const isDeptLocked = !isGlobalManager
 
   // Helper per date sicure
   const toSafeDate = (value: any): Date | null => {
@@ -95,10 +95,10 @@ export default function LeavesPage() {
       const employees = getEmployeesFullClient()
       const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
       const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
-      // Se il dipendente è Head Chef blocchiamo su cucina; se non può vedere tutto/approvare, blocchiamo sul proprio reparto
-      setSelectedDept(isHeadChef ? 'cucina' : dept)
+      // Blocchiamo sul proprio reparto per tutti tranne i ruoli globali
+      setSelectedDept(dept)
     } catch {}
-  }, [session?.user?.id, session?.user?.name, isHeadChef])
+  }, [session?.user?.id, session?.user?.name])
 
   if (status === 'loading') {
     return (
@@ -528,7 +528,7 @@ export default function LeavesPage() {
             )}
 
     {/* Gestione Richieste del Team */}
-    {(isHeadChef || canApproveLeave()) && (
+    {canApproveLeave() && (
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">👥 Richieste del Team</h2>
