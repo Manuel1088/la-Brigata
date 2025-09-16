@@ -350,6 +350,35 @@ export default function ShiftsPage() {
     }
   }
 
+  // Configurazione riposi di reparto (fisso/rotazione + giorni settimanali)
+  type DeptConfig = { mode: 'fixed' | 'rotating'; weeklyRestDays: 1 | 2 }
+  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', DeptConfig>>({
+    cucina: { mode: 'fixed', weeklyRestDays: 1 },
+    sala: { mode: 'fixed', weeklyRestDays: 1 },
+    bar: { mode: 'fixed', weeklyRestDays: 1 }
+  })
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('rest_rules_department_v1')
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<'cucina'|'sala'|'bar', DeptConfig>
+        setDeptConfigs(prev => ({ ...prev, ...parsed }))
+      }
+    } catch {}
+  }, [])
+
+  // Calcola giorni di riposo "a scalare" per il reparto e settimana mostrata
+  const getRotatingRestDayIndices = (department: string): number[] => {
+    const cfg = deptConfigs[(department as 'cucina'|'sala'|'bar') || 'sala']
+    if (!cfg || cfg.mode !== 'rotating') return []
+    const baseDays = cfg.weeklyRestDays === 2 ? [0, 3] : [0] // base: lunedì (+ giovedì se 2 giorni)
+    const baseStart = new Date(2025, 0, 6) // lunedì 6 gen 2025 come epoch
+    baseStart.setHours(0,0,0,0)
+    const weekOffset = Math.floor((shownWeekStart.getTime() - baseStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
+    const offset = ((weekOffset % 7) + 7) % 7
+    return baseDays.map(d => (d + offset) % 7)
+  }
+
   // Carica i turni salvati quando cambia la settimana
   useEffect(() => {
     const saved = loadWeekShifts()
@@ -384,7 +413,9 @@ export default function ShiftsPage() {
     const available = candidates.filter(e => {
       const key = `${e.name}-${dayIndex}`
       const rule = getRestRuleFor(e.name)
-      const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes(dayIndex as any))
+      const dept = e.department as string
+      const rotatingDays = getRotatingRestDayIndices(dept)
+      const isFixed = !!(rule?.fixedDayIndices && rule.fixedDayIndices.includes(dayIndex as any)) || rotatingDays.includes(dayIndex)
       const hasLeave = isOnApprovedLeave(e.name, dateISO)
       const alreadyAssigned = !!shifts[key]?.time
       if (isFixed || hasLeave || alreadyAssigned) return false
@@ -699,7 +730,8 @@ export default function ShiftsPage() {
                         const isRestDay = shift?.time === 'RIPOSO'
                         const dateISO = toISODate(d)
                         const restRule = getRestRuleFor(employee.name)
-                        const isFixedRest = !!(restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any))
+                        const rotatingDays = getRotatingRestDayIndices(employee.department as string)
+                        const isFixedRest = !!(restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any)) || rotatingDays.includes(dayIndex)
                         const leaveInfo = getApprovedLeaveInfo(employee.name, dateISO)
                         const isDerivedBlocked = isFixedRest || !!leaveInfo
                         const canClickCell = (manageAll || (manageDept && employee.department === effectiveUserDepartment)) && (!isDerivedBlocked || !!shift)
