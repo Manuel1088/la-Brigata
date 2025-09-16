@@ -922,48 +922,8 @@ export default function ShiftsPage() {
             </div>
             )}
           </div>
-          {/* Legenda e Turni Predefiniti */}
+          {/* Turni Predefiniti */}
           <div className="grid md:grid-cols-3 gap-6 mt-6">
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Legenda Reparti:</h3>
-              {manageAll ? (
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                    <span className="text-sm text-gray-600">🔥 Cucina ({employees.filter(e => e.department === 'cucina').length} dipendenti)</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                    <span className="text-sm text-gray-600">🍽️ Sala ({employees.filter(e => e.department === 'sala').length} dipendenti)</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                    <span className="text-sm text-gray-600">🍹 Bar ({employees.filter(e => e.department === 'bar').length} dipendenti)</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {effectiveUserDepartment === 'cucina' && (
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                      <span className="text-sm text-gray-600">🔥 Cucina ({employees.filter(e => e.department === 'cucina').length} dipendenti)</span>
-                    </div>
-                  )}
-                  {effectiveUserDepartment === 'sala' && (
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                      <span className="text-sm text-gray-600">🍽️ Sala ({employees.filter(e => e.department === 'sala').length} dipendenti)</span>
-                    </div>
-                  )}
-                  {effectiveUserDepartment === 'bar' && (
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                      <span className="text-sm text-gray-600">🍹 Bar ({employees.filter(e => e.department === 'bar').length} dipendenti)</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
             <div className="bg-white p-4 rounded-lg shadow">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-sm font-semibold text-gray-700">
