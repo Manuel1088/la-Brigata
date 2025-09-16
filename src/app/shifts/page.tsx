@@ -8,7 +8,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
-import { getEmployeesClient, type SimpleEmployee } from '@/lib/employees'
+import { getEmployeesFullClient, type SimpleEmployee } from '@/lib/employees'
 
 interface ShiftCell {
   employee: string
@@ -198,10 +198,10 @@ export default function ShiftsPage() {
   }, [session, status, router])
 
   // Dipendenti del ristorante
-  const [employees, setEmployees] = useState<SimpleEmployee[]>(getEmployeesClient())
+  const [employees, setEmployees] = useState<SimpleEmployee[]>(getEmployeesFullClient())
   const [userDepartment, setUserDepartment] = useState<string>('sala')
   useEffect(() => {
-    const reload = () => setEmployees(getEmployeesClient())
+    const reload = () => setEmployees(getEmployeesFullClient())
     window.addEventListener('employees_updated', reload)
     // reattivo anche regole riposi
     const reloadRest = () => setRestVersion(v => v + 1)
@@ -339,6 +339,58 @@ export default function ShiftsPage() {
     try {
       localStorage.setItem(getWeekKey(), JSON.stringify(data))
     } catch {}
+  }
+
+  // Admin-only: genera automaticamente una bozza di turni per la settimana corrente
+  const canAutoSchedule = ['ADMIN','PROPRIETARIO','DIRETTORE','MANAGER'].includes((userRole || '').toUpperCase())
+  const generateAutoSchedule = () => {
+    try {
+      const employeesList = getEmployeesFullClient()
+      const start = new Date(shownWeekStart)
+      const approvedLeaves = getLeaveRequests().filter(r => r.status === 'APPROVED')
+      const result: { [key: string]: ShiftCell } = { ...shifts }
+
+      const byDept = (dep: string) => employeesList.filter(e => e.department === dep)
+      const departments = ['cucina','sala','bar'] as const
+      const deptShifts: Record<string, string[]> = {
+        cucina: ['08:00-16:00','10:00-22:00'],
+        sala: ['11:00-16:00','17:00-01:00'],
+        bar: ['06:00-14:00','20:00-02:00']
+      }
+
+      const overlaps = (d: Date, s: Date, e: Date) => {
+        const dd = new Date(d); dd.setHours(0,0,0,0)
+        const ss = new Date(s); ss.setHours(0,0,0,0)
+        const ee = new Date(e); ee.setHours(0,0,0,0)
+        return dd >= ss && dd <= ee
+      }
+
+      for (let day = 0; day < 7; day++) {
+        const date = new Date(start); date.setDate(start.getDate() + day)
+        departments.forEach(dep => {
+          const emps = byDept(dep)
+          // copertura semplice: massimo 2 per reparto se disponibili
+          let assigned = 0
+          for (const emp of emps) {
+            if (assigned >= 2) break
+            const hasLeave = approvedLeaves.some(r => r.userId === emp.id && overlaps(date, r.startDate, r.endDate))
+            if (hasLeave) continue
+            const rest = getRestRuleFor(emp.name)
+            if (rest?.fixedDayIndices && rest.fixedDayIndices.includes(day as any)) continue
+            const key = `${emp.name}-${day}`
+            if (result[key]) continue
+            const slot = deptShifts[dep][assigned % deptShifts[dep].length]
+            result[key] = { employee: emp.name, time: slot, department: dep, role: emp.role }
+            assigned++
+          }
+        })
+      }
+
+      setShifts(result)
+      saveWeekShifts(result)
+    } catch (e) {
+      console.error('Errore auto-scheduler:', e)
+    }
   }
   const loadWeekShifts = (): { [key: string]: ShiftCell } | null => {
     try {
@@ -632,8 +684,14 @@ export default function ShiftsPage() {
               </button>
             </div>
             <div className="mt-4 flex justify-end">
-              {/* Rimosso bottone Genera Turni con AI (legacy) */}
-              {/* Rimosso pulsante Compila automaticamente */}
+              {canAutoSchedule && (
+                <button
+                  onClick={generateAutoSchedule}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                >
+                  🤖 Genera bozza settimana
+                </button>
+              )}
             </div>
           </div>
           
