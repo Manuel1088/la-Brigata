@@ -373,8 +373,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Riquadro Turno di Oggi (personale) */}
-          {isSectionVisible('shifts') && (
-            <div className="bg-white rounded-lg shadow p-4 mb-8">
+          {isSectionVisible('shifts') && todayShiftTime && (
+            <div className="bg-white rounded-lg shadow p-4 mb-8 w-full md:w-1/2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">⏰</span>
@@ -405,34 +405,15 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Riepilogo mese mance (per dipendenti) */}
-          {isEmployee && (<MonthlyTipsSummary leftLabel="mance" />)}
-
-          {/* Widget Break-Even per Direttore e Manager */}
-          {canViewBreakEven && (
-            <div className="mb-8">
-              <BreakEvenWidget 
-                userId={session.user?.id}
-                userRole={session.user?.role}
-              />
-            </div>
+          {/* Riepilogo mese mance per tutti i presenti (sempre live) */}
+          {todayShiftTime && (
+            <MonthlyTipsSummary leftLabel="mance" />
           )}
 
-          {/* Dashboard Content - Diversa per Ruoli */}
-          {isEmployee ? null : isCashier ? (
-            // Dashboard Cassiere
-            <CashierDashboard 
-              userId={session.user?.id || ''}
-              userName={session.user?.name || ''}
-            />
-          ) : isManager ? (
-            // Dashboard Manageriale
-            <ManagerDashboard 
-              userId={session.user?.id || ''}
-              userName={session.user?.name || ''}
-              userRole={session.user?.role || ''}
-            />
-          ) : null}
+          {/* Riepilogo mese mance (per dipendenti) */}
+          {/* Riquadro riepilogo mese rimosso su richiesta */}
+
+          {/* Sezioni avanzate rimosse su richiesta */}
         </div>
       </main>
       

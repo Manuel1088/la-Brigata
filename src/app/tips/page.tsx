@@ -33,6 +33,7 @@ export default function TipsPage() {
   const [newAmountForeign, setNewAmountForeign] = useState('')
   const [newSelectedLocation, setNewSelectedLocation] = useState('')
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
+  const [expandedType, setExpandedType] = useState<'cash' | 'card' | 'foreign' | null>(null)
 
   // Tip entries (inserimenti) da localStorage per riepilogo real-time
   const [tipEntries, setTipEntries] = useState<any[]>([])
@@ -359,6 +360,83 @@ export default function TipsPage() {
   const now = new Date()
   const isCurrentMonth = now.getFullYear() === currentMonth.getFullYear() && now.getMonth() === currentMonth.getMonth()
 
+  // Helpers condivisi per calcolo presenza/turni
+  const getWeekStart = (date: Date) => {
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = (day === 0 ? -6 : 1) - day
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + diff)
+    return d
+  }
+  const toISODate = (d: Date) => {
+    const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
+  }
+  const getDayIndexFromDate = (dateStr: string, weekStart: Date) => {
+    const target = new Date(dateStr)
+    const diffTime = target.getTime() - weekStart.getTime()
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  }
+
+  // Calcolo lista giornaliera per un tipo (per il dipendente corrente)
+  const getDailySharesFor = (type: 'cash' | 'card' | 'foreign') => {
+    if (!session?.user?.name) return [] as { date: string; shiftLabel: string; amount: number }[]
+    let employeePointsByName: Record<string, number> = {}
+    let restDaysByName: Record<string, [string, string?]> = {}
+    try { const ep = localStorage.getItem('employeePoints'); employeePointsByName = ep ? JSON.parse(ep) : {} } catch {}
+    try { const rd = localStorage.getItem('employeeRestDays'); restDaysByName = rd ? JSON.parse(rd) : {} } catch {}
+
+    const dayMap = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab']
+    const days = getDaysInMonth(currentMonth)
+    const myName = session.user.name
+    const myPoints = employeePointsByName[myName] || 0
+    const result: { date: string; shiftLabel: string; amount: number }[] = []
+
+    days.forEach(d => {
+      const dateStr = d.toISOString().split('T')[0]
+      // Calcola presenza e punti del giorno
+      const weekStart = getWeekStart(d)
+      const weekKey = `shifts_${toISODate(weekStart)}`
+      let weeklySchedule: Record<string, { time?: string }> = {}
+      try { const raw = localStorage.getItem(weekKey); weeklySchedule = raw ? JSON.parse(raw) : {} } catch {}
+      const dayIndex = getDayIndexFromDate(dateStr, weekStart)
+      const dayIdx = d.getDay()
+      const dayStr = dayMap[dayIdx]
+      const candidateNames = Object.keys(employeePointsByName).length > 0 ? Object.keys(employeePointsByName) : employees.map(e => e.name)
+      const isPresent = (name: string) => {
+        const key = `${name}-${dayIndex}`
+        const shift = weeklySchedule[key]
+        if (shift && typeof shift.time === 'string') {
+          return shift.time !== 'RIPOSO' && shift.time !== 'FERIE'
+        }
+        const r = restDaysByName[name] || []
+        return !(r[0] === dayStr || r[1] === dayStr)
+      }
+      // Solo giorni in cui il dipendente è presente nei turni
+      if (!isPresent(myName)) return
+      const presentNames = candidateNames.filter(isPresent)
+      const totalPoints = presentNames.reduce((sum, name) => sum + (employeePointsByName[name] || 0), 0)
+      // Somma importi del tipo per quel giorno
+      const dayTotal = tipEntries
+        .filter(e => e.date === dateStr && e.type === type)
+        .reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+      let myShare = 0
+      if (dayTotal > 0 && totalPoints > 0 && myPoints > 0) {
+        myShare = (dayTotal / totalPoints) * myPoints
+      }
+      // Trova turno del dipendente per quel giorno
+      const myKey = `${myName}-${dayIndex}`
+      const myShift = weeklySchedule[myKey]
+      const shiftLabel = myShift?.time && myShift.time !== 'RIPOSO' && myShift.time !== 'FERIE' ? myShift.time : '-'
+      result.push({ date: dateStr, shiftLabel, amount: myShare })
+    })
+
+    // Ordina per data asc
+    result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    return result
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -452,21 +530,41 @@ export default function TipsPage() {
                 </button>
               </div>
             </div>
-            {/* 3 riquadri sotto al mese */}
+            {/* 3 riquadri sotto al mese (component condiviso, dati live) */}
             <div className="mt-4 grid md:grid-cols-3 gap-4">
-              <div className="p-3 rounded-lg border bg-green-50 text-center">
+              <div className="p-3 rounded-lg border bg-green-50 text-center cursor-pointer" onClick={() => setExpandedType(prev => prev === 'cash' ? null : 'cash')}>
                 <div className="text-sm text-gray-600 mb-1">💵 Contanti</div>
                 <div className="text-xl font-semibold text-green-700">€{monthTotalsByType.cash.toFixed(2)}</div>
               </div>
-              <div className="p-3 rounded-lg border bg-blue-50 text-center">
+              <div className="p-3 rounded-lg border bg-blue-50 text-center cursor-pointer" onClick={() => setExpandedType(prev => prev === 'card' ? null : 'card')}>
                 <div className="text-sm text-gray-600 mb-1">💳 Carta</div>
                 <div className="text-xl font-semibold text-blue-700">€{monthTotalsByType.card.toFixed(2)}</div>
               </div>
-              <div className="p-3 rounded-lg border bg-purple-50 text-center">
+              <div className="p-3 rounded-lg border bg-purple-50 text-center cursor-pointer" onClick={() => setExpandedType(prev => prev === 'foreign' ? null : 'foreign')}>
                 <div className="text-sm text-gray-600 mb-1">🌍 Monete Estere</div>
                 <div className="text-xl font-semibold text-purple-700">€{monthTotalsByType.foreign.toFixed(2)}</div>
               </div>
             </div>
+            {expandedType && (
+              <div className="mt-4 border-t pt-4">
+                <h4 className="text-sm font-semibold mb-2 capitalize">Dettaglio {expandedType === 'cash' ? 'Contanti' : expandedType === 'card' ? 'Carta' : 'Monete Estere'}</h4>
+                {(() => {
+                  const rows = getDailySharesFor(expandedType)
+                  if (rows.length === 0) return <div className="text-sm text-gray-500">Nessun importo per il mese selezionato</div>
+                  return (
+                    <div className="space-y-2">
+                      {rows.map(r => (
+                        <div key={r.date} className="flex items-center justify-between text-sm">
+                          <div className="text-gray-700">{new Date(r.date).toLocaleDateString('it-IT')}</div>
+                          <div className="text-gray-600">{r.shiftLabel}</div>
+                          <div className="font-semibold">€{r.amount.toFixed(2)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
           </div>
           {/* Riepilogo Mensile componetizzato rimosso su richiesta */}
           {/* Form inline nuova mancia */}

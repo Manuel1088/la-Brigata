@@ -95,6 +95,28 @@ const demoAccounts = {
       avatar: '💰'
     } 
   },
+  'headbarman': {
+    password: 'hb123',
+    user: {
+      id: '11',
+      email: 'headbarman@brigata.it',
+      name: 'Head Barman Demo',
+      role: 'HEAD_BARMAN',
+      level: 7,
+      avatar: '🍸'
+    }
+  },
+  'sommelier': {
+    password: 'som123',
+    user: {
+      id: '12',
+      email: 'sommelier@brigata.it',
+      name: 'Head Sommelier Demo',
+      role: 'HEAD_SOMMELIER',
+      level: 7,
+      avatar: '🍷'
+    }
+  },
   'dipendente': { 
     password: 'dip123', 
     user: { 
@@ -140,6 +162,8 @@ const handler = NextAuth({
               responsabile: '4', // DIPENDENTE_SALA (usata come responsabile demo)
               cassiere: '5', // DIPENDENTE_BAR
               dipendente: '3', // CHEF_DE_PARTIE
+              headbarman: '6', // HEAD_BARMAN
+              sommelier: '7', // HEAD_SOMMELIER
             }
             const mappedId = loginToEmployeeId[username]
             const user = { ...account.user, id: mappedId || account.user.id }

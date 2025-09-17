@@ -36,7 +36,11 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
     load()
     const onUpdate = () => load()
     try { window.addEventListener('tip_entries_updated', onUpdate as any) } catch {}
-    return () => { try { window.removeEventListener('tip_entries_updated', onUpdate as any) } catch {} }
+    try { window.addEventListener('storage', onUpdate as any) } catch {}
+    return () => {
+      try { window.removeEventListener('tip_entries_updated', onUpdate as any) } catch {}
+      try { window.removeEventListener('storage', onUpdate as any) } catch {}
+    }
   }, [])
 
   const totals = useMemo(() => {

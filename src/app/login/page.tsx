@@ -77,54 +77,18 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 mb-3 font-medium">🔑 Account Demo:</p>
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">👑 Proprietario (1):</span>
-              <span className="text-gray-500">admin@brigata.it / admin123</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">👑 Proprietario (2):</span>
-              <span className="text-gray-500">proprietario@brigata.it / prop123</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">👔 Direttore:</span>
-              <span className="text-gray-500">direttore@brigata.it / dir123</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">📊 Manager:</span>
-              <span className="text-gray-500">manager@brigata.it / mgr123</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">🍽️ Responsabile Sala:</span>
-              <span className="text-gray-500">responsabile@brigata.it / resp123</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">👨‍🍳 Head Chef:</span>
-              <span className="text-gray-500">headchef@brigata.it / chef123</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">💰 Cassiere:</span>
-              <span className="text-gray-500">cassiere@brigata.it / cassa123</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">👤 Dipendente:</span>
-              <span className="text-gray-500">dipendente@brigata.it / dip123</span>
-            </div>
-          </div>
-          <div className="mt-3 p-3 bg-white rounded border text-xs space-y-1">
-            <div className="font-medium text-gray-700">Mappatura demo → dipendente:</div>
-            <div className="flex justify-between"><span className="text-gray-600">admin</span><span className="text-gray-800">Giuseppe Rossi (id 1)</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">proprietario</span><span className="text-gray-800">Giuseppe Rossi (id 1)</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">direttore</span><span className="text-gray-800">Anna Bianchi (id 2)</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">manager</span><span className="text-gray-800">Anna Bianchi (id 2)</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">headchef</span><span className="text-gray-800">Giuseppe Rossi (id 1)</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">responsabile</span><span className="text-gray-800">Sofia Neri (id 4)</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">cassiere</span><span className="text-gray-800">Luca Blu (id 5)</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">dipendente</span><span className="text-gray-800">Marco Verdi (id 3)</span></div>
-          </div>
-          <div className="mt-3 text-[11px] text-gray-500">
-            Per ogni dipendente reale puoi accedere con la sua email aziendale (es. <span className="font-mono">nome.cognome@brigata.it</span>) e password <span className="font-mono">demo</span>.
+          <p className="text-sm text-gray-600 mb-3 font-medium">🔑 Account collegati ai dipendenti (demo):</p>
+          <div className="grid grid-cols-1 gap-2 text-xs">
+            <div className="flex justify-between"><span className="text-gray-600">👑 Admin/Proprietario →</span><span className="text-gray-800">Giuseppe Rossi (id 1) — admin@brigata.it / admin123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">👑 Proprietario →</span><span className="text-gray-800">Giuseppe Rossi (id 1) — proprietario@brigata.it / prop123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">👔 Direttore →</span><span className="text-gray-800">Anna Bianchi (id 2) — direttore@brigata.it / dir123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">📊 Manager →</span><span className="text-gray-800">Anna Bianchi (id 2) — manager@brigata.it / mgr123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">👨‍🍳 Head Chef →</span><span className="text-gray-800">Giuseppe Rossi (id 1) — headchef@brigata.it / chef123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">🍽️ Responsabile Sala →</span><span className="text-gray-800">Sofia Neri (id 4) — responsabile@brigata.it / resp123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">💰 Cassiere →</span><span className="text-gray-800">Luca Blu (id 5) — cassiere@brigata.it / cassa123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">🍸 Head Barman →</span><span className="text-gray-800">Paolo Barman (id 6) — headbarman@brigata.it / hb123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">🍷 Head Sommelier →</span><span className="text-gray-800">Chiara Sommelier (id 7) — sommelier@brigata.it / som123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">👤 Dipendente →</span><span className="text-gray-800">Marco Verdi (id 3) — dipendente@brigata.it / dip123</span></div>
           </div>
         </div>
       </div>

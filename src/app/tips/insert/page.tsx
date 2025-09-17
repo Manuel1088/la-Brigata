@@ -95,6 +95,7 @@ export default function InsertTipsPage() {
         arr.push({ id: crypto.randomUUID(), date, location: locName, type: 'foreign', amount: numForeign, notes, createdAt: new Date().toISOString() })
       }
       localStorage.setItem('tipEntries', JSON.stringify(arr))
+      try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
 
       setMessage('✅ Mancia inserita con successo!')
       setTimeout(() => {
