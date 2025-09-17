@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
 
 interface TipDistribution {
   employeeName: string
@@ -26,10 +27,87 @@ export default function TipsPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
   const [selectedDayDetail, setSelectedDayDetail] = useState<string | null>(null)
   const [isAddTipOpen, setIsAddTipOpen] = useState(false)
-  const [addTipDate, setAddTipDate] = useState(new Date())
-  const [tipMeal, setTipMeal] = useState<'colazione' | 'pranzo' | 'cena' | null>(null)
-  const [tipMethod, setTipMethod] = useState<'contanti' | 'carta' | 'estere'>('contanti')
-  const [tipAmount, setTipAmount] = useState('')
+  const [newTipDate, setNewTipDate] = useState<string>(() => new Date().toISOString().split('T')[0])
+  const [newAmountCash, setNewAmountCash] = useState('')
+  const [newAmountCard, setNewAmountCard] = useState('')
+  const [newAmountForeign, setNewAmountForeign] = useState('')
+  const [newSelectedLocation, setNewSelectedLocation] = useState('')
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
+
+  // Tip entries (inserimenti) da localStorage per riepilogo real-time
+  const [tipEntries, setTipEntries] = useState<any[]>([])
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('tipEntries')
+        setTipEntries(raw ? JSON.parse(raw) : [])
+      } catch {
+        setTipEntries([])
+      }
+    }
+  }, [])
+
+  const clearTipsData = () => {
+    try {
+      localStorage.removeItem('tipEntries')
+    } catch {}
+    setTipEntries([])
+    setMonthlyTips({})
+  }
+
+  // Carica sale esistenti (booking_areas_v1) per selezione inline
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('booking_areas_v1')
+      const areas = raw ? JSON.parse(raw) : []
+      const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
+      setLocations(locs)
+      if (!newSelectedLocation && locs.length > 0) setNewSelectedLocation(locs[0].id)
+      const onUpdate = () => {
+        try {
+          const r2 = localStorage.getItem('booking_areas_v1')
+          const a2 = r2 ? JSON.parse(r2) : []
+          const l2 = (a2 || []).map((a: any) => ({ id: a.id, name: a.name }))
+          setLocations(l2)
+        } catch {}
+      }
+      try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
+      return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {} }
+    } catch {}
+  }, [newSelectedLocation])
+
+  const shiftNewTipDate = (delta: number) => {
+    try {
+      const d = new Date(newTipDate)
+      d.setDate(d.getDate() + delta)
+      setNewTipDate(d.toISOString().split('T')[0])
+    } catch {}
+  }
+
+  const handleInlineSaveTip = () => {
+    const numCash = parseFloat(newAmountCash || '0') || 0
+    const numCard = parseFloat(newAmountCard || '0') || 0
+    const numForeign = parseFloat(newAmountForeign || '0') || 0
+    const hasAny = numCash > 0 || numCard > 0 || numForeign > 0
+    if (!hasAny || !newSelectedLocation) return
+    try {
+      const raw = localStorage.getItem('tipEntries')
+      const arr: any[] = raw ? JSON.parse(raw) : []
+      const locName = locations.find(l => l.id === newSelectedLocation)?.name || newSelectedLocation
+      const nowIso = new Date().toISOString()
+      if (numCash > 0) arr.push({ id: crypto.randomUUID(), date: newTipDate, location: locName, type: 'cash', amount: numCash, createdAt: nowIso })
+      if (numCard > 0) arr.push({ id: crypto.randomUUID(), date: newTipDate, location: locName, type: 'card', amount: numCard, createdAt: nowIso })
+      if (numForeign > 0) arr.push({ id: crypto.randomUUID(), date: newTipDate, location: locName, type: 'foreign', amount: numForeign, createdAt: nowIso })
+      localStorage.setItem('tipEntries', JSON.stringify(arr))
+      setTipEntries(arr)
+      try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
+      // reset e chiudi
+      setNewAmountCash('')
+      setNewAmountCard('')
+      setNewAmountForeign('')
+      setIsAddTipOpen(false)
+    } catch {}
+  }
 
   // Redirect se non autenticato
   useEffect(() => {
@@ -47,32 +125,42 @@ export default function TipsPage() {
     { name: 'Sofia Cassiera', role: 'CASSIERE', department: 'sala' }
   ]
 
-  // Stato mance mensili caricate dal backend
-  const [monthlyTips, setMonthlyTips] = useState<{[date: string]: DailyTip}>({})
-
-  // Carica mance del mese corrente dal backend
-  useEffect(() => {
-    if (!session) return
-    const controller = new AbortController()
-    const load = async () => {
-      const ym = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2, '0')}`
-      const res = await fetch(`/api/tips/daily?month=${ym}`, { signal: controller.signal })
-      if (!res.ok) return
-      const json = await res.json()
-      const map: {[date: string]: DailyTip} = {}
-      for (const d of (json.days || [])) {
-        map[d.date] = {
-          id: d.id,
-          date: d.date,
-          totalTips: d.total,
-          distributions: []
-        }
-      }
-      setMonthlyTips(map)
+  // Demo data mance mensili
+  const [monthlyTips, setMonthlyTips] = useState<{[date: string]: DailyTip}>({
+    '2025-01-15': {
+      id: '1', date: '2025-01-15', totalTips: 297.80,
+      distributions: [
+        { employeeName: 'Giuseppe Chef', amount: 59.56, role: 'CHEF', department: 'cucina', hoursWorked: 8 },
+        { employeeName: 'Maria Cameriera', amount: 44.67, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
+        { employeeName: 'Luca Barista', amount: 44.67, role: 'DIPENDENTE_BAR', department: 'bar', hoursWorked: 8 },
+        { employeeName: 'Anna Sous Chef', amount: 52.61, role: 'CAPO_PARTITA', department: 'cucina', hoursWorked: 8 },
+        { employeeName: 'Marco Cameriere', amount: 35.73, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
+        { employeeName: 'Sofia Cassiera', amount: 60.56, role: 'CASSIERE', department: 'sala', hoursWorked: 8 }
+      ]
+    },
+    '2025-01-16': {
+      id: '2', date: '2025-01-16', totalTips: 234.50,
+      distributions: [
+        { employeeName: 'Giuseppe Chef', amount: 46.90, role: 'CHEF', department: 'cucina', hoursWorked: 8 },
+        { employeeName: 'Maria Cameriera', amount: 35.18, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
+        { employeeName: 'Luca Barista', amount: 35.18, role: 'DIPENDENTE_BAR', department: 'bar', hoursWorked: 8 },
+        { employeeName: 'Anna Sous Chef', amount: 41.41, role: 'CAPO_PARTITA', department: 'cucina', hoursWorked: 8 },
+        { employeeName: 'Marco Cameriere', amount: 28.14, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
+        { employeeName: 'Sofia Cassiera', amount: 47.69, role: 'CASSIERE', department: 'sala', hoursWorked: 8 }
+      ]
+    },
+    '2025-01-17': {
+      id: '3', date: '2025-01-17', totalTips: 189.20,
+      distributions: [
+        { employeeName: 'Giuseppe Chef', amount: 37.84, role: 'CHEF', department: 'cucina', hoursWorked: 8 },
+        { employeeName: 'Maria Cameriera', amount: 28.38, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
+        { employeeName: 'Luca Barista', amount: 28.38, role: 'DIPENDENTE_BAR', department: 'bar', hoursWorked: 8 },
+        { employeeName: 'Anna Sous Chef', amount: 33.41, role: 'CAPO_PARTITA', department: 'cucina', hoursWorked: 8 },
+        { employeeName: 'Marco Cameriere', amount: 22.69, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
+        { employeeName: 'Sofia Cassiera', amount: 38.50, role: 'CASSIERE', department: 'sala', hoursWorked: 8 }
+      ]
     }
-    load()
-    return () => controller.abort()
-  }, [session, currentMonth])
+  })
 
   // Funzioni per navigazione mese
   const getDaysInMonth = (date: Date) => {
@@ -127,21 +215,133 @@ export default function TipsPage() {
     }, 0)
   }
 
-  // Funzioni per cambiare data nel form
-  const goToPrevAddTipDate = () => {
-    setAddTipDate(prev => {
-      const d = new Date(prev)
-      d.setDate(d.getDate() - 1)
-      return d
+  // Riepilogo real-time di oggi dalle tipEntries
+  const todayStr = new Date().toISOString().split('T')[0]
+  const todayEntries = tipEntries.filter(e => e.date === todayStr)
+  const todayTotalsByLocation: Record<string, number> = todayEntries.reduce((acc, e) => {
+    acc[e.location] = (acc[e.location] || 0) + (Number(e.amount) || 0)
+    return acc
+  }, {} as Record<string, number>)
+
+  // Riepilogo mensile per tipologia pagamento (basato su presenze e punti):
+  // somma giornaliera inclusa solo se ci sono presenti (totalPoints>0)
+  const monthEntries = tipEntries.filter(e => {
+    const d = new Date(e.date)
+    return d.getFullYear() === currentMonth.getFullYear() && d.getMonth() === currentMonth.getMonth()
+  })
+  const monthTotalsByType = (() => {
+    // Carica configurazioni punti e riposi
+    let employeePointsByName: Record<string, number> = {}
+    let restDaysByName: Record<string, [string, string?]> = {}
+    try {
+      const ep = localStorage.getItem('employeePoints')
+      employeePointsByName = ep ? JSON.parse(ep) : {}
+    } catch {}
+    try {
+      const rd = localStorage.getItem('employeeRestDays')
+      restDaysByName = rd ? JSON.parse(rd) : {}
+    } catch {}
+    // employees demo list for names and departments
+    const empList = employees
+    // Group entries by date
+    const byDate = new Map<string, { cash: number; card: number; foreign: number }>()
+    monthEntries.forEach(e => {
+      const key = e.date
+      const t = byDate.get(key) || { cash: 0, card: 0, foreign: 0 }
+      const amt = Number(e.amount) || 0
+      if (e.type === 'cash') t.cash += amt
+      else if (e.type === 'card') t.card += amt
+      else if (e.type === 'foreign') t.foreign += amt
+      byDate.set(key, t)
     })
-  }
-  const goToNextAddTipDate = () => {
-    setAddTipDate(prev => {
-      const d = new Date(prev)
-      d.setDate(d.getDate() + 1)
-      return d
+
+    // Helpers for week and presence from shifts
+    const getWeekStart = (d: Date) => {
+      const x = new Date(d)
+      const day = x.getDay()
+      const diff = (day === 0 ? -6 : 1) - day
+      x.setHours(0, 0, 0, 0)
+      x.setDate(x.getDate() + diff)
+      return x
+    }
+    const toISODate = (d: Date) => {
+      const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+      return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
+    }
+    const getDayIndexFromDate = (dateStr: string, weekStart: Date) => {
+      const target = new Date(dateStr)
+      const diffTime = target.getTime() - weekStart.getTime()
+      return Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    }
+
+    const result = { cash: 0, card: 0, foreign: 0 }
+    byDate.forEach((totals, dateStr) => {
+      // Determine presence
+      const weekStart = getWeekStart(new Date(dateStr))
+      const weekKey = `shifts_${toISODate(weekStart)}`
+      let weeklySchedule: Record<string, { time?: string }> = {}
+      try {
+        const raw = localStorage.getItem(weekKey)
+        weeklySchedule = raw ? JSON.parse(raw) : {}
+      } catch { weeklySchedule = {} }
+      const dayIndex = getDayIndexFromDate(dateStr, weekStart)
+      const dayIdx = new Date(dateStr).getDay()
+      const dayMap = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab']
+      const dayStr = dayMap[dayIdx]
+      // Present employees
+      const present = empList.filter(emp => {
+        const key = `${emp.name}-${dayIndex}`
+        const shift = weeklySchedule[key]
+        if (shift && typeof shift.time === 'string') {
+          return shift.time !== 'RIPOSO' && shift.time !== 'FERIE'
+        }
+        const r = restDaysByName[emp.name] || []
+        return !(r[0] === dayStr || r[1] === dayStr)
+      })
+      const totalPoints = present.reduce((sum, emp) => sum + (employeePointsByName[emp.name] || 0), 0)
+      if (totalPoints <= 0) {
+        // nessuna presenza: non conteggiare la giornata
+        return
+      }
+      // Se ci sono presenti, i totali giornalieri sono validi e aggiungiamo
+      result.cash += totals.cash
+      result.card += totals.card
+      result.foreign += totals.foreign
     })
-  }
+    return result
+  })()
+
+  // Vista personale dipendente: calcolo dai dati mensili mock
+  const myName = session?.user?.name || ''
+  const dates = Object.keys(monthlyTips)
+  const myDailyToday = (() => {
+    const d = monthlyTips[todayStr]
+    if (!d) return 0
+    const rec = d.distributions.find(x => x.employeeName === myName)
+    return rec?.amount || 0
+  })()
+  const myLast7 = dates
+    .filter(ds => {
+      const diff = (new Date(todayStr).getTime() - new Date(ds).getTime()) / (1000*60*60*24)
+      return diff >= 0 && diff < 7
+    })
+    .reduce((sum, ds) => {
+      const d = monthlyTips[ds]
+      const rec = d.distributions.find(x => x.employeeName === myName)
+      return sum + (rec?.amount || 0)
+    }, 0)
+  const myLast30 = dates
+    .filter(ds => {
+      const diff = (new Date(todayStr).getTime() - new Date(ds).getTime()) / (1000*60*60*24)
+      return diff >= 0 && diff < 30
+    })
+    .reduce((sum, ds) => {
+      const d = monthlyTips[ds]
+      const rec = d.distributions.find(x => x.employeeName === myName)
+      return sum + (rec?.amount || 0)
+    }, 0)
+
+  // (sezione di inserimento inline usa shiftNewTipDate)
 
   if (status === 'loading') {
     return (
@@ -156,6 +356,8 @@ export default function TipsPage() {
   const canManageTips = ['PROPRIETARIO', 'DIRETTORE', 'MANAGER', 'CASSIERE', 'RESPONSABILE_SALA'].includes(session.user?.role || '')
   const monthDays = getDaysInMonth(currentMonth)
   const monthName = currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+  const now = new Date()
+  const isCurrentMonth = now.getFullYear() === currentMonth.getFullYear() && now.getMonth() === currentMonth.getMonth()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -174,23 +376,18 @@ export default function TipsPage() {
                 <span>Indietro</span>
               </button>
               <h1 className="text-3xl font-bold text-gray-900">
-                💰 Riepilogo Mance
+                💰 Mance
               </h1>
             </div>
             <div className="flex items-center space-x-4">
               {canManageTips && (
                 <>
                   <button
-                    onClick={() => router.push('/tips/manage')}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                    onClick={clearTipsData}
+                    className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition"
+                    title="Svuota importi e inserimenti demo"
                   >
-                    ⚙️ Gestisci Mance
-                  </button>
-                  <button
-                    onClick={() => setIsAddTipOpen(true)}
-                    className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition"
-                  >
-                    💰 Inserisci Mance
+                    🧹 Pulisci mance
                   </button>
                 </>
               )}
@@ -205,282 +402,124 @@ export default function TipsPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Month Navigator */}
-          <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <div className="flex justify-between items-center">
+          {canManageTips && (
+            <div className="mb-4 flex items-center gap-2">
               <button
-                onClick={goToPreviousMonth}
-                className="flex items-center px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                onClick={() => router.push('/tips/manage')}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
               >
-                <span className="text-xl mr-2">←</span>
-                Mese Precedente
+                ⚙️ Gestisci Mance
               </button>
-              <div className="text-center">
-                <h2 className="text-2xl font-semibold capitalize mb-1">
-                  {monthName}
-                </h2>
-                <div className="flex justify-center space-x-4 text-sm text-gray-600">
-                  <span>💰 Totale mese: €{Object.values(monthlyTips).reduce((sum, day) => sum + day.totalTips, 0).toFixed(2)}</span>
-                  <span>📅 {Object.keys(monthlyTips).length} giorni con mance</span>
-                </div>
-              </div>
               <button
-                onClick={goToNextMonth}
-                className="flex items-center px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                onClick={() => router.push('/tips/daily')}
+                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition"
               >
-                Mese Successivo
-                <span className="text-xl ml-2">→</span>
+                📊 Storico Mance
               </button>
-            </div>
-          </div>
-          {/* Filtro reparto */}
-          <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <h3 className="text-lg font-semibold mb-4">🏢 Visualizza Mance per Reparto</h3>
-            <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setSelectedDepartment('all')}
-                className={`px-4 py-2 rounded-lg transition ${
-                  selectedDepartment === 'all' 
-                    ? 'bg-gray-800 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                onClick={() => setIsAddTipOpen(v => !v)}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
               >
-                🏢 Tutti i Reparti
+                ➕ Inserisci Mancia
               </button>
-              {departments.map((dept) => (
-                <button
-                  key={dept.key}
-                  onClick={() => setSelectedDepartment(dept.key)}
-                  className={`px-4 py-2 rounded-lg transition ${
-                    selectedDepartment === dept.key 
-                      ? `bg-${dept.color}-600 text-white` 
-                      : `bg-${dept.color}-100 text-${dept.color}-700 hover:bg-${dept.color}-200`
-                  }`}
-                >
-                  {dept.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Riepilogo mance per reparto */}
-          {selectedDepartment === 'all' ? (
-            <div className="grid md:grid-cols-3 gap-6 mb-6">
-              {departments.map((dept) => (
-                <div key={dept.key} className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <div className={`w-4 h-4 rounded-full mr-3 bg-${dept.color}-500`}></div>
-                      <h4 className="font-semibold">{dept.label}</h4>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`text-2xl font-bold text-${dept.color}-600`}>
-                      €{getDepartmentTotal(dept.key).toFixed(2)}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Totale {monthName.toLowerCase()}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            // Dettaglio reparto: tabella totali per dipendente
-            <div className="bg-white rounded-lg shadow mb-6">
-              <div className="px-6 py-4 border-b bg-gradient-to-r from-green-50 to-blue-50">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold">
-                    💰 Mance reparto {departments.find(d => d.key === selectedDepartment)?.label} - {monthName}
-                  </h3>
-                  <div className="text-right">
-                    <div className={`text-2xl font-bold text-${departments.find(d => d.key === selectedDepartment)?.color}-600`}>
-                      €{getDepartmentTotal(selectedDepartment).toFixed(2)}
-                    </div>
-                    <div className="text-sm text-gray-600">Totale mensile</div>
-                  </div>
-                </div>
-              </div>
-              {/* Tabella totali per dipendente */}
-              <div className="p-6 overflow-x-auto">
-                <table className="min-w-full border text-sm">
-                  <thead>
-                    <tr>
-                      <th className="border px-2 py-1 bg-gray-100">Dipendente</th>
-                      <th className="border px-2 py-1 bg-gray-50">Totale Mese</th>
-                      <th className="border px-2 py-1 bg-gray-50">Media Giornaliera</th>
-                      <th className="border px-2 py-1 bg-gray-50">Massimo Giornaliero</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {employees.filter(e => e.department === selectedDepartment).map(emp => {
-                      // Calcolo totali
-                      const tips = monthDays.map(day => {
-                        const dateStr = day.toISOString().split('T')[0]
-                        return monthlyTips[dateStr]?.distributions.find(d => d.employeeName === emp.name)?.amount || 0
-                      })
-                      const total = tips.reduce((sum, v) => sum + v, 0)
-                      const daysWithTips = tips.filter(v => v > 0).length
-                      const avg = daysWithTips > 0 ? total / daysWithTips : 0
-                      const max = tips.length > 0 ? Math.max(...tips) : 0
-                      return (
-                        <tr key={emp.name}>
-                          <td className="border px-2 py-1 font-medium bg-gray-50">{emp.name}</td>
-                          <td className="border px-2 py-1 text-center">€{total.toFixed(2)}</td>
-                          <td className="border px-2 py-1 text-center">€{avg.toFixed(2)}</td>
-                          <td className="border px-2 py-1 text-center">€{max.toFixed(2)}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
             </div>
           )}
-          {/* Quick Stats */}
-          <div className="grid md:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow text-center">
-              <div className="text-2xl font-bold text-green-600">
-                €{Object.values(monthlyTips).reduce((sum, day) => sum + day.totalTips, 0).toFixed(2)}
+          {/* Month Navigator */}
+          <div className="bg-white p-6 rounded-lg shadow mb-6">
+            <div className="grid grid-cols-3 items-center">
+              <div className="text-left text-sm text-gray-700">mese</div>
+              <div className="text-center">
+                <h2 className={`text-2xl font-semibold capitalize mb-1 ${isCurrentMonth ? 'text-red-600' : 'text-gray-900'}`}>
+                  {monthName}
+                </h2>
               </div>
-              <div className="text-sm text-gray-600">Mance Totali Mese</div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={goToPreviousMonth}
+                  className="flex items-center px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                  aria-label="Mese precedente"
+                  title="Mese precedente"
+                >
+                  <span className="text-xl">←</span>
+                </button>
+                <button
+                  onClick={goToNextMonth}
+                  className="flex items-center px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                  aria-label="Mese successivo"
+                  title="Mese successivo"
+                >
+                  <span className="text-xl">→</span>
+                </button>
+              </div>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {Object.keys(monthlyTips).length}
+            {/* 3 riquadri sotto al mese */}
+            <div className="mt-4 grid md:grid-cols-3 gap-4">
+              <div className="p-3 rounded-lg border bg-green-50 text-center">
+                <div className="text-sm text-gray-600 mb-1">💵 Contanti</div>
+                <div className="text-xl font-semibold text-green-700">€{monthTotalsByType.cash.toFixed(2)}</div>
               </div>
-              <div className="text-sm text-gray-600">Giorni con Mance</div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                €{Object.keys(monthlyTips).length > 0 ? (Object.values(monthlyTips).reduce((sum, day) => sum + day.totalTips, 0) / Object.keys(monthlyTips).length).toFixed(2) : '0.00'}
+              <div className="p-3 rounded-lg border bg-blue-50 text-center">
+                <div className="text-sm text-gray-600 mb-1">💳 Carta</div>
+                <div className="text-xl font-semibold text-blue-700">€{monthTotalsByType.card.toFixed(2)}</div>
               </div>
-              <div className="text-sm text-gray-600">Media Giornaliera</div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                €{employees.length > 0 ? (Object.values(monthlyTips).reduce((sum, day) => sum + day.totalTips, 0) / employees.length).toFixed(2) : '0.00'}
+              <div className="p-3 rounded-lg border bg-purple-50 text-center">
+                <div className="text-sm text-gray-600 mb-1">🌍 Monete Estere</div>
+                <div className="text-xl font-semibold text-purple-700">€{monthTotalsByType.foreign.toFixed(2)}</div>
               </div>
-              <div className="text-sm text-gray-600">Media per Dipendente</div>
             </div>
           </div>
-          {/* Day Detail Modal */}
-          {selectedDayDetail && monthlyTips[selectedDayDetail] && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold">
-                    📅 Mance del {new Date(selectedDayDetail).toLocaleDateString('it-IT')}
-                  </h2>
-                  <button
-                    onClick={() => setSelectedDayDetail(null)}
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                  >
-                    ×
-                  </button>
+          {/* Riepilogo Mensile componetizzato rimosso su richiesta */}
+          {/* Form inline nuova mancia */}
+          {isAddTipOpen && canManageTips && (
+            <div className="bg-white p-6 rounded-lg shadow mb-6 border">
+              <div className="mb-4 grid grid-cols-3 items-center">
+                <div className="text-sm text-gray-700">Nuova Mancia</div>
+                <div className="flex justify-center">
+                  <input
+                    type="date"
+                    value={newTipDate}
+                    onChange={(e) => setNewTipDate(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
+                  />
                 </div>
-                <div className="mb-4 p-4 bg-green-50 rounded-lg">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      €{monthlyTips[selectedDayDetail].totalTips.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-gray-600">Totale giornaliero</div>
-                  </div>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => shiftNewTipDate(-1)} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">←</button>
+                  <button onClick={() => shiftNewTipDate(1)} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">→</button>
                 </div>
-                <div className="space-y-3">
-                  {monthlyTips[selectedDayDetail].distributions.map((dist) => (
-                    <div key={dist.employeeName} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center">
-                        <div className={`w-3 h-3 rounded-full mr-3 ${
-                          dist.department === 'cucina' ? 'bg-red-500' :
-                          dist.department === 'sala' ? 'bg-blue-500' : 'bg-green-500'
-                        }`}></div>
-                        <div>
-                          <div className="font-medium">{dist.employeeName}</div>
-                          <div className="text-sm text-gray-600">{dist.role.replace('DIPENDENTE_', '').replace('_', ' ')}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-green-600">€{dist.amount.toFixed(2)}</div>
-                        <div className="text-xs text-gray-500">
-                          {((dist.amount / monthlyTips[selectedDayDetail].totalTips) * 100).toFixed(1)}%
-                        </div>
-                      </div>
-                    </div>
+              </div>
+              <div className="mb-4">
+                <div className="text-sm text-gray-700 mb-2">Sala</div>
+                <div className="flex flex-wrap gap-2">
+                  {locations.map(loc => (
+                    <label key={loc.id} className={`px-3 py-2 border-2 rounded-lg cursor-pointer ${newSelectedLocation===loc.id? 'border-indigo-500 bg-indigo-50':'border-gray-200 hover:border-gray-300'}`}>
+                      <input type="radio" name="new_location" value={loc.id} checked={newSelectedLocation===loc.id} onChange={(e)=>setNewSelectedLocation(e.target.value)} className="sr-only" />
+                      {loc.name}
+                    </label>
                   ))}
                 </div>
               </div>
-            </div>
-          )}
-          {/* Modal inserimento mance */}
-          {isAddTipOpen && (
-            <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl border border-black">
-                <div className="flex justify-between items-center mb-4">
-                  <button
-                    onClick={goToPrevAddTipDate}
-                    className="text-gray-500 hover:text-gray-700 text-xl px-2"
-                  >←</button>
-                  <div className="font-semibold text-lg">
-                    {addTipDate.toLocaleDateString('it-IT')}
-                  </div>
-                  <button
-                    onClick={goToNextAddTipDate}
-                    className="text-gray-500 hover:text-gray-700 text-xl px-2"
-                  >→</button>
+              <div className="grid md:grid-cols-3 gap-3">
+                <div className="p-3 border rounded bg-green-50">
+                  <div className="text-sm mb-1">💵 Contanti</div>
+                  <input type="number" step="0.01" min="0" value={newAmountCash} onChange={(e)=>setNewAmountCash(e.target.value)} className="w-full px-3 py-2 border rounded" placeholder="0.00" />
                 </div>
-                <div className="mb-4 flex justify-center gap-2">
-                  <button
-                    onClick={() => setTipMeal('colazione')}
-                    className={`px-4 py-2 rounded-lg transition ${tipMeal === 'colazione' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                  >Colazione</button>
-                  <button
-                    onClick={() => setTipMeal('pranzo')}
-                    className={`px-4 py-2 rounded-lg transition ${tipMeal === 'pranzo' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                  >Pranzo</button>
-                  <button
-                    onClick={() => setTipMeal('cena')}
-                    className={`px-4 py-2 rounded-lg transition ${tipMeal === 'cena' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                  >Cena</button>
+                <div className="p-3 border rounded bg-blue-50">
+                  <div className="text-sm mb-1">💳 Carta</div>
+                  <input type="number" step="0.01" min="0" value={newAmountCard} onChange={(e)=>setNewAmountCard(e.target.value)} className="w-full px-3 py-2 border rounded" placeholder="0.00" />
                 </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Importo</label>
-                  <input
-                    type="number"
-                    value={tipAmount}
-                    onChange={e => setTipAmount(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-green-400"
-                    placeholder="€0.00"
-                  />
+                <div className="p-3 border rounded bg-purple-50">
+                  <div className="text-sm mb-1">🌍 Monete Estere</div>
+                  <input type="number" step="0.01" min="0" value={newAmountForeign} onChange={(e)=>setNewAmountForeign(e.target.value)} className="w-full px-3 py-2 border rounded" placeholder="0.00" />
                 </div>
-                <div className="mb-6 flex justify-center gap-2">
-                  <button
-                    onClick={() => setTipMethod('contanti')}
-                    className={`px-4 py-2 rounded-lg transition ${tipMethod === 'contanti' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                  >Contanti</button>
-                  <button
-                    onClick={() => setTipMethod('carta')}
-                    className={`px-4 py-2 rounded-lg transition ${tipMethod === 'carta' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                  >Carta</button>
-                  <button
-                    onClick={() => setTipMethod('estere')}
-                    className={`px-4 py-2 rounded-lg transition ${tipMethod === 'estere' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-200'}`}
-                  >Monete Estere</button>
-                </div>
-                <button
-                  onClick={() => {/* logica di registrazione qui */ setIsAddTipOpen(false)}}
-                  className="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold"
-                >
-                  Registra Mancia
-                </button>
-                <button
-                  onClick={() => setIsAddTipOpen(false)}
-                  className="w-full mt-2 text-gray-500 hover:text-gray-700"
-                >
-                  Annulla
-                </button>
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={()=>setIsAddTipOpen(false)} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Annulla</button>
+                <button onClick={handleInlineSaveTip} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">💾 Salva Mancia</button>
               </div>
             </div>
           )}
+          {/* Sezioni successive rimosse per tutti i ruoli su richiesta */}
+          {/* Moduli extra rimossi */}
         </div>
       </main>
     </div>

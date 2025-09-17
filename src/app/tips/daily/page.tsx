@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 // Definizione dei tipi
 type Employee = {
@@ -13,6 +13,7 @@ type Employee = {
 type DailyTip = {
   date: string
   amount: number
+  location?: string
   distributions?: {
     [department: string]: number
   }
@@ -32,18 +33,22 @@ const employees: Employee[] = [
   { name: 'Sofia Cassiera', role: 'CASSIERE', department: 'sala' }
 ]
 
+type TipEntry = {
+  id: string
+  date: string
+  location: string
+  type: 'cash' | 'card' | 'foreign'
+  amount: number
+  createdAt?: string
+}
+
 export default function DailyTipsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [amount, setAmount] = useState('')
-  const [savedMessage, setSavedMessage] = useState('')
-  const [tipHistory, setTipHistory] = useState<DailyTip[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('tipHistory')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
+  const [entries, setEntries] = useState<TipEntry[]>([])
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
+  const [editingId, setEditingId] = useState<string>('')
+  const [editMap, setEditMap] = useState<Record<string, TipEntry>>({})
 
   useEffect(() => {
     if (status === 'loading') return
@@ -55,67 +60,93 @@ export default function DailyTipsPage() {
     if (!canManage) router.push('/tips')
   }, [session, status, router])
 
-  const calculateDistribution = () => {
-    // Carica i punti dei reparti e dei dipendenti
-    const departmentPoints = localStorage.getItem('departmentPoints')
-    const employeePoints = localStorage.getItem('employeePoints')
-    const departmentChecks = localStorage.getItem('departmentChecks')
-
-    if (!departmentPoints || !employeePoints || !departmentChecks) {
-      setSavedMessage('⚠️ Configura prima i punti nella sezione Gestione!')
-      setTimeout(() => setSavedMessage(''), 3000)
-      return
-    }
-
-    const departments = JSON.parse(departmentPoints)
-    const employees = JSON.parse(employeePoints)
-    const checks = JSON.parse(departmentChecks)
-    const totalAmount = Number(amount)
-
-    // Calcola il totale dei punti considerando i reparti selezionati
-    let totalPoints = 0
-    for (const dept of ['cucina', 'sala', 'bar']) {
-      if (checks[dept]) {
-        // Se il reparto è selezionato, usa il suo punteggio
-        totalPoints += departments[dept]
-      } else {
-        // Altrimenti somma i punti dei singoli dipendenti
-        const deptEmployees = employees.filter((emp: Employee) => emp.department === dept)
-        totalPoints += deptEmployees.reduce((sum: number, emp: Employee) => sum + (employees[emp.name] || 0), 0)
+  // Carica storico da tipEntries e aggiorna su evento
+  useEffect(() => {
+    const load = () => {
+      try {
+        const raw = localStorage.getItem('tipEntries')
+        const list: TipEntry[] = raw ? JSON.parse(raw) : []
+        list.sort((a, b) => {
+          const db = new Date(b.date).getTime()
+          const da = new Date(a.date).getTime()
+          if (db !== da) return db - da
+          const cb = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          const ca = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          return cb - ca
+        })
+        setEntries(list)
+      } catch {
+        setEntries([])
       }
     }
+    load()
+    const onUpdate = () => load()
+    try { window.addEventListener('tip_entries_updated', onUpdate as any) } catch {}
+    return () => { try { window.removeEventListener('tip_entries_updated', onUpdate as any) } catch {} }
+  }, [])
 
-    // Calcola la distribuzione per reparto
-    const distributions: Distributions = {}
-    for (const dept of ['cucina', 'sala', 'bar']) {
-      if (checks[dept]) {
-        // Se il reparto è selezionato, calcola in base al punteggio reparto
-        distributions[dept] = (departments[dept] / totalPoints) * totalAmount
-      } else {
-        // Altrimenti somma i punti individuali
-        const deptEmployees = employees.filter((emp: Employee) => emp.department === dept)
-        const deptPoints = deptEmployees.reduce((sum: number, emp: Employee) => sum + (employees[emp.name] || 0), 0)
-        distributions[dept] = (deptPoints / totalPoints) * totalAmount
-      }
+  // Carica sale esistenti per editing location
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('booking_areas_v1')
+      const areas = raw ? JSON.parse(raw) : []
+      const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
+      setLocations(locs)
+    } catch {
+      setLocations([])
     }
+  }, [])
 
-    // Salva la mancia giornaliera
-    const newTip: DailyTip = {
-      date: new Date().toISOString().split('T')[0],
-      amount: totalAmount,
-      distributions
-    }
-
-    setTipHistory(prev => {
-      const updated = [...prev, newTip]
-      localStorage.setItem('tipHistory', JSON.stringify(updated))
-      return updated
-    })
-
-    setAmount('')
-    setSavedMessage('✅ Mancia salvata e distribuita!')
-    setTimeout(() => setSavedMessage(''), 3000)
+  const startEdit = (e: TipEntry) => {
+    setEditingId(e.id)
+    setEditMap(prev => ({ ...prev, [e.id]: { ...e } }))
   }
+
+  const cancelEdit = () => {
+    setEditingId('')
+  }
+
+  const saveEdit = (id: string) => {
+    const payload = editMap[id]
+    if (!payload) return
+    try {
+      const raw = localStorage.getItem('tipEntries')
+      const list: TipEntry[] = raw ? JSON.parse(raw) : []
+      const next = list.map(x => x.id === id ? {
+        ...x,
+        date: payload.date,
+        location: payload.location,
+        type: payload.type,
+        amount: Number(payload.amount) || 0,
+      } : x)
+      localStorage.setItem('tipEntries', JSON.stringify(next))
+      setEntries(next)
+      try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
+      setEditingId('')
+    } catch {}
+  }
+
+  const removeEntry = (id: string) => {
+    try {
+      const raw = localStorage.getItem('tipEntries')
+      const list: TipEntry[] = raw ? JSON.parse(raw) : []
+      const next = list.filter(x => x.id !== id)
+      localStorage.setItem('tipEntries', JSON.stringify(next))
+      setEntries(next)
+      try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
+    } catch {}
+  }
+
+  const groupedByDate = useMemo(() => {
+    const map = new Map<string, TipEntry[]>()
+    entries.forEach(e => {
+      const key = e.date
+      const arr = map.get(key) || []
+      arr.push(e)
+      map.set(key, arr)
+    })
+    return Array.from(map.entries()).sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime())
+  }, [entries])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -133,86 +164,105 @@ export default function DailyTipsPage() {
                 <span>Torna al Riepilogo Mance</span>
               </button>
               <h1 className="text-3xl font-bold text-gray-900">
-                💰 Gestione Mance Giornaliere
+                📊 Storico Mance
               </h1>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="max-w-5xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {savedMessage && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-              {savedMessage}
-            </div>
-          )}
-
-          {/* Inserimento mancia giornaliera */}
-          <div className="bg-white rounded-lg shadow mb-6">
-            <div className="px-6 py-4 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">
-                📝 Inserisci Mancia Giornaliera
-              </h2>
-            </div>
-            <div className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="flex-1 max-w-xs">
-                  <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-                    Importo Totale (€)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    id="amount"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="0.00"
-                  />
-                </div>
-                <button
-                  onClick={calculateDistribution}
-                  disabled={!amount || Number(amount) <= 0}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed mt-6"
-                >
-                  Salva e Distribuisci
-                </button>
-              </div>
-            </div>
-          </div>
 
           {/* Storico mance */}
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">
-                📊 Storico Mance
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900">📊 Storico Mance</h2>
             </div>
             <div className="p-6">
-              {tipHistory.length === 0 ? (
+              {entries.length === 0 ? (
                 <p className="text-gray-500 text-center py-4">Nessuna mancia registrata</p>
               ) : (
-                <div className="space-y-4">
-                  {tipHistory.map((tip, index) => (
-                    <div key={index} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="font-medium">{new Date(tip.date).toLocaleDateString('it-IT')}</div>
-                        <div className="text-lg font-semibold">€{tip.amount.toFixed(2)}</div>
-                      </div>
-                      {tip.distributions && (
-                        <div className="grid grid-cols-3 gap-4 mt-2">
-                          {Object.entries(tip.distributions).map(([dept, amount]) => (
-                            <div key={dept} className="text-sm">
-                              <span className="font-medium capitalize">{dept}:</span>{' '}
-                              €{amount.toFixed(2)}
-                            </div>
-                          ))}
+                <div className="space-y-6">
+                  {groupedByDate.map(([dateStr, list]) => {
+                    const total = list.reduce((s, e) => s + (Number(e.amount) || 0), 0)
+                    return (
+                      <div key={dateStr} className="border rounded-lg">
+                        <div className="px-4 py-3 border-b flex items-center justify-between bg-gray-50">
+                          <div className="font-medium">{new Date(dateStr).toLocaleDateString('it-IT')}</div>
+                          <div className="text-sm text-gray-700">Totale: <span className="font-semibold">€{total.toFixed(2)}</span></div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        <div className="p-4 space-y-2">
+                          {list.map(e => {
+                            const isEd = editingId === e.id
+                            const current = isEd ? (editMap[e.id] || e) : e
+                            return (
+                              <div key={e.id} className="flex items-center justify-between text-sm">
+                                {!isEd ? (
+                                  <>
+                                    <div className="flex items-center gap-3">
+                                      <span className="px-2 py-0.5 rounded-full text-white text-xs bg-gray-700">{e.location}</span>
+                                      <span className={e.type==='cash' ? 'text-green-700' : e.type==='card' ? 'text-blue-700' : 'text-purple-700'}>
+                                        {e.type === 'cash' ? 'Contanti' : e.type === 'card' ? 'Carta' : 'Monete Estere'}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <div className="font-semibold">€{Number(e.amount).toFixed(2)}</div>
+                                      <button onClick={() => startEdit(e)} className="px-2 py-1 border rounded hover:bg-gray-50">Modifica</button>
+                                      <button onClick={() => removeEntry(e.id)} className="px-2 py-1 border rounded text-red-600 hover:bg-red-50">Cancella</button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="w-full grid md:grid-cols-5 gap-2 items-center">
+                                    <div className="md:col-span-2">
+                                      <select
+                                        value={current.location}
+                                        onChange={(ev) => setEditMap(prev => ({ ...prev, [e.id]: { ...(prev[e.id] || e), location: ev.target.value } }))}
+                                        className="w-full px-2 py-1 border rounded"
+                                      >
+                                        {[{ id: current.location, name: current.location }, ...locations].reduce((acc, l) => {
+                                          // evita duplicati se il nome coincide
+                                          if (!acc.find(x => x.name === l.name)) acc.push(l)
+                                          return acc
+                                        }, [] as {id:string;name:string}[]).map(l => (
+                                          <option key={l.name} value={l.name}>{l.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <select
+                                        value={current.type}
+                                        onChange={(ev) => setEditMap(prev => ({ ...prev, [e.id]: { ...(prev[e.id] || e), type: ev.target.value as TipEntry['type'] } }))}
+                                        className="w-full px-2 py-1 border rounded"
+                                      >
+                                        <option value="cash">Contanti</option>
+                                        <option value="card">Carta</option>
+                                        <option value="foreign">Monete Estere</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={current.amount}
+                                        onChange={(ev) => setEditMap(prev => ({ ...prev, [e.id]: { ...(prev[e.id] || e), amount: parseFloat(ev.target.value || '0') } }))}
+                                        className="w-full px-2 py-1 border rounded"
+                                      />
+                                    </div>
+                                    <div className="flex justify-end gap-2">
+                                      <button onClick={() => saveEdit(e.id)} className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">Salva</button>
+                                      <button onClick={cancelEdit} className="px-2 py-1 border rounded hover:bg-gray-50">Annulla</button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>

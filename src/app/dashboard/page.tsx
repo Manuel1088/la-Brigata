@@ -10,6 +10,7 @@ import { getRestRuleFor } from '@/lib/restRules'
 import { NotificationCenter } from '@/components/NotificationCenter'
 import { NotificationBadge } from '@/components/NotificationBadge'
 import { BreakEvenWidget } from '@/components/BreakEvenWidget'
+import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
 import EmployeeDashboard from '@/components/EmployeeDashboard'
 import CashierDashboard from '@/components/CashierDashboard'
 import ManagerDashboard from '@/components/ManagerDashboard'
@@ -56,6 +57,74 @@ export default function DashboardPage() {
   const [todayShiftTime, setTodayShiftTime] = useState<string | null>(null)
   const [todayShiftIsRest, setTodayShiftIsRest] = useState<boolean>(false)
   const [userDepartment, setUserDepartment] = useState<string>('sala')
+
+  // === Riepilogo mese (come pagina mance) ===
+  const [tipEntries, setTipEntries] = useState<any[]>([])
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('tipEntries')
+      setTipEntries(raw ? JSON.parse(raw) : [])
+      const onUpdate = () => {
+        try {
+          const r = localStorage.getItem('tipEntries')
+          setTipEntries(r ? JSON.parse(r) : [])
+        } catch {}
+      }
+      try { window.addEventListener('tip_entries_updated', onUpdate as any) } catch {}
+      return () => { try { window.removeEventListener('tip_entries_updated', onUpdate as any) } catch {} }
+    } catch {}
+  }, [])
+
+  const currentMonth = new Date()
+  const monthName = currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+  const monthEntries = tipEntries.filter(e => {
+    const d = new Date(e.date)
+    return d.getFullYear() === currentMonth.getFullYear() && d.getMonth() === currentMonth.getMonth()
+  })
+  const monthTotalsByType = (() => {
+    let employeePointsByName: Record<string, number> = {}
+    let restDaysByName: Record<string, [string, string?]> = {}
+    try { const ep = localStorage.getItem('employeePoints'); employeePointsByName = ep ? JSON.parse(ep) : {} } catch {}
+    try { const rd = localStorage.getItem('employeeRestDays'); restDaysByName = rd ? JSON.parse(rd) : {} } catch {}
+    const empList = getEmployeesFullClient()
+    const byDate = new Map<string, { cash: number; card: number; foreign: number }>()
+    monthEntries.forEach(e => {
+      const key = e.date
+      const t = byDate.get(key) || { cash: 0, card: 0, foreign: 0 }
+      const amt = Number(e.amount) || 0
+      if (e.type === 'cash') t.cash += amt
+      else if (e.type === 'card') t.card += amt
+      else if (e.type === 'foreign') t.foreign += amt
+      byDate.set(key, t)
+    })
+    const getWeekStart = (d: Date) => { const x = new Date(d); const day = x.getDay(); const diff = (day === 0 ? -6 : 1) - day; x.setHours(0,0,0,0); x.setDate(x.getDate() + diff); return x }
+    const toISODate = (d: Date) => { const z = (n: number) => (n < 10 ? `0${n}` : `${n}`); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}` }
+    const getDayIndexFromDate = (dateStr: string, weekStart: Date) => { const target = new Date(dateStr); const diffTime = target.getTime() - weekStart.getTime(); return Math.floor(diffTime / (1000*60*60*24)) }
+    const result = { cash: 0, card: 0, foreign: 0 }
+    byDate.forEach((totals, dateStr) => {
+      const weekStart = getWeekStart(new Date(dateStr))
+      const weekKey = `shifts_${toISODate(weekStart)}`
+      let weeklySchedule: Record<string, { time?: string }> = {}
+      try { const raw = localStorage.getItem(weekKey); weeklySchedule = raw ? JSON.parse(raw) : {} } catch { weeklySchedule = {} }
+      const dayIndex = getDayIndexFromDate(dateStr, weekStart)
+      const dayIdx = new Date(dateStr).getDay()
+      const dayMap = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab']
+      const dayStr = dayMap[dayIdx]
+      const present = empList.filter(emp => {
+        const key = `${emp.name}-${dayIndex}`
+        const shift = weeklySchedule[key]
+        if (shift && typeof shift.time === 'string') { return shift.time !== 'RIPOSO' && shift.time !== 'FERIE' }
+        const r = restDaysByName[emp.name] || []
+        return !(r[0] === dayStr || r[1] === dayStr)
+      })
+      const totalPoints = present.reduce((sum, emp) => sum + (employeePointsByName[emp.name] || 0), 0)
+      if (totalPoints <= 0) return
+      result.cash += totals.cash
+      result.card += totals.card
+      result.foreign += totals.foreign
+    })
+    return result
+  })()
 
   // Redirect se non autenticato e log accesso dashboard
   useEffect(() => {
@@ -336,6 +405,9 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Riepilogo mese mance (per dipendenti) */}
+          {isEmployee && (<MonthlyTipsSummary leftLabel="mance" />)}
+
           {/* Widget Break-Even per Direttore e Manager */}
           {canViewBreakEven && (
             <div className="mb-8">
@@ -347,13 +419,7 @@ export default function DashboardPage() {
           )}
 
           {/* Dashboard Content - Diversa per Ruoli */}
-          {isEmployee ? (
-            // Dashboard Personale per Dipendenti
-            <EmployeeDashboard 
-              userId={session.user?.id || ''}
-              userName={session.user?.name || ''}
-            />
-          ) : isCashier ? (
+          {isEmployee ? null : isCashier ? (
             // Dashboard Cassiere
             <CashierDashboard 
               userId={session.user?.id || ''}
