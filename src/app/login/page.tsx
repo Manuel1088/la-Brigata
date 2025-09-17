@@ -79,11 +79,11 @@ export default function LoginPage() {
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-600 mb-3 font-medium">🔑 Account collegati ai dipendenti (demo):</p>
           <div className="grid grid-cols-1 gap-2 text-xs">
-            <div className="flex justify-between"><span className="text-gray-600">👑 Admin/Proprietario →</span><span className="text-gray-800">Giuseppe Rossi (id 1) — admin@brigata.it / admin123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">👑 Proprietario →</span><span className="text-gray-800">Giuseppe Rossi (id 1) — proprietario@brigata.it / prop123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">👔 Direttore →</span><span className="text-gray-800">Anna Bianchi (id 2) — direttore@brigata.it / dir123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">📊 Manager →</span><span className="text-gray-800">Anna Bianchi (id 2) — manager@brigata.it / mgr123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">👨‍🍳 Head Chef →</span><span className="text-gray-800">Giuseppe Rossi (id 1) — headchef@brigata.it / chef123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">👑 Admin/Proprietario →</span><span className="text-gray-800">Giuseppe Rossi (Proprietario A, id 1) — admin@brigata.it / admin123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">👑 Proprietario →</span><span className="text-gray-800">Giuseppe Rossi (Proprietario B, id 1) — proprietario@brigata.it / prop123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">👔 Direttore →</span><span className="text-gray-800">Anna Bianchi (Direttore, id 2) — direttore@brigata.it / dir123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">📊 Manager →</span><span className="text-gray-800">Anna Bianchi (Manager, id 2) — manager@brigata.it / mgr123</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">👨‍🍳 Head Chef →</span><span className="text-gray-800">Giuseppe Rossi (Head Chef, id 1) — headchef@brigata.it / chef123</span></div>
             <div className="flex justify-between"><span className="text-gray-600">🍽️ Responsabile Sala →</span><span className="text-gray-800">Sofia Neri (id 4) — responsabile@brigata.it / resp123</span></div>
             <div className="flex justify-between"><span className="text-gray-600">💰 Cassiere →</span><span className="text-gray-800">Luca Blu (id 5) — cassiere@brigata.it / cassa123</span></div>
             <div className="flex justify-between"><span className="text-gray-600">🍸 Head Barman →</span><span className="text-gray-800">Paolo Barman (id 6) — headbarman@brigata.it / hb123</span></div>
