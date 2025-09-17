@@ -62,10 +62,20 @@ export default function InsertTipsPage() {
     setIsLoading(true)
     
     try {
-      // Qui andrà la chiamata API per salvare nel database
-      // Per ora simuliamo il salvataggio
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
+      // Salva la mancia lato server
+      const res = await fetch('/api/tips/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(amount),
+          paymentType: selectedPaymentType,
+          // opzionale: data specifica
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.error || 'Errore API')
+      }
       setMessage('✅ Mancia inserita con successo!')
       setTimeout(() => {
         setMessage('')
@@ -73,8 +83,7 @@ export default function InsertTipsPage() {
         setAmount('')
         setSelectedPaymentType('')
         setSelectedDepartment('')
-      }, 2000)
-      
+      }, 1500)
     } catch (error) {
       setMessage('❌ Errore durante il salvataggio')
       setTimeout(() => setMessage(''), 3000)

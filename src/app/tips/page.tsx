@@ -47,42 +47,32 @@ export default function TipsPage() {
     { name: 'Sofia Cassiera', role: 'CASSIERE', department: 'sala' }
   ]
 
-  // Demo data mance mensili
-  const [monthlyTips, setMonthlyTips] = useState<{[date: string]: DailyTip}>({
-    '2025-01-15': {
-      id: '1', date: '2025-01-15', totalTips: 297.80,
-      distributions: [
-        { employeeName: 'Giuseppe Chef', amount: 59.56, role: 'CHEF', department: 'cucina', hoursWorked: 8 },
-        { employeeName: 'Maria Cameriera', amount: 44.67, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
-        { employeeName: 'Luca Barista', amount: 44.67, role: 'DIPENDENTE_BAR', department: 'bar', hoursWorked: 8 },
-        { employeeName: 'Anna Sous Chef', amount: 52.61, role: 'CAPO_PARTITA', department: 'cucina', hoursWorked: 8 },
-        { employeeName: 'Marco Cameriere', amount: 35.73, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
-        { employeeName: 'Sofia Cassiera', amount: 60.56, role: 'CASSIERE', department: 'sala', hoursWorked: 8 }
-      ]
-    },
-    '2025-01-16': {
-      id: '2', date: '2025-01-16', totalTips: 234.50,
-      distributions: [
-        { employeeName: 'Giuseppe Chef', amount: 46.90, role: 'CHEF', department: 'cucina', hoursWorked: 8 },
-        { employeeName: 'Maria Cameriera', amount: 35.18, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
-        { employeeName: 'Luca Barista', amount: 35.18, role: 'DIPENDENTE_BAR', department: 'bar', hoursWorked: 8 },
-        { employeeName: 'Anna Sous Chef', amount: 41.41, role: 'CAPO_PARTITA', department: 'cucina', hoursWorked: 8 },
-        { employeeName: 'Marco Cameriere', amount: 28.14, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
-        { employeeName: 'Sofia Cassiera', amount: 47.69, role: 'CASSIERE', department: 'sala', hoursWorked: 8 }
-      ]
-    },
-    '2025-01-17': {
-      id: '3', date: '2025-01-17', totalTips: 189.20,
-      distributions: [
-        { employeeName: 'Giuseppe Chef', amount: 37.84, role: 'CHEF', department: 'cucina', hoursWorked: 8 },
-        { employeeName: 'Maria Cameriera', amount: 28.38, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
-        { employeeName: 'Luca Barista', amount: 28.38, role: 'DIPENDENTE_BAR', department: 'bar', hoursWorked: 8 },
-        { employeeName: 'Anna Sous Chef', amount: 33.41, role: 'CAPO_PARTITA', department: 'cucina', hoursWorked: 8 },
-        { employeeName: 'Marco Cameriere', amount: 22.69, role: 'DIPENDENTE_SALA', department: 'sala', hoursWorked: 8 },
-        { employeeName: 'Sofia Cassiera', amount: 38.50, role: 'CASSIERE', department: 'sala', hoursWorked: 8 }
-      ]
+  // Stato mance mensili caricate dal backend
+  const [monthlyTips, setMonthlyTips] = useState<{[date: string]: DailyTip}>({})
+
+  // Carica mance del mese corrente dal backend
+  useEffect(() => {
+    if (!session) return
+    const controller = new AbortController()
+    const load = async () => {
+      const ym = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2, '0')}`
+      const res = await fetch(`/api/tips/daily?month=${ym}`, { signal: controller.signal })
+      if (!res.ok) return
+      const json = await res.json()
+      const map: {[date: string]: DailyTip} = {}
+      for (const d of (json.days || [])) {
+        map[d.date] = {
+          id: d.id,
+          date: d.date,
+          totalTips: d.total,
+          distributions: []
+        }
+      }
+      setMonthlyTips(map)
     }
-  })
+    load()
+    return () => controller.abort()
+  }, [session, currentMonth])
 
   // Funzioni per navigazione mese
   const getDaysInMonth = (date: Date) => {
