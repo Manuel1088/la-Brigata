@@ -195,7 +195,21 @@ const handler = NextAuth({
               sommelier: '7', // HEAD_SOMMELIER
             }
             const mappedId = loginToEmployeeId[username]
-            const user = { ...account.user, id: mappedId || account.user.id }
+            // Collega tutti i demo (tranne admin) ad una stessa azienda demo
+            let companyId: string | null = null
+            if (username !== 'admin') {
+              try {
+                const demoFiscalCode = 'DEMO_CF_0001'
+                const demoName = 'Azienda Demo'
+                const company = await prisma.company.upsert({
+                  where: { fiscalCode: demoFiscalCode },
+                  update: {},
+                  create: { name: demoName, fiscalCode: demoFiscalCode, isActive: true }
+                })
+                companyId = company.id
+              } catch {}
+            }
+            const user = { ...account.user, id: mappedId || account.user.id, companyId }
             await logLogin(user.id)
             return user as any
           }
@@ -249,9 +263,14 @@ const handler = NextAuth({
       if (user && 'id' in user) {
         token.sub = (user as any).id;
       }
+      // Propaga sempre companyId/informalCompanyId se presenti (anche per account demo)
       if (user && 'userType' in user) {
         (token as any).userType = (user as any).userType;
+      }
+      if (user && 'companyId' in user) {
         (token as any).companyId = (user as any).companyId;
+      }
+      if (user && 'informalCompanyId' in user) {
         (token as any).informalCompanyId = (user as any).informalCompanyId;
       }
       return token;

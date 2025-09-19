@@ -400,54 +400,56 @@ export default function EmployeeDetailPage() {
             
             {/* Colonna Sinistra - Profilo */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-center">
-                  <div className="text-6xl mb-4">{employee.avatar}</div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">{employee.name}</h2>
-                  <p className="text-gray-600 mb-4">{roleInfo?.name}</p>
-                  
-                  <div className="space-y-2 mb-6">
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm ${
-                      departmentInfo?.color === 'red' ? 'bg-red-100 text-red-800' :
-                      departmentInfo?.color === 'blue' ? 'bg-blue-100 text-blue-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
-                      {departmentInfo?.icon} {departmentInfo?.name}
-                    </span>
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm ${
-                      roleInfo?.level === 5 ? 'bg-red-100 text-red-800' :
-                      roleInfo?.level === 4 ? 'bg-orange-100 text-orange-800' :
-                      roleInfo?.level === 3 ? 'bg-yellow-100 text-yellow-800' :
-                      roleInfo?.level === 2 ? 'bg-green-100 text-green-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      Livello {roleInfo?.level} - {roleInfo?.name}
-                    </span>
-                  </div>
+              {!(isOwner && !workingOwner) && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <div className="text-center">
+                    <div className="text-6xl mb-4">{employee.avatar}</div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">{employee.name}</h2>
+                    <p className="text-gray-600 mb-4">{roleInfo?.name}</p>
+                    
+                    <div className="space-y-2 mb-6">
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm ${
+                        departmentInfo?.color === 'red' ? 'bg-red-100 text-red-800' :
+                        departmentInfo?.color === 'blue' ? 'bg-blue-100 text-blue-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {departmentInfo?.icon} {departmentInfo?.name}
+                      </span>
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm ${
+                        roleInfo?.level === 5 ? 'bg-red-100 text-red-800' :
+                        roleInfo?.level === 4 ? 'bg-orange-100 text-orange-800' :
+                        roleInfo?.level === 3 ? 'bg-yellow-100 text-yellow-800' :
+                        roleInfo?.level === 2 ? 'bg-green-100 text-green-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        Livello {roleInfo?.level} - {roleInfo?.name}
+                      </span>
+                    </div>
 
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Paga Oraria:</span>
-                      <span className="font-medium">€{employee.hourlyRate}/h</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Contratto:</span>
-                      <span className="font-medium">{employee.contractType === 'full-time' ? 'Full-time' : 'Part-time'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Dal:</span>
-                      <span className="font-medium">{new Date(employee.startDate).toLocaleDateString('it-IT')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Costo Mensile:</span>
-                      <span className="font-medium">€{(employee.hourlyRate * (employee.contractType === 'full-time' ? 160 : 80)).toLocaleString()}</span>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Paga Oraria:</span>
+                        <span className="font-medium">€{employee.hourlyRate}/h</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Contratto:</span>
+                        <span className="font-medium">{employee.contractType === 'full-time' ? 'Full-time' : 'Part-time'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Dal:</span>
+                        <span className="font-medium">{new Date(employee.startDate).toLocaleDateString('it-IT')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Costo Mensile:</span>
+                        <span className="font-medium">€{(employee.hourlyRate * (employee.contractType === 'full-time' ? 160 : 80)).toLocaleString()}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Profilo Aziendale (solo se proprietario) */}
-              {((session?.user as any)?.role === 'PROPRIETARIO') && companyData && (
+              {/* Profilo Aziendale (tutti i dipendenti) */}
+              {companyData && (
                 <div className="bg-white rounded-lg shadow p-6 mt-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">🏢 Profilo Aziendale</h3>
                   <div className="space-y-2 text-sm">
@@ -472,14 +474,14 @@ export default function EmployeeDetailPage() {
                     </div>
                   )}
                   {/* Toggle proprietario lavoratore (solo se proprietario del proprio profilo) */}
-                  {isOwner && (
+                  {isOwner && ((session?.user as any)?.role === 'PROPRIETARIO') && (
                     <div className="mt-4 flex items-center justify-between">
                       <div className="text-sm text-gray-700">Modalità proprietario lavoratore</div>
                       <button
                         onClick={toggleWorkingOwner}
-                        className={`px-3 py-1 rounded ${workingOwner ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-800'}`}
+                        className={`px-3 py-1 rounded ${workingOwner ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
                       >
-                        {workingOwner ? 'Attiva' : 'Disattiva'}
+                        {workingOwner ? 'Disattiva' : 'Attiva'}
                       </button>
                     </div>
                   )}
@@ -489,29 +491,31 @@ export default function EmployeeDetailPage() {
 
             {/* Colonna Destra - Dettagli */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Ferie e ROL */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Ferie */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">🏖️ Ferie</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-gray-600">Residue anno precedente</span><span className="font-semibold">{prevVacationCarry} gg</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Maturate</span><span className="font-semibold">{vacationMatured} gg</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Godute</span><span className="font-semibold">{vacationBal.used} gg</span></div>
-                    <div className="flex justify-between border-t pt-2"><span className="text-gray-900">Residue totali</span><span className="font-bold text-blue-700">{vacationBal.remaining} gg</span></div>
+              {/* Ferie e ROL (nascosti per proprietario non lavoratore) */}
+              {!(isOwner && !workingOwner) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Ferie */}
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">🏖️ Ferie</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-gray-600">Residue anno precedente</span><span className="font-semibold">{prevVacationCarry} gg</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Maturate</span><span className="font-semibold">{vacationMatured} gg</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Godute</span><span className="font-semibold">{vacationBal.used} gg</span></div>
+                      <div className="flex justify-between border-t pt-2"><span className="text-gray-900">Residue totali</span><span className="font-bold text-blue-700">{vacationBal.remaining} gg</span></div>
+                    </div>
+                  </div>
+                  {/* ROL */}
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">⏰ ROL</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-gray-600">Residue anno precedente</span><span className="font-semibold">{prevRolCarry} h</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Maturate</span><span className="font-semibold">{rolMatured} h</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Godute</span><span className="font-semibold">{rolBal.used} h</span></div>
+                      <div className="flex justify-between border-t pt-2"><span className="text-gray-900">Residue totali</span><span className="font-bold text-blue-700">{rolBal.remaining} h</span></div>
+                    </div>
                   </div>
                 </div>
-                {/* ROL */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">⏰ ROL</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-gray-600">Residue anno precedente</span><span className="font-semibold">{prevRolCarry} h</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Maturate</span><span className="font-semibold">{rolMatured} h</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Godute</span><span className="font-semibold">{rolBal.used} h</span></div>
-                    <div className="flex justify-between border-t pt-2"><span className="text-gray-900">Residue totali</span><span className="font-bold text-blue-700">{rolBal.remaining} h</span></div>
-                  </div>
-                </div>
-              </div>
+              )}
               
               {/* Informazioni di Contatto */}
               <div className="bg-white rounded-lg shadow p-6">

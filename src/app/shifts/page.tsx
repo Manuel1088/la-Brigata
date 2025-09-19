@@ -596,6 +596,14 @@ export default function ShiftsPage() {
     setSelectedEmployee(null)
   }
   // --- RENDER PRINCIPALE ---
+  const waitingForCompany = !!session && !(session.user as any)?.companyId
+  if (status === 'loading' || waitingForCompany) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-2xl">Caricamento...</div>
+      </div>
+    )
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">

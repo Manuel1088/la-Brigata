@@ -22,6 +22,7 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
   const { data: session } = useSession()
   const [tipEntries, setTipEntries] = useState<TipEntry[]>([])
   const [employeesList, setEmployeesList] = useState<any[]>(getEmployeesFullClient())
+  const waitingForCompany = !!session && !(session.user as any)?.companyId
 
   const targetMonth = month ? new Date(month) : new Date()
   const monthName = targetMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
@@ -139,6 +140,11 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
     return result
   }, [tipEntries, targetMonth, employeesList])
 
+  if (waitingForCompany) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow mb-6">Caricamento...</div>
+    )
+  }
   return (
     <div className="bg-white p-6 rounded-lg shadow mb-6">
       {variant !== 'boxesOnly' && (

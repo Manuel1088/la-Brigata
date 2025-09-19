@@ -149,8 +149,9 @@ export default function EmployeesPage() {
   const [selectedLevel, setSelectedLevel] = useState('all')
   const [showActiveOnly, setShowActiveOnly] = useState(true)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
-  const [employees, setEmployees] = useState<any[]>(employeesDefault)
-  const [filteredEmployees, setFilteredEmployees] = useState<any[]>(employeesDefault)
+  const [employees, setEmployees] = useState<any[]>([])
+  const [filteredEmployees, setFilteredEmployees] = useState<any[]>([])
+  const [loadingEmployees, setLoadingEmployees] = useState<boolean>(true)
 
   // Determina reparto effettivo dell'utente (nome → employees; fallback dal ruolo)
   const effectiveUserDepartment = useMemo(() => {
@@ -171,35 +172,35 @@ export default function EmployeesPage() {
   useEffect(() => {
     const reload = async () => {
       const cid = (session?.user as any)?.companyId as string | undefined
-      let full = getEmployeesFullClient()
+      if (!cid) { setLoadingEmployees(true); return }
+      setLoadingEmployees(true)
       try {
-        if (cid) {
-          const fromApi = await getEmployeesByCompany(cid)
-          // adatta shape a EmployeeFull-like per la UI esistente
-          full = fromApi.map((e, idx) => ({
-            id: e.id || String(idx + 1),
-            name: e.name,
-            email: e.email,
-            phone: e.phone || '+39 333 000 0000',
-            role: e.role,
-            department: (e.department as any) || 'sala',
-            level: (e as any).level || 2,
-            hourlyRate: 12,
-            contractType: 'full-time',
-            startDate: new Date().toISOString().split('T')[0],
-            isActive: e.isActive,
-            avatar: e.avatar || '👤',
-            skills: [],
-            personalInfo: {}
-          }))
-        }
-      } catch {}
-      setEmployees(full)
+        const fromApi = await getEmployeesByCompany(cid)
+        const full = fromApi.map((e, idx) => ({
+          id: e.id || String(idx + 1),
+          name: e.name,
+          email: e.email,
+          phone: e.phone || '+39 333 000 0000',
+          role: e.role,
+          department: (e as any).department || 'sala',
+          level: (e as any).level || 2,
+          hourlyRate: 12,
+          contractType: 'full-time',
+          startDate: new Date().toISOString().split('T')[0],
+          isActive: e.isActive,
+          avatar: e.avatar || '👤',
+          skills: [],
+          personalInfo: {}
+        }))
+        setEmployees(full)
+        setFilteredEmployees(full)
+      } finally {
+        setLoadingEmployees(false)
+      }
       setSearchTerm('')
       setSelectedDepartment('all')
       setSelectedLevel('all')
       setShowActiveOnly(true)
-      setFilteredEmployees(full)
     }
     window.addEventListener('employees_updated', reload)
     reload()
@@ -272,7 +273,8 @@ export default function EmployeesPage() {
     }, 0)
   }
 
-  if (status === 'loading') {
+  const waitingForCompany = !!session && !(session.user as any)?.companyId
+  if (status === 'loading' || waitingForCompany || loadingEmployees) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-2xl">Caricamento...</div>

@@ -132,6 +132,16 @@ export default function LeavesPage() {
     return null
   }
 
+  // Attendi fino a quando companyId è disponibile per evitare dati non filtrati
+  const waitingForCompany = !(session.user as any)?.companyId
+  if (waitingForCompany) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-2xl">Caricamento...</div>
+      </div>
+    )
+  }
+
   return (
     <PermissionGuard permission="ferie_view">
       <div className="min-h-screen bg-gray-50">
