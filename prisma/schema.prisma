@@ -12,6 +12,7 @@ model Restaurant {
   name               String
   address            String?
   phone              String?
+  companyId          String?              @map("company_id")
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   Employee           Employee[]
@@ -25,6 +26,7 @@ model Restaurant {
   shifts             Shift[]
   tables             Table[]
   users              User[]
+  company            Company?             @relation(fields: [companyId], references: [id])
 
   @@map("restaurants")
 }
@@ -364,6 +366,7 @@ model Company {
   createdAt        DateTime          @default(now())
   informalTeams    InformalCompany[]
   users            User[]            @relation("CompanyUsers")
+  restaurants      Restaurant[]
 
   @@map("companies")
 }

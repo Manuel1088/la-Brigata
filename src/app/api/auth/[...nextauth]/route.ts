@@ -160,7 +160,10 @@ const handler = NextAuth({
                 name: dbUser.name,
                 role: dbUser.role as any,
                 level: (dbUser as any).hierarchyLevel ?? 5,
-                avatar: (dbUser as any).avatar ?? '👤'
+                avatar: (dbUser as any).avatar ?? '👤',
+                userType: (dbUser as any).userType ?? 'EMPLOYEE',
+                companyId: (dbUser as any).companyId ?? null,
+                informalCompanyId: (dbUser as any).informalCompanyId ?? null
               }
               await logLogin(user.id)
               return user as any
@@ -246,6 +249,11 @@ const handler = NextAuth({
       if (user && 'id' in user) {
         token.sub = (user as any).id;
       }
+      if (user && 'userType' in user) {
+        (token as any).userType = (user as any).userType;
+        (token as any).companyId = (user as any).companyId;
+        (token as any).informalCompanyId = (user as any).informalCompanyId;
+      }
       return token;
     },
     async session({ session, token }) {
@@ -254,6 +262,9 @@ const handler = NextAuth({
         (session.user as any).role = token.role as string;
         (session.user as any).level = token.level as number;
         (session.user as any).avatar = token.avatar as string;
+        (session.user as any).userType = (token as any).userType as string | undefined;
+        (session.user as any).companyId = (token as any).companyId as string | null | undefined;
+        (session.user as any).informalCompanyId = (token as any).informalCompanyId as string | null | undefined;
       }
       return session;
     }
