@@ -2,6 +2,10 @@ import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { logLogin, logLogout } from '@/lib/audit'
 import { getEmployeesFullClient } from '@/lib/employees'
+import { PrismaClient } from '@prisma/client'
+import { compare } from 'bcryptjs'
+
+const prisma = new PrismaClient()
 
 // Configurazione ruoli e livelli gerarchici
 const roleConfig = {
@@ -143,8 +147,30 @@ const handler = NextAuth({
           return null
         }
 
+        const email = credentials.email.toLowerCase()
+        // 1) Login utenti registrati in DB (Prisma)
+        try {
+          const dbUser = await prisma.user.findUnique({ where: { email } })
+          if (dbUser && dbUser.password) {
+            const ok = await compare(credentials.password, dbUser.password)
+            if (ok) {
+              const user = {
+                id: dbUser.id,
+                email: dbUser.email,
+                name: dbUser.name,
+                role: dbUser.role as any,
+                level: (dbUser as any).hierarchyLevel ?? 5,
+                avatar: (dbUser as any).avatar ?? '👤'
+              }
+              await logLogin(user.id)
+              return user as any
+            }
+          }
+        } catch {}
+
+        // 2) Account demo
         // Estrai username dall'email (prima parte prima di @)
-        const username = credentials.email.split('@')[0]
+        const username = email.split('@')[0]
         
         // Verifica credenziali demo
         if (demoAccounts[username as keyof typeof demoAccounts]) {
@@ -172,10 +198,10 @@ const handler = NextAuth({
           }
         }
 
-        // Login demo per ogni dipendente: usa la loro email e password "demo"
+        // 3) Login demo per ogni dipendente: usa la loro email e password "demo"
         try {
           const employees = getEmployeesFullClient()
-          const found = employees.find(e => e.email.toLowerCase() === credentials.email.toLowerCase())
+          const found = employees.find(e => e.email.toLowerCase() === email)
           if (found && credentials.password === 'demo') {
             // Mappa i ruoli dei dipendenti alle categorie della piattaforma
             const roleMap: Record<string, string> = {

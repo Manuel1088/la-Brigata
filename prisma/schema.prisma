@@ -8,247 +8,215 @@ datasource db {
 }
 
 model Restaurant {
-  id        String   @id @default(cuid())
-  name      String
-  address   String?
-  phone     String?
-  createdAt DateTime @default(now())
-  
-  users     User[]
-  shifts    Shift[]
-  tips      DailyTips[]
-  bookings  Booking[]
-  tables    Table[]
-  leavePolicies LeavePolicy[]
-  ccnlRules CCNLRules[]
-  events    RestaurantEvent[]
-  
+  id                 String               @id @default(cuid())
+  name               String
+  address            String?
+  phone              String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  Employee           Employee[]
+  RestaurantLocation RestaurantLocation[]
+  TipEntry           TipEntry[]
+  bookings           Booking[]
+  ccnlRules          CCNLRules[]
+  tips               DailyTips[]
+  leavePolicies      LeavePolicy[]
+  events             RestaurantEvent[]
+  shifts             Shift[]
+  tables             Table[]
+  users              User[]
+
   @@map("restaurants")
 }
 
 model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  name           String
-  password       String   // Hash della password
-  role           UserRole
-  hierarchyLevel Int      @map("hierarchy_level")
-  restaurantId   String   @map("restaurant_id")
-  department     String?
-  isActive       Boolean  @default(true) @map("is_active")
-  lastLogin      DateTime? @map("last_login")
-  createdAt      DateTime @default(now())
-  
-  // Tipologia utente e affiliazioni
-  userType          UserType @default(EMPLOYEE) @map("user_type")
-  companyId         String?  @map("company_id")
-  informalCompanyId String?  @map("informal_company_id")
-  teamCode          String?  @map("team_code")
-  isJobSeeking      Boolean  @default(false) @map("is_job_seeking")
-  
-  // Nuovi campi per gestione dipendenti
-  phone          String?
-  hourlyRate     Decimal? @map("hourly_rate")
-  contractType   String?  @map("contract_type") // full-time, part-time
-  startDate      DateTime? @map("start_date")
-  avatar         String?  @default("👤")
-  // CCNL Inquadramento
-  ccnlLevel      CCNLLevel? @map("ccnl_level")
-  position       String?
-  baseSalary     Decimal?   @map("base_salary")
-  
-  // Informazioni personali
-  fiscalCode     String?  @map("fiscal_code")
-  address        String?
-  emergencyContact String? @map("emergency_contact")
-  notes          String?
+  id                 String             @id @default(cuid())
+  email              String             @unique
+  name               String
+  password           String
+  role               UserRole
+  hierarchyLevel     Int                @map("hierarchy_level")
+  restaurantId       String             @map("restaurant_id")
+  department         String?
+  isActive           Boolean            @default(true) @map("is_active")
+  lastLogin          DateTime?          @map("last_login")
+  createdAt          DateTime           @default(now())
+  userType           UserType           @default(EMPLOYEE) @map("user_type")
+  companyId          String?            @map("company_id")
+  informalCompanyId  String?            @map("informal_company_id")
+  teamCode           String?            @map("team_code")
+  isJobSeeking       Boolean            @default(false) @map("is_job_seeking")
+  phone              String?
+  hourlyRate         Decimal?           @map("hourly_rate")
+  contractType       String?            @map("contract_type")
+  startDate          DateTime?          @map("start_date")
+  avatar             String?            @default("👤")
+  ccnlLevel          CCNLLevel?         @map("ccnl_level")
+  position           String?
+  baseSalary         Decimal?           @map("base_salary")
+  fiscalCode         String?            @map("fiscal_code")
+  address            String?
+  emergencyContact   String?            @map("emergency_contact")
+  notes              String?
+  weeklyHours        Int?               @map("weekly_hours")
+  nightShifts        Boolean?           @default(false) @map("night_shifts")
+  weekendWork        Boolean?           @default(true) @map("weekend_work")
+  maxConsecutiveDays Int?               @default(6) @map("max_consecutive_days")
+  contractTypeEnum   ContractType?      @map("contract_type_enum")
+  auditLogs          AuditLog[]
+  skills             EmployeeSkill[]
+  leaveApprovals     LeaveApproval[]
+  leaveBalances      LeaveBalance[]
+  leaveEntitlements  LeaveEntitlement[]
+  leaveRequests      LeaveRequest[]
+  payrolls           Payroll[]
+  shifts             Shift[]
+  tipDistributions   TipDistribution[]
+  userPermissions    UserPermission[]
+  company            Company?           @relation("CompanyUsers", fields: [companyId], references: [id])
+  informalCompany    InformalCompany?   @relation("InformalCompanyUsers", fields: [informalCompanyId], references: [id])
+  restaurant         Restaurant         @relation(fields: [restaurantId], references: [id])
 
-  // Vincoli contrattuali/CCNL aggiuntivi
-  weeklyHours        Int?     @map("weekly_hours")
-  nightShifts        Boolean? @default(false) @map("night_shifts")
-  weekendWork        Boolean? @default(true)  @map("weekend_work")
-  maxConsecutiveDays Int?     @default(6)     @map("max_consecutive_days")
-  contractTypeEnum   ContractType?            @map("contract_type_enum")
-  
-  restaurant       Restaurant @relation(fields: [restaurantId], references: [id])
-  company          Company?         @relation("CompanyUsers", fields: [companyId], references: [id])
-  informalCompany  InformalCompany? @relation("InformalCompanyUsers", fields: [informalCompanyId], references: [id])
-  shifts           Shift[]
-  tipDistributions TipDistribution[]
-  leaveRequests    LeaveRequest[]
-  leaveApprovals   LeaveApproval[]
-  leaveEntitlements LeaveEntitlement[]
-  leaveBalances    LeaveBalance[]
-  skills           EmployeeSkill[]
-  userPermissions  UserPermission[]
-  auditLogs        AuditLog[]
-  payrolls         Payroll[]
-  
   @@map("users")
 }
 
 model Shift {
-  id           String   @id @default(cuid())
-  userId       String   @map("user_id")
-  restaurantId String   @map("restaurant_id")
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  restaurantId String     @map("restaurant_id")
   date         DateTime
-  startTime    DateTime @map("start_time")
-  endTime      DateTime @map("end_time")
+  startTime    DateTime   @map("start_time")
+  endTime      DateTime   @map("end_time")
   department   String
-  status       String   @default("scheduled")
-  createdAt    DateTime @default(now())
-  
-  user         User       @relation(fields: [userId], references: [id])
+  status       String     @default("scheduled")
+  createdAt    DateTime   @default(now())
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
-  
+  user         User       @relation(fields: [userId], references: [id])
+
   @@map("shifts")
 }
 
 model DailyTips {
-  id                   String   @id @default(cuid())
-  restaurantId         String   @map("restaurant_id")
-  date                 DateTime
-  cashTips            Decimal  @default(0) @map("cash_tips")
-  cardTips            Decimal  @default(0) @map("card_tips")
-  foreignCurrencyTips Decimal  @default(0) @map("foreign_currency_tips")
-  enteredBy           String   @map("entered_by")
-  createdAt           DateTime @default(now())
-  
-  restaurant          Restaurant @relation(fields: [restaurantId], references: [id])
+  id                  String            @id @default(cuid())
+  restaurantId        String            @map("restaurant_id")
+  date                DateTime
+  cashTips            Decimal           @default(0) @map("cash_tips")
+  cardTips            Decimal           @default(0) @map("card_tips")
+  foreignCurrencyTips Decimal           @default(0) @map("foreign_currency_tips")
+  enteredBy           String            @map("entered_by")
+  createdAt           DateTime          @default(now())
+  restaurant          Restaurant        @relation(fields: [restaurantId], references: [id])
   distributions       TipDistribution[]
-  
+
   @@unique([restaurantId, date])
   @@map("daily_tips")
 }
 
 model TipDistribution {
-  id           String   @id @default(cuid())
-  dailyTipsId  String   @map("daily_tips_id")
-  userId       String   @map("user_id")
-  amount       Decimal
-  createdAt    DateTime @default(now())
-  
-  dailyTips    DailyTips @relation(fields: [dailyTipsId], references: [id])
-  user         User      @relation(fields: [userId], references: [id])
-  
+  id          String    @id @default(cuid())
+  dailyTipsId String    @map("daily_tips_id")
+  userId      String    @map("user_id")
+  amount      Decimal
+  createdAt   DateTime  @default(now())
+  dailyTips   DailyTips @relation(fields: [dailyTipsId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
   @@map("tip_distributions")
 }
 
-// Buste paga mensili
 model Payroll {
-  id                String    @id @default(cuid())
-  employeeId        String    @map("employee_id")
-  employee          User      @relation(fields: [employeeId], references: [id])
-  
-  month             Int       // 1-12
-  year              Int
-  
-  // Ore lavorate
-  regularHours      Float     @default(0) @map("regular_hours")
-  overtimeHours     Float     @default(0) @map("overtime_hours")
-  nightHours        Float     @default(0) @map("night_hours")
-  holidayHours      Float     @default(0) @map("holiday_hours")
-  
-  // Calcoli retributivi
-  basePay           Decimal   @map("base_pay")
-  overtimePay       Decimal   @map("overtime_pay")
-  nightPay          Decimal   @map("night_pay")
-  holidayPay        Decimal   @map("holiday_pay")
-  grossPay          Decimal   @map("gross_pay")
-  
-  // Trattenute
-  inpsTax           Decimal   @map("inps_tax")
-  irpefTax          Decimal   @map("irpef_tax")
-  netPay            Decimal   @map("net_pay")
-  
-  createdAt         DateTime  @default(now()) @map("created_at")
-  
+  id            String   @id @default(cuid())
+  employeeId    String   @map("employee_id")
+  month         Int
+  year          Int
+  regularHours  Float    @default(0) @map("regular_hours")
+  overtimeHours Float    @default(0) @map("overtime_hours")
+  nightHours    Float    @default(0) @map("night_hours")
+  holidayHours  Float    @default(0) @map("holiday_hours")
+  basePay       Decimal  @map("base_pay")
+  overtimePay   Decimal  @map("overtime_pay")
+  nightPay      Decimal  @map("night_pay")
+  holidayPay    Decimal  @map("holiday_pay")
+  grossPay      Decimal  @map("gross_pay")
+  inpsTax       Decimal  @map("inps_tax")
+  irpefTax      Decimal  @map("irpef_tax")
+  netPay        Decimal  @map("net_pay")
+  createdAt     DateTime @default(now()) @map("created_at")
+  employee      User     @relation(fields: [employeeId], references: [id])
+
   @@unique([employeeId, month, year])
   @@map("payrolls")
 }
 
 model LeaveRequest {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  startDate   DateTime @map("start_date")
-  endDate     DateTime @map("end_date")
-  type        LeaveType
-  reason      String?
-  status      LeaveStatus @default(PENDING)
-  approvedBy  String?  @map("approved_by")
-  approvedAt  DateTime? @map("approved_at")
-  rejectedBy  String?  @map("rejected_by")
-  rejectedAt  DateTime? @map("rejected_at")
-  rejectionReason String? @map("rejection_reason")
-  isUrgent    Boolean  @default(false) @map("is_urgent")
-  attachment  String?  // URL certificato medico, documenti
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
-  user        User     @relation(fields: [userId], references: [id])
-  approvals   LeaveApproval[]
-  
+  id              String          @id @default(cuid())
+  userId          String          @map("user_id")
+  startDate       DateTime        @map("start_date")
+  endDate         DateTime        @map("end_date")
+  type            LeaveType
+  reason          String?
+  status          LeaveStatus     @default(PENDING)
+  approvedBy      String?         @map("approved_by")
+  approvedAt      DateTime?       @map("approved_at")
+  rejectedBy      String?         @map("rejected_by")
+  rejectedAt      DateTime?       @map("rejected_at")
+  rejectionReason String?         @map("rejection_reason")
+  isUrgent        Boolean         @default(false) @map("is_urgent")
+  attachment      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  approvals       LeaveApproval[]
+  user            User            @relation(fields: [userId], references: [id])
+
   @@map("leave_requests")
 }
 
-// Regole CCNL per ristorante
 model CCNLRules {
-  id                      String   @id @default(cuid())
-  restaurantId            String   @map("restaurant_id")
-  maxDailyHours           Int      @default(8)  @map("max_daily_hours")
-  maxWeeklyHours          Int      @default(40) @map("max_weekly_hours")
-  minRestBetweenShifts    Int      @default(11) @map("min_rest_between_shifts")
-  maxConsecutiveDays      Int      @default(6)  @map("max_consecutive_days")
-  mandatoryWeeklyRest     Int      @default(36) @map("mandatory_weekly_rest")
-
-  restaurant              Restaurant @relation(fields: [restaurantId], references: [id])
+  id                   String     @id @default(cuid())
+  restaurantId         String     @map("restaurant_id")
+  maxDailyHours        Int        @default(8) @map("max_daily_hours")
+  maxWeeklyHours       Int        @default(40) @map("max_weekly_hours")
+  minRestBetweenShifts Int        @default(11) @map("min_rest_between_shifts")
+  maxConsecutiveDays   Int        @default(6) @map("max_consecutive_days")
+  mandatoryWeeklyRest  Int        @default(36) @map("mandatory_weekly_rest")
+  restaurant           Restaurant @relation(fields: [restaurantId], references: [id])
 
   @@map("ccnl_rules")
 }
 
-// Eventi del ristorante e fabbisogni di staff
-enum EventType {
-  NORMALE
-  EVENTO_SPECIALE
-  FESTA
-}
-
 model RestaurantEvent {
-  id               String   @id @default(cuid())
-  restaurantId     String   @map("restaurant_id")
-  date             DateTime
-  expectedGuests   Int      @map("expected_guests")
-  eventType        EventType @map("event_type")
-
-  restaurant       Restaurant @relation(fields: [restaurantId], references: [id])
-  staffNeeded      StaffRequirement[]
+  id             String             @id @default(cuid())
+  restaurantId   String             @map("restaurant_id")
+  date           DateTime
+  expectedGuests Int                @map("expected_guests")
+  eventType      EventType          @map("event_type")
+  restaurant     Restaurant         @relation(fields: [restaurantId], references: [id])
+  staffNeeded    StaffRequirement[]
 
   @@map("restaurant_events")
 }
 
 model StaffRequirement {
-  id          String     @id @default(cuid())
-  eventId     String     @map("event_id")
-  department  Department
-  count       Int
-
-  event       RestaurantEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id         String          @id @default(cuid())
+  eventId    String          @map("event_id")
+  department Department
+  count      Int
+  event      RestaurantEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("staff_requirements")
 }
 
 model LeaveApproval {
-  id          String   @id @default(cuid())
-  requestId   String   @map("request_id")
-  approverId  String   @map("approver_id")
-  status      String   // approved, rejected, pending
-  comment     String?
-  approvedAt  DateTime? @map("approved_at")
-  createdAt   DateTime @default(now())
-  
-  request     LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  approver    User         @relation(fields: [approverId], references: [id])
-  
+  id         String       @id @default(cuid())
+  requestId  String       @map("request_id")
+  approverId String       @map("approver_id")
+  status     String
+  comment    String?
+  approvedAt DateTime?    @map("approved_at")
+  createdAt  DateTime     @default(now())
+  approver   User         @relation(fields: [approverId], references: [id])
+  request    LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
   @@map("leave_approvals")
 }
 
@@ -265,76 +233,71 @@ model LeaveEntitlement {
   unionDays       Int      @default(8) @map("union_days")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt @map("updated_at")
-  
   user            User     @relation(fields: [userId], references: [id])
-  
+
   @@unique([userId, year])
   @@map("leave_entitlements")
 }
 
 model LeaveBalance {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  year        Int
-  type        LeaveType
-  total       Int      // Totale giorni/ore disponibili
-  used        Int      @default(0) // Giorni/ore utilizzati
-  remaining   Int      // Giorni/ore rimanenti
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
-  user        User     @relation(fields: [userId], references: [id])
-  
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  year      Int
+  type      LeaveType
+  total     Int
+  used      Int       @default(0)
+  remaining Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  user      User      @relation(fields: [userId], references: [id])
+
   @@unique([userId, year, type])
   @@map("leave_balances")
 }
 
 model LeavePolicy {
-  id              String   @id @default(cuid())
-  restaurantId    String   @map("restaurant_id")
-  type            LeaveType
-  maxDays         Int      @map("max_days")
-  noticeDays      Int      @map("notice_days")
-  autoApprove     Boolean  @default(false) @map("auto_approve")
-  requiresAttachment Boolean @default(false) @map("requires_attachment")
-  blackoutPeriods String?  @map("blackout_periods") // JSON array of date ranges
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  
-  restaurant      Restaurant @relation(fields: [restaurantId], references: [id])
-  
+  id                 String     @id @default(cuid())
+  restaurantId       String     @map("restaurant_id")
+  type               LeaveType
+  maxDays            Int        @map("max_days")
+  noticeDays         Int        @map("notice_days")
+  autoApprove        Boolean    @default(false) @map("auto_approve")
+  requiresAttachment Boolean    @default(false) @map("requires_attachment")
+  blackoutPeriods    String?    @map("blackout_periods")
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  restaurant         Restaurant @relation(fields: [restaurantId], references: [id])
+
   @@unique([restaurantId, type])
   @@map("leave_policies")
 }
 
 model Booking {
-  id           String   @id @default(cuid())
-  restaurantId String   @map("restaurant_id")
-  customerName String   @map("customer_name")
-  customerPhone String? @map("customer_phone")
-  date         DateTime
-  time         DateTime
-  partySize    Int      @map("party_size")
-  tableNumber  Int?     @map("table_number")
-  status       String   @default("confirmed")
-  notes        String?
-  createdAt    DateTime @default(now())
-  
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
-  
+  id            String     @id @default(cuid())
+  restaurantId  String     @map("restaurant_id")
+  customerName  String     @map("customer_name")
+  customerPhone String?    @map("customer_phone")
+  date          DateTime
+  time          DateTime
+  partySize     Int        @map("party_size")
+  tableNumber   Int?       @map("table_number")
+  status        String     @default("confirmed")
+  notes         String?
+  createdAt     DateTime   @default(now())
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+
   @@map("bookings")
 }
 
 model Table {
-  id           String   @id @default(cuid())
-  restaurantId String   @map("restaurant_id")
-  tableNumber  Int      @map("table_number")
+  id           String     @id @default(cuid())
+  restaurantId String     @map("restaurant_id")
+  tableNumber  Int        @map("table_number")
   seats        Int
-  status       String   @default("available")
-  lastUpdated  DateTime @default(now()) @map("last_updated")
-  
+  status       String     @default("available")
+  lastUpdated  DateTime   @default(now()) @map("last_updated")
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
-  
+
   @@unique([restaurantId, tableNumber])
   @@map("tables")
 }
@@ -344,21 +307,19 @@ model EmployeeSkill {
   userId    String   @map("user_id")
   skill     String
   createdAt DateTime @default(now())
-  
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("employee_skills")
 }
 
 model Permission {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String
-  category    String   // personale, mance, turni, report, admin
-  createdAt   DateTime @default(now())
-  
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String
+  category        String
+  createdAt       DateTime         @default(now())
   userPermissions UserPermission[]
-  
+
   @@map("permissions")
 }
 
@@ -369,68 +330,201 @@ model UserPermission {
   granted      Boolean    @default(true)
   grantedBy    String?    @map("granted_by")
   grantedAt    DateTime   @default(now())
-  
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, permissionId])
   @@map("user_permissions")
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  action      String   // CREATE, READ, UPDATE, DELETE, LOGIN, LOGOUT
-  resource    String   // users, tips, shifts, etc.
-  resourceId  String?  @map("resource_id")
-  details     String?  // JSON con dettagli dell'azione
-  ipAddress   String?  @map("ip_address")
-  userAgent   String?  @map("user_agent")
-  createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id])
-  
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  action     String
+  resource   String
+  resourceId String?  @map("resource_id")
+  details    String?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+
   @@map("audit_logs")
 }
 
+model Company {
+  id               String            @id @default(cuid())
+  name             String
+  fiscalCode       String            @unique @map("fiscal_code")
+  address          String?
+  phone            String?
+  email            String?
+  subscriptionType String            @default("BASIC") @map("subscription_type")
+  isActive         Boolean           @default(true) @map("is_active")
+  createdAt        DateTime          @default(now())
+  informalTeams    InformalCompany[]
+  users            User[]            @relation("CompanyUsers")
+
+  @@map("companies")
+}
+
+model InformalCompany {
+  id              String   @id @default(cuid())
+  name            String
+  address         String?
+  city            String?
+  type            String?
+  description     String?
+  linkedCompanyId String?  @map("linked_company_id")
+  isVerified      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  linkedCompany   Company? @relation(fields: [linkedCompanyId], references: [id])
+  users           User[]   @relation("InformalCompanyUsers")
+
+  @@map("informal_companies")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Employee {
+  id                String              @id
+  name              String              @unique
+  email             String?             @unique
+  phone             String?
+  score             Int
+  restDays          String[]
+  ccnlLevel         CCNLLevel?
+  role              EmployeeRole
+  restaurantId      String
+  canInsertTips     Boolean             @default(false)
+  canViewAll        Boolean             @default(false)
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  createdBy         String?
+  restaurants       Restaurant          @relation(fields: [restaurantId], references: [id])
+  TipDistributionV2 TipDistributionV2[]
+  TipEntry          TipEntry[]
+  UserSession       UserSession[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model MonthlySummary {
+  id            String   @id
+  year          Int
+  month         Int
+  locationId    String
+  employeeId    String
+  totalAmount   Decimal
+  daysWorked    Int
+  averageDaily  Decimal
+  cashAmount    Decimal  @default(0)
+  cardAmount    Decimal  @default(0)
+  foreignAmount Decimal  @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([year, month, locationId, employeeId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model RestaurantLocation {
+  id           String     @id
+  name         String
+  address      String?
+  restaurantId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime
+  restaurants  Restaurant @relation(fields: [restaurantId], references: [id])
+  TipEntry     TipEntry[]
+
+  @@unique([restaurantId, name])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model TipDistributionV2 {
+  id                 String   @id
+  date               DateTime
+  locationId         String
+  employeeId         String
+  employeeName       String
+  employeeScore      Int
+  totalTips          Decimal
+  totalPoints        Int
+  amount             Decimal
+  isPresent          Boolean
+  calculatedAt       DateTime @default(now())
+  calculationVersion String   @default("v1.0")
+  Employee           Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([date, locationId, employeeId])
+  @@index([date, locationId])
+  @@index([employeeId, date])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model TipEntry {
+  id                 String             @id
+  date               DateTime
+  location           String
+  type               PaymentType
+  amount             Decimal
+  time               String?
+  notes              String?
+  restaurantId       String
+  locationId         String
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime
+  createdBy          String
+  Employee           Employee           @relation(fields: [createdBy], references: [id])
+  RestaurantLocation RestaurantLocation @relation(fields: [locationId], references: [id])
+  restaurants        Restaurant         @relation(fields: [restaurantId], references: [id])
+
+  @@index([createdAt])
+  @@index([date, locationId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model UserSession {
+  id         String   @id
+  employeeId String
+  token      String   @unique
+  expiresAt  DateTime
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  Employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([token])
+}
+
+enum EventType {
+  NORMALE
+  EVENTO_SPECIALE
+  FESTA
+}
+
 enum UserRole {
-  // 👑 Livello 10 - Accesso Totale
   PROPRIETARIO
-  
-  // 👔 Livello 9 - Gestione Operativa
   DIRETTORE
-  
-  // 📊 Livello 8 - Gestione Mance e Turni
   MANAGER
-  
-  // 🍽️ Livello 7 - Gestione Sala
   RESPONSABILE_SALA
-  
-  // 👨‍🍳 Livello 7 - Gestione Cucina
   HEAD_CHEF
-  
-  // 💰 Livello 6 - Gestione Cassa
   CASSIERE
-  
-  // 👤 Livello 5 - Solo Visualizzazione
   DIPENDENTE
 }
 
-// Dipartimenti standard
 enum Department {
   CUCINA
   SALA
   BAR
 }
 
-// Tipi contratto standard
 enum ContractType {
   FULL_TIME
   PART_TIME
   STAGIONALE
 }
 
-// Livelli CCNL Turismo
 enum CCNLLevel {
   LIVELLO_1Q
   LIVELLO_2Q
@@ -443,22 +537,22 @@ enum CCNLLevel {
 }
 
 enum LeaveType {
-  VACATION        // 🏖️ Ferie (26 giorni/anno, preavviso 15gg)
-  SICK_LEAVE      // 🤒 Malattia (180gg, auto-approvata con certificato)
-  ROL             // ⏰ ROL (32 ore accumulate, preavviso 7gg)
-  PAID_LEAVE      // 📅 Permessi Retribuiti (3 giorni/anno, preavviso 3gg)
-  UNPAID_LEAVE    // 📋 Permessi Non Retribuiti (30gg max, preavviso 15gg)
-  PARENTAL_LEAVE  // 👶 Congedo Parentale (180gg, preavviso 30gg)
-  STUDY_LEAVE     // 📚 Permesso Studio (150gg, preavviso 30gg)
-  UNION_LEAVE     // 🤝 Permesso Sindacale (8 giorni/anno, preavviso 7gg)
+  VACATION
+  SICK_LEAVE
+  ROL
+  PAID_LEAVE
+  UNPAID_LEAVE
+  PARENTAL_LEAVE
+  STUDY_LEAVE
+  UNION_LEAVE
 }
 
 enum LeaveStatus {
-  PENDING         // In attesa di approvazione
-  APPROVED        // Approvata
-  REJECTED        // Rifiutata
-  CANCELLED       // Annullata dal dipendente
-  EXPIRED         // Scaduta (non approvata in tempo)
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
 }
 
 enum UserType {
@@ -467,37 +561,22 @@ enum UserType {
   OWNER
 }
 
-model Company {
-  id               String   @id @default(cuid())
-  name             String
-  fiscalCode       String   @unique @map("fiscal_code")
-  address          String?
-  phone            String?
-  email            String?
-  subscriptionType String  @default("BASIC") @map("subscription_type")
-  isActive         Boolean  @default(true) @map("is_active")
-  createdAt        DateTime @default(now())
-  
-  // Relazioni
-  users           User[] @relation("CompanyUsers")
-  informalTeams   InformalCompany[]
-  
-  @@map("companies")
+enum EmployeeRole {
+  OWNER
+  MANAGER
+  CASHIER
+  CHEF
+  SOUS_CHEF
+  COOK
+  WAITER
+  BARTENDER
+  DISHWASHER
+  HOST
+  CLEANER
 }
 
-model InformalCompany {
-  id              String   @id @default(cuid())
-  name            String
-  address         String?
-  city            String?
-  type            String?
-  description     String?
-  linkedCompanyId String? @map("linked_company_id")
-  linkedCompany   Company? @relation(fields: [linkedCompanyId], references: [id])
-  isVerified      Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  
-  users           User[] @relation("InformalCompanyUsers")
-  
-  @@map("informal_companies")
+enum PaymentType {
+  CARD
+  CASH
+  FOREIGN
 }
