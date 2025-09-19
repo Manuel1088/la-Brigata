@@ -76,6 +76,23 @@ export default function LoginPage() {
           </button>
         </form>
 
+      {/* Ruoli disponibili (promemoria) */}
+      <div className="mt-4 text-xs text-gray-600">
+        <div className="font-semibold mb-1">Ruoli disponibili:</div>
+        <div className="grid grid-cols-2 gap-y-1">
+          <span>👑 PROPRIETARIO</span>
+          <span>🛡️ ADMIN</span>
+          <span>👔 DIRETTORE</span>
+          <span>📊 MANAGER</span>
+          <span>🍽️ RESPONSABILE_SALA</span>
+          <span>👨‍🍳 HEAD_CHEF</span>
+          <span>🍸 HEAD_BARMAN</span>
+          <span>🍷 HEAD_SOMMELIER</span>
+          <span>💰 CASSIERE</span>
+          <span>👤 DIPENDENTE</span>
+        </div>
+      </div>
+
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-600 mb-3 font-medium">🔑 Account collegati ai dipendenti (demo):</p>
           <div className="grid grid-cols-1 gap-2 text-xs">
