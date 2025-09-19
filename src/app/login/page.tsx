@@ -90,6 +90,19 @@ export default function LoginPage() {
             <div className="flex justify-between"><span className="text-gray-600">🍷 Head Sommelier →</span><span className="text-gray-800">Chiara Sommelier (id 7) — sommelier@brigata.it / som123</span></div>
             <div className="flex justify-between"><span className="text-gray-600">👤 Dipendente →</span><span className="text-gray-800">Marco Verdi (id 3) — dipendente@brigata.it / dip123</span></div>
           </div>
+          <div className="mt-6">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+              aria-label="Indietro"
+              title="Indietro"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Indietro</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
