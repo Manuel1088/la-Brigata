@@ -41,6 +41,8 @@ export default function DashboardPage() {
   
   // Controlla se l'utente è un dipendente per mostrare dashboard personale
   const isEmployee = role === UserRole.DIPENDENTE
+  const isOwner = role === UserRole.PROPRIETARIO
+  const [isWorkingOwner, setIsWorkingOwner] = useState(false)
   
   // Controlla se l'utente è un cassiere per mostrare dashboard cassiere
   const isCashier = role === UserRole.CASSIERE
@@ -137,6 +139,26 @@ export default function DashboardPage() {
     // Log accesso alla dashboard
     logReadAction('dashboard')
   }, [session, status, router, logReadAction])
+
+  // Carica modalità proprietario lavoratore
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) return
+    try {
+      const raw = localStorage.getItem('working_owner_mode_v1')
+      const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
+      setIsWorkingOwner(!!map[userId])
+    } catch { setIsWorkingOwner(false) }
+    const onUpdate = () => {
+      try {
+        const raw = localStorage.getItem('working_owner_mode_v1')
+        const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
+        setIsWorkingOwner(!!map[userId])
+      } catch {}
+    }
+    try { window.addEventListener('working_owner_mode_updated', onUpdate as any) } catch {}
+    return () => { try { window.removeEventListener('working_owner_mode_updated', onUpdate as any) } catch {} }
+  }, [session?.user?.id])
 
   // Carica visibilità dashboard da localStorage (user_access_controls_v1)
   useEffect(() => {
@@ -365,7 +387,7 @@ export default function DashboardPage() {
               </button>
             )}
             <button
-              onClick={() => session.user?.id && router.push(`/employees/${session.user.id}`)}
+              onClick={() => router.push('/me')}
               className="bg-gray-200 text-gray-900 px-4 py-3 rounded-lg hover:bg-gray-300 transition"
             >
               👤 Il mio profilo
@@ -373,7 +395,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Riquadro Turno di Oggi (personale) */}
-          {isSectionVisible('shifts') && todayShiftTime && (
+          {isSectionVisible('shifts') && (!isOwner || isWorkingOwner) && todayShiftTime && (
             <div className="bg-white rounded-lg shadow p-4 mb-8 w-full md:w-1/2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -406,7 +428,7 @@ export default function DashboardPage() {
           )}
 
           {/* Riepilogo mese mance per tutti i presenti (sempre live) */}
-          {todayShiftTime && (
+          {(!isOwner || isWorkingOwner) && todayShiftTime && (
             <MonthlyTipsSummary leftLabel="mance" />
           )}
 

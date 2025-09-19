@@ -125,6 +125,12 @@ const levelConfig = {
   5: { name: 'Executive', minRate: 22, maxRate: 30, color: 'red' }
 }
 
+function getLevelMeta(level: number) {
+  const numeric = Number(level)
+  const clamped = isFinite(numeric) ? Math.max(1, Math.min(5, Math.trunc(numeric))) : 2
+  return levelConfig[clamped as keyof typeof levelConfig]
+}
+
 // Configurazione reparti
 const departments = {
   cucina: { name: 'Cucina', icon: '🔥', color: 'red' },
@@ -432,15 +438,17 @@ export default function EmployeesPage() {
                             }`}>
                               {departments[employee.department as keyof typeof departments].icon} {departments[employee.department as keyof typeof departments].name}
                             </span>
-                            <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                              levelConfig[employee.level as keyof typeof levelConfig].color === 'blue' ? 'bg-blue-100 text-blue-800' :
-                              levelConfig[employee.level as keyof typeof levelConfig].color === 'green' ? 'bg-green-100 text-green-800' :
-                              levelConfig[employee.level as keyof typeof levelConfig].color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
-                              levelConfig[employee.level as keyof typeof levelConfig].color === 'orange' ? 'bg-orange-100 text-orange-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              L{employee.level} - {levelConfig[employee.level as keyof typeof levelConfig].name}
-                            </span>
+                            {(() => { const meta = getLevelMeta(employee.level); return (
+                              <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                                meta.color === 'blue' ? 'bg-blue-100 text-blue-800' :
+                                meta.color === 'green' ? 'bg-green-100 text-green-800' :
+                                meta.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                                meta.color === 'orange' ? 'bg-orange-100 text-orange-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                L{employee.level} - {meta.name}
+                              </span>
+                            ) })()}
                           </div>
                         </div>
                       </div>
@@ -508,15 +516,17 @@ export default function EmployeesPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            levelConfig[employee.level as keyof typeof levelConfig].color === 'blue' ? 'bg-blue-100 text-blue-800' :
-                            levelConfig[employee.level as keyof typeof levelConfig].color === 'green' ? 'bg-green-100 text-green-800' :
-                            levelConfig[employee.level as keyof typeof levelConfig].color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
-                            levelConfig[employee.level as keyof typeof levelConfig].color === 'orange' ? 'bg-orange-100 text-orange-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            L{employee.level} - {levelConfig[employee.level as keyof typeof levelConfig].name}
-                          </span>
+                          {(() => { const meta = getLevelMeta(employee.level); return (
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              meta.color === 'blue' ? 'bg-blue-100 text-blue-800' :
+                              meta.color === 'green' ? 'bg-green-100 text-green-800' :
+                              meta.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                              meta.color === 'orange' ? 'bg-orange-100 text-orange-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              L{employee.level} - {meta.name}
+                            </span>
+                          ) })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           €{employee.hourlyRate}/h

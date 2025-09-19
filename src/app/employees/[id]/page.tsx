@@ -3,7 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getLeaveBalances } from '@/lib/leaveSystem'
-import { getEmployeesFullClient, type EmployeeFull } from '@/lib/employees'
+import { getEmployeesFullClient, getEmployeesByCompany, type EmployeeFull } from '@/lib/employees'
 
 // Configurazione ruoli e livelli (stessa del form nuovo)
 const roleConfig = {
@@ -68,7 +68,9 @@ export default function EmployeeDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [companyData, setCompanyData] = useState<any | null>(null)
   const [newSkill, setNewSkill] = useState('')
+  const [workingOwner, setWorkingOwner] = useState(false)
   // Saldi Ferie/ROL
   const [prevVacationCarry, setPrevVacationCarry] = useState<number>(0)
   const [prevRolCarry, setPrevRolCarry] = useState<number>(0)
@@ -82,19 +84,75 @@ export default function EmployeeDetailPage() {
     }
   }, [session, status, router])
 
-  // Carica dipendente dal parametro ID o sessione
+  // Carica dipendente dal DB o da mock, con fallback alla sessione per utenti registrati
   useEffect(() => {
     if (status === 'loading') return
-    try {
-      const list = getEmployeesFullClient()
-      const byParam = list.find(e => e.id === paramId)
-      const bySession = list.find(e => e.id === (session?.user?.id || ''))
-      const resolved = byParam || bySession
-      if (resolved) {
-        setEmployee(resolved as EmployeeFull)
-      }
-    } catch {}
-  }, [paramId, session?.user?.id, status])
+    const load = async () => {
+      try {
+        const companyId = (session?.user as any)?.companyId as string | undefined
+        const sessionId = session?.user?.id as string | undefined
+        const sessionEmail = session?.user?.email as string | undefined
+        if (companyId) {
+          try {
+            const api = await getEmployeesByCompany(companyId)
+            const found = api.find(e => e.id === (paramId || sessionId)) || api.find(e => e.email?.toLowerCase() === (sessionEmail || '').toLowerCase())
+            if (found) {
+              const mapped: EmployeeFull = {
+                id: found.id || sessionId || 'unknown',
+                name: found.name,
+                email: found.email,
+                phone: found.phone || '',
+                role: found.role,
+                department: (found as any).department || 'sala',
+                level: (found as any).level || 2,
+                hourlyRate: 12,
+                contractType: 'full-time',
+                startDate: new Date().toISOString().split('T')[0],
+                isActive: !!found.isActive,
+                avatar: found.avatar || '👤',
+                skills: [],
+                personalInfo: {}
+              }
+              setEmployee(mapped)
+              return
+            }
+          } catch {}
+        }
+        // Fallback mock locale
+        try {
+          const list = getEmployeesFullClient()
+          const byParam = list.find(e => e.id === paramId)
+          const bySession = list.find(e => e.id === (sessionId || ''))
+          const resolved = byParam || bySession
+          if (resolved) {
+            setEmployee(resolved as EmployeeFull)
+            return
+          }
+        } catch {}
+        // Ultimo fallback: costruisci dal contenuto della sessione
+        if (session?.user) {
+          const fallback: EmployeeFull = {
+            id: sessionId || 'unknown',
+            name: session.user.name || 'Utente',
+            email: session.user.email || '',
+            phone: (session.user as any).phone || '',
+            role: (session.user as any).role || 'DIPENDENTE',
+            department: 'sala',
+            level: (session.user as any).level || 2,
+            hourlyRate: 12,
+            contractType: 'full-time',
+            startDate: new Date().toISOString().split('T')[0],
+            isActive: true,
+            avatar: (session.user as any).avatar || '👤',
+            skills: [],
+            personalInfo: {}
+          }
+          setEmployee(fallback)
+        }
+      } catch {}
+    }
+    load()
+  }, [paramId, session?.user, status])
 
   // Carica eventuale residuo anno precedente da localStorage (opzionale)
   useEffect(() => {
@@ -110,6 +168,48 @@ export default function EmployeeDetailPage() {
       }
     } catch {}
   }, [employee.id])
+
+  // Toggle modalità proprietario lavoratore (solo se proprietario sul proprio profilo)
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) return
+    try {
+      const raw = localStorage.getItem('working_owner_mode_v1')
+      const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
+      setWorkingOwner(!!map[userId])
+    } catch { setWorkingOwner(false) }
+  }, [session?.user?.id])
+
+  const toggleWorkingOwner = () => {
+    const userId = session?.user?.id
+    if (!userId) return
+    try {
+      const raw = localStorage.getItem('working_owner_mode_v1')
+      const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
+      const next = !workingOwner
+      map[userId] = next
+      localStorage.setItem('working_owner_mode_v1', JSON.stringify(map))
+      setWorkingOwner(next)
+      try { window.dispatchEvent(new Event('working_owner_mode_updated')) } catch {}
+    } catch {}
+  }
+
+  // Carica profilo aziendale per proprietari
+  useEffect(() => {
+    const cid = (session?.user as any)?.companyId as string | undefined
+    if (!cid) { setCompanyData(null); return }
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/companies/${cid}`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled) setCompanyData(data.company)
+      } catch {}
+    }
+    load()
+    return () => { cancelled = true }
+  }, [session?.user])
 
   // Gestione competenze
   const addSkill = () => {
@@ -345,6 +445,46 @@ export default function EmployeeDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Profilo Aziendale (solo se proprietario) */}
+              {((session?.user as any)?.role === 'PROPRIETARIO') && companyData && (
+                <div className="bg-white rounded-lg shadow p-6 mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">🏢 Profilo Aziendale</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-600">Ragione Sociale</span><span className="font-medium">{companyData.name}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Codice Fiscale</span><span className="font-medium">{companyData.fiscalCode}</span></div>
+                    {companyData.address && (<div className="flex justify-between"><span className="text-gray-600">Indirizzo</span><span className="font-medium">{companyData.address}</span></div>)}
+                    {companyData.phone && (<div className="flex justify-between"><span className="text-gray-600">Telefono</span><span className="font-medium">{companyData.phone}</span></div>)}
+                    {companyData.email && (<div className="flex justify-between"><span className="text-gray-600">Email</span><span className="font-medium">{companyData.email}</span></div>)}
+                    <div className="flex justify-between"><span className="text-gray-600">Stato</span><span className="font-medium">{companyData.isActive ? 'Attiva' : 'Sospesa'}</span></div>
+                  </div>
+                  {Array.isArray(companyData.restaurants) && companyData.restaurants.length > 0 && (
+                    <div className="mt-4">
+                      <div className="text-sm text-gray-700 mb-2">Ristoranti collegati</div>
+                      <ul className="space-y-1 text-sm">
+                        {companyData.restaurants.map((r: any) => (
+                          <li key={r.id} className="flex justify-between">
+                            <span>{r.name}</span>
+                            <span className="text-gray-600">{r.address || ''}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {/* Toggle proprietario lavoratore (solo se proprietario del proprio profilo) */}
+                  {isOwner && (
+                    <div className="mt-4 flex items-center justify-between">
+                      <div className="text-sm text-gray-700">Modalità proprietario lavoratore</div>
+                      <button
+                        onClick={toggleWorkingOwner}
+                        className={`px-3 py-1 rounded ${workingOwner ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-800'}`}
+                      >
+                        {workingOwner ? 'Attiva' : 'Disattiva'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Colonna Destra - Dettagli */}
