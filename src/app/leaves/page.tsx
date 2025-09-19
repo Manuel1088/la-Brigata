@@ -20,6 +20,7 @@ import {
   updateLeaveRequestStatus 
 } from '@/lib/leaveSystem'
 import { getEmployeesFullClient } from '@/lib/employees'
+import { getEmployeesByCompany } from '@/lib/employees'
 import { UserRole } from '@/types/roles'
 
 export default function LeavesPage() {
@@ -92,7 +93,26 @@ export default function LeavesPage() {
   
   useEffect(() => {
     try {
-      const employees = getEmployeesFullClient()
+      const employees = async () => {
+        const cid = (session?.user as any)?.companyId as string | undefined
+        if (cid) {
+          try {
+            const apiList = await getEmployeesByCompany(cid)
+            return apiList.map((e, idx) => ({
+              id: e.id || String(idx + 1),
+              name: e.name,
+              email: e.email,
+              phone: e.phone || '',
+              role: e.role,
+              department: (e as any).department || 'sala',
+              level: (e as any).level || 2,
+              avatar: e.avatar || '👤',
+              isActive: e.isActive
+            }))
+          } catch {}
+        }
+        return getEmployeesFullClient()
+      }
       const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
       const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
       // Blocchiamo sul proprio reparto per tutti tranne i ruoli globali

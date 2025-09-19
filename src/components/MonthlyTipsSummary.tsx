@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { getEmployeesFullClient } from '@/lib/employees'
+import { getEmployeesFullClient, getEmployeesByCompany } from '@/lib/employees'
 
 type Props = {
   month?: Date
@@ -54,7 +54,29 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
     try { const ep = localStorage.getItem('employeePoints'); employeePointsByName = ep ? JSON.parse(ep) : {} } catch {}
     try { const rd = localStorage.getItem('employeeRestDays'); restDaysByName = rd ? JSON.parse(rd) : {} } catch {}
 
-    const empList = getEmployeesFullClient()
+    let empList = getEmployeesFullClient()
+    try {
+      const cid = (session?.user as any)?.companyId as string | undefined
+      if (cid) {
+        const api = await getEmployeesByCompany(cid)
+        empList = api.map((e, idx) => ({
+          id: e.id || String(idx + 1),
+          name: e.name,
+          email: e.email,
+          phone: e.phone || '',
+          role: e.role,
+          department: (e as any).department || 'sala',
+          level: (e as any).level || 2,
+          hourlyRate: 12,
+          contractType: 'full-time',
+          startDate: new Date().toISOString().split('T')[0],
+          isActive: e.isActive,
+          avatar: e.avatar || '👤',
+          skills: [],
+          personalInfo: {}
+        })) as any
+      }
+    } catch {}
 
     const byDate = new Map<string, { cash: number; card: number; foreign: number }>()
     monthEntries.forEach(e => {

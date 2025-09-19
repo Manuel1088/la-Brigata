@@ -137,4 +137,11 @@ export function addEmployeeClient(emp: SimpleEmployee) {
   addEmployeeFullClient(newFull)
 }
 
+export async function getEmployeesByCompany(companyId: string) {
+  const res = await fetch(`/api/employees?companyId=${encodeURIComponent(companyId)}`)
+  if (!res.ok) throw new Error('Failed to load employees')
+  const data = await res.json()
+  return data.employees as Array<Pick<EmployeeFull, 'id' | 'name' | 'email' | 'phone' | 'role' | 'department' | 'level' | 'isActive' | 'avatar'>>
+}
+
 

@@ -10,6 +10,7 @@ import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
 import { getEmployeesClient, type SimpleEmployee } from '@/lib/employees'
+import { getEmployeesByCompany } from '@/lib/employees'
 
 interface ShiftCell {
   employee: string
@@ -204,7 +205,17 @@ export default function ShiftsPage() {
   const [employees, setEmployees] = useState<SimpleEmployee[]>(getEmployeesClient())
   const [userDepartment, setUserDepartment] = useState<string>('sala')
   useEffect(() => {
-    const reload = () => setEmployees(getEmployeesClient())
+    const reload = async () => {
+      const cid = (session?.user as any)?.companyId as string | undefined
+      if (cid) {
+        try {
+          const api = await getEmployeesByCompany(cid)
+          setEmployees(api.map(e => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' })))
+          return
+        } catch {}
+      }
+      setEmployees(getEmployeesClient())
+    }
     window.addEventListener('employees_updated', reload)
     // reattivo anche regole riposi
     const reloadRest = () => setRestVersion(v => v + 1)

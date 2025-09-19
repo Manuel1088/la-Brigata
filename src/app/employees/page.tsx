@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 
-import { getEmployeesFullClient } from '@/lib/employees'
+import { getEmployeesFullClient, getEmployeesByCompany } from '@/lib/employees'
 
 // Database dipendenti realistico (derivato da storage condiviso)
 const employeesDefault = [
@@ -163,10 +163,32 @@ export default function EmployeesPage() {
   }, [userRole])
 
   useEffect(() => {
-    const reload = () => {
-      const full = getEmployeesFullClient()
+    const reload = async () => {
+      const cid = (session?.user as any)?.companyId as string | undefined
+      let full = getEmployeesFullClient()
+      try {
+        if (cid) {
+          const fromApi = await getEmployeesByCompany(cid)
+          // adatta shape a EmployeeFull-like per la UI esistente
+          full = fromApi.map((e, idx) => ({
+            id: e.id || String(idx + 1),
+            name: e.name,
+            email: e.email,
+            phone: e.phone || '+39 333 000 0000',
+            role: e.role,
+            department: (e.department as any) || 'sala',
+            level: (e as any).level || 2,
+            hourlyRate: 12,
+            contractType: 'full-time',
+            startDate: new Date().toISOString().split('T')[0],
+            isActive: e.isActive,
+            avatar: e.avatar || '👤',
+            skills: [],
+            personalInfo: {}
+          }))
+        }
+      } catch {}
       setEmployees(full)
-      // riapplica i filtri
       setSearchTerm('')
       setSelectedDepartment('all')
       setSelectedLevel('all')
@@ -174,10 +196,9 @@ export default function EmployeesPage() {
       setFilteredEmployees(full)
     }
     window.addEventListener('employees_updated', reload)
-    // iniziale
     reload()
     return () => window.removeEventListener('employees_updated', reload)
-  }, [])
+  }, [session?.user])
 
   // Redirect se non autenticato
   useEffect(() => {

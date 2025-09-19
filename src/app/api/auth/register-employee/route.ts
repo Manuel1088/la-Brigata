@@ -102,7 +102,14 @@ export async function POST(request: NextRequest) {
 
     // Assicurati di avere un restaurantId valido (campo richiesto nello schema)
     let restaurantId: string
-    const anyRestaurant = await prisma.restaurant.findFirst()
+    const anyRestaurant = await prisma.restaurant.findFirst({
+      where: {
+        OR: [
+          companyId ? { companyId } : undefined,
+          { companyId: null }
+        ].filter(Boolean) as any
+      }
+    })
     if (anyRestaurant) {
       restaurantId = anyRestaurant.id
     } else {
@@ -110,7 +117,8 @@ export async function POST(request: NextRequest) {
         data: {
           name: teamName || `Team ${teamCode || name}`,
           address: null,
-          phone: null
+          phone: null,
+          companyId: companyId || undefined
         }
       })
       restaurantId = created.id
