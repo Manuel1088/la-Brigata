@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Prisma } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -90,8 +90,9 @@ export async function POST(request: NextRequest) {
         data: {
           name: restName,
           address: restaurantAddress || address || undefined,
-          phone: phone || undefined
-        }
+          phone: phone || undefined,
+          companyId: company.id
+        } as Prisma.RestaurantUncheckedCreateInput
       })
 
       // 3. Crea utente proprietario
