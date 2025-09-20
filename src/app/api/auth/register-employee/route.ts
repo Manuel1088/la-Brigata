@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         informalCompanyId,
         teamCode,
         restaurantId,
-        isActive: true
+        isActive: companyId ? false : true
       }
     })
 

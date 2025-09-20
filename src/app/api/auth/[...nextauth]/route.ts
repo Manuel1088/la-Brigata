@@ -28,7 +28,7 @@ const demoAccounts = {
       id: '1', 
       email: 'admin@brigata.it', 
       name: 'Admin Proprietario', 
-      role: 'PROPRIETARIO',
+      role: 'ADMIN',
       level: 10,
       avatar: '👑'
     } 

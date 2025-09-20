@@ -270,10 +270,25 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
         
         <input
           type="text"
-          placeholder="Codice Fiscale Ristorante (opzionale)"
+          placeholder="Codice Fiscale Ristorante *"
+          required
           value={formData.companyFiscalCode}
           onChange={(e) => setFormData({...formData, companyFiscalCode: e.target.value.toUpperCase()})}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          onBlur={async () => {
+            const cf = formData.companyFiscalCode.trim()
+            if (!cf) return
+            try {
+              const res = await fetch(`/api/companies?cf=${encodeURIComponent(cf)}`)
+              const data = await res.json()
+              if (data?.company) {
+                alert(`Azienda trovata: ${data.company.name}`)
+              } else if (Array.isArray(data?.companies)) {
+                const match = data.companies.find((c: any) => (c.fiscalCode || '').toUpperCase() === cf.toUpperCase())
+                if (match) alert(`Azienda trovata: ${match.name}`)
+              }
+            } catch {}
+          }}
         />
         
         <input

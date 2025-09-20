@@ -25,7 +25,7 @@ export interface EmployeeRegistration {
   department: 'cucina' | 'sala' | 'bar'
   role: string
   userType: 'EMPLOYEE'
-  companyFiscalCode?: string
+  companyFiscalCode: string
   informalCompanyData?: {
     name: string
     address: string

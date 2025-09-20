@@ -202,7 +202,7 @@ export default function ShiftsPage() {
   }, [session, status, router])
 
   // Dipendenti del ristorante
-  const [employees, setEmployees] = useState<SimpleEmployee[]>(getEmployeesClient())
+  const [employees, setEmployees] = useState<SimpleEmployee[]>([])
   const [userDepartment, setUserDepartment] = useState<string>('sala')
   useEffect(() => {
     const reload = async () => {
@@ -220,8 +220,9 @@ export default function ShiftsPage() {
     // reattivo anche regole riposi
     const reloadRest = () => setRestVersion(v => v + 1)
     window.addEventListener('rest_rules_updated', reloadRest)
+    reload()
     return () => window.removeEventListener('employees_updated', reload)
-  }, [])
+  }, [session])
 
   // Calcola reparto utente (nome → employees, altrimenti mappa ruolo)
   const effectiveUserDepartment = useMemo(() => {

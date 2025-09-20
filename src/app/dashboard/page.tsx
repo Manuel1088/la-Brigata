@@ -14,7 +14,7 @@ import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
 import EmployeeDashboard from '@/components/EmployeeDashboard'
 import CashierDashboard from '@/components/CashierDashboard'
 import ManagerDashboard from '@/components/ManagerDashboard'
-import { getEmployeesFullClient } from '@/lib/employees'
+import { getEmployeesFullClient, getEmployeesByCompany } from '@/lib/employees'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -88,7 +88,15 @@ export default function DashboardPage() {
     let restDaysByName: Record<string, [string, string?]> = {}
     try { const ep = localStorage.getItem('employeePoints'); employeePointsByName = ep ? JSON.parse(ep) : {} } catch {}
     try { const rd = localStorage.getItem('employeeRestDays'); restDaysByName = rd ? JSON.parse(rd) : {} } catch {}
-    const empList = getEmployeesFullClient()
+    let empList: any[] = []
+    try {
+      const cid = (session?.user as any)?.companyId as string | undefined
+      if (cid) {
+        empList = (window as any).__emp_cache_dash__ || []
+      } else {
+        empList = getEmployeesFullClient()
+      }
+    } catch { empList = getEmployeesFullClient() }
     const byDate = new Map<string, { cash: number; card: number; foreign: number }>()
     monthEntries.forEach(e => {
       const key = e.date
@@ -199,9 +207,23 @@ export default function DashboardPage() {
     if (!session?.user?.name) return
     try {
       // Dipartimento utente (per etichetta turno)
-      const employees = getEmployeesFullClient()
-      const me = employees.find(e => e.id === (session?.user?.id as any) || e.name === (session?.user?.name || ''))
-      if (me?.department) setUserDepartment(me.department as string)
+      const cid = (session?.user as any)?.companyId as string | undefined
+      if (cid) {
+        getEmployeesByCompany(cid).then(list => {
+          const mapped = list.map((e, idx) => ({
+            id: e.id || String(idx + 1), name: e.name, email: e.email, phone: e.phone || '', role: e.role,
+            department: (e as any).department || 'sala', level: (e as any).level || 2,
+            hourlyRate: 12, contractType: 'full-time', startDate: new Date().toISOString().split('T')[0], isActive: e.isActive, avatar: e.avatar || '👤', skills: [], personalInfo: {}
+          }))
+          ;(window as any).__emp_cache_dash__ = mapped
+          const me = mapped.find((e: any) => e.id === (session?.user?.id as any) || e.name === (session?.user?.name || ''))
+          if (me?.department) setUserDepartment(me.department as string)
+        }).catch(() => {})
+      } else {
+        const employees = getEmployeesFullClient()
+        const me = employees.find(e => e.id === (session?.user?.id as any) || e.name === (session?.user?.name || ''))
+        if (me?.department) setUserDepartment(me.department as string)
+      }
 
       const weekStart = getWeekStart(new Date())
       const key = `shifts_${toISODate(weekStart)}`
@@ -339,6 +361,11 @@ export default function DashboardPage() {
 
           {/* Navigazione rapida a tutte le pagine principali */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
+            {(session?.user as any)?.role === 'ADMIN' && (
+              <button onClick={() => router.push('/admin/overview')} className="bg-slate-800 text-white px-4 py-3 rounded-lg hover:bg-slate-900 transition">
+                🛠️ Admin
+              </button>
+            )}
             {isSectionVisible('bookings') && (
               <button onClick={() => router.push('/bookings')} className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition">
                 📋 Prenotazioni
