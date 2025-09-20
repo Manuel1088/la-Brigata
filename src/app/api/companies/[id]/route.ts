@@ -3,7 +3,7 @@ import prisma from '@/lib/db'
 
 type Params = { params: { id: string } }
 
-export async function GET(_req: NextRequest, params: Promise<Params["params"]>) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })

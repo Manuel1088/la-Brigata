@@ -13,17 +13,35 @@ interface BookingArea {
   quantity: number // quante sale/ambienti di questo tipo
 }
 
-const STORAGE_KEY = 'booking_areas_v1'
+const STORAGE_KEY_BASE = 'booking_areas_v1'
 
 export default function BookingSettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [areas, setAreas] = useState<BookingArea[]>([])
   const [form, setForm] = useState<{ name: string; type: AreaType; quantity: string }>({ name: '', type: 'sala', quantity: '1' })
+  const [storageKey, setStorageKey] = useState<string>('')
+
+  // Resolve company fiscal code => namespaced storage key
+  useEffect(() => {
+    const resolveKey = async () => {
+      try {
+        const uid = (session?.user as any)?.id
+        if (!uid) return
+        const res = await fetch(`/api/users/${uid}/company`)
+        const data = await res.json()
+        const fiscal: string | undefined = data?.company?.fiscalCode
+        if (fiscal) setStorageKey(`${STORAGE_KEY_BASE}::${fiscal}`)
+        else setStorageKey('')
+      } catch { setStorageKey('') }
+    }
+    if (session) resolveKey()
+  }, [session])
 
   useEffect(() => {
+    if (!storageKey) return
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
+      const raw = localStorage.getItem(storageKey)
       if (raw) setAreas(JSON.parse(raw))
       else setAreas([
         { id: 'a1', name: 'Sala Principale', type: 'sala', quantity: 1 },
@@ -31,14 +49,15 @@ export default function BookingSettingsPage() {
         { id: 'a3', name: 'Ristorante', type: 'ristorante', quantity: 1 }
       ])
     } catch {}
-  }, [])
+  }, [storageKey])
 
   useEffect(() => {
+    if (!storageKey) return
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(areas))
+      localStorage.setItem(storageKey, JSON.stringify(areas))
       window.dispatchEvent(new CustomEvent('booking_areas_updated'))
     } catch {}
-  }, [areas])
+  }, [areas, storageKey])
 
   if (status === 'loading') return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   if (!session) return null
@@ -82,6 +101,9 @@ export default function BookingSettingsPage() {
         </header>
 
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          {!storageKey && (
+            <div className="bg-white p-4 rounded shadow mb-6">Caricamento dati aziendali...</div>
+          )}
           <div className="px-4 py-6 sm:px-0">
             <div className="bg-white p-6 rounded-lg shadow mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Aree / Sale</h2>

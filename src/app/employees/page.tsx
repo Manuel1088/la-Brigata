@@ -175,7 +175,7 @@ export default function EmployeesPage() {
       if (!cid) { setLoadingEmployees(true); return }
       setLoadingEmployees(true)
       try {
-        const fromApi = await getEmployeesByCompany(cid)
+        const fromApi = await getEmployeesByCompany(cid, { active: true })
         const full = fromApi.map((e, idx) => ({
           id: e.id || String(idx + 1),
           name: e.name,

@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
+import { getEmployeesByCompany } from '@/lib/employees'
 
 interface TipDistribution {
   employeeName: string
@@ -56,26 +57,40 @@ export default function TipsPage() {
     setMonthlyTips({})
   }
 
-  // Carica sale esistenti (booking_areas_v1) per selezione inline
+  // Carica sale esistenti per l'azienda corrente (booking_areas_v1::<fiscalCode>)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('booking_areas_v1')
-      const areas = raw ? JSON.parse(raw) : []
-      const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
-      setLocations(locs)
-      if (!newSelectedLocation && locs.length > 0) setNewSelectedLocation(locs[0].id)
-      const onUpdate = () => {
-        try {
-          const r2 = localStorage.getItem('booking_areas_v1')
-          const a2 = r2 ? JSON.parse(r2) : []
-          const l2 = (a2 || []).map((a: any) => ({ id: a.id, name: a.name }))
-          setLocations(l2)
-        } catch {}
-      }
-      try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
-      return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {} }
-    } catch {}
-  }, [newSelectedLocation])
+    let cancelled = false
+    const resolveAndLoad = async () => {
+      try {
+        const uid = (session?.user as any)?.id
+        if (!uid) return
+        const res = await fetch(`/api/users/${uid}/company`)
+        const data = await res.json()
+        const fiscal: string | undefined = data?.company?.fiscalCode
+        if (!fiscal) return
+        const key = `booking_areas_v1::${fiscal}`
+        const load = () => {
+          try {
+            const raw = localStorage.getItem(key)
+            const areas = raw ? JSON.parse(raw) : []
+            const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
+            if (!cancelled) {
+              setLocations(locs)
+              if (!newSelectedLocation && locs.length > 0) setNewSelectedLocation(locs[0].id)
+            }
+          } catch {
+            if (!cancelled) setLocations([])
+          }
+        }
+        load()
+        const onUpdate = () => load()
+        try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
+        return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {} }
+      } catch {}
+    }
+    resolveAndLoad()
+    return () => { cancelled = true }
+  }, [newSelectedLocation, session])
 
   const shiftNewTipDate = (delta: number) => {
     try {
@@ -116,15 +131,40 @@ export default function TipsPage() {
     if (!session) router.push('/login')
   }, [session, status, router])
 
-  // Dipendenti
-  const employees = [
-    { name: 'Giuseppe Chef', role: 'CHEF', department: 'cucina' },
-    { name: 'Maria Cameriera', role: 'DIPENDENTE_SALA', department: 'sala' },
-    { name: 'Luca Barista', role: 'DIPENDENTE_BAR', department: 'bar' },
-    { name: 'Anna Sous Chef', role: 'CAPO_PARTITA', department: 'cucina' },
-    { name: 'Marco Cameriere', role: 'DIPENDENTE_SALA', department: 'sala' },
-    { name: 'Sofia Cassiera', role: 'CASSIERE', department: 'sala' }
-  ]
+  // Dipendenti (caricati da API per companyId)
+  const [employees, setEmployees] = useState<Array<{ name: string; role: string; department: string }>>([])
+  useEffect(() => {
+    const loadEmployees = async () => {
+      const cid = (session?.user as any)?.companyId as string | undefined
+      if (cid) {
+        try {
+          const apiList = await getEmployeesByCompany(cid, { active: true })
+          let list = apiList.map((e: any) => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' }))
+          try {
+            const raw = localStorage.getItem('working_owner_mode_v1')
+            const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
+            const isOwner = ((session?.user as any)?.role || '').toUpperCase() === 'PROPRIETARIO'
+            const workingOwner = !!map[(session?.user as any)?.id || '']
+            if (isOwner && !workingOwner) {
+              list = list.filter(e => (e.role || '').toUpperCase() !== 'PROPRIETARIO')
+            }
+          } catch {}
+          setEmployees(list)
+        } catch {
+          // fallback demo solo in caso di errore
+          setEmployees([
+            { name: 'Giuseppe Chef', role: 'CHEF', department: 'cucina' },
+            { name: 'Maria Cameriera', role: 'DIPENDENTE_SALA', department: 'sala' },
+            { name: 'Luca Barista', role: 'DIPENDENTE_BAR', department: 'bar' },
+            { name: 'Anna Sous Chef', role: 'CAPO_PARTITA', department: 'cucina' },
+            { name: 'Marco Cameriere', role: 'DIPENDENTE_SALA', department: 'sala' },
+            { name: 'Sofia Cassiera', role: 'CASSIERE', department: 'sala' }
+          ])
+        }
+      }
+    }
+    if (session) loadEmployees()
+  }, [session])
 
   // Demo data mance mensili
   const [monthlyTips, setMonthlyTips] = useState<{[date: string]: DailyTip}>({

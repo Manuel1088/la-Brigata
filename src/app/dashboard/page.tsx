@@ -209,7 +209,7 @@ export default function DashboardPage() {
       // Dipartimento utente (per etichetta turno)
       const cid = (session?.user as any)?.companyId as string | undefined
       if (cid) {
-        getEmployeesByCompany(cid).then(list => {
+        getEmployeesByCompany(cid, { active: true }).then(list => {
           const mapped = list.map((e, idx) => ({
             id: e.id || String(idx + 1), name: e.name, email: e.email, phone: e.phone || '', role: e.role,
             department: (e as any).department || 'sala', level: (e as any).level || 2,

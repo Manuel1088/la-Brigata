@@ -53,6 +53,7 @@ export default function BookingsPage() {
   type AreaType = 'sala' | 'sala_colazioni' | 'bar' | 'ristorante' | 'terrazza' | 'privé' | 'altro'
   interface BookingArea { id: string; name: string; type: AreaType; quantity: number }
   const [areas, setAreas] = useState<BookingArea[]>([])
+  const [areasKey, setAreasKey] = useState<string>('')
   const [selectedAreaId, setSelectedAreaId] = useState<string>('')
   const [calCurrentMonth, setCalCurrentMonth] = useState<Date>(new Date())
   const [calSelectedDate, setCalSelectedDate] = useState<string>('')
@@ -131,13 +132,28 @@ export default function BookingsPage() {
     }
   }, [showBookingModal])
 
-  // Carica dati
+  // Risolvi fiscal code per chiave sale e carica dati
   useEffect(() => {
     loadTables()
-    // Carica aree da Impostazioni e ascolta aggiornamenti
+    const resolveKey = async () => {
+      try {
+        const uid = (session?.user as any)?.id
+        if (!uid) return
+        const res = await fetch(`/api/users/${uid}/company`)
+        const data = await res.json()
+        const fiscal: string | undefined = data?.company?.fiscalCode
+        if (fiscal) setAreasKey(`booking_areas_v1::${fiscal}`)
+        else setAreasKey('')
+      } catch { setAreasKey('') }
+    }
+    if (session) resolveKey()
+  }, [session])
+
+  useEffect(() => {
+    if (!areasKey) return
     const loadAreas = () => {
       try {
-        const raw = localStorage.getItem('booking_areas_v1')
+        const raw = localStorage.getItem(areasKey)
         if (raw) setAreas(JSON.parse(raw))
         else setAreas([])
       } catch { setAreas([]) }
@@ -146,7 +162,7 @@ export default function BookingsPage() {
     const handler = () => loadAreas()
     window.addEventListener('booking_areas_updated', handler)
     return () => window.removeEventListener('booking_areas_updated', handler)
-  }, [])
+  }, [areasKey])
 
   // Storage helpers per prenotazioni per Sala
   const BOOKINGS_STORAGE_PREFIX = 'bookings_v1_'

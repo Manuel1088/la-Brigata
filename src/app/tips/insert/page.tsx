@@ -43,26 +43,40 @@ export default function InsertTipsPage() {
     }
   }, [session, status, router])
 
-  // Carica sale esistenti dalla pagina /sale
+  // Carica sale esistenti dalla pagina /sale, scope per codice fiscale azienda
   useEffect(() => {
-    const load = () => {
+    let cancelled = false
+    const resolveAndLoad = async () => {
       try {
-        const raw = localStorage.getItem('booking_areas_v1')
-        const areas = raw ? JSON.parse(raw) : []
-        const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
-        setLocations(locs)
-        if (!selectedLocation && locs.length > 0) {
-          setSelectedLocation(locs[0].id)
+        const uid = (session?.user as any)?.id
+        if (!uid) return
+        const res = await fetch(`/api/users/${uid}/company`)
+        const data = await res.json()
+        const fiscal: string | undefined = data?.company?.fiscalCode
+        if (!fiscal) return
+        const key = `booking_areas_v1::${fiscal}`
+        const load = () => {
+          try {
+            const raw = localStorage.getItem(key)
+            const areas = raw ? JSON.parse(raw) : []
+            const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
+            if (!cancelled) {
+              setLocations(locs)
+              if (!selectedLocation && locs.length > 0) setSelectedLocation(locs[0].id)
+            }
+          } catch {
+            if (!cancelled) setLocations([])
+          }
         }
-      } catch {
-        setLocations([])
-      }
+        load()
+        const onUpdate = () => load()
+        try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
+        return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {} }
+      } catch {}
     }
-    load()
-    const onUpdate = () => load()
-    try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
-    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {} }
-  }, [selectedLocation])
+    resolveAndLoad()
+    return () => { cancelled = true }
+  }, [selectedLocation, session])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

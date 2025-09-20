@@ -54,7 +54,7 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
       try {
         const cid = (session?.user as any)?.companyId as string | undefined
         if (cid) {
-          const api = await getEmployeesByCompany(cid)
+          const api = await getEmployeesByCompany(cid, { active: true })
           empList = api
             .filter(e => (e as any).role !== 'PROPRIETARIO')
             .map((e, idx) => ({

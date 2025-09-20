@@ -209,7 +209,7 @@ export default function ShiftsPage() {
       const cid = (session?.user as any)?.companyId as string | undefined
       if (cid) {
         try {
-          const api = await getEmployeesByCompany(cid)
+          const api = await getEmployeesByCompany(cid, { active: true })
           setEmployees(api.map(e => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' })))
           return
         } catch {}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 type AreaType = 'sala' | 'sala_colazioni' | 'bar' | 'ristorante' | 'terrazza' | 'privé' | 'altro'
 
@@ -23,7 +24,9 @@ interface BookingArea {
 
 export default function SalePage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [areas, setAreas] = useState<BookingArea[]>([])
+  const [areasKey, setAreasKey] = useState<string>('')
 
   // form nuovo
   const [form, setForm] = useState<BookingArea>({ id: '', name: '', type: 'sala', openTime: '11:00', closeTime: '23:00', seatingsPerService: 1, hasTwoServices: false, lunchOpen: '12:00', lunchClose: '15:00', dinnerOpen: '19:00', dinnerClose: '23:00' })
@@ -34,7 +37,8 @@ export default function SalePage() {
 
   const loadAreas = () => {
     try {
-      const raw = localStorage.getItem('booking_areas_v1')
+      if (!areasKey) return
+      const raw = localStorage.getItem(areasKey)
       setAreas(raw ? JSON.parse(raw) : [])
     } catch {
       setAreas([])
@@ -43,11 +47,35 @@ export default function SalePage() {
 
   const saveAreas = (next: BookingArea[]) => {
     setAreas(next)
-    try { localStorage.setItem('booking_areas_v1', JSON.stringify(next)) } catch {}
+    try { if (areasKey) localStorage.setItem(areasKey, JSON.stringify(next)) } catch {}
     try { window.dispatchEvent(new CustomEvent('booking_areas_updated')) } catch {}
   }
 
-  useEffect(() => { loadAreas() }, [])
+  // Risolvi il fiscal code dell'azienda e determina la chiave di storage
+  useEffect(() => {
+    const resolveKey = async () => {
+      try {
+        const uid = (session?.user as any)?.id
+        if (!uid) return
+        const res = await fetch(`/api/users/${uid}/company`)
+        const data = await res.json()
+        const fiscal: string | undefined = data?.company?.fiscalCode
+        if (fiscal) setAreasKey(`booking_areas_v1::${fiscal}`)
+        else setAreasKey('')
+      } catch {
+        setAreasKey('')
+      }
+    }
+    if (session) resolveKey()
+  }, [session])
+
+  useEffect(() => {
+    if (!areasKey) return
+    loadAreas()
+    const handler = () => loadAreas()
+    try { window.addEventListener('booking_areas_updated', handler as any) } catch {}
+    return () => { try { window.removeEventListener('booking_areas_updated', handler as any) } catch {} }
+  }, [areasKey])
 
   const addArea = () => {
     const name = (form.name || '').trim()
@@ -131,6 +159,9 @@ export default function SalePage() {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {!areasKey && (
+          <div className="bg-white p-4 rounded shadow mb-6">Caricamento dati aziendali...</div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Aggiungi Sala */}
           <div className="bg-white p-6 rounded-lg shadow">

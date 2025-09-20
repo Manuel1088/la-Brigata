@@ -65,6 +65,7 @@ export default function EmployeeDetailPage() {
   
   // Stati
   const [employee, setEmployee] = useState<EmployeeFull>(mockEmployee as unknown as EmployeeFull)
+  const [profileReady, setProfileReady] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -114,21 +115,11 @@ export default function EmployeeDetailPage() {
                 personalInfo: {}
               }
               setEmployee(mapped)
+              setProfileReady(true)
               return
             }
           } catch {}
         }
-        // Fallback mock locale
-        try {
-          const list = getEmployeesFullClient()
-          const byParam = list.find(e => e.id === paramId)
-          const bySession = list.find(e => e.id === (sessionId || ''))
-          const resolved = byParam || bySession
-          if (resolved) {
-            setEmployee(resolved as EmployeeFull)
-            return
-          }
-        } catch {}
         // Ultimo fallback: costruisci dal contenuto della sessione
         if (session?.user) {
           const fallback: EmployeeFull = {
@@ -148,6 +139,7 @@ export default function EmployeeDetailPage() {
             personalInfo: {}
           }
           setEmployee(fallback)
+          setProfileReady(true)
         }
       } catch {}
     }
@@ -194,22 +186,35 @@ export default function EmployeeDetailPage() {
     } catch {}
   }
 
-  // Carica profilo aziendale per proprietari
+  // Carica profilo aziendale per il profilo visualizzato (dipendente o proprietario)
   useEffect(() => {
-    const cid = (session?.user as any)?.companyId as string | undefined
-    if (!cid) { setCompanyData(null); return }
     let cancelled = false
     const load = async () => {
       try {
-        const res = await fetch(`/api/companies/${cid}`)
-        if (!res.ok) return
-        const data = await res.json()
-        if (!cancelled) setCompanyData(data.company)
+        const targetUserId = (paramId && paramId.length > 0) ? paramId : ((session?.user as any)?.id as string | undefined)
+        if (!targetUserId) { setCompanyData(null); return }
+        const res = await fetch(`/api/users/${targetUserId}/company`)
+        if (res.ok) {
+          const data = await res.json()
+          if (!cancelled && data?.company) {
+            setCompanyData(data.company)
+            return
+          }
+        }
+        // Fallback: usa companyId da sessione (copre account demo proprietari)
+        const sidCompanyId = (session?.user as any)?.companyId as string | undefined
+        if (sidCompanyId) {
+          const res2 = await fetch(`/api/companies/${sidCompanyId}`)
+          if (res2.ok) {
+            const data2 = await res2.json()
+            if (!cancelled) setCompanyData(data2?.company || data2)
+          }
+        }
       } catch {}
     }
     load()
     return () => { cancelled = true }
-  }, [session?.user])
+  }, [paramId, session?.user])
 
   // Gestione competenze
   const addSkill = () => {
@@ -312,6 +317,14 @@ export default function EmployeeDetailPage() {
     return null
   }
 
+  if (!profileReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-2xl">Caricamento profilo...</div>
+      </div>
+    )
+  }
+
   const roleInfo = roleConfig[employee.role as keyof typeof roleConfig]
   const departmentInfo = departments[roleInfo?.department as keyof typeof departments]
   const availableSkills = roleInfo ? commonSkills[roleInfo.department as keyof typeof commonSkills] || [] : []
@@ -365,17 +378,6 @@ export default function EmployeeDetailPage() {
               }`}>
                 {employee.isActive ? 'Attivo' : 'Inattivo'}
               </span>
-              <button
-                onClick={toggleActive}
-                disabled={isLoading}
-                className={`px-4 py-2 rounded-lg transition ${
-                  employee.isActive 
-                    ? 'bg-red-600 text-white hover:bg-red-700' 
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                } disabled:opacity-50`}
-              >
-                {employee.isActive ? 'Disattiva' : 'Attiva'}
-              </button>
             </div>
           </div>
         </div>
@@ -449,44 +451,48 @@ export default function EmployeeDetailPage() {
               )}
 
               {/* Profilo Aziendale (tutti i dipendenti) */}
-              {companyData && (
-                <div className="bg-white rounded-lg shadow p-6 mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">🏢 Profilo Aziendale</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-gray-600">Ragione Sociale</span><span className="font-medium">{companyData.name}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Codice Fiscale</span><span className="font-medium">{companyData.fiscalCode}</span></div>
-                    {companyData.address && (<div className="flex justify-between"><span className="text-gray-600">Indirizzo</span><span className="font-medium">{companyData.address}</span></div>)}
-                    {companyData.phone && (<div className="flex justify-between"><span className="text-gray-600">Telefono</span><span className="font-medium">{companyData.phone}</span></div>)}
-                    {companyData.email && (<div className="flex justify-between"><span className="text-gray-600">Email</span><span className="font-medium">{companyData.email}</span></div>)}
-                    <div className="flex justify-between"><span className="text-gray-600">Stato</span><span className="font-medium">{companyData.isActive ? 'Attiva' : 'Sospesa'}</span></div>
+              <div className="bg-white rounded-lg shadow p-6 mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">🏢 Profilo Aziendale</h3>
+                {companyData ? (
+                  <>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-gray-600">Ragione Sociale</span><span className="font-medium">{companyData.name}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Codice Fiscale</span><span className="font-medium">{companyData.fiscalCode}</span></div>
+                      {companyData.address && (<div className="flex justify-between"><span className="text-gray-600">Indirizzo</span><span className="font-medium">{companyData.address}</span></div>)}
+                      {companyData.phone && (<div className="flex justify-between"><span className="text-gray-600">Telefono</span><span className="font-medium">{companyData.phone}</span></div>)}
+                      {companyData.email && (<div className="flex justify-between"><span className="text-gray-600">Email</span><span className="font-medium">{companyData.email}</span></div>)}
+                      <div className="flex justify-between"><span className="text-gray-600">Stato</span><span className="font-medium">{companyData.isActive ? 'Attiva' : 'Sospesa'}</span></div>
+                    </div>
+                    {Array.isArray(companyData.restaurants) && companyData.restaurants.length > 0 && (
+                      <div className="mt-4">
+                        <div className="text-sm text-gray-700 mb-2">Ristoranti collegati</div>
+                        <ul className="space-y-1 text-sm">
+                          {companyData.restaurants.map((r: any) => (
+                            <li key={r.id} className="flex justify-between">
+                              <span>{r.name}</span>
+                              <span className="text-gray-600">CF: {companyData.fiscalCode}{r.address ? ` • ${r.address}` : ''}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-600">Nessuna azienda collegata.</div>
+                )}
+                {/* Toggle proprietario lavoratore (solo se proprietario del proprio profilo) */}
+                {isOwner && ((session?.user as any)?.role === 'PROPRIETARIO') && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="text-sm text-gray-700">Modalità proprietario lavoratore</div>
+                    <button
+                      onClick={toggleWorkingOwner}
+                      className={`px-3 py-1 rounded ${workingOwner ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
+                    >
+                      {workingOwner ? 'Disattiva' : 'Attiva'}
+                    </button>
                   </div>
-                  {Array.isArray(companyData.restaurants) && companyData.restaurants.length > 0 && (
-                    <div className="mt-4">
-                      <div className="text-sm text-gray-700 mb-2">Ristoranti collegati</div>
-                      <ul className="space-y-1 text-sm">
-                        {companyData.restaurants.map((r: any) => (
-                          <li key={r.id} className="flex justify-between">
-                            <span>{r.name}</span>
-                            <span className="text-gray-600">{r.address || ''}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {/* Toggle proprietario lavoratore (solo se proprietario del proprio profilo) */}
-                  {isOwner && ((session?.user as any)?.role === 'PROPRIETARIO') && (
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="text-sm text-gray-700">Modalità proprietario lavoratore</div>
-                      <button
-                        onClick={toggleWorkingOwner}
-                        className={`px-3 py-1 rounded ${workingOwner ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
-                      >
-                        {workingOwner ? 'Disattiva' : 'Attiva'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Colonna Destra - Dettagli */}

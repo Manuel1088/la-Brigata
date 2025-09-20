@@ -57,6 +57,7 @@ export default function LeavesPage() {
   const [selectedDept, setSelectedDept] = useState<'cucina' | 'sala' | 'bar'>('sala')
   const isGlobalManager = [UserRole.PROPRIETARIO, UserRole.ADMIN, UserRole.DIRETTORE, UserRole.MANAGER].includes(userRole as UserRole)
   const isDeptLocked = !isGlobalManager
+  const [employees, setEmployees] = useState<any[]>([])
 
   // Helper per date sicure
   const toSafeDate = (value: any): Date | null => {
@@ -92,33 +93,35 @@ export default function LeavesPage() {
   }
   
   useEffect(() => {
-    try {
-      const employees = async () => {
-        const cid = (session?.user as any)?.companyId as string | undefined
-        if (cid) {
+    const loadEmployees = async () => {
+      const cid = (session?.user as any)?.companyId as string | undefined
+      if (cid) {
+        try {
+          const apiList = await getEmployeesByCompany(cid, { active: true })
+          const list = apiList.map((e: any) => ({ id: e.id, name: e.name, role: e.role, department: (e as any).department || 'sala' }))
+          // Nascondi proprietario se modalità lavoratore disattiva
+          let filtered = list
           try {
-            const apiList = await getEmployeesByCompany(cid)
-            return apiList.map((e, idx) => ({
-              id: e.id || String(idx + 1),
-              name: e.name,
-              email: e.email,
-              phone: e.phone || '',
-              role: e.role,
-              department: (e as any).department || 'sala',
-              level: (e as any).level || 2,
-              avatar: e.avatar || '👤',
-              isActive: e.isActive
-            }))
+            const raw = localStorage.getItem('working_owner_mode_v1')
+            const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
+            const isOwner = ((session?.user as any)?.role || '').toUpperCase() === 'PROPRIETARIO'
+            const workingOwner = !!map[(session?.user as any)?.id || '']
+            if (isOwner && !workingOwner) {
+              filtered = list.filter(e => (e.role || '').toUpperCase() !== 'PROPRIETARIO')
+            }
           } catch {}
+          setEmployees(filtered)
+          const me = filtered.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
+          const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
+          setSelectedDept(dept)
+        } catch {
+          const local = getEmployeesFullClient().map((e: any) => ({ id: e.id, name: e.name, role: e.role, department: e.department || 'sala' }))
+          setEmployees(local)
         }
-        return getEmployeesFullClient()
       }
-      const me = employees.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
-      const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
-      // Blocchiamo sul proprio reparto per tutti tranne i ruoli globali
-      setSelectedDept(dept)
-    } catch {}
-  }, [session?.user?.id, session?.user?.name])
+    }
+    if (session) loadEmployees()
+  }, [session])
 
   if (status === 'loading') {
     return (
@@ -559,7 +562,7 @@ export default function LeavesPage() {
 
     {/* Gestione Richieste del Team */}
     {canApproveLeave() && (
-      <div className="bg-white rounded-lg shadow mb-6">
+            <div className="bg-white rounded-lg shadow mb-6">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">👥 Richieste del Team</h2>
           <p className="text-sm text-gray-600">Approva, rifiuta o proponi nuove date per il personale che gestisci</p>
@@ -610,7 +613,7 @@ export default function LeavesPage() {
                                 }}
                                 className="px-2 py-1 bg-green-600 text-white rounded mr-2 hover:bg-green-700"
                               >Approva</button>
-                              <button
+                  <button
                                 onClick={() => {
                                   const ns = prompt('Nuova data inizio (YYYY-MM-DD)')
                                   const ne = prompt('Nuova data fine (YYYY-MM-DD)')
@@ -625,7 +628,7 @@ export default function LeavesPage() {
                                 }}
                                 className="px-2 py-1 bg-blue-600 text-white rounded mr-2 hover:bg-blue-700"
                               >Modifica</button>
-                              <button
+                  <button
                                 onClick={() => {
                                   const confirmed = confirm('Sei sicuro di voler cancellare questa richiesta?')
                                   if (!confirmed) return
