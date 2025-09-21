@@ -46,6 +46,8 @@ export default function DailyTipsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [entries, setEntries] = useState<TipEntry[]>([])
+  const [tipsKey, setTipsKey] = useState<string>('')
+  const [waitingCtx, setWaitingCtx] = useState<boolean>(true)
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
   const [editingId, setEditingId] = useState<string>('')
   const [editMap, setEditMap] = useState<Record<string, TipEntry>>({})
@@ -60,11 +62,28 @@ export default function DailyTipsPage() {
     if (!canManage) router.push('/tips')
   }, [session, status, router])
 
-  // Carica storico da tipEntries e aggiorna su evento
+  // Risolvi chiave per ristorante e carica storico
   useEffect(() => {
+    const resolve = async () => {
+      try {
+        const rid = (session?.user as any)?.restaurantId as string | undefined
+        if (rid) { setTipsKey(`tipEntries_v1::${rid}`); return }
+        const uid = (session?.user as any)?.id
+        if (!uid) return
+        const res = await fetch(`/api/users/${uid}/company`)
+        const data = await res.json()
+        const firstRest = data?.company?.restaurants?.[0]?.id as string | undefined
+        if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
+      } finally { setWaitingCtx(false) }
+    }
+    if (session) resolve()
+  }, [session])
+
+  useEffect(() => {
+    if (!tipsKey) return
     const load = () => {
       try {
-        const raw = localStorage.getItem('tipEntries')
+        const raw = localStorage.getItem(tipsKey)
         const list: TipEntry[] = raw ? JSON.parse(raw) : []
         list.sort((a, b) => {
           const db = new Date(b.date).getTime()
@@ -75,9 +94,7 @@ export default function DailyTipsPage() {
           return cb - ca
         })
         setEntries(list)
-      } catch {
-        setEntries([])
-      }
+      } catch { setEntries([]) }
     }
     load()
     const onUpdate = () => load()
@@ -87,7 +104,7 @@ export default function DailyTipsPage() {
       try { window.removeEventListener('tip_entries_updated', onUpdate as any) } catch {}
       try { window.removeEventListener('storage', onUpdate as any) } catch {}
     }
-  }, [])
+  }, [tipsKey])
 
   // Carica sale esistenti per editing location, scoping per azienda
   useEffect(() => {
@@ -132,7 +149,8 @@ export default function DailyTipsPage() {
     const payload = editMap[id]
     if (!payload) return
     try {
-      const raw = localStorage.getItem('tipEntries')
+      if (!tipsKey) return
+      const raw = localStorage.getItem(tipsKey)
       const list: TipEntry[] = raw ? JSON.parse(raw) : []
       const next = list.map(x => x.id === id ? {
         ...x,
@@ -141,7 +159,7 @@ export default function DailyTipsPage() {
         type: payload.type,
         amount: Number(payload.amount) || 0,
       } : x)
-      localStorage.setItem('tipEntries', JSON.stringify(next))
+      localStorage.setItem(tipsKey, JSON.stringify(next))
       setEntries(next)
       try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
       setEditingId('')
@@ -150,10 +168,11 @@ export default function DailyTipsPage() {
 
   const removeEntry = (id: string) => {
     try {
-      const raw = localStorage.getItem('tipEntries')
+      if (!tipsKey) return
+      const raw = localStorage.getItem(tipsKey)
       const list: TipEntry[] = raw ? JSON.parse(raw) : []
       const next = list.filter(x => x.id !== id)
-      localStorage.setItem('tipEntries', JSON.stringify(next))
+      localStorage.setItem(tipsKey, JSON.stringify(next))
       setEntries(next)
       try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
     } catch {}
@@ -170,6 +189,7 @@ export default function DailyTipsPage() {
     return Array.from(map.entries()).sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime())
   }, [entries])
 
+  if (waitingCtx) return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">

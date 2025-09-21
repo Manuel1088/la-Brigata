@@ -61,6 +61,24 @@ export default function NewEmployeePage() {
   const [message, setMessage] = useState('')
   const [newSkill, setNewSkill] = useState('')
 
+  // Lista candidati (server)
+  const [showCandidates, setShowCandidates] = useState(false)
+  const [candidates, setCandidates] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [candidatesLoading, setCandidatesLoading] = useState(false)
+  const [hireDept, setHireDept] = useState('')
+  const [hireRole, setHireRole] = useState('')
+  const openCandidates = async () => {
+    setShowCandidates(true)
+    setCandidatesLoading(true)
+    try {
+      const res = await fetch('/api/candidates')
+      const data = await res.json()
+      setCandidates((data?.candidates || []).map((c:any) => ({ id: c.id, name: c.name, email: c.email })))
+    } finally {
+      setCandidatesLoading(false)
+    }
+  }
+
   // Redirect se non autenticato o non autorizzato
   useEffect(() => {
     if (status === 'loading') return
@@ -223,6 +241,14 @@ export default function NewEmployeePage() {
               <h1 className="text-3xl font-bold text-gray-900">
                 ➕ Nuovo Dipendente
               </h1>
+            </div>
+            <div>
+              <button
+                onClick={openCandidates}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                📋 Lista Candidati
+              </button>
             </div>
           </div>
         </div>
@@ -569,6 +595,75 @@ export default function NewEmployeePage() {
           </div>
         </div>
       </main>
+      {showCandidates && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4">
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">👤 Candidati disponibili</h3>
+              <button onClick={() => setShowCandidates(false)} className="text-gray-500 hover:text-gray-700 text-xl">×</button>
+            </div>
+            <div className="p-6">
+              {candidatesLoading ? (
+                <div className="text-center text-gray-600">Caricamento...</div>
+              ) : (
+                <div className="space-y-3">
+                  {candidates.length === 0 && (
+                    <div className="text-sm text-gray-600">Nessun candidato presente.</div>
+                  )}
+                  {candidates.map(c => (
+                    <div key={c.id} className="p-3 border rounded flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900">{c.name}</div>
+                        <div className="text-sm text-gray-600">{c.email}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={hireDept}
+                          onChange={e => setHireDept(e.target.value)}
+                          placeholder="Reparto (opz.)"
+                          className="px-2 py-1 border rounded text-sm"
+                        />
+                        <input
+                          value={hireRole}
+                          onChange={e => setHireRole(e.target.value)}
+                          placeholder="Ruolo (opz.)"
+                          className="px-2 py-1 border rounded text-sm"
+                        />
+                        <button
+                          className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                          onClick={async () => {
+                            try {
+                              const companyId = (session?.user as any)?.companyId as string | undefined
+                              let fiscalCode: string | undefined
+                              if (companyId) {
+                                const r = await fetch(`/api/companies/${companyId}`)
+                                const d = await r.json()
+                                fiscalCode = d?.fiscalCode
+                              }
+                              const res = await fetch('/api/candidates/hire', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ candidateId: c.id, fiscalCode, department: hireDept || undefined, role: hireRole || undefined })
+                              })
+                              const data = await res.json()
+                              if (!res.ok) { alert(data.error || 'Errore assunzione'); return }
+                              alert('Candidato assunto con successo!')
+                              setShowCandidates(false)
+                              router.push('/employees')
+                            } catch {
+                              alert('Errore di rete')
+                            }
+                          }}
+                        >Assumi</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

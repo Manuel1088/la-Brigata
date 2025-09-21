@@ -39,7 +39,14 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hash(password, 12)
 
-    // Crea candidato
+    // I candidati non hanno ancora un ristorante aziendale: crea un contenitore neutro senza companyId
+    const placeholder = await prisma.restaurant.create({
+      data: {
+        name: `Candidato — ${name}`,
+      }
+    })
+
+    // Crea candidato (richiede restaurantId obbligatorio dallo schema)
     const candidate = await prisma.user.create({
       data: {
         email,
@@ -51,7 +58,8 @@ export async function POST(request: NextRequest) {
         department: department || null,
         phone: phone || null,
         isJobSeeking: true,
-        isActive: true
+        isActive: true,
+        restaurantId: placeholder.id
       }
     })
 

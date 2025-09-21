@@ -36,22 +36,42 @@ export default function TipsPage() {
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
   const [expandedType, setExpandedType] = useState<'cash' | 'card' | 'foreign' | null>(null)
 
-  // Tip entries (inserimenti) da localStorage per riepilogo real-time
+  // Tip entries per ristorante loggato
   const [tipEntries, setTipEntries] = useState<any[]>([])
+  const [tipsKey, setTipsKey] = useState<string>('')
+  const [waitingCtx, setWaitingCtx] = useState<boolean>(true)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const resolve = async () => {
       try {
-        const raw = localStorage.getItem('tipEntries')
-        setTipEntries(raw ? JSON.parse(raw) : [])
-      } catch {
-        setTipEntries([])
+        const rid = (session?.user as any)?.restaurantId as string | undefined
+        if (rid) {
+          setTipsKey(`tipEntries_v1::${rid}`)
+          return
+        }
+        const uid = (session?.user as any)?.id
+        if (!uid) return
+        const res = await fetch(`/api/users/${uid}/company`)
+        const data = await res.json()
+        const firstRest = data?.company?.restaurants?.[0]?.id as string | undefined
+        if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
+      } finally {
+        setWaitingCtx(false)
       }
     }
-  }, [])
+    if (session) resolve()
+  }, [session])
+
+  useEffect(() => {
+    if (!tipsKey) return
+    try {
+      const raw = localStorage.getItem(tipsKey)
+      setTipEntries(raw ? JSON.parse(raw) : [])
+    } catch { setTipEntries([]) }
+  }, [tipsKey])
 
   const clearTipsData = () => {
     try {
-      localStorage.removeItem('tipEntries')
+      if (tipsKey) localStorage.removeItem(tipsKey)
     } catch {}
     setTipEntries([])
     setMonthlyTips({})
@@ -107,14 +127,15 @@ export default function TipsPage() {
     const hasAny = numCash > 0 || numCard > 0 || numForeign > 0
     if (!hasAny || !newSelectedLocation) return
     try {
-      const raw = localStorage.getItem('tipEntries')
+      if (!tipsKey) return
+      const raw = localStorage.getItem(tipsKey)
       const arr: any[] = raw ? JSON.parse(raw) : []
       const locName = locations.find(l => l.id === newSelectedLocation)?.name || newSelectedLocation
       const nowIso = new Date().toISOString()
       if (numCash > 0) arr.push({ id: crypto.randomUUID(), date: newTipDate, location: locName, type: 'cash', amount: numCash, createdAt: nowIso })
       if (numCard > 0) arr.push({ id: crypto.randomUUID(), date: newTipDate, location: locName, type: 'card', amount: numCard, createdAt: nowIso })
       if (numForeign > 0) arr.push({ id: crypto.randomUUID(), date: newTipDate, location: locName, type: 'foreign', amount: numForeign, createdAt: nowIso })
-      localStorage.setItem('tipEntries', JSON.stringify(arr))
+      localStorage.setItem(tipsKey, JSON.stringify(arr))
       setTipEntries(arr)
       try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
       // reset e chiudi
@@ -392,7 +413,11 @@ export default function TipsPage() {
     )
   }
 
-  if (!session) return null
+  if (!session || waitingCtx) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-2xl">Caricamento...</div>
+    </div>
+  )
 
   const canManageTips = ['PROPRIETARIO', 'DIRETTORE', 'MANAGER', 'CASSIERE', 'RESPONSABILE_SALA'].includes(session.user?.role || '')
   const monthDays = getDaysInMonth(currentMonth)
