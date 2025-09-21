@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { usePermissions } from '@/hooks/usePermissions'
-import { getEmployeesFullClient } from '@/lib/employees'
+import { getEmployeesByCompany } from '@/lib/employees'
 
 type DashboardSection = 'bookings' | 'sale' | 'customers' | 'leaves' | 'shifts' | 'rest' | 'tips' | 'admin'
 type ShiftViewScope = 'own' | 'department' | 'all'
@@ -25,12 +25,34 @@ export default function AccessManagementPage() {
   const { canAccessAdmin } = usePermissions()
 
   const [employees, setEmployees] = useState<any[]>([])
+  const waitingForCompany = !!session && !(session.user as any)?.companyId
   const [accessMap, setAccessMap] = useState<AccessStore>({})
   const [permMap, setPermMap] = useState<Record<string, { permissions: string[] }>>({})
 
   useEffect(() => {
-    try { setEmployees(getEmployeesFullClient()) } catch {}
-  }, [])
+    let cancelled = false
+    const load = async () => {
+      try {
+        const cid = (session?.user as any)?.companyId as string | undefined
+        if (!cid) return
+        const api = await getEmployeesByCompany(cid, { active: true })
+        const list = api.map((e: any, idx: number) => ({
+          id: e.id || String(idx + 1),
+          name: e.name,
+          avatar: e.avatar || '👤',
+          department: e.department || 'sala',
+          level: (e as any).level || 2,
+        }))
+        if (!cancelled) setEmployees(list)
+      } catch {
+        if (!cancelled) setEmployees([])
+      }
+    }
+    if (session) load()
+    const onEmp = () => load()
+    try { window.addEventListener('employees_updated', onEmp as any) } catch {}
+    return () => { cancelled = true; try { window.removeEventListener('employees_updated', onEmp as any) } catch {} }
+  }, [session])
 
   useEffect(() => {
     try {
@@ -133,6 +155,9 @@ export default function AccessManagementPage() {
             </div>
 
             <div className="p-6 space-y-4">
+              {waitingForCompany && (
+                <div className="text-sm text-gray-500">Caricamento dati aziendali...</div>
+              )}
               {employees.length === 0 && (
                 <div className="text-sm text-gray-500">Nessun dipendente trovato.</div>
               )}

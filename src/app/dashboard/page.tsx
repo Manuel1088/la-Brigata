@@ -14,7 +14,7 @@ import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
 import EmployeeDashboard from '@/components/EmployeeDashboard'
 import CashierDashboard from '@/components/CashierDashboard'
 import ManagerDashboard from '@/components/ManagerDashboard'
-import { getEmployeesFullClient, getEmployeesByCompany } from '@/lib/employees'
+import { getEmployeesByCompany } from '@/lib/employees'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -60,6 +60,39 @@ export default function DashboardPage() {
   const [todayShiftIsRest, setTodayShiftIsRest] = useState<boolean>(false)
   const [userDepartment, setUserDepartment] = useState<string>('sala')
 
+  // Admin overview data (companies box)
+  const [adminCompanies, setAdminCompanies] = useState<any[]>([])
+  const [adminCompaniesLoading, setAdminCompaniesLoading] = useState<boolean>(false)
+  const [adminCandidates, setAdminCandidates] = useState<any[]>([])
+  const [adminCandidatesLoading, setAdminCandidatesLoading] = useState<boolean>(false)
+  useEffect(() => {
+    if (role !== UserRole.ADMIN) return
+    setAdminCompaniesLoading(true)
+    ;(async () => {
+      try {
+        const res = await fetch('/api/companies')
+        const data = await res.json()
+        setAdminCompanies(data.companies || [])
+      } catch {
+        setAdminCompanies([])
+      } finally {
+        setAdminCompaniesLoading(false)
+      }
+    })()
+    setAdminCandidatesLoading(true)
+    ;(async () => {
+      try {
+        const res = await fetch('/api/candidates')
+        const data = await res.json()
+        setAdminCandidates(data.candidates || [])
+      } catch {
+        setAdminCandidates([])
+      } finally {
+        setAdminCandidatesLoading(false)
+      }
+    })()
+  }, [role])
+
   // === Riepilogo mese (come pagina mance) ===
   const [tipEntries, setTipEntries] = useState<any[]>([])
   useEffect(() => {
@@ -94,9 +127,9 @@ export default function DashboardPage() {
       if (cid) {
         empList = (window as any).__emp_cache_dash__ || []
       } else {
-        empList = getEmployeesFullClient()
+        empList = []
       }
-    } catch { empList = getEmployeesFullClient() }
+    } catch { empList = [] }
     const byDate = new Map<string, { cash: number; card: number; foreign: number }>()
     monthEntries.forEach(e => {
       const key = e.date
@@ -219,10 +252,6 @@ export default function DashboardPage() {
           const me = mapped.find((e: any) => e.id === (session?.user?.id as any) || e.name === (session?.user?.name || ''))
           if (me?.department) setUserDepartment(me.department as string)
         }).catch(() => {})
-      } else {
-        const employees = getEmployeesFullClient()
-        const me = employees.find(e => e.id === (session?.user?.id as any) || e.name === (session?.user?.name || ''))
-        if (me?.department) setUserDepartment(me.department as string)
       }
 
       const weekStart = getWeekStart(new Date())
@@ -361,11 +390,6 @@ export default function DashboardPage() {
 
           {/* Navigazione rapida a tutte le pagine principali */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
-            {(session?.user as any)?.role === 'ADMIN' && (
-              <button onClick={() => router.push('/admin/overview')} className="bg-slate-800 text-white px-4 py-3 rounded-lg hover:bg-slate-900 transition">
-                🛠️ Admin
-              </button>
-            )}
             {isSectionVisible('bookings') && (
               <button onClick={() => router.push('/bookings')} className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition">
                 📋 Prenotazioni
@@ -449,6 +473,42 @@ export default function DashboardPage() {
                   >
                     Apri Turni
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Admin: Aziende Registrate */}
+          {role === UserRole.ADMIN && (
+            <div className="grid md:grid-cols-2 gap-4 mb-8">
+              <div className="bg-white rounded-lg shadow p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-500">Sistema di gestione per admin</div>
+                    <div className="text-lg font-semibold text-gray-900">Aziende Registrate</div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/admin/companies')}
+                    className="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition"
+                  >Apri</button>
+                </div>
+                <div className="mt-3 text-sm text-gray-700">
+                  {adminCompaniesLoading ? 'Caricamento...' : `Totale: ${adminCompanies.length}`}
+                </div>
+              </div>
+              <div className="bg-white rounded-lg shadow p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-500">Sistema di gestione per admin</div>
+                    <div className="text-lg font-semibold text-gray-900">Candidati (Cerco Lavoro)</div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/admin/candidates')}
+                    className="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition"
+                  >Apri</button>
+                </div>
+                <div className="mt-3 text-sm text-gray-700">
+                  {adminCandidatesLoading ? 'Caricamento...' : `Totale: ${adminCandidates.length}`}
                 </div>
               </div>
             </div>

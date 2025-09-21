@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { getRestRules, updateRestRule, type RestRule } from '@/lib/restRules'
-import { getEmployeesFullClient } from '@/lib/employees'
+import { getEmployeesByCompany } from '@/lib/employees'
 
 export default function RestRulesPage() {
   const router = useRouter()
@@ -20,8 +20,15 @@ export default function RestRulesPage() {
   useEffect(() => {
     setRules(getRestRules())
     try {
-      setEmployees(getEmployeesFullClient())
-    } catch {}
+      const cid = (session?.user as any)?.companyId as string | undefined
+      if (cid) {
+        getEmployeesByCompany(cid, { active: true }).then(list => {
+          setEmployees(list.map((e:any)=>({ name: e.name, department: e.department || 'sala' })))
+        }).catch(() => setEmployees([]))
+      } else {
+        setEmployees([])
+      }
+    } catch { setEmployees([]) }
     // carica config reparto
     try {
       const raw = localStorage.getItem('rest_rules_department_v1')

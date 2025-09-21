@@ -19,7 +19,6 @@ import {
   proposeLeaveDates,
   updateLeaveRequestStatus 
 } from '@/lib/leaveSystem'
-import { getEmployeesFullClient } from '@/lib/employees'
 import { getEmployeesByCompany } from '@/lib/employees'
 import { UserRole } from '@/types/roles'
 
@@ -115,8 +114,7 @@ export default function LeavesPage() {
           const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
           setSelectedDept(dept)
         } catch {
-          const local = getEmployeesFullClient().map((e: any) => ({ id: e.id, name: e.name, role: e.role, department: e.department || 'sala' }))
-          setEmployees(local)
+          setEmployees([])
         }
       }
     }
@@ -391,8 +389,7 @@ export default function LeavesPage() {
               </div>
               <div className="p-6">
                 {(() => {
-                  const employees = getEmployeesFullClient()
-                  const deptUserIds = new Set(employees.filter(e => e.department === selectedDept).map(e => e.id))
+                  const deptUserIds = new Set((employees || []).filter(e => e.department === selectedDept).map(e => e.id))
 
                   const allRequests = getLeaveRequests()
 
@@ -519,9 +516,8 @@ export default function LeavesPage() {
                   </div>
                   <div className="p-6">
                     {(() => {
-                      const employees = getEmployeesFullClient()
-                      const userIdToName = new Map<string, string>(employees.map(e => [e.id, e.name]))
-                      const deptUserIds = new Set(employees.filter(e => e.department === selectedDept).map(e => e.id))
+                      const userIdToName = new Map<string, string>((employees || []).map(e => [e.id, e.name]))
+                      const deptUserIds = new Set((employees || []).filter(e => e.department === selectedDept).map(e => e.id))
                       const allReq = getLeaveRequests().filter(r => deptUserIds.has(r.userId))
                       const [yy,mm,dd] = selectedDayISO.split('-').map(Number)
                       const cd = new Date(yy,(mm||1)-1,dd||1); cd.setHours(0,0,0,0)
@@ -569,14 +565,13 @@ export default function LeavesPage() {
         </div>
         <div className="p-6 overflow-x-auto">
           {(() => {
-            const employees = getEmployeesFullClient()
             const upper = (userRole || '').toString().toUpperCase()
             let scopeDepts: Array<'cucina'|'sala'|'bar'> = ['cucina','sala','bar']
             if (upper === 'HEAD_CHEF') scopeDepts = ['cucina']
             if (upper === 'RESPONSABILE_SALA' || upper === 'CASSIERE') scopeDepts = ['sala']
             if (upper === 'HEAD_BARMAN' || upper === 'HEAD_SOMMELIER') scopeDepts = ['bar']
-            const managedUserIds = new Set(employees.filter(e => scopeDepts.includes((e.department as any) || 'sala')).map(e => e.id))
-            const userIdToName = new Map<string, string>(employees.map(e => [e.id, e.name]))
+            const managedUserIds = new Set((employees || []).filter(e => scopeDepts.includes((e.department as any) || 'sala')).map(e => e.id))
+            const userIdToName = new Map<string, string>((employees || []).map(e => [e.id, e.name]))
             const teamReqs = getLeaveRequests().filter(r => managedUserIds.has(r.userId))
             if (teamReqs.length === 0) {
               return <div className="text-sm text-gray-600">Nessuna richiesta del team da gestire.</div>
