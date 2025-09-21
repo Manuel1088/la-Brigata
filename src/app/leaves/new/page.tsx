@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useAudit } from '@/hooks/useAudit'
@@ -14,7 +14,7 @@ import {
   LeaveTypeConfig 
 } from '@/lib/leaveSystem'
 
-export default function NewLeaveRequestPage() {
+function NewLeaveRequestContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -419,5 +419,19 @@ export default function NewLeaveRequestPage() {
         </main>
       </div>
     </PermissionGuard>
+  )
+}
+
+export default function NewLeaveRequestPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-2xl">Caricamento...</div>
+        </div>
+      }
+    >
+      <NewLeaveRequestContent />
+    </Suspense>
   )
 }
