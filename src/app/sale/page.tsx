@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { useCompanyData } from '@/hooks/useCompanyData'
 
 type AreaType = 'sala' | 'sala_colazioni' | 'bar' | 'ristorante' | 'terrazza' | 'privé' | 'altro'
 
@@ -51,23 +52,13 @@ export default function SalePage() {
     try { window.dispatchEvent(new CustomEvent('booking_areas_updated')) } catch {}
   }
 
-  // Risolvi il fiscal code dell'azienda e determina la chiave di storage
+  // Risolvi il fiscal code dell'azienda via hook condiviso
+  const { data: companyData } = useCompanyData(session?.user?.id)
   useEffect(() => {
-    const resolveKey = async () => {
-      try {
-        const uid = (session?.user as any)?.id
-        if (!uid) return
-        const res = await fetch(`/api/users/${uid}/company`)
-        const data = await res.json()
-        const fiscal: string | undefined = data?.company?.fiscalCode
-        if (fiscal) setAreasKey(`booking_areas_v1::${fiscal}`)
-        else setAreasKey('')
-      } catch {
-        setAreasKey('')
-      }
-    }
-    if (session) resolveKey()
-  }, [session])
+    const fiscal: string | undefined = companyData?.company?.fiscalCode
+    if (fiscal) setAreasKey(`booking_areas_v1::${fiscal}`)
+    else setAreasKey('')
+  }, [companyData])
 
   useEffect(() => {
     if (!areasKey) return

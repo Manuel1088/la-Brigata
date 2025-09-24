@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { usePermissions } from '@/hooks/usePermissions'
 import { addOrUpdateCustomerFromBooking } from '@/lib/customers'
+import { useCompanyData } from '@/hooks/useCompanyData'
 
 interface Booking {
   id: string
@@ -132,22 +133,15 @@ export default function BookingsPage() {
     }
   }, [showBookingModal])
 
-  // Risolvi fiscal code per chiave sale e carica dati
+  // Company data via shared hook
+  const { data: companyData } = useCompanyData(session?.user?.id)
+  // Risolvi fiscal code per chiave sale e carica dati (senza doppie fetch)
   useEffect(() => {
     loadTables()
-    const resolveKey = async () => {
-      try {
-        const uid = (session?.user as any)?.id
-        if (!uid) return
-        const res = await fetch(`/api/users/${uid}/company`)
-        const data = await res.json()
-        const fiscal: string | undefined = data?.company?.fiscalCode
-        if (fiscal) setAreasKey(`booking_areas_v1::${fiscal}`)
-        else setAreasKey('')
-      } catch { setAreasKey('') }
-    }
-    if (session) resolveKey()
-  }, [session])
+    const fiscal: string | undefined = companyData?.company?.fiscalCode
+    if (fiscal) setAreasKey(`booking_areas_v1::${fiscal}`)
+    else setAreasKey('')
+  }, [companyData])
 
   useEffect(() => {
     if (!areasKey) return

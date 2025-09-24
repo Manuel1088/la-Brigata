@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
+import { useCompanyData } from '@/hooks/useCompanyData'
 
 type AreaType = 'sala' | 'sala_colazioni' | 'bar' | 'ristorante' | 'terrazza' | 'privé' | 'altro'
 
@@ -22,21 +23,13 @@ export default function BookingSettingsPage() {
   const [form, setForm] = useState<{ name: string; type: AreaType; quantity: string }>({ name: '', type: 'sala', quantity: '1' })
   const [storageKey, setStorageKey] = useState<string>('')
 
-  // Resolve company fiscal code => namespaced storage key
+  // Resolve company fiscal code via shared hook
+  const { data: companyData } = useCompanyData(session?.user?.id)
   useEffect(() => {
-    const resolveKey = async () => {
-      try {
-        const uid = (session?.user as any)?.id
-        if (!uid) return
-        const res = await fetch(`/api/users/${uid}/company`)
-        const data = await res.json()
-        const fiscal: string | undefined = data?.company?.fiscalCode
-        if (fiscal) setStorageKey(`${STORAGE_KEY_BASE}::${fiscal}`)
-        else setStorageKey('')
-      } catch { setStorageKey('') }
-    }
-    if (session) resolveKey()
-  }, [session])
+    const fiscal: string | undefined = companyData?.company?.fiscalCode
+    if (fiscal) setStorageKey(`${STORAGE_KEY_BASE}::${fiscal}`)
+    else setStorageKey('')
+  }, [companyData])
 
   useEffect(() => {
     if (!storageKey) return
