@@ -6,51 +6,60 @@ import { addEmployeeClient } from '@/lib/employees'
 
 // Configurazione ruoli e livelli
 const roleConfig = {
-  // Esistenti
-  EXECUTIVE_CHEF: { name: 'Executive Chef', level: 5, department: 'cucina', avatar: '👨‍🍳', minRate: 22, maxRate: 30 },
-  SOUS_CHEF: { name: 'Sous Chef', level: 5, department: 'cucina', avatar: '👩‍🍳', minRate: 20, maxRate: 26 },
-  CHEF_DE_PARTIE: { name: 'Chef de Partie', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 14, maxRate: 18 },
-  CHEF: { name: 'Chef', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 14, maxRate: 18 },
-  CAPO_PARTITA: { name: 'Capo Partita', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 13, maxRate: 16 },
-  RESPONSABILE_SALA: { name: 'Responsabile Sala', level: 4, department: 'sala', avatar: '👩‍💼', minRate: 18, maxRate: 22 },
-  DIPENDENTE_SALA: { name: 'Dipendente Sala', level: 2, department: 'sala', avatar: '👩‍💼', minRate: 11, maxRate: 14 },
-  DIPENDENTE_BAR: { name: 'Dipendente Bar', level: 2, department: 'bar', avatar: '👨‍💼', minRate: 11, maxRate: 14 },
-  CASSIERE: { name: 'Cassiere', level: 3, department: 'sala', avatar: '💳', minRate: 13, maxRate: 16 },
-  MANAGER: { name: 'Manager', level: 5, department: 'sala', avatar: '👨‍💼', minRate: 22, maxRate: 30 },
+  // Dirigenti A (€2.495,22 → ~€15.60/h)
+  DIRETTORE_GENERALE: { name: 'Direttore Generale', level: 5, department: 'sala', avatar: '💼', minRate: 15.6, maxRate: 15.6 },
+  PROPRIETARIO_OPERATIVO: { name: 'Proprietario Operativo', level: 5, department: 'sala', avatar: '👑', minRate: 15.6, maxRate: 15.6 },
 
-  // PRIMO LIVELLO - DIRIGENTI
-  DIRETTORE_GENERALE: { name: 'Direttore Generale', level: 5, department: 'sala', avatar: '💼', minRate: 28, maxRate: 40 },
-  PROPRIETARIO_OPERATIVO: { name: 'Proprietario Operativo', level: 5, department: 'sala', avatar: '👑', minRate: 28, maxRate: 40 },
+  // Dirigenti B (€2.310,11 → ~€14.44/h)
+  VICE_DIRETTORE: { name: 'Vice Direttore', level: 5, department: 'sala', avatar: '🧑‍💼', minRate: 14.44, maxRate: 14.44 },
 
-  // SECONDO LIVELLO - QUADRI
-  RESTAURANT_MANAGER: { name: 'Restaurant Manager/Direttore di Sala', level: 5, department: 'sala', avatar: '🧑‍💼', minRate: 22, maxRate: 30 },
-  EXEC_SOUS_CHEF: { name: 'Executive Chef/Sous Chef', level: 5, department: 'cucina', avatar: '👨‍🍳', minRate: 22, maxRate: 30 },
+  // Livello 1 (Quadri Senior) (€2.152,32 → ~€13.45/h)
+  RESTAURANT_MANAGER: { name: 'Restaurant Manager/Direttore di Sala', level: 5, department: 'sala', avatar: '🧑‍💼', minRate: 13.45, maxRate: 13.45 },
+  EXECUTIVE_CHEF: { name: 'Executive Chef', level: 5, department: 'cucina', avatar: '👨‍🍳', minRate: 13.45, maxRate: 13.45 },
 
-  // TERZO LIVELLO - IMPIEGATI SPECIALIZZATI
-  CHEF_DE_CUISINE: { name: 'Chef de Cuisine', level: 4, department: 'cucina', avatar: '👨‍🍳', minRate: 18, maxRate: 24 },
-  MAITRE: { name: 'Maître/Capo Sala', level: 4, department: 'sala', avatar: '🎩', minRate: 18, maxRate: 24 },
-  SOMMELIER: { name: 'Sommelier', level: 4, department: 'sala', avatar: '🍷', minRate: 18, maxRate: 24 },
-  BARMAN_SENIOR: { name: 'Barman Senior', level: 4, department: 'bar', avatar: '🍸', minRate: 18, maxRate: 24 },
+  // Livello 2 (Quadri) (€1.967,20 → ~€12.30/h)
+  SOUS_CHEF: { name: 'Sous Chef', level: 4, department: 'cucina', avatar: '👩‍🍳', minRate: 12.3, maxRate: 12.3 },
+  ASSISTANT_MANAGER: { name: 'Assistant Manager', level: 4, department: 'sala', avatar: '🧑‍💼', minRate: 12.3, maxRate: 12.3 },
+  EXEC_SOUS_CHEF: { name: 'Executive Chef/Sous Chef', level: 5, department: 'cucina', avatar: '👨‍🍳', minRate: 12.3, maxRate: 12.3 },
 
-  // QUARTO LIVELLO - IMPIEGATI QUALIFICATI
-  CHEF_DE_PARTIE_SPECIAL: { name: 'Chef de Partie (Settorista)', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 14, maxRate: 18 },
-  PIZZAIOLO_SPECIALIZZATO: { name: 'Pizzaiolo Specializzato', level: 3, department: 'cucina', avatar: '🍕', minRate: 14, maxRate: 18 },
+  // Livello 3 (Impiegati specializzati) (€1.855,32 → ~€11.60/h)
+  CHEF_DE_CUISINE: { name: 'Chef de Cuisine', level: 4, department: 'cucina', avatar: '👨‍🍳', minRate: 11.6, maxRate: 11.6 },
+  MAITRE: { name: 'Maître/Capo Sala', level: 4, department: 'sala', avatar: '🎩', minRate: 11.6, maxRate: 11.6 },
+  SOMMELIER: { name: 'Sommelier', level: 4, department: 'sala', avatar: '🍷', minRate: 11.6, maxRate: 11.6 },
+  BARMAN_SENIOR: { name: 'Barman Senior', level: 4, department: 'bar', avatar: '🍸', minRate: 11.6, maxRate: 11.6 },
 
-  // QUINTO LIVELLO - OPERAI SPECIALIZZATI
-  CAMERIERE_SENIOR: { name: 'Cameriere Senior', level: 3, department: 'sala', avatar: '🍽️', minRate: 13, maxRate: 16 },
-  CUOCO_QUALIFICATO: { name: 'Cuoco Qualificato', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 13, maxRate: 16 },
-  BARMAN: { name: 'Barman', level: 3, department: 'bar', avatar: '🍹', minRate: 13, maxRate: 16 },
+  // Livello 4 (Impiegati qualificati) (€1.750,69 → ~€10.94/h)
+  CHEF_DE_PARTIE: { name: 'Chef de Partie', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 10.94, maxRate: 10.94 },
+  CHEF_DE_PARTIE_SPECIAL: { name: 'Chef de Partie (Settorista)', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 10.94, maxRate: 10.94 },
+  PIZZAIOLO_SPECIALIZZATO: { name: 'Pizzaiolo Specializzato', level: 3, department: 'cucina', avatar: '🍕', minRate: 10.94, maxRate: 10.94 },
+  BARMAN: { name: 'Barman', level: 3, department: 'bar', avatar: '🍹', minRate: 10.94, maxRate: 10.94 },
 
-  // SESTO LIVELLO - OPERAI QUALIFICATI
-  CAMERIERE: { name: 'Cameriere', level: 2, department: 'sala', avatar: '🍽️', minRate: 11, maxRate: 14 },
-  COMMIS_DE_CUISINE: { name: 'Commis de Cuisine', level: 2, department: 'cucina', avatar: '🍳', minRate: 11, maxRate: 14 },
-  DEMI_CHEF_DE_PARTIE: { name: 'Demi Chef de Partie', level: 2, department: 'cucina', avatar: '🍳', minRate: 11, maxRate: 14 },
+  // Livello 5 (Operai specializzati) (€1.641,85 → ~€10.26/h)
+  CAMERIERE_SENIOR: { name: 'Cameriere Senior', level: 3, department: 'sala', avatar: '🍽️', minRate: 10.26, maxRate: 10.26 },
+  CUOCO_QUALIFICATO: { name: 'Cuoco Qualificato', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 10.26, maxRate: 10.26 },
 
-  // SETTIMO LIVELLO - OPERAI COMUNI
-  AIUTO_CUOCO: { name: 'Aiuto Cuoco', level: 1, department: 'cucina', avatar: '🥣', minRate: 10, maxRate: 12 },
-  COMMIS_DI_SALA: { name: 'Commis di Sala', level: 1, department: 'sala', avatar: '🧑‍🍽️', minRate: 10, maxRate: 12 },
-  RUNNER: { name: 'Runner/Porta Piatti', level: 1, department: 'sala', avatar: '🏃🍽️', minRate: 10, maxRate: 12 },
-  LAVAPIATTI: { name: 'Lavapiatti/Sguattero', level: 1, department: 'cucina', avatar: '🧼', minRate: 10, maxRate: 12 }
+  // Livello 6S (Operai qualificati senior) (€1.578,72 → ~€9.87/h)
+  CAMERIERE_QUALIFICATO: { name: 'Cameriere Qualificato', level: 2, department: 'sala', avatar: '🍽️', minRate: 9.87, maxRate: 9.87 },
+  COMMIS_DE_CUISINE_SENIOR: { name: 'Commis de Cuisine Senior', level: 2, department: 'cucina', avatar: '🍳', minRate: 9.87, maxRate: 9.87 },
+
+  // Livello 6 (Operai qualificati) (€1.556,35 → ~€9.73/h)
+  CAMERIERE: { name: 'Cameriere', level: 2, department: 'sala', avatar: '🍽️', minRate: 9.73, maxRate: 9.73 },
+  COMMIS_DE_CUISINE: { name: 'Commis de Cuisine', level: 2, department: 'cucina', avatar: '🍳', minRate: 9.73, maxRate: 9.73 },
+  DEMI_CHEF_DE_PARTIE: { name: 'Demi Chef de Partie', level: 2, department: 'cucina', avatar: '🍳', minRate: 9.73, maxRate: 9.73 },
+
+  // Livello 7 (Operai comuni) (€1.458,42 → ~€9.12/h)
+  AIUTO_CUOCO: { name: 'Aiuto Cuoco', level: 1, department: 'cucina', avatar: '🥣', minRate: 9.12, maxRate: 9.12 },
+  COMMIS_DI_SALA: { name: 'Commis di Sala', level: 1, department: 'sala', avatar: '🧑‍🍽️', minRate: 9.12, maxRate: 9.12 },
+  RUNNER: { name: 'Runner/Porta Piatti', level: 1, department: 'sala', avatar: '🏃🍽️', minRate: 9.12, maxRate: 9.12 },
+  LAVAPIATTI: { name: 'Lavapiatti/Sguattero', level: 1, department: 'cucina', avatar: '🧼', minRate: 9.12, maxRate: 9.12 },
+
+  // Ruoli generici/legacy: allineati quando possibile
+  RESPONSABILE_SALA: { name: 'Responsabile Sala', level: 4, department: 'sala', avatar: '👩‍💼', minRate: 11.6, maxRate: 11.6 },
+  MANAGER: { name: 'Manager', level: 5, department: 'sala', avatar: '👨‍💼', minRate: 13.45, maxRate: 13.45 },
+  CASSIERE: { name: 'Cassiere', level: 3, department: 'sala', avatar: '💳', minRate: 10.94, maxRate: 10.94 },
+  DIPENDENTE_SALA: { name: 'Dipendente Sala', level: 2, department: 'sala', avatar: '👩‍💼', minRate: 9.73, maxRate: 9.73 },
+  DIPENDENTE_BAR: { name: 'Dipendente Bar', level: 3, department: 'bar', avatar: '👨‍💼', minRate: 10.94, maxRate: 10.94 },
+  CHEF: { name: 'Chef', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 10.94, maxRate: 10.94 }
 }
 
 const departments = {
