@@ -243,34 +243,47 @@ export default function DashboardPage() {
     return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
   }
   
+  // Rimuovi il useEffect manuale e usa direttamente i dati dall'hook
+  useEffect(() => {
+    if (!employees || !session?.user?.name) return
+    try {
+      // Usa i dati già caricati dall'hook SWR
+      const mapped = employees.map((e: any, idx: number) => ({
+        id: e.id || String(idx + 1), 
+        name: e.name, 
+        email: (e as any).email, 
+        phone: (e as any).phone || '', 
+        role: e.role,
+        department: (e as any).department || 'sala', 
+        level: (e as any).level || 2,
+        hourlyRate: 12, 
+        contractType: 'full-time', 
+        startDate: new Date().toISOString().split('T')[0], 
+        isActive: (e as any).isActive, 
+        avatar: (e as any).avatar || '👤', 
+        skills: [], 
+        personalInfo: {}
+      }))
+      ;(window as any).__emp_cache_dash__ = mapped
+      const me = mapped.find((e: any) => e.id === (session?.user?.id as any) || e.name === (session?.user?.name || ''))
+      if (me?.department) setUserDepartment(me.department as string)
+    } catch (error) {
+      console.error('Errore elaborazione dipendenti:', error)
+    }
+  }, [employees, session?.user?.name])
+
+  // Calcolo turno di oggi (separato dai dati dipendenti)
   useEffect(() => {
     if (!session?.user?.name) return
     try {
-      // Dipartimento utente (per etichetta turno)
-      const cid = (session?.user as any)?.companyId as string | undefined
-      if (cid) {
-        getEmployeesByCompany(cid, { active: true }).then(list => {
-          const mapped = list.map((e, idx) => ({
-            id: e.id || String(idx + 1), name: e.name, email: e.email, phone: e.phone || '', role: e.role,
-            department: (e as any).department || 'sala', level: (e as any).level || 2,
-            hourlyRate: 12, contractType: 'full-time', startDate: new Date().toISOString().split('T')[0], isActive: e.isActive, avatar: e.avatar || '👤', skills: [], personalInfo: {}
-          }))
-          ;(window as any).__emp_cache_dash__ = mapped
-          const me = mapped.find((e: any) => e.id === (session?.user?.id as any) || e.name === (session?.user?.name || ''))
-          if (me?.department) setUserDepartment(me.department as string)
-        }).catch(() => {})
-      }
-
       const weekStart = getWeekStart(new Date())
       const key = `shifts_${toISODate(weekStart)}`
       const raw = localStorage.getItem(key)
       if (!raw) return
       const map = JSON.parse(raw) as Record<string, { employee: string; time?: string }>
-      // Calcolo robusto dell'indice del giorno (0=lunedì ... 6=domenica)
       const dayIndex = ((new Date().getDay() + 6) % 7)
       const shiftKey = `${session.user.name}-${dayIndex}`
       let shift = map[shiftKey]
-      // Fallback: ricerca per employee e dayIndex se la chiave esatta non c'è (es. differenze di nome)
       if (!shift) {
         const suffix = `-${dayIndex}`
         const entry = Object.entries(map).find(([k, v]) => k.endsWith(suffix) && v.employee === session.user?.name)
@@ -286,7 +299,6 @@ export default function DashboardPage() {
         }
         return
       }
-      // Fallback: se giorno di riposo fisso da regole, mostra Riposo
       const restRule = getRestRuleFor(session.user.name || '')
       const isFixedRest = !!(restRule?.fixedDayIndices && restRule.fixedDayIndices.includes(dayIndex as any))
       if (isFixedRest) {
