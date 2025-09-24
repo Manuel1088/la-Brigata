@@ -224,11 +224,12 @@ export default function ShiftsPage() {
         const mapped = employeesData.map((e: any) => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' }))
         // Assicurati che l'utente loggato sia presente (match per id o per nome)
         const myId = (session?.user?.id as string) || ''
-        const meName = session?.user?.name || ''
+        const meName = session?.user?.name || ((session?.user as any)?.email ? String((session?.user as any).email).split('@')[0] : '') || ''
         const foundById = employeesData.find((e: any) => e.id === myId)
         const namePresent = meName && mapped.some(e => (e.name || '').toLowerCase() === meName.toLowerCase())
         if (foundById && !namePresent) {
-          mapped.push({ name: foundById.name || meName || 'Me', role: foundById.role || (session?.user as any)?.role || 'DIPENDENTE', department: (foundById as any).department || 'sala' })
+          const fallbackName = foundById.name || meName || 'Me'
+          mapped.push({ name: fallbackName, role: foundById.role || (session?.user as any)?.role || 'DIPENDENTE', department: (foundById as any).department || 'sala' })
         } else if (!foundById && meName && !namePresent) {
           const role = (session?.user as any)?.role as string | undefined
           const upperRole = (role || '').toUpperCase()
