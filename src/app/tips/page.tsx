@@ -4,7 +4,11 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
-import { getEmployeesByCompany } from '@/lib/employees'
+import useSWR from 'swr'
+import { useCompanyData } from '@/hooks/useCompanyData'
+import { useEmployees } from '@/hooks/useEmployees'
+
+const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 interface TipDistribution {
   employeeName: string
@@ -40,11 +44,38 @@ export default function TipsPage() {
   const [tipEntries, setTipEntries] = useState<any[]>([])
   const [tipsKey, setTipsKey] = useState<string>('')
   const [waitingCtx, setWaitingCtx] = useState<boolean>(true)
+  // Hook SWR per company data (sostituisce entrambe le chiamate)
+  const { data: companyData, error: companyError } = useSWR(
+    session?.user?.id ? `/api/users/${session.user.id}/company` : null,
+    fetcher,
+    { 
+      revalidateOnFocus: false,
+      dedupingInterval: 60000,
+      revalidateOnReconnect: false
+    }
+  )
+
+  // Primo useEffect ottimizzato - usa SWR data
   useEffect(() => {
-    const rid = (session?.user as any)?.restaurantId as string | undefined
-    if (rid) setTipsKey(`tipEntries_v1::${rid}`)
-    setWaitingCtx(false)
-  }, [session])
+    if (!session) return
+    if (companyError) {
+      setWaitingCtx(false)
+      return
+    }
+    if (!companyData) return
+
+    try {
+      const rid = (session?.user as any)?.restaurantId as string | undefined
+      if (rid) {
+        setTipsKey(`tipEntries_v1::${rid}`)
+      } else {
+        const firstRest = companyData?.company?.restaurants?.[0]?.id as string | undefined
+        if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
+      }
+    } finally {
+      setWaitingCtx(false)
+    }
+  }, [session, companyData, companyError])
 
   useEffect(() => {
     if (!tipsKey) return
@@ -62,40 +93,45 @@ export default function TipsPage() {
     setMonthlyTips({})
   }
 
-  // Carica sale esistenti per l'azienda corrente (booking_areas_v1::<fiscalCode>)
+  // Secondo useEffect ottimizzato - usa SWR data
   useEffect(() => {
+    if (!companyData?.company?.fiscalCode) return
+
     let cancelled = false
-    const resolveAndLoad = async () => {
+    const fiscal: string = companyData.company.fiscalCode
+    const key = `booking_areas_v1::${fiscal}`
+    
+    const load = () => {
       try {
-        const uid = (session?.user as any)?.id
-        if (!uid) return
-        const res = await fetch(`/api/users/${uid}/company`)
-        const data = await res.json()
-        const fiscal: string | undefined = data?.company?.fiscalCode
-        if (!fiscal) return
-        const key = `booking_areas_v1::${fiscal}`
-        const load = () => {
-          try {
-            const raw = localStorage.getItem(key)
-            const areas = raw ? JSON.parse(raw) : []
-            const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
-            if (!cancelled) {
-              setLocations(locs)
-              if (!newSelectedLocation && locs.length > 0) setNewSelectedLocation(locs[0].id)
-            }
-          } catch {
-            if (!cancelled) setLocations([])
-          }
+        const raw = localStorage.getItem(key)
+        const areas = raw ? JSON.parse(raw) : []
+        const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
+        if (!cancelled) {
+          setLocations(locs)
+          if (!newSelectedLocation && locs.length > 0) setNewSelectedLocation(locs[0].id)
         }
-        load()
-        const onUpdate = () => load()
-        try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
-        return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {} }
-      } catch {}
+      } catch {
+        if (!cancelled) setLocations([])
+      }
     }
-    resolveAndLoad()
-    return () => { cancelled = true }
-  }, [newSelectedLocation, session])
+    
+    load()
+    const onUpdate = () => load()
+    try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
+    
+    return () => { 
+      cancelled = true
+      try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}
+    }
+  }, [companyData, newSelectedLocation])
+
+  // Dipendenti via SWR per companyId
+  const { data: employeesData } = useEmployees(companyData?.company?.id, true)
+  const employees = (employeesData || []).map((e: any) => ({
+    name: e.name,
+    role: e.role,
+    department: (e as any).department || 'sala'
+  }))
 
   const shiftNewTipDate = (delta: number) => {
     try {
@@ -137,40 +173,6 @@ export default function TipsPage() {
     if (!session) router.push('/login')
   }, [session, status, router])
 
-  // Dipendenti (caricati da API per companyId)
-  const [employees, setEmployees] = useState<Array<{ name: string; role: string; department: string }>>([])
-  useEffect(() => {
-    const loadEmployees = async () => {
-      const cid = (session?.user as any)?.companyId as string | undefined
-      if (cid) {
-        try {
-          const apiList = await getEmployeesByCompany(cid, { active: true })
-          let list = apiList.map((e: any) => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' }))
-          try {
-            const raw = localStorage.getItem('working_owner_mode_v1')
-            const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
-            const isOwner = ((session?.user as any)?.role || '').toUpperCase() === 'PROPRIETARIO'
-            const workingOwner = !!map[(session?.user as any)?.id || '']
-            if (isOwner && !workingOwner) {
-              list = list.filter(e => (e.role || '').toUpperCase() !== 'PROPRIETARIO')
-            }
-          } catch {}
-          setEmployees(list)
-        } catch {
-          // fallback demo solo in caso di errore
-          setEmployees([
-            { name: 'Giuseppe Chef', role: 'CHEF', department: 'cucina' },
-            { name: 'Maria Cameriera', role: 'DIPENDENTE_SALA', department: 'sala' },
-            { name: 'Luca Barista', role: 'DIPENDENTE_BAR', department: 'bar' },
-            { name: 'Anna Sous Chef', role: 'CAPO_PARTITA', department: 'cucina' },
-            { name: 'Marco Cameriere', role: 'DIPENDENTE_SALA', department: 'sala' },
-            { name: 'Sofia Cassiera', role: 'CASSIERE', department: 'sala' }
-          ])
-        }
-      }
-    }
-    if (session) loadEmployees()
-  }, [session])
 
   // Demo data mance mensili
   const [monthlyTips, setMonthlyTips] = useState<{[date: string]: DailyTip}>({
