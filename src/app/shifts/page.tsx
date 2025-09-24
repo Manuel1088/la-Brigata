@@ -222,10 +222,14 @@ export default function ShiftsPage() {
     if (employeesData) {
       try {
         const mapped = employeesData.map((e: any) => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' }))
-        // Assicurati che l'utente loggato sia presente
+        // Assicurati che l'utente loggato sia presente (match per id o per nome)
+        const myId = (session?.user?.id as string) || ''
         const meName = session?.user?.name || ''
-        if (meName && !mapped.some(e => e.name === meName)) {
-          // deduci reparto dall'eventuale ruolo o fallback a 'sala'
+        const foundById = employeesData.find((e: any) => e.id === myId)
+        const namePresent = meName && mapped.some(e => (e.name || '').toLowerCase() === meName.toLowerCase())
+        if (foundById && !namePresent) {
+          mapped.push({ name: foundById.name || meName || 'Me', role: foundById.role || (session?.user as any)?.role || 'DIPENDENTE', department: (foundById as any).department || 'sala' })
+        } else if (!foundById && meName && !namePresent) {
           const role = (session?.user as any)?.role as string | undefined
           const upperRole = (role || '').toUpperCase()
           const inferredDept = upperRole === 'HEAD_CHEF' ? 'cucina' : (upperRole === 'RESPONSABILE_SALA' || upperRole === 'CASSIERE') ? 'sala' : (upperRole === 'HEAD_BARMAN' || upperRole === 'HEAD_SOMMELIER') ? 'bar' : 'sala'
@@ -236,7 +240,7 @@ export default function ShiftsPage() {
       } catch {}
     }
     setEmployees(getEmployeesClient())
-  }, [employeesData, session?.user?.name, (session?.user as any)?.role])
+  }, [employeesData, session?.user?.id, session?.user?.name, (session?.user as any)?.role])
 
   useEffect(() => {
     const reload = () => { try { mutateEmployees() } catch {} }
