@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 
-import { getEmployeesFullClient, getEmployeesByCompany } from '@/lib/employees'
+import { useEmployees } from '@/hooks/useEmployees'
 
 // Database dipendenti realistico (derivato da storage condiviso)
 const employeesDefault = [
@@ -149,9 +149,29 @@ export default function EmployeesPage() {
   const [selectedLevel, setSelectedLevel] = useState('all')
   const [showActiveOnly, setShowActiveOnly] = useState(true)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
-  const [employees, setEmployees] = useState<any[]>([])
+  // SWR: carica dipendenti attivi per companyId
+  const { data: employeesData, isLoading: employeesLoading } = useEmployees((session?.user as any)?.companyId, true)
+  // Mappatura a struttura completa usata dalla UI
+  const employees = useMemo(() => {
+    const src = employeesData || []
+    return src.map((e: any, idx: number) => ({
+      id: e.id || String(idx + 1),
+      name: e.name,
+      email: e.email,
+      phone: e.phone || '+39 333 000 0000',
+      role: e.role,
+      department: (e as any).department || 'sala',
+      level: (e as any).level || 2,
+      hourlyRate: 12,
+      contractType: 'full-time',
+      startDate: new Date().toISOString().split('T')[0],
+      isActive: (e as any).isActive,
+      avatar: (e as any).avatar || '👤',
+      skills: [],
+      personalInfo: {}
+    }))
+  }, [employeesData])
   const [filteredEmployees, setFilteredEmployees] = useState<any[]>([])
-  const [loadingEmployees, setLoadingEmployees] = useState<boolean>(true)
 
   // Determina reparto effettivo dell'utente (nome → employees; fallback dal ruolo)
   const effectiveUserDepartment = useMemo(() => {
@@ -170,42 +190,13 @@ export default function EmployeesPage() {
   }, [userRole])
 
   useEffect(() => {
-    const reload = async () => {
-      const cid = (session?.user as any)?.companyId as string | undefined
-      if (!cid) { setLoadingEmployees(true); return }
-      setLoadingEmployees(true)
-      try {
-        const fromApi = await getEmployeesByCompany(cid, { active: true })
-        const full = fromApi.map((e, idx) => ({
-          id: e.id || String(idx + 1),
-          name: e.name,
-          email: e.email,
-          phone: e.phone || '+39 333 000 0000',
-          role: e.role,
-          department: (e as any).department || 'sala',
-          level: (e as any).level || 2,
-          hourlyRate: 12,
-          contractType: 'full-time',
-          startDate: new Date().toISOString().split('T')[0],
-          isActive: e.isActive,
-          avatar: e.avatar || '👤',
-          skills: [],
-          personalInfo: {}
-        }))
-        setEmployees(full)
-        setFilteredEmployees(full)
-      } finally {
-        setLoadingEmployees(false)
-      }
-      setSearchTerm('')
-      setSelectedDepartment('all')
-      setSelectedLevel('all')
-      setShowActiveOnly(true)
-    }
-    window.addEventListener('employees_updated', reload)
-    reload()
-    return () => window.removeEventListener('employees_updated', reload)
-  }, [session?.user])
+    // reset filtri quando cambia dataset
+    setFilteredEmployees(employees)
+    setSearchTerm('')
+    setSelectedDepartment('all')
+    setSelectedLevel('all')
+    setShowActiveOnly(true)
+  }, [employees])
 
   // Redirect se non autenticato
   useEffect(() => {
@@ -274,7 +265,7 @@ export default function EmployeesPage() {
   }
 
   const waitingForCompany = !!session && !(session.user as any)?.companyId
-  if (status === 'loading' || waitingForCompany || loadingEmployees) {
+  if (status === 'loading' || waitingForCompany || employeesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-2xl">Caricamento...</div>
