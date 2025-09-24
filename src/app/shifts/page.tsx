@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAutoScheduler } from '@/lib/autoScheduler'
 import { useEffect, useMemo, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useNotifications } from '@/hooks/useNotifications'
 // import legacy AI generator rimosso
 import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
@@ -28,6 +29,18 @@ export default function ShiftsPage() {
   const { generateSchedule, analyzePatterns } = useAutoScheduler()
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{name: string, dayIndex: number, isEdit?: boolean} | null>(null)
+  // Cambio turno (richiesta)
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
+  const [swapTarget, setSwapTarget] = useState<{
+    targetEmployee: string
+    targetDepartment: string
+    dayIndex: number
+    dateISO: string
+    targetShiftTime: string
+  } | null>(null)
+  const [offeredShiftTime, setOfferedShiftTime] = useState<string>('')
+  const [swapVersion, setSwapVersion] = useState(0)
+  const { notifyCustom } = useNotifications()
   // rimosso generatore AI legacy
   // AutoScheduler rimosso
   // Nuovi stati per gestione turni personalizzati
@@ -208,12 +221,22 @@ export default function ShiftsPage() {
   useEffect(() => {
     if (employeesData) {
       try {
-        setEmployees(employeesData.map((e: any) => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' })))
+        const mapped = employeesData.map((e: any) => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' }))
+        // Assicurati che l'utente loggato sia presente
+        const meName = session?.user?.name || ''
+        if (meName && !mapped.some(e => e.name === meName)) {
+          // deduci reparto dall'eventuale ruolo o fallback a 'sala'
+          const role = (session?.user as any)?.role as string | undefined
+          const upperRole = (role || '').toUpperCase()
+          const inferredDept = upperRole === 'HEAD_CHEF' ? 'cucina' : (upperRole === 'RESPONSABILE_SALA' || upperRole === 'CASSIERE') ? 'sala' : (upperRole === 'HEAD_BARMAN' || upperRole === 'HEAD_SOMMELIER') ? 'bar' : 'sala'
+          mapped.push({ name: meName, role: role || 'DIPENDENTE', department: inferredDept as any })
+        }
+        setEmployees(mapped)
         return
       } catch {}
     }
     setEmployees(getEmployeesClient())
-  }, [employeesData])
+  }, [employeesData, session?.user?.name, (session?.user as any)?.role])
 
   useEffect(() => {
     const reload = () => { try { mutateEmployees() } catch {} }
@@ -529,16 +552,30 @@ export default function ShiftsPage() {
   const handleCellClick = (employee: string, dayIndex: number) => {
     const employeeDept = employees.find(e => e.name === employee)?.department
     const canEdit = manageAll || (manageDept && employeeDept === effectiveUserDepartment)
-    if (!canEdit) return
     const shiftKey = `${employee}-${dayIndex}`
     const existingShift = shifts[shiftKey]
-    // Blocca edit se turno è "bloccato" (assegnato e passato mezzanotte non ancora) - opzionale: per ora blocco solo se assegnato manualmente? Manteniamo semplice: consentiamo edit sempre ai manager
-    setSelectedEmployee({ 
-      name: employee, 
-      dayIndex, 
-      isEdit: !!existingShift 
-    })
-    setIsShiftSelectorOpen(true)
+    if (canEdit) {
+      setSelectedEmployee({ name: employee, dayIndex, isEdit: !!existingShift })
+      setIsShiftSelectorOpen(true)
+      return
+    }
+    // Utente non abilitato: consenti richiesta cambio se clic su turno di un collega diverso da sé con un turno esistente
+    const isSelf = employee === (session?.user?.name || '')
+    if (!isSelf && existingShift && existingShift.time && existingShift.time !== 'RIPOSO') {
+      const dateISO = toISODate(weekDays[dayIndex])
+      setSwapTarget({
+        targetEmployee: employee,
+        targetDepartment: employeeDept || 'sala',
+        dayIndex,
+        dateISO,
+        targetShiftTime: existingShift.time as string
+      })
+      // Proponi come default il turno dell'utente (se presente) nello stesso giorno
+      const myKey = `${session?.user?.name || ''}-${dayIndex}`
+      const myShift = shifts[myKey]
+      setOfferedShiftTime(myShift?.time && myShift.time !== 'RIPOSO' ? (myShift.time as string) : '')
+      setIsSwapModalOpen(true)
+    }
   }
 
   // Funzione per modifica rapida
@@ -569,6 +606,41 @@ export default function ShiftsPage() {
     nextWeek.setDate(currentWeek.getDate() + 7)
     setCurrentWeek(nextWeek)
   }
+
+  // Utilità richieste cambio turno
+  type ShiftSwapRequest = {
+    id: string
+    dateISO: string
+    dayIndex: number
+    targetEmployeeName: string
+    targetDepartment: string
+    targetShiftTime: string
+    requesterId: string
+    requesterName: string
+    requesterDepartment: string
+    offeredShiftTime: string
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+    createdAt: string
+    decidedBy?: string
+    decidedAt?: string
+  }
+  const loadSwapRequests = (): ShiftSwapRequest[] => {
+    try {
+      const raw = localStorage.getItem('shift_swap_requests_v1')
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  }
+  const saveSwapRequests = (list: ShiftSwapRequest[]) => {
+    try { localStorage.setItem('shift_swap_requests_v1', JSON.stringify(list)) } catch {}
+    try { window.dispatchEvent(new Event('shift_swaps_updated')) } catch {}
+  }
+  useEffect(() => {
+    const onUpd = () => setSwapVersion(v => v + 1)
+    window.addEventListener('shift_swaps_updated', onUpd)
+    return () => window.removeEventListener('shift_swaps_updated', onUpd)
+  }, [])
 
   // Funzione handleShiftSelect (stub, da implementare se non esiste)
   const handleShiftSelect = (shift: any) => {
@@ -789,6 +861,8 @@ export default function ShiftsPage() {
                     if (manageAll) {
                       return selectedDepartment === 'all' || employee.department === selectedDepartment
                     }
+                    // Mostra sempre l'utente loggato
+                    if (employee.name === (session?.user?.name || '')) return true
                     return employee.department === effectiveUserDepartment
                   })
                   .map((employee) => (
@@ -1305,6 +1379,82 @@ export default function ShiftsPage() {
           </div>
         )}
       </main>
+      {/* Swap Request Modal */}
+      {isSwapModalOpen && swapTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black bg-opacity-30" onClick={() => setIsSwapModalOpen(false)}></div>
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4">
+            <div className="px-5 py-4 border-b flex items-center justify-between">
+              <div className="text-lg font-semibold text-gray-900">Richiesta Cambio Turno</div>
+              <button onClick={() => setIsSwapModalOpen(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="text-sm text-gray-700">
+                Stai chiedendo di cambiare turno con <span className="font-semibold">{swapTarget.targetEmployee}</span> per il giorno <span className="font-semibold">{new Date(swapTarget.dateISO).toLocaleDateString('it-IT')}</span>.
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                <div className="font-medium text-gray-900 mb-1">Turno selezionato:</div>
+                <div className="text-gray-800">{swapTarget.targetDepartment?.toUpperCase()} • {swapTarget.targetShiftTime}</div>
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-900">Il tuo turno desiderato (stesso giorno)</label>
+                <input
+                  type="text"
+                  value={offeredShiftTime}
+                  onChange={(e) => setOfferedShiftTime(e.target.value)}
+                  placeholder="es. 11:00-15:00 / 19:00-23:00"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                />
+                <div className="text-xs text-gray-600">Suggerimenti rapidi:</div>
+                <div className="flex flex-wrap gap-2">
+                  {(getAllShiftsForDepartment(effectiveUserDepartment) || [])
+                    .filter(s => s.time && s.time !== 'RIPOSO' && s.time !== 'custom')
+                    .slice(0, 6)
+                    .map(s => (
+                      <button key={s.id} onClick={() => setOfferedShiftTime(s.time)} className="px-2 py-1 rounded border text-xs hover:bg-orange-50">
+                        {s.time}
+                      </button>
+                    ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button onClick={() => setIsSwapModalOpen(false)} className="px-3 py-2 text-sm rounded border bg-white hover:bg-gray-50">Annulla</button>
+                <button
+                  onClick={() => {
+                    if (!offeredShiftTime) { alert('Inserisci un orario desiderato'); return }
+                    try {
+                      const list = loadSwapRequests()
+                      const req: ShiftSwapRequest = {
+                        id: `swap_${Date.now()}`,
+                        dateISO: swapTarget.dateISO,
+                        dayIndex: swapTarget.dayIndex,
+                        targetEmployeeName: swapTarget.targetEmployee,
+                        targetDepartment: swapTarget.targetDepartment,
+                        targetShiftTime: swapTarget.targetShiftTime,
+                        requesterId: (session?.user?.id as string) || '',
+                        requesterName: session?.user?.name || '',
+                        requesterDepartment: effectiveUserDepartment,
+                        offeredShiftTime: offeredShiftTime,
+                        status: 'PENDING',
+                        createdAt: new Date().toISOString()
+                      }
+                      saveSwapRequests([req, ...list])
+                      notifyCustom('INFO', 'SHIFTS', 'Richiesta cambio turno', `${req.requesterName} → ${req.targetEmployeeName} • ${new Date(req.dateISO).toLocaleDateString('it-IT')}`, false, [
+                        { label: 'Gestisci', action: 'open_shift_swaps', variant: 'primary', icon: '👁️' }
+                      ])
+                      alert('Richiesta inviata per approvazione')
+                    } catch {}
+                    setIsSwapModalOpen(false)
+                  }}
+                  className="px-3 py-2 text-sm rounded bg-orange-600 text-white hover:bg-orange-700"
+                >
+                  Invia richiesta
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
