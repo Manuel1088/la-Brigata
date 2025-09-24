@@ -41,24 +41,9 @@ export default function TipsPage() {
   const [tipsKey, setTipsKey] = useState<string>('')
   const [waitingCtx, setWaitingCtx] = useState<boolean>(true)
   useEffect(() => {
-    const resolve = async () => {
-      try {
-        const rid = (session?.user as any)?.restaurantId as string | undefined
-        if (rid) {
-          setTipsKey(`tipEntries_v1::${rid}`)
-          return
-        }
-        const uid = (session?.user as any)?.id
-        if (!uid) return
-        const res = await fetch(`/api/users/${uid}/company`)
-        const data = await res.json()
-        const firstRest = data?.company?.restaurants?.[0]?.id as string | undefined
-        if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
-      } finally {
-        setWaitingCtx(false)
-      }
-    }
-    if (session) resolve()
+    const rid = (session?.user as any)?.restaurantId as string | undefined
+    if (rid) setTipsKey(`tipEntries_v1::${rid}`)
+    setWaitingCtx(false)
   }, [session])
 
   useEffect(() => {

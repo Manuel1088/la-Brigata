@@ -62,21 +62,11 @@ export default function DailyTipsPage() {
     if (!canManage) router.push('/tips')
   }, [session, status, router])
 
-  // Risolvi chiave per ristorante e carica storico
+  // Risolvi chiave per ristorante e carica storico (senza fetch)
   useEffect(() => {
-    const resolve = async () => {
-      try {
-        const rid = (session?.user as any)?.restaurantId as string | undefined
-        if (rid) { setTipsKey(`tipEntries_v1::${rid}`); return }
-        const uid = (session?.user as any)?.id
-        if (!uid) return
-        const res = await fetch(`/api/users/${uid}/company`)
-        const data = await res.json()
-        const firstRest = data?.company?.restaurants?.[0]?.id as string | undefined
-        if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
-      } finally { setWaitingCtx(false) }
-    }
-    if (session) resolve()
+    const rid = (session?.user as any)?.restaurantId as string | undefined
+    if (rid) setTipsKey(`tipEntries_v1::${rid}`)
+    setWaitingCtx(false)
   }, [session])
 
   useEffect(() => {
@@ -115,6 +105,17 @@ export default function DailyTipsPage() {
         if (!uid) return
         const res = await fetch(`/api/users/${uid}/company`)
         const data = await res.json()
+        // Gestione tipsKey qui (priorità a restaurantId su sessione, altrimenti primo ristorante dell'azienda)
+        if (!cancelled) {
+          const rid = (session?.user as any)?.restaurantId as string | undefined
+          if (rid) {
+            setTipsKey(`tipEntries_v1::${rid}`)
+          } else {
+            const firstRest = data?.company?.restaurants?.[0]?.id as string | undefined
+            if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
+          }
+          setWaitingCtx(false)
+        }
         const fiscal: string | undefined = data?.company?.fiscalCode
         if (!fiscal) return
         const key = `booking_areas_v1::${fiscal}`
