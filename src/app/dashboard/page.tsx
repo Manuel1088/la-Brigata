@@ -15,7 +15,7 @@ import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
 import EmployeeDashboard from '@/components/EmployeeDashboard'
 import CashierDashboard from '@/components/CashierDashboard'
 import ManagerDashboard from '@/components/ManagerDashboard'
-import { getEmployeesByCompany } from '@/lib/employees'
+// import { getEmployeesByCompany } from '@/lib/employees'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -53,11 +53,9 @@ export default function DashboardPage() {
   
   const { logReadAction } = useAudit()
   
-  // Test hook SWR
-  const { data: companyData, isLoading: companyLoading, error: companyError } = useCompanyData(session?.user?.id)
-  const { data: employees, isLoading: employeesLoading } = useEmployees(companyData?.company?.id, true)
-  console.log('SWR Test - Company:', { companyData, companyLoading, companyError })
-  console.log('SWR Test - Employees:', { employees, employeesLoading })
+  // SWR hooks
+  const { data: companyData } = useCompanyData(session?.user?.id)
+  const { data: employees } = useEmployees((session?.user as any)?.companyId, true)
   
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false)
   // Visibilità sezioni dashboard gestite da Gestione Accessi (/access)

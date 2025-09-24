@@ -19,7 +19,7 @@ import {
   proposeLeaveDates,
   updateLeaveRequestStatus 
 } from '@/lib/leaveSystem'
-import { getEmployeesByCompany } from '@/lib/employees'
+import { useEmployees } from '@/hooks/useEmployees'
 import { UserRole } from '@/types/roles'
 
 export default function LeavesPage() {
@@ -57,6 +57,7 @@ export default function LeavesPage() {
   const isGlobalManager = [UserRole.PROPRIETARIO, UserRole.ADMIN, UserRole.DIRETTORE, UserRole.MANAGER].includes(userRole as UserRole)
   const isDeptLocked = !isGlobalManager
   const [employees, setEmployees] = useState<any[]>([])
+  const { data: employeesData, mutate: mutateEmployees } = useEmployees((session?.user as any)?.companyId, true)
 
   // Helper per date sicure
   const toSafeDate = (value: any): Date | null => {
@@ -92,34 +93,33 @@ export default function LeavesPage() {
   }
   
   useEffect(() => {
-    const loadEmployees = async () => {
-      const cid = (session?.user as any)?.companyId as string | undefined
-      if (cid) {
-        try {
-          const apiList = await getEmployeesByCompany(cid, { active: true })
-          const list = apiList.map((e: any) => ({ id: e.id, name: e.name, role: e.role, department: (e as any).department || 'sala' }))
-          // Nascondi proprietario se modalità lavoratore disattiva
-          let filtered = list
-          try {
-            const raw = localStorage.getItem('working_owner_mode_v1')
-            const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
-            const isOwner = ((session?.user as any)?.role || '').toUpperCase() === 'PROPRIETARIO'
-            const workingOwner = !!map[(session?.user as any)?.id || '']
-            if (isOwner && !workingOwner) {
-              filtered = list.filter(e => (e.role || '').toUpperCase() !== 'PROPRIETARIO')
-            }
-          } catch {}
-          setEmployees(filtered)
-          const me = filtered.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
-          const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
-          setSelectedDept(dept)
-        } catch {
-          setEmployees([])
+    if (!employeesData) return
+    try {
+      const list = employeesData.map((e: any) => ({ id: e.id, name: e.name, role: e.role, department: (e as any).department || 'sala' }))
+      let filtered = list
+      try {
+        const raw = localStorage.getItem('working_owner_mode_v1')
+        const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
+        const isOwner = ((session?.user as any)?.role || '').toUpperCase() === 'PROPRIETARIO'
+        const workingOwner = !!map[(session?.user as any)?.id || '']
+        if (isOwner && !workingOwner) {
+          filtered = list.filter(e => (e.role || '').toUpperCase() !== 'PROPRIETARIO')
         }
-      }
+      } catch {}
+      setEmployees(filtered)
+      const me = filtered.find(e => e.id === (session?.user?.id as string) || e.name === (session?.user?.name || ''))
+      const dept = (me?.department || 'sala') as 'cucina' | 'sala' | 'bar'
+      setSelectedDept(dept)
+    } catch {
+      setEmployees([])
     }
-    if (session) loadEmployees()
-  }, [session])
+  }, [employeesData, session?.user?.id, session?.user?.name, (session?.user as any)?.role])
+
+  useEffect(() => {
+    const onEmp = () => { try { mutateEmployees() } catch {} }
+    try { window.addEventListener('employees_updated', onEmp as any) } catch {}
+    return () => { try { window.removeEventListener('employees_updated', onEmp as any) } catch {} }
+  }, [mutateEmployees])
 
   if (status === 'loading') {
     return (

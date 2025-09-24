@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { usePermissions } from '@/hooks/usePermissions'
-import { getEmployeesByCompany } from '@/lib/employees'
+import { useEmployees } from '@/hooks/useEmployees'
 
 type DashboardSection = 'bookings' | 'sale' | 'customers' | 'leaves' | 'shifts' | 'rest' | 'tips' | 'admin'
 type ShiftViewScope = 'own' | 'department' | 'all'
@@ -25,34 +25,32 @@ export default function AccessStandalonePage() {
   const { canAccessAdmin } = usePermissions()
 
   const [employees, setEmployees] = useState<any[]>([])
+  const { data: employeesData, mutate: mutateEmployees } = useEmployees((session?.user as any)?.companyId, true)
   const [accessMap, setAccessMap] = useState<AccessStore>({})
   const [permMap, setPermMap] = useState<Record<string, { permissions: string[] }>>({})
   const waitingForCompany = !!session && !(session.user as any)?.companyId
 
   useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      try {
-        const cid = (session?.user as any)?.companyId as string | undefined
-        if (!cid) return
-        const api = await getEmployeesByCompany(cid, { active: true })
-        const list = api.map((e: any, idx: number) => ({
-          id: e.id || String(idx + 1),
-          name: e.name,
-          avatar: e.avatar || '👤',
-          department: e.department || 'sala',
-          level: (e as any).level || 2,
-        }))
-        if (!cancelled) setEmployees(list)
-      } catch {
-        if (!cancelled) setEmployees([])
-      }
+    if (!employeesData) return
+    try {
+      const list = employeesData.map((e: any, idx: number) => ({
+        id: e.id || String(idx + 1),
+        name: e.name,
+        avatar: e.avatar || '👤',
+        department: (e as any).department || 'sala',
+        level: (e as any).level || 2,
+      }))
+      setEmployees(list)
+    } catch {
+      setEmployees([])
     }
-    if (session) load()
-    const onEmp = () => load()
+  }, [employeesData])
+
+  useEffect(() => {
+    const onEmp = () => { try { mutateEmployees() } catch {} }
     try { window.addEventListener('employees_updated', onEmp as any) } catch {}
-    return () => { cancelled = true; try { window.removeEventListener('employees_updated', onEmp as any) } catch {} }
-  }, [session])
+    return () => { try { window.removeEventListener('employees_updated', onEmp as any) } catch {} }
+  }, [mutateEmployees])
 
   useEffect(() => {
     try {

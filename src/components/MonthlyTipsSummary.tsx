@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { getEmployeesFullClient, getEmployeesByCompany } from '@/lib/employees'
+import { getEmployeesFullClient } from '@/lib/employees'
+import { useEmployees } from '@/hooks/useEmployees'
 
 type Props = {
   month?: Date
@@ -23,6 +24,7 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
   const [tipEntries, setTipEntries] = useState<TipEntry[]>([])
   const [employeesList, setEmployeesList] = useState<any[]>(getEmployeesFullClient())
   const waitingForCompany = !!session && !(session.user as any)?.companyId
+  const { data: employeesData, mutate: mutateEmployees } = useEmployees((session?.user as any)?.companyId, true)
 
   const targetMonth = month ? new Date(month) : new Date()
   const monthName = targetMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
@@ -48,16 +50,11 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    const loadEmployees = async () => {
-      let empList = getEmployeesFullClient()
+    if (employeesData && Array.isArray(employeesData)) {
       try {
-        const cid = (session?.user as any)?.companyId as string | undefined
-        if (cid) {
-          const api = await getEmployeesByCompany(cid, { active: true })
-          empList = api
-            .filter(e => (e as any).role !== 'PROPRIETARIO')
-            .map((e, idx) => ({
+        const empList = employeesData
+          .filter((e: any) => (e as any).role !== 'PROPRIETARIO')
+          .map((e: any, idx: number) => ({
             id: e.id || String(idx + 1),
             name: e.name,
             email: e.email,
@@ -73,18 +70,19 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
             skills: [],
             personalInfo: {}
           })) as any
-        }
+        setEmployeesList(empList)
+        return
       } catch {}
-      if (!cancelled) setEmployeesList(empList)
     }
-    loadEmployees()
-    const onEmployeesUpdate = () => loadEmployees()
+    // Fallback lato client
+    setEmployeesList(getEmployeesFullClient())
+  }, [employeesData])
+
+  useEffect(() => {
+    const onEmployeesUpdate = () => { try { mutateEmployees() } catch {} }
     try { window.addEventListener('employees_updated', onEmployeesUpdate as any) } catch {}
-    return () => {
-      cancelled = true
-      try { window.removeEventListener('employees_updated', onEmployeesUpdate as any) } catch {}
-    }
-  }, [session?.user])
+    return () => { try { window.removeEventListener('employees_updated', onEmployeesUpdate as any) } catch {} }
+  }, [mutateEmployees])
 
   const totals = useMemo(() => {
     const monthEntries = tipEntries.filter(e => {

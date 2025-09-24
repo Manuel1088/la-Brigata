@@ -10,7 +10,7 @@ import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
 import { getEmployeesClient, type SimpleEmployee } from '@/lib/employees'
-import { getEmployeesByCompany } from '@/lib/employees'
+import { useEmployees } from '@/hooks/useEmployees'
 
 interface ShiftCell {
   employee: string
@@ -203,26 +203,28 @@ export default function ShiftsPage() {
 
   // Dipendenti del ristorante
   const [employees, setEmployees] = useState<SimpleEmployee[]>([])
+  const { data: employeesData, mutate: mutateEmployees } = useEmployees((session?.user as any)?.companyId, true)
   const [userDepartment, setUserDepartment] = useState<string>('sala')
   useEffect(() => {
-    const reload = async () => {
-      const cid = (session?.user as any)?.companyId as string | undefined
-      if (cid) {
-        try {
-          const api = await getEmployeesByCompany(cid, { active: true })
-          setEmployees(api.map(e => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' })))
-          return
-        } catch {}
-      }
-      setEmployees(getEmployeesClient())
+    if (employeesData) {
+      try {
+        setEmployees(employeesData.map((e: any) => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' })))
+        return
+      } catch {}
     }
+    setEmployees(getEmployeesClient())
+  }, [employeesData])
+
+  useEffect(() => {
+    const reload = () => { try { mutateEmployees() } catch {} }
     window.addEventListener('employees_updated', reload)
-    // reattivo anche regole riposi
     const reloadRest = () => setRestVersion(v => v + 1)
     window.addEventListener('rest_rules_updated', reloadRest)
-    reload()
-    return () => window.removeEventListener('employees_updated', reload)
-  }, [session])
+    return () => {
+      window.removeEventListener('employees_updated', reload)
+      window.removeEventListener('rest_rules_updated', reloadRest)
+    }
+  }, [mutateEmployees])
 
   // Calcola reparto utente (nome → employees, altrimenti mappa ruolo)
   const effectiveUserDepartment = useMemo(() => {
