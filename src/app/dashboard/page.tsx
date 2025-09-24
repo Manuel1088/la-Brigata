@@ -1,5 +1,6 @@
 'use client'
-
+import { useCompanyData } from '@/hooks/useCompanyData'
+import { useEmployees } from '@/hooks/useEmployees'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -51,6 +52,12 @@ export default function DashboardPage() {
   const isManager = role === UserRole.MANAGER || role === UserRole.PROPRIETARIO
   
   const { logReadAction } = useAudit()
+  
+  // Test hook SWR
+  const { data: companyData, isLoading: companyLoading, error: companyError } = useCompanyData(session?.user?.id)
+  const { data: employees, isLoading: employeesLoading } = useEmployees(companyData?.company?.id, true)
+  console.log('SWR Test - Company:', { companyData, companyLoading, companyError })
+  console.log('SWR Test - Employees:', { employees, employeesLoading })
   
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false)
   // Visibilità sezioni dashboard gestite da Gestione Accessi (/access)
