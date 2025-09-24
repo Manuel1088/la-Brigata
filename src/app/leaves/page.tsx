@@ -51,6 +51,7 @@ export default function LeavesPage() {
   })
   const [selectedDayISO, setSelectedDayISO] = useState<string | null>(null)
   const [isDayModalOpen, setIsDayModalOpen] = useState<boolean>(false)
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
   const [filterEmployee, setFilterEmployee] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [selectedDept, setSelectedDept] = useState<'cucina' | 'sala' | 'bar'>('sala')
@@ -176,15 +177,7 @@ export default function LeavesPage() {
                 
                 {canExportLeaves() && (
                   <button
-                    onClick={() => {
-                      const dataStr = JSON.stringify({ balances, requests, stats }, null, 2)
-                      const dataBlob = new Blob([dataStr], {type: 'application/json'})
-                      const url = URL.createObjectURL(dataBlob)
-                      const link = document.createElement('a')
-                      link.href = url
-                      link.download = 'ferie-dati.json'
-                      link.click()
-                    }}
+                    onClick={() => setIsExportOpen(true)}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
                   >
                     📤 Esporta
@@ -964,6 +957,124 @@ export default function LeavesPage() {
           </div>
         </main>
       </div>
+
+      {/* Export Action Sheet */}
+      {isExportOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          {/* backdrop */}
+          <div
+            className="absolute inset-0 bg-black bg-opacity-40"
+            onClick={() => setIsExportOpen(false)}
+          />
+          {/* sheet */}
+          <div className="relative w-full max-w-md mx-auto rounded-t-2xl bg-white shadow-xl overflow-hidden">
+            <div className="py-3 flex justify-center">
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+            </div>
+            <div className="px-4 pb-2">
+              <div className="text-center text-sm text-gray-500 mb-3">Come vuoi esportare?</div>
+              <div className="flex flex-col divide-y divide-gray-200 rounded-xl overflow-hidden border border-gray-200 mb-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      const payload = { balances, requests, stats }
+                      const dataStr = JSON.stringify(payload, null, 2)
+                      const blob = new Blob([dataStr], { type: 'application/json' })
+                      const file = new File([blob], 'ferie-permessi.json', { type: 'application/json' })
+                      if ((navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
+                        await (navigator as any).share({
+                          files: [file],
+                          title: 'Ferie e Permessi',
+                          text: 'Esportazione dati ferie e permessi'
+                        })
+                      } else if (navigator.share) {
+                        await navigator.share({
+                          title: 'Ferie e Permessi',
+                          text: dataStr
+                        })
+                      } else {
+                        await navigator.clipboard.writeText(dataStr)
+                        alert('Dati copiati negli appunti')
+                      }
+                      setIsExportOpen(false)
+                    } catch {}
+                  }}
+                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
+                >
+                  📱 Condividi (iOS/Android)
+                </button>
+                <button
+                  onClick={() => {
+                    try {
+                      const payload = { balances, requests, stats }
+                      const dataStr = JSON.stringify(payload, null, 2)
+                      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+                      const url = URL.createObjectURL(dataBlob)
+                      const link = document.createElement('a')
+                      link.href = url
+                      link.download = 'ferie-permessi.json'
+                      link.click()
+                    } catch {}
+                  }}
+                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
+                >
+                  💾 Scarica JSON
+                </button>
+                <button
+                  onClick={() => {
+                    try {
+                      const rows = [
+                        ['id','userId','type','startDate','endDate','status','createdAt'] as const,
+                        ...requests.map(r => [
+                          r.id,
+                          r.userId,
+                          r.type,
+                          (r.startDate instanceof Date ? r.startDate : new Date(r.startDate)).toISOString().split('T')[0],
+                          (r.endDate instanceof Date ? r.endDate : new Date(r.endDate)).toISOString().split('T')[0],
+                          r.status,
+                          (r.createdAt instanceof Date ? r.createdAt : new Date(r.createdAt as any)).toISOString()
+                        ])
+                      ]
+                      const csv = rows.map(row => row.map(v => {
+                        const s = String(v ?? '')
+                        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+                      }).join(',')).join('\n')
+                      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+                      const url = URL.createObjectURL(blob)
+                      const link = document.createElement('a')
+                      link.href = url
+                      link.download = 'ferie-permessi.csv'
+                      link.click()
+                    } catch {}
+                  }}
+                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
+                >
+                  📄 Scarica CSV (Richieste)
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const payload = { balances, requests, stats }
+                      const dataStr = JSON.stringify(payload, null, 2)
+                      await navigator.clipboard.writeText(dataStr)
+                      alert('Copiato negli appunti')
+                    } catch {}
+                  }}
+                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
+                >
+                  📋 Copia negli appunti
+                </button>
+              </div>
+              <button
+                onClick={() => setIsExportOpen(false)}
+                className="w-full py-3 text-center bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-900 mb-4"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PermissionGuard>
   )
 }
