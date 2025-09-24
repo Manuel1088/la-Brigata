@@ -2,6 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useCompanyData } from '@/hooks/useCompanyData'
 
 // Le sale vengono lette dinamicamente da localStorage (booking_areas_v1)
 
@@ -43,40 +44,31 @@ export default function InsertTipsPage() {
     }
   }, [session, status, router])
 
-  // Carica sale esistenti dalla pagina /sale, scope per codice fiscale azienda
+  // Carica sale esistenti dalla pagina /sale, scope per codice fiscale azienda (via hook condiviso)
+  const { data: companyData } = useCompanyData(session?.user?.id)
   useEffect(() => {
     let cancelled = false
-    const resolveAndLoad = async () => {
+    const fiscal: string | undefined = companyData?.company?.fiscalCode
+    if (!fiscal) return
+    const key = `booking_areas_v1::${fiscal}`
+    const load = () => {
       try {
-        const uid = (session?.user as any)?.id
-        if (!uid) return
-        const res = await fetch(`/api/users/${uid}/company`)
-        const data = await res.json()
-        const fiscal: string | undefined = data?.company?.fiscalCode
-        if (!fiscal) return
-        const key = `booking_areas_v1::${fiscal}`
-        const load = () => {
-          try {
-            const raw = localStorage.getItem(key)
-            const areas = raw ? JSON.parse(raw) : []
-            const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
-            if (!cancelled) {
-              setLocations(locs)
-              if (!selectedLocation && locs.length > 0) setSelectedLocation(locs[0].id)
-            }
-          } catch {
-            if (!cancelled) setLocations([])
-          }
+        const raw = localStorage.getItem(key)
+        const areas = raw ? JSON.parse(raw) : []
+        const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
+        if (!cancelled) {
+          setLocations(locs)
+          if (!selectedLocation && locs.length > 0) setSelectedLocation(locs[0].id)
         }
-        load()
-        const onUpdate = () => load()
-        try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
-        return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {} }
-      } catch {}
+      } catch {
+        if (!cancelled) setLocations([])
+      }
     }
-    resolveAndLoad()
-    return () => { cancelled = true }
-  }, [selectedLocation, session])
+    load()
+    const onUpdate = () => load()
+    try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
+    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}; cancelled = true }
+  }, [selectedLocation, companyData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

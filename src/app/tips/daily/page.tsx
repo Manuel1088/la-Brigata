@@ -2,6 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { useCompanyData } from '@/hooks/useCompanyData'
 
 // Definizione dei tipi
 type Employee = {
@@ -96,46 +97,26 @@ export default function DailyTipsPage() {
     }
   }, [tipsKey])
 
-  // Carica sale esistenti per editing location, scoping per azienda
+  // Carica sale esistenti per editing location, scoping per azienda (via hook)
+  const { data: companyData } = useCompanyData(session?.user?.id)
   useEffect(() => {
     let cancelled = false
-    const resolveAndLoad = async () => {
+    const fiscal: string | undefined = companyData?.company?.fiscalCode
+    if (!fiscal) return
+    const key = `booking_areas_v1::${fiscal}`
+    const load = () => {
       try {
-        const uid = (session?.user as any)?.id
-        if (!uid) return
-        const res = await fetch(`/api/users/${uid}/company`)
-        const data = await res.json()
-        // Gestione tipsKey qui (priorità a restaurantId su sessione, altrimenti primo ristorante dell'azienda)
-        if (!cancelled) {
-          const rid = (session?.user as any)?.restaurantId as string | undefined
-          if (rid) {
-            setTipsKey(`tipEntries_v1::${rid}`)
-          } else {
-            const firstRest = data?.company?.restaurants?.[0]?.id as string | undefined
-            if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
-          }
-          setWaitingCtx(false)
-        }
-        const fiscal: string | undefined = data?.company?.fiscalCode
-        if (!fiscal) return
-        const key = `booking_areas_v1::${fiscal}`
-        const load = () => {
-          try {
-            const raw = localStorage.getItem(key)
-            const areas = raw ? JSON.parse(raw) : []
-            const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
-            if (!cancelled) setLocations(locs)
-          } catch { if (!cancelled) setLocations([]) }
-        }
-        load()
-        const onUpdate = () => load()
-        try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
-        return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {} }
-      } catch {}
+        const raw = localStorage.getItem(key)
+        const areas = raw ? JSON.parse(raw) : []
+        const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
+        if (!cancelled) setLocations(locs)
+      } catch { if (!cancelled) setLocations([]) }
     }
-    resolveAndLoad()
-    return () => { cancelled = true }
-  }, [session])
+    load()
+    const onUpdate = () => load()
+    try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
+    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}; cancelled = true }
+  }, [companyData])
 
   const startEdit = (e: TipEntry) => {
     setEditingId(e.id)
