@@ -963,7 +963,7 @@ export default function LeavesPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center">
           {/* backdrop */}
           <div
-            className="absolute inset-0 bg-black bg-opacity-40"
+            className="absolute inset-0 bg-transparent"
             onClick={() => setIsExportOpen(false)}
           />
           {/* sheet */}
