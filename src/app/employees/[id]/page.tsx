@@ -3,7 +3,9 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getLeaveBalances } from '@/lib/leaveSystem'
-import { getEmployeesFullClient, getEmployeesByCompany, type EmployeeFull } from '@/lib/employees'
+import type { EmployeeFull } from '@/lib/employees'
+import { useCompanyData } from '@/hooks/useCompanyData'
+import { useEmployees } from '@/hooks/useEmployees'
 
 // Configurazione ruoli e livelli (stessa del form nuovo)
 const roleConfig = {
@@ -69,7 +71,11 @@ export default function EmployeeDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [companyData, setCompanyData] = useState<any | null>(null)
+  // Company data via SWR hook
+  const { data: companyResp } = useCompanyData(session?.user?.id)
+  const companyData = companyResp?.company as any | undefined
+  // Employees via SWR hook (active only)
+  const { data: employees } = useEmployees(companyData?.id, true)
   const [newSkill, setNewSkill] = useState('')
   const [workingOwner, setWorkingOwner] = useState(false)
   // Saldi Ferie/ROL
@@ -85,66 +91,59 @@ export default function EmployeeDetailPage() {
     }
   }, [session, status, router])
 
-  // Carica dipendente dal DB o da mock, con fallback alla sessione per utenti registrati
+  // Carica dipendente da SWR (employees) con fallback alla sessione per utenti registrati
   useEffect(() => {
     if (status === 'loading') return
-    const load = async () => {
-      try {
-        const companyId = (session?.user as any)?.companyId as string | undefined
-        const sessionId = session?.user?.id as string | undefined
-        const sessionEmail = session?.user?.email as string | undefined
-        if (companyId) {
-          try {
-            const api = await getEmployeesByCompany(companyId)
-            const found = api.find(e => e.id === (paramId || sessionId)) || api.find(e => e.email?.toLowerCase() === (sessionEmail || '').toLowerCase())
-            if (found) {
-              const mapped: EmployeeFull = {
-                id: found.id || sessionId || 'unknown',
-                name: found.name,
-                email: found.email,
-                phone: found.phone || '',
-                role: found.role,
-                department: (found as any).department || 'sala',
-                level: (found as any).level || 2,
-                hourlyRate: 12,
-                contractType: 'full-time',
-                startDate: new Date().toISOString().split('T')[0],
-                isActive: !!found.isActive,
-                avatar: found.avatar || '👤',
-                skills: [],
-                personalInfo: {}
-              }
-              setEmployee(mapped)
-              setProfileReady(true)
-              return
-            }
-          } catch {}
-        }
-        // Ultimo fallback: costruisci dal contenuto della sessione
-        if (session?.user) {
-          const fallback: EmployeeFull = {
-            id: sessionId || 'unknown',
-            name: session.user.name || 'Utente',
-            email: session.user.email || '',
-            phone: (session.user as any).phone || '',
-            role: (session.user as any).role || 'DIPENDENTE',
-            department: 'sala',
-            level: (session.user as any).level || 2,
+    try {
+      const sessionId = session?.user?.id as string | undefined
+      const sessionEmail = session?.user?.email as string | undefined
+      if (employees && employees.length > 0) {
+        const found: any = employees.find((e: any) => e.id === (paramId || sessionId)) || employees.find((e: any) => (e.email || '').toLowerCase() === (sessionEmail || '').toLowerCase())
+        if (found) {
+          const mapped: EmployeeFull = {
+            id: found.id || sessionId || 'unknown',
+            name: found.name,
+            email: found.email,
+            phone: (found as any).phone || '',
+            role: found.role,
+            department: (found as any).department || 'sala',
+            level: (found as any).level || 2,
             hourlyRate: 12,
             contractType: 'full-time',
             startDate: new Date().toISOString().split('T')[0],
-            isActive: true,
-            avatar: (session.user as any).avatar || '👤',
+            isActive: !!(found as any).isActive,
+            avatar: (found as any).avatar || '👤',
             skills: [],
             personalInfo: {}
           }
-          setEmployee(fallback)
+          setEmployee(mapped)
           setProfileReady(true)
+          return
         }
-      } catch {}
-    }
-    load()
-  }, [paramId, session?.user, status])
+      }
+      // Fallback: costruisci dal contenuto della sessione
+      if (session?.user) {
+        const fallback: EmployeeFull = {
+          id: sessionId || 'unknown',
+          name: session.user.name || 'Utente',
+          email: session.user.email || '',
+          phone: (session.user as any).phone || '',
+          role: (session.user as any).role || 'DIPENDENTE',
+          department: 'sala',
+          level: (session.user as any).level || 2,
+          hourlyRate: 12,
+          contractType: 'full-time',
+          startDate: new Date().toISOString().split('T')[0],
+          isActive: true,
+          avatar: (session.user as any).avatar || '👤',
+          skills: [],
+          personalInfo: {}
+        }
+        setEmployee(fallback)
+        setProfileReady(true)
+      }
+    } catch {}
+  }, [paramId, session?.user, status, employees])
 
   // Carica eventuale residuo anno precedente da localStorage (opzionale)
   useEffect(() => {
@@ -186,35 +185,7 @@ export default function EmployeeDetailPage() {
     } catch {}
   }
 
-  // Carica profilo aziendale per il profilo visualizzato (dipendente o proprietario)
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      try {
-        const targetUserId = (paramId && paramId.length > 0) ? paramId : ((session?.user as any)?.id as string | undefined)
-        if (!targetUserId) { setCompanyData(null); return }
-        const res = await fetch(`/api/users/${targetUserId}/company`)
-        if (res.ok) {
-          const data = await res.json()
-          if (!cancelled && data?.company) {
-            setCompanyData(data.company)
-            return
-          }
-        }
-        // Fallback: usa companyId da sessione (copre account demo proprietari)
-        const sidCompanyId = (session?.user as any)?.companyId as string | undefined
-        if (sidCompanyId) {
-          const res2 = await fetch(`/api/companies/${sidCompanyId}`)
-          if (res2.ok) {
-            const data2 = await res2.json()
-            if (!cancelled) setCompanyData(data2?.company || data2)
-          }
-        }
-      } catch {}
-    }
-    load()
-    return () => { cancelled = true }
-  }, [paramId, session?.user])
+  // (Profilo aziendale ora viene da useCompanyData hook)
 
   // Gestione competenze
   const addSkill = () => {
