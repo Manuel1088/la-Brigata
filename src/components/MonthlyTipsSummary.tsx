@@ -178,14 +178,14 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
 
       {/* Export Action Sheet */}
       {isExportOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* backdrop transparent to keep page visible */}
           <div
             className="absolute inset-0 bg-transparent"
             onClick={() => setIsExportOpen(false)}
           />
           {/* sheet */}
-          <div className="relative w-full max-w-md mx-auto rounded-t-2xl bg-white shadow-xl overflow-hidden">
+          <div className="relative w-full max-w-md mx-auto rounded-2xl bg-white shadow-xl overflow-hidden">
             <div className="py-3 flex justify-center">
               <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
             </div>
