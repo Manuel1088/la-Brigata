@@ -6,16 +6,51 @@ import { addEmployeeClient } from '@/lib/employees'
 
 // Configurazione ruoli e livelli
 const roleConfig = {
+  // Esistenti
   EXECUTIVE_CHEF: { name: 'Executive Chef', level: 5, department: 'cucina', avatar: '👨‍🍳', minRate: 22, maxRate: 30 },
-  SOUS_CHEF: { name: 'Sous Chef', level: 4, department: 'cucina', avatar: '👩‍🍳', minRate: 18, maxRate: 22 },
-  CHEF_DE_PARTIE: { name: 'Chef de Partie', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 15, maxRate: 18 },
-  CHEF: { name: 'Chef', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 15, maxRate: 18 },
-  CAPO_PARTITA: { name: 'Capo Partita', level: 2, department: 'cucina', avatar: '👨‍🍳', minRate: 12, maxRate: 15 },
+  SOUS_CHEF: { name: 'Sous Chef', level: 5, department: 'cucina', avatar: '👩‍🍳', minRate: 20, maxRate: 26 },
+  CHEF_DE_PARTIE: { name: 'Chef de Partie', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 14, maxRate: 18 },
+  CHEF: { name: 'Chef', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 14, maxRate: 18 },
+  CAPO_PARTITA: { name: 'Capo Partita', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 13, maxRate: 16 },
   RESPONSABILE_SALA: { name: 'Responsabile Sala', level: 4, department: 'sala', avatar: '👩‍💼', minRate: 18, maxRate: 22 },
-  DIPENDENTE_SALA: { name: 'Dipendente Sala', level: 2, department: 'sala', avatar: '👩‍💼', minRate: 12, maxRate: 15 },
-  DIPENDENTE_BAR: { name: 'Dipendente Bar', level: 2, department: 'bar', avatar: '👨‍💼', minRate: 12, maxRate: 15 },
-  CASSIERE: { name: 'Cassiere', level: 3, department: 'sala', avatar: '👩‍💼', minRate: 15, maxRate: 18 },
-  MANAGER: { name: 'Manager', level: 5, department: 'sala', avatar: '👨‍💼', minRate: 22, maxRate: 30 }
+  DIPENDENTE_SALA: { name: 'Dipendente Sala', level: 2, department: 'sala', avatar: '👩‍💼', minRate: 11, maxRate: 14 },
+  DIPENDENTE_BAR: { name: 'Dipendente Bar', level: 2, department: 'bar', avatar: '👨‍💼', minRate: 11, maxRate: 14 },
+  CASSIERE: { name: 'Cassiere', level: 3, department: 'sala', avatar: '💳', minRate: 13, maxRate: 16 },
+  MANAGER: { name: 'Manager', level: 5, department: 'sala', avatar: '👨‍💼', minRate: 22, maxRate: 30 },
+
+  // PRIMO LIVELLO - DIRIGENTI
+  DIRETTORE_GENERALE: { name: 'Direttore Generale', level: 5, department: 'sala', avatar: '💼', minRate: 28, maxRate: 40 },
+  PROPRIETARIO_OPERATIVO: { name: 'Proprietario Operativo', level: 5, department: 'sala', avatar: '👑', minRate: 28, maxRate: 40 },
+
+  // SECONDO LIVELLO - QUADRI
+  RESTAURANT_MANAGER: { name: 'Restaurant Manager/Direttore di Sala', level: 5, department: 'sala', avatar: '🧑‍💼', minRate: 22, maxRate: 30 },
+  EXEC_SOUS_CHEF: { name: 'Executive Chef/Sous Chef', level: 5, department: 'cucina', avatar: '👨‍🍳', minRate: 22, maxRate: 30 },
+
+  // TERZO LIVELLO - IMPIEGATI SPECIALIZZATI
+  CHEF_DE_CUISINE: { name: 'Chef de Cuisine', level: 4, department: 'cucina', avatar: '👨‍🍳', minRate: 18, maxRate: 24 },
+  MAITRE: { name: 'Maître/Capo Sala', level: 4, department: 'sala', avatar: '🎩', minRate: 18, maxRate: 24 },
+  SOMMELIER: { name: 'Sommelier', level: 4, department: 'sala', avatar: '🍷', minRate: 18, maxRate: 24 },
+  BARMAN_SENIOR: { name: 'Barman Senior', level: 4, department: 'bar', avatar: '🍸', minRate: 18, maxRate: 24 },
+
+  // QUARTO LIVELLO - IMPIEGATI QUALIFICATI
+  CHEF_DE_PARTIE_SPECIAL: { name: 'Chef de Partie (Settorista)', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 14, maxRate: 18 },
+  PIZZAIOLO_SPECIALIZZATO: { name: 'Pizzaiolo Specializzato', level: 3, department: 'cucina', avatar: '🍕', minRate: 14, maxRate: 18 },
+
+  // QUINTO LIVELLO - OPERAI SPECIALIZZATI
+  CAMERIERE_SENIOR: { name: 'Cameriere Senior', level: 3, department: 'sala', avatar: '🍽️', minRate: 13, maxRate: 16 },
+  CUOCO_QUALIFICATO: { name: 'Cuoco Qualificato', level: 3, department: 'cucina', avatar: '👨‍🍳', minRate: 13, maxRate: 16 },
+  BARMAN: { name: 'Barman', level: 3, department: 'bar', avatar: '🍹', minRate: 13, maxRate: 16 },
+
+  // SESTO LIVELLO - OPERAI QUALIFICATI
+  CAMERIERE: { name: 'Cameriere', level: 2, department: 'sala', avatar: '🍽️', minRate: 11, maxRate: 14 },
+  COMMIS_DE_CUISINE: { name: 'Commis de Cuisine', level: 2, department: 'cucina', avatar: '🍳', minRate: 11, maxRate: 14 },
+  DEMI_CHEF_DE_PARTIE: { name: 'Demi Chef de Partie', level: 2, department: 'cucina', avatar: '🍳', minRate: 11, maxRate: 14 },
+
+  // SETTIMO LIVELLO - OPERAI COMUNI
+  AIUTO_CUOCO: { name: 'Aiuto Cuoco', level: 1, department: 'cucina', avatar: '🥣', minRate: 10, maxRate: 12 },
+  COMMIS_DI_SALA: { name: 'Commis di Sala', level: 1, department: 'sala', avatar: '🧑‍🍽️', minRate: 10, maxRate: 12 },
+  RUNNER: { name: 'Runner/Porta Piatti', level: 1, department: 'sala', avatar: '🏃🍽️', minRate: 10, maxRate: 12 },
+  LAVAPIATTI: { name: 'Lavapiatti/Sguattero', level: 1, department: 'cucina', avatar: '🧼', minRate: 10, maxRate: 12 }
 }
 
 const departments = {
