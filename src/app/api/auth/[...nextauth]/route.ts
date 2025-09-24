@@ -135,6 +135,10 @@ const demoAccounts = {
 }
 
 const handler = NextAuth({
+  // Usa SECRET stabile: env in prod, fallback dev per evitare warning/decryption fail
+  secret: process.env.NEXTAUTH_SECRET ?? (process.env.NODE_ENV === 'development' ? 'dev-nextauth-secret' : undefined),
+  // Consente host dinamici in dev/preview se NEXTAUTH_URL non è impostato
+  trustHost: true,
   providers: [
     CredentialsProvider({
       name: 'credentials',
