@@ -4,11 +4,8 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
-import useSWR from 'swr'
 import { useCompanyData } from '@/hooks/useCompanyData'
 import { useEmployees } from '@/hooks/useEmployees'
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 interface TipDistribution {
   employeeName: string
@@ -44,16 +41,8 @@ export default function TipsPage() {
   const [tipEntries, setTipEntries] = useState<any[]>([])
   const [tipsKey, setTipsKey] = useState<string>('')
   const [waitingCtx, setWaitingCtx] = useState<boolean>(true)
-  // Hook SWR per company data (sostituisce entrambe le chiamate)
-  const { data: companyData, error: companyError } = useSWR(
-    session?.user?.id ? `/api/users/${session.user.id}/company` : null,
-    fetcher,
-    { 
-      revalidateOnFocus: false,
-      dedupingInterval: 60000,
-      revalidateOnReconnect: false
-    }
-  )
+  // Company data via shared hook
+  const { data: companyData, error: companyError } = useCompanyData(session?.user?.id)
 
   // Primo useEffect ottimizzato - usa SWR data
   useEffect(() => {
@@ -126,7 +115,7 @@ export default function TipsPage() {
   }, [companyData, newSelectedLocation])
 
   // Dipendenti via SWR per companyId
-  const { data: employeesData } = useEmployees(companyData?.company?.id, true)
+  const { data: employeesData } = useEmployees((session?.user as any)?.companyId as string | undefined, true)
   const employees = (employeesData || []).map((e: any) => ({
     name: e.name,
     role: e.role,
