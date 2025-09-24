@@ -26,6 +26,93 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
   const waitingForCompany = !!session && !(session.user as any)?.companyId
   const { data: employeesData, mutate: mutateEmployees } = useEmployees((session?.user as any)?.companyId, true)
   const [isExportOpen, setIsExportOpen] = useState(false)
+  
+  // Helpers export
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  const openPrintPDF = (html: string) => {
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.open()
+    w.document.write(`<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Mance</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px;color:#111}.h1{font-size:20px;font-weight:700;margin-bottom:8px}.meta{color:#555;margin-bottom:16px}.table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid #ddd;padding:6px;font-size:12px;text-align:left}.small{font-size:12px;color:#555}</style></head><body>${html}</body></html>`)
+    w.document.close()
+    setTimeout(() => { try { w.print() } catch {} }, 300)
+  }
+  const buildTipsHTML = () => {
+    const headers = ['Data','Tipo','Importo','Location']
+    const rows = tipEntries
+      .filter(e => { const d = new Date(e.date); return d.getFullYear() === targetMonth.getFullYear() && d.getMonth() === targetMonth.getMonth() })
+      .map(e => `<tr><td>${new Date(e.date).toLocaleDateString('it-IT')}</td><td>${e.type}</td><td>€${Number(e.amount).toFixed(2)}</td><td>${e.location}</td></tr>`)
+      .join('')
+    return `
+      <div class=\"h1\">Riepilogo Mance - ${monthName}</div>
+      <div class=\"meta\">${new Date().toLocaleString('it-IT')}</div>
+      <div class=\"small\">Totale: Contanti €${totals.cash.toFixed(2)} • Carta €${totals.card.toFixed(2)} • Estere €${totals.foreign.toFixed(2)}</div>
+      <table class=\"table\" cellspacing=\"0\" cellpadding=\"0\"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    `
+  }
+  const exportExcelTips = () => {
+    const html = `
+      <html><head><meta charset=\"UTF-8\"></head><body>
+      <table border=\"1\">
+        <tr><th>Data</th><th>Tipo</th><th>Importo</th><th>Location</th></tr>
+        ${tipEntries
+          .filter(e => { const d = new Date(e.date); return d.getFullYear() === targetMonth.getFullYear() && d.getMonth() === targetMonth.getMonth() })
+          .map(e => `<tr><td>${new Date(e.date).toISOString().split('T')[0]}</td><td>${e.type}</td><td>${Number(e.amount)}</td><td>${e.location}</td></tr>`)
+          .join('')}
+      </table>
+      </body></html>
+    `
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' })
+    downloadBlob(blob, `mance-${targetMonth.getFullYear()}-${(targetMonth.getMonth()+1).toString().padStart(2,'0')}.xls`)
+  }
+  const exportPNGTips = async () => {
+    try {
+      const width = 1200
+      const height = 800
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, width, height)
+      ctx.fillStyle = '#111111'
+      ctx.font = 'bold 26px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif'
+      ctx.fillText(`Mance - ${monthName}`, 32, 48)
+      ctx.font = '14px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif'
+      ctx.fillStyle = '#555'
+      ctx.fillText(new Date().toLocaleString('it-IT'), 32, 72)
+      ctx.fillStyle = '#111'
+      const headers = ['Data','Tipo','Importo','Location']
+      const cols = [160, 180, 180, 300]
+      let x = 32
+      let y = 110
+      ctx.font = 'bold 14px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif'
+      headers.forEach((h, i) => { ctx.fillText(h, x, y); x += cols[i] })
+      y += 8
+      ctx.strokeStyle = '#ddd'
+      ctx.beginPath(); ctx.moveTo(32, y); ctx.lineTo(width - 32, y); ctx.stroke()
+      y += 22
+      ctx.font = '13px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif'
+      const monthRows = tipEntries
+        .filter(e => { const d = new Date(e.date); return d.getFullYear() === targetMonth.getFullYear() && d.getMonth() === targetMonth.getMonth() })
+        .slice(0, 26)
+      monthRows.forEach(e => {
+        x = 32
+        const row = [new Date(e.date).toLocaleDateString('it-IT'), e.type, `€${Number(e.amount).toFixed(2)}`, e.location]
+        row.forEach((val, i) => { ctx.fillText(String(val), x, y); x += cols[i] })
+        y += 22
+      })
+      const blob: Blob = await new Promise(res => canvas.toBlob(b => res(b || new Blob()), 'image/png'))
+      downloadBlob(blob, `mance-${targetMonth.getFullYear()}-${(targetMonth.getMonth()+1).toString().padStart(2,'0')}.png`)
+    } catch {}
+  }
 
   const targetMonth = month ? new Date(month) : new Date()
   const monthName = targetMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
@@ -192,97 +279,10 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
             <div className="px-4 pb-2">
               <div className="text-center text-sm text-gray-500 mb-3">Come vuoi esportare?</div>
               <div className="flex flex-col divide-y divide-gray-200 rounded-xl overflow-hidden border border-gray-200 mb-3">
-                <button
-                  onClick={async () => {
-                    try {
-                      const monthEntries = tipEntries.filter(e => {
-                        const d = new Date(e.date)
-                        return d.getFullYear() === targetMonth.getFullYear() && d.getMonth() === targetMonth.getMonth()
-                      })
-                      const payload = { month: monthName, totals, entries: monthEntries }
-                      const dataStr = JSON.stringify(payload, null, 2)
-                      const blob = new Blob([dataStr], { type: 'application/json' })
-                      const file = new File([blob], `mance-${targetMonth.getFullYear()}-${(targetMonth.getMonth()+1).toString().padStart(2,'0')}.json`, { type: 'application/json' })
-                      if ((navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
-                        await (navigator as any).share({ files: [file], title: 'Mance', text: `Riepilogo ${monthName}` })
-                      } else if (navigator.share) {
-                        await navigator.share({ title: 'Mance', text: dataStr })
-                      } else {
-                        await navigator.clipboard.writeText(dataStr)
-                        alert('Dati copiati negli appunti')
-                      }
-                      setIsExportOpen(false)
-                    } catch {}
-                  }}
-                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
-                >
-                  📱 Condividi (iOS/Android)
-                </button>
-                <button
-                  onClick={() => {
-                    try {
-                      const monthEntries = tipEntries.filter(e => {
-                        const d = new Date(e.date)
-                        return d.getFullYear() === targetMonth.getFullYear() && d.getMonth() === targetMonth.getMonth()
-                      })
-                      const payload = { month: monthName, totals, entries: monthEntries }
-                      const dataStr = JSON.stringify(payload, null, 2)
-                      const dataBlob = new Blob([dataStr], { type: 'application/json' })
-                      const url = URL.createObjectURL(dataBlob)
-                      const link = document.createElement('a')
-                      link.href = url
-                      link.download = `mance-${targetMonth.getFullYear()}-${(targetMonth.getMonth()+1).toString().padStart(2,'0')}.json`
-                      link.click()
-                    } catch {}
-                  }}
-                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
-                >
-                  💾 Scarica JSON
-                </button>
-                <button
-                  onClick={() => {
-                    try {
-                      const headers = ['date','type','amount','location'] as const
-                      const monthRows = tipEntries
-                        .filter(e => {
-                          const d = new Date(e.date)
-                          return d.getFullYear() === targetMonth.getFullYear() && d.getMonth() === targetMonth.getMonth()
-                        })
-                        .map(e => [e.date, e.type, e.amount, e.location])
-                      const rows = [headers as unknown as string[], ...monthRows.map(r => r.map(x => String(x)))]
-                      const csv = rows.map(row => row.map(v => {
-                        const s = String(v ?? '')
-                        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
-                      }).join(',')).join('\n')
-                      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-                      const url = URL.createObjectURL(blob)
-                      const link = document.createElement('a')
-                      link.href = url
-                      link.download = `mance-${targetMonth.getFullYear()}-${(targetMonth.getMonth()+1).toString().padStart(2,'0')}.csv`
-                      link.click()
-                    } catch {}
-                  }}
-                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
-                >
-                  📄 Scarica CSV (Mance del mese)
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      const monthEntries = tipEntries.filter(e => {
-                        const d = new Date(e.date)
-                        return d.getFullYear() === targetMonth.getFullYear() && d.getMonth() === targetMonth.getMonth()
-                      })
-                      const payload = { month: monthName, totals, entries: monthEntries }
-                      const dataStr = JSON.stringify(payload, null, 2)
-                      await navigator.clipboard.writeText(dataStr)
-                      alert('Copiato negli appunti')
-                    } catch {}
-                  }}
-                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
-                >
-                  📋 Copia negli appunti
-                </button>
+                <button onClick={() => { try { openPrintPDF(buildTipsHTML()) } catch {} }} className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900">🧾 PDF (stampa/salva)</button>
+                <button onClick={() => { try { exportExcelTips() } catch {} }} className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900">📊 Excel (.xls)</button>
+                <button onClick={() => { try { exportPNGTips() } catch {} }} className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900">🖼️ PNG (immagine)</button>
+                <button onClick={async () => { try { const headers = ['date','type','amount','location'] as const; const monthRows = tipEntries.filter(e => { const d = new Date(e.date); return d.getFullYear() === targetMonth.getFullYear() && d.getMonth() === targetMonth.getMonth() }).map(e => [e.date, e.type, e.amount, e.location]); const rows = [headers as unknown as string[], ...monthRows.map(r => r.map(x => String(x)))]; const csv = rows.map(row => row.map(v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s }).join(',')).join('\n'); await navigator.clipboard.writeText(csv); alert('Copiato negli appunti') } catch {} }} className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900">📋 Copia testo (CSV)</button>
               </div>
               <button
                 onClick={() => setIsExportOpen(false)}

@@ -59,6 +59,103 @@ export default function LeavesPage() {
   const isDeptLocked = !isGlobalManager
   const [employees, setEmployees] = useState<any[]>([])
   const { data: employeesData, mutate: mutateEmployees } = useEmployees((session?.user as any)?.companyId, true)
+  
+  // Helpers esportazione
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  const openPrintPDF = (html: string) => {
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.open()
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ferie e Permessi</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px;color:#111}.h1{font-size:20px;font-weight:700;margin-bottom:8px}.meta{color:#555;margin-bottom:16px}.table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid #ddd;padding:6px;font-size:12px;text-align:left}.small{font-size:12px;color:#555}</style></head><body>${html}</body></html>`)
+    w.document.close()
+    setTimeout(() => { try { w.print() } catch {} }, 300)
+  }
+
+  const buildLeavesHTML = () => {
+    const rows = requests.map(r => {
+      const s = r.startDate instanceof Date ? r.startDate : new Date(r.startDate)
+      const e = r.endDate instanceof Date ? r.endDate : new Date(r.endDate)
+      return `<tr><td>${r.id}</td><td>${r.userId}</td><td>${LEAVE_TYPES[r.type]?.name || r.type}</td><td>${s.toLocaleDateString('it-IT')}</td><td>${e.toLocaleDateString('it-IT')}</td><td>${r.status}</td></tr>`
+    }).join('')
+    const totals = `Totale richieste: ${requests.length}`
+    return `
+      <div class="h1">Ferie e Permessi</div>
+      <div class="meta">${new Date().toLocaleString('it-IT')}</div>
+      <div class="small">${totals}</div>
+      <table class="table" cellspacing="0" cellpadding="0">
+        <thead><tr><th>ID</th><th>Utente</th><th>Tipo</th><th>Inizio</th><th>Fine</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `
+  }
+
+  const exportExcelLeaves = () => {
+    // HTML table as .xls (compatibile con Excel)
+    const html = `
+      <html><head><meta charset="UTF-8"></head><body>
+      <table border="1">
+        <tr><th>ID</th><th>Utente</th><th>Tipo</th><th>Inizio</th><th>Fine</th><th>Status</th></tr>
+        ${requests.map(r => {
+          const s = r.startDate instanceof Date ? r.startDate : new Date(r.startDate)
+          const e = r.endDate instanceof Date ? r.endDate : new Date(r.endDate)
+          return `<tr><td>${r.id}</td><td>${r.userId}</td><td>${LEAVE_TYPES[r.type]?.name || r.type}</td><td>${s.toISOString().split('T')[0]}</td><td>${e.toISOString().split('T')[0]}</td><td>${r.status}</td></tr>`
+        }).join('')}
+      </table>
+      </body></html>
+    `
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' })
+    downloadBlob(blob, 'ferie-permessi.xls')
+  }
+
+  const exportPNGLearves = async () => {
+    try {
+      const width = 1400
+      const height = 900
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, width, height)
+      ctx.fillStyle = '#111111'
+      ctx.font = 'bold 28px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif'
+      ctx.fillText('Ferie e Permessi', 32, 48)
+      ctx.font = '14px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif'
+      ctx.fillStyle = '#555'
+      ctx.fillText(new Date().toLocaleString('it-IT'), 32, 72)
+      ctx.fillStyle = '#111'
+      const headers = ['ID','Utente','Tipo','Inizio','Fine','Stato']
+      const cols = [120, 160, 220, 160, 160, 120]
+      let x = 32
+      let y = 110
+      ctx.font = 'bold 14px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif'
+      headers.forEach((h, i) => { ctx.fillText(h, x, y); x += cols[i] })
+      y += 8
+      ctx.strokeStyle = '#ddd'
+      ctx.beginPath(); ctx.moveTo(32, y); ctx.lineTo(width - 32, y); ctx.stroke()
+      y += 22
+      ctx.font = '13px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif'
+      const maxRows = 25
+      const slice = requests.slice(0, maxRows)
+      slice.forEach(r => {
+        x = 32
+        const s = r.startDate instanceof Date ? r.startDate : new Date(r.startDate)
+        const e = r.endDate instanceof Date ? r.endDate : new Date(r.endDate)
+        const row = [r.id, r.userId, LEAVE_TYPES[r.type]?.name || r.type, s.toLocaleDateString('it-IT'), e.toLocaleDateString('it-IT'), r.status]
+        row.forEach((val, i) => { ctx.fillText(String(val), x, y); x += cols[i] })
+        y += 22
+      })
+      const blob: Blob = await new Promise(res => canvas.toBlob(b => res(b || new Blob()), 'image/png'))
+      downloadBlob(blob, 'ferie-permessi.png')
+    } catch {}
+  }
 
   // Helper per date sicure
   const toSafeDate = (value: any): Date | null => {
@@ -975,53 +1072,29 @@ export default function LeavesPage() {
               <div className="text-center text-sm text-gray-500 mb-3">Come vuoi esportare?</div>
               <div className="flex flex-col divide-y divide-gray-200 rounded-xl overflow-hidden border border-gray-200 mb-3">
                 <button
+                  onClick={() => {
+                    try {
+                      openPrintPDF(buildLeavesHTML())
+                    } catch {}
+                  }}
+                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
+                >
+                  🧾 PDF (stampa/salva)
+                </button>
+                <button
+                  onClick={() => { try { exportExcelLeaves() } catch {} }}
+                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
+                >
+                  📊 Excel (.xls)
+                </button>
+                <button
+                  onClick={() => { try { exportPNGLearves() } catch {} }}
+                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
+                >
+                  🖼️ PNG (immagine)
+                </button>
+                <button
                   onClick={async () => {
-                    try {
-                      const payload = { balances, requests, stats }
-                      const dataStr = JSON.stringify(payload, null, 2)
-                      const blob = new Blob([dataStr], { type: 'application/json' })
-                      const file = new File([blob], 'ferie-permessi.json', { type: 'application/json' })
-                      if ((navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
-                        await (navigator as any).share({
-                          files: [file],
-                          title: 'Ferie e Permessi',
-                          text: 'Esportazione dati ferie e permessi'
-                        })
-                      } else if (navigator.share) {
-                        await navigator.share({
-                          title: 'Ferie e Permessi',
-                          text: dataStr
-                        })
-                      } else {
-                        await navigator.clipboard.writeText(dataStr)
-                        alert('Dati copiati negli appunti')
-                      }
-                      setIsExportOpen(false)
-                    } catch {}
-                  }}
-                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
-                >
-                  📱 Condividi (iOS/Android)
-                </button>
-                <button
-                  onClick={() => {
-                    try {
-                      const payload = { balances, requests, stats }
-                      const dataStr = JSON.stringify(payload, null, 2)
-                      const dataBlob = new Blob([dataStr], { type: 'application/json' })
-                      const url = URL.createObjectURL(dataBlob)
-                      const link = document.createElement('a')
-                      link.href = url
-                      link.download = 'ferie-permessi.json'
-                      link.click()
-                    } catch {}
-                  }}
-                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
-                >
-                  💾 Scarica JSON
-                </button>
-                <button
-                  onClick={() => {
                     try {
                       const rows = [
                         ['id','userId','type','startDate','endDate','status','createdAt'] as const,
@@ -1039,30 +1112,13 @@ export default function LeavesPage() {
                         const s = String(v ?? '')
                         return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
                       }).join(',')).join('\n')
-                      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-                      const url = URL.createObjectURL(blob)
-                      const link = document.createElement('a')
-                      link.href = url
-                      link.download = 'ferie-permessi.csv'
-                      link.click()
-                    } catch {}
-                  }}
-                  className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
-                >
-                  📄 Scarica CSV (Richieste)
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      const payload = { balances, requests, stats }
-                      const dataStr = JSON.stringify(payload, null, 2)
-                      await navigator.clipboard.writeText(dataStr)
+                      await navigator.clipboard.writeText(csv)
                       alert('Copiato negli appunti')
                     } catch {}
                   }}
                   className="w-full py-3 text-center bg-white hover:bg-gray-50 transition text-gray-900"
                 >
-                  📋 Copia negli appunti
+                  📋 Copia testo (CSV)
                 </button>
               </div>
               <button
