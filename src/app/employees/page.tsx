@@ -264,64 +264,6 @@ export default function EmployeesPage() {
     }, 0)
   }
 
-  // Cambio Turno: richieste (viste e approvate qui da proprietario/direttore/manager)
-  type ShiftSwapRequest = {
-    id: string
-    dateISO: string
-    dayIndex: number
-    targetEmployeeName: string
-    targetDepartment: string
-    targetShiftTime: string
-    requesterId: string
-    requesterName: string
-    requesterDepartment: string
-    offeredShiftTime: string
-    status: 'PENDING' | 'APPROVED' | 'REJECTED'
-    createdAt: string
-    decidedBy?: string
-    decidedAt?: string
-  }
-  const [swapVersion, setSwapVersion] = useState(0)
-  const loadSwapRequests = (): ShiftSwapRequest[] => {
-    try { const raw = localStorage.getItem('shift_swap_requests_v1'); return raw ? JSON.parse(raw) : [] } catch { return [] }
-  }
-  const saveSwapRequests = (list: ShiftSwapRequest[]) => {
-    try { localStorage.setItem('shift_swap_requests_v1', JSON.stringify(list)) } catch {}
-    try { window.dispatchEvent(new Event('shift_swaps_updated')) } catch {}
-  }
-  useEffect(() => {
-    const onUpd = () => setSwapVersion(v => v + 1)
-    window.addEventListener('shift_swaps_updated', onUpd)
-    return () => window.removeEventListener('shift_swaps_updated', onUpd)
-  }, [])
-  const canDecideSwap = useMemo(() => {
-    const upper = (userRole || '').toUpperCase()
-    return ['PROPRIETARIO','DIRETTORE','MANAGER'].includes(upper)
-  }, [userRole])
-  const getWeekStartFromISO = (iso: string) => {
-    const d = new Date(iso)
-    const day = d.getDay()
-    const diff = (day === 0 ? -6 : 1) - day
-    d.setHours(0,0,0,0)
-    d.setDate(d.getDate() + diff)
-    const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-    return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
-  }
-  const applySwapToWeek = (req: ShiftSwapRequest) => {
-    try {
-      const weekKey = `shifts_${getWeekStartFromISO(req.dateISO)}`
-      let map: Record<string, { employee: string; time?: string; department?: string; role?: string }> = {}
-      try { const raw = localStorage.getItem(weekKey); map = raw ? JSON.parse(raw) : {} } catch { map = {} }
-      const aKey = `${req.targetEmployeeName}-${req.dayIndex}`
-      const bKey = `${req.requesterName}-${req.dayIndex}`
-      map[aKey] = { employee: req.targetEmployeeName, time: req.offeredShiftTime, department: req.targetDepartment }
-      map[bKey] = { employee: req.requesterName, time: req.targetShiftTime, department: req.requesterDepartment }
-      try { localStorage.setItem(weekKey, JSON.stringify(map)) } catch {}
-      try { window.dispatchEvent(new Event('employees_updated')) } catch {}
-      return true
-    } catch { return false }
-  }
-
   const waitingForCompany = !!session && !(session.user as any)?.companyId
   if (status === 'loading' || waitingForCompany || employeesLoading) {
     return (
@@ -388,58 +330,6 @@ export default function EmployeesPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Richieste Cambio Turno - visibili a tutti; decisione solo per proprietario/direttore/manager */}
-          <div className="bg-white p-6 rounded-lg shadow mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-gray-900">🔄 Richieste Cambio Turno</h3>
-              <button onClick={() => setSwapVersion(v => v + 1)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Aggiorna</button>
-            </div>
-            {(() => {
-              const list = loadSwapRequests()
-              if (!list || list.length === 0) {
-                return <div className="text-sm text-gray-600">Nessuna richiesta.</div>
-              }
-              const approve = (id: string) => {
-                const req = list.find(r => r.id === id)
-                if (!req) return
-                const ok = applySwapToWeek(req)
-                const updated: ShiftSwapRequest[] = list.map(r => r.id === id ? ({ ...r, status: (ok ? 'APPROVED' : 'REJECTED') as 'APPROVED' | 'REJECTED', decidedBy: (session?.user?.id as string) || '', decidedAt: new Date().toISOString() }) : r)
-                saveSwapRequests(updated)
-                setSwapVersion(v => v + 1)
-              }
-              const reject = (id: string) => {
-                const updated: ShiftSwapRequest[] = list.map(r => r.id === id ? ({ ...r, status: 'REJECTED' as 'REJECTED', decidedBy: (session?.user?.id as string) || '', decidedAt: new Date().toISOString() }) : r)
-                saveSwapRequests(updated)
-                setSwapVersion(v => v + 1)
-              }
-              return (
-                <div className="space-y-2">
-                  {list.map(r => (
-                    <div key={r.id} className="border rounded p-3 text-sm flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-gray-900">{new Date(r.dateISO).toLocaleDateString('it-IT')} • {r.status}</div>
-                        <div className="text-gray-700">{r.requesterName} propone <span className="font-semibold">{r.offeredShiftTime}</span> ⇄ {r.targetEmployeeName} <span className="font-semibold">{r.targetShiftTime}</span></div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {r.status === 'PENDING' ? (
-                          canDecideSwap ? (
-                            <>
-                              <button onClick={() => approve(r.id)} className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">Accetta</button>
-                              <button onClick={() => reject(r.id)} className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Rifiuta</button>
-                            </>
-                          ) : (
-                            <span className="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">In attesa</span>
-                          )
-                        ) : (
-                          <span className={`px-2 py-1 rounded text-xs ${r.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{r.status}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            })()}
-          </div>
           
           {/* Dashboard Statistiche */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

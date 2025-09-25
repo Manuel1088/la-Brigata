@@ -6,6 +6,7 @@ import { useAutoScheduler } from '@/lib/autoScheduler'
 import { useEffect, useMemo, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useNotifications } from '@/hooks/useNotifications'
+import { ShiftSwapManager } from '@/components/ShiftSwapManager'
 // import legacy AI generator rimosso
 import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
@@ -29,6 +30,7 @@ export default function ShiftsPage() {
   const { generateSchedule, analyzePatterns } = useAutoScheduler()
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{name: string, dayIndex: number, isEdit?: boolean} | null>(null)
+  const [isSwapManagerOpen, setIsSwapManagerOpen] = useState(false)
   // Cambio turno (richiesta)
   const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
   const [swapTarget, setSwapTarget] = useState<{
@@ -739,7 +741,7 @@ export default function ShiftsPage() {
                   {effectiveUserDepartment === 'cucina' ? '🔥 Cucina' : effectiveUserDepartment === 'sala' ? '🍽️ Sala' : '🍹 Bar'}
                 </button>
               )}
-            </div>
+              </div>
             {(manageAll || manageDept) && (
               <div className="flex items-center gap-2">
                 <button
@@ -770,6 +772,12 @@ export default function ShiftsPage() {
                 >
                   😴 Regole Riposi
                 </button>
+                  <button
+                    onClick={() => setIsSwapManagerOpen(true)}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm"
+                  >
+                    🔄 Cambi Turno
+                  </button>
               </div>
             )}
           </div>
@@ -1501,6 +1509,12 @@ export default function ShiftsPage() {
           </div>
         </div>
       )}
+      <ShiftSwapManager
+        isOpen={isSwapManagerOpen}
+        onClose={() => setIsSwapManagerOpen(false)}
+        userId={session?.user?.id}
+        userRole={(session?.user as any)?.role}
+      />
     </div>
   )
 }
