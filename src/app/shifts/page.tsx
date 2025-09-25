@@ -12,7 +12,6 @@ import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
 import { getEmployeesClient, type SimpleEmployee } from '@/lib/employees'
 import { useEmployees } from '@/hooks/useEmployees'
-import { useCompanyData } from '@/hooks/useCompanyData'
 
 interface ShiftCell {
   employee: string
@@ -42,7 +41,6 @@ export default function ShiftsPage() {
   const [offeredShiftTime, setOfferedShiftTime] = useState<string>('')
   const [swapVersion, setSwapVersion] = useState(0)
   const { notifyCustom } = useNotifications()
-  const { data: companyData } = useCompanyData(session?.user?.id)
   // rimosso generatore AI legacy
   // AutoScheduler rimosso
   // Nuovi stati per gestione turni personalizzati
@@ -611,7 +609,6 @@ export default function ShiftsPage() {
     requesterName: string
     requesterDepartment: string
     offeredShiftTime: string
-    companyFiscalCode: string
     status: 'PENDING' | 'APPROVED' | 'REJECTED'
     createdAt: string
     decidedBy?: string
@@ -1165,6 +1162,30 @@ export default function ShiftsPage() {
                 {(() => {
                   const list = loadSwapRequests()
                   if (!list || list.length === 0) return <div className="text-sm text-gray-600">Nessuna richiesta.</div>
+                  const approve = (id: string) => {
+                    const req = list.find(r => r.id === id)
+                    if (!req) return
+                    // Applica swap se stesso giorno
+                    const day = req.dayIndex
+                    const aKey = `${req.targetEmployeeName}-${day}`
+                    const bKey = `${req.requesterName}-${day}`
+                    const aShift = shifts[aKey]
+                    const bShift = shifts[bKey]
+                    const newMap = { ...shifts }
+                    newMap[aKey] = { employee: req.targetEmployeeName, time: req.offeredShiftTime, department: (newMap[aKey]?.department) || req.targetDepartment }
+                    newMap[bKey] = { employee: req.requesterName, time: req.targetShiftTime, department: (newMap[bKey]?.department) || req.requesterDepartment }
+                    setShifts(newMap)
+                    saveWeekShifts(newMap)
+                    const updated = list.map(r => r.id === id ? ({ ...r, status: 'APPROVED', decidedBy: (session?.user?.id as string) || '', decidedAt: new Date().toISOString() }) : r)
+                    saveSwapRequests(updated)
+                    alert('Cambio turno approvato')
+                    setSwapVersion(v => v + 1)
+                  }
+                  const reject = (id: string) => {
+                    const updated = list.map(r => r.id === id ? ({ ...r, status: 'REJECTED', decidedBy: (session?.user?.id as string) || '', decidedAt: new Date().toISOString() }) : r)
+                    saveSwapRequests(updated)
+                    setSwapVersion(v => v + 1)
+                  }
                   return (
                     <div className="space-y-2">
                       {list.map(r => (
@@ -1172,10 +1193,16 @@ export default function ShiftsPage() {
                           <div>
                             <div className="font-medium text-gray-900">{new Date(r.dateISO).toLocaleDateString('it-IT')} • {r.status}</div>
                             <div className="text-gray-700">{r.requesterName} propone <span className="font-semibold">{r.offeredShiftTime}</span> ⇄ {r.targetEmployeeName} <span className="font-semibold">{r.targetShiftTime}</span></div>
-                            {r.status === 'PENDING' && (<div className="text-xs text-gray-500 mt-1">In attesa di approvazione in Gestione Dipendenti</div>)}
                           </div>
-                          <div>
-                            <span className={`px-2 py-1 rounded text-xs ${r.status === 'APPROVED' ? 'bg-green-100 text-green-800' : r.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{r.status}</span>
+                          <div className="flex items-center gap-2">
+                            {r.status === 'PENDING' ? (
+                              <>
+                                <button onClick={() => approve(r.id)} className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">Approva</button>
+                                <button onClick={() => reject(r.id)} className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Rifiuta</button>
+                              </>
+                            ) : (
+                              <span className={`px-2 py-1 rounded text-xs ${r.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{r.status}</span>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1454,7 +1481,6 @@ export default function ShiftsPage() {
                         requesterName: session?.user?.name || '',
                         requesterDepartment: effectiveUserDepartment,
                         offeredShiftTime: offeredShiftTime,
-                        companyFiscalCode: companyData?.company?.fiscalCode || '',
                         status: 'PENDING',
                         createdAt: new Date().toISOString()
                       }
