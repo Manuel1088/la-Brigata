@@ -772,12 +772,25 @@ export default function ShiftsPage() {
                 >
                   😴 Regole Riposi
                 </button>
-                  <button
-                    onClick={() => setIsSwapManagerOpen(true)}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm"
-                  >
-                    🔄 Cambi Turno
-                  </button>
+                  {(() => {
+                    let pendingCount = 0
+                    try {
+                      const raw = localStorage.getItem('shift_swap_requests_v1')
+                      const list = raw ? JSON.parse(raw) as Array<{ status: string }> : []
+                      pendingCount = list.filter(r => r.status === 'PENDING').length
+                    } catch {}
+                    return (
+                      <button
+                        onClick={() => setIsSwapManagerOpen(true)}
+                        className="relative bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm"
+                      >
+                        🔄 Cambi Turno
+                        {pendingCount > 0 && (
+                          <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{pendingCount}</span>
+                        )}
+                      </button>
+                    )
+                  })()}
               </div>
             )}
           </div>

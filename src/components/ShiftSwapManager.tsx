@@ -61,6 +61,8 @@ export function ShiftSwapManager({ isOpen, onClose, userId, userRole }: Props) {
   const { data: session } = useSession()
   const [version, setVersion] = useState(0)
   const { notifyCustom } = useNotifications()
+  const [showPendingOnly, setShowPendingOnly] = useState(true)
+  const [deptFilter, setDeptFilter] = useState<'all'|'cucina'|'sala'|'bar'>('all')
 
   useEffect(() => {
     const onUpd = () => setVersion(v => v + 1)
@@ -69,6 +71,11 @@ export function ShiftSwapManager({ isOpen, onClose, userId, userRole }: Props) {
   }, [])
 
   const list = useMemo(() => loadSwapRequests(), [version, isOpen])
+  const filtered = useMemo(() => {
+    return list
+      .filter(r => showPendingOnly ? r.status === 'PENDING' : true)
+      .filter(r => deptFilter === 'all' ? true : (r.requesterDepartment === deptFilter || r.targetDepartment === deptFilter))
+  }, [list, showPendingOnly, deptFilter])
 
   const canModerate = useMemo(() => {
     const upper = (userRole || '').toUpperCase()
@@ -116,11 +123,26 @@ export function ShiftSwapManager({ isOpen, onClose, userId, userRole }: Props) {
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
         </div>
         <div className="p-5">
-          {list.length === 0 ? (
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" checked={showPendingOnly} onChange={(e)=> setShowPendingOnly(e.target.checked)} />
+                Solo in attesa
+              </label>
+              <select value={deptFilter} onChange={(e)=> setDeptFilter(e.target.value as any)} className="px-2 py-1 border rounded">
+                <option value="all">Tutti i reparti</option>
+                <option value="cucina">Cucina</option>
+                <option value="sala">Sala</option>
+                <option value="bar">Bar</option>
+              </select>
+            </div>
+            <div className="text-xs text-gray-600">Totale: {filtered.length}</div>
+          </div>
+          {filtered.length === 0 ? (
             <div className="text-sm text-gray-600">Nessuna richiesta.</div>
           ) : (
             <div className="space-y-3">
-              {list.map(r => (
+              {filtered.map(r => (
                 <div key={r.id} className="border rounded p-3 text-sm flex items-center justify-between">
                   <div>
                     <div className="font-medium text-gray-900">{new Date(r.dateISO).toLocaleDateString('it-IT')} • {r.status}</div>
