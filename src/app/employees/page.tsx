@@ -6,6 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 
 import { useEmployees } from '@/hooks/useEmployees'
+import { useCompanyData } from '@/hooks/useCompanyData'
 
 // Database dipendenti realistico (derivato da storage condiviso)
 const employeesDefault = [
@@ -142,6 +143,7 @@ export default function EmployeesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { canCreateEmployee, canEditEmployee, canDeleteEmployee, canExportEmployees, userRole } = usePermissions()
+  const { data: companyData } = useCompanyData(session?.user?.id)
   
   // Stati
   const [searchTerm, setSearchTerm] = useState('')
@@ -570,6 +572,83 @@ export default function EmployeesPage() {
               </div>
             )}
           </div>
+
+          {/* Richieste Cambio Turno - Approvazione */}
+          {manageAll && (
+            <div className="bg-white rounded-lg shadow mt-8">
+              <div className="px-6 py-4 border-b flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">🔄 Richieste Cambio Turno (Azienda)</h3>
+                <button onClick={() => { try { window.dispatchEvent(new Event('shift_swaps_updated')) } catch {} }} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Aggiorna</button>
+              </div>
+              <div className="p-6">
+                {(() => {
+                  type ShiftSwapRequest = {
+                    id: string
+                    dateISO: string
+                    dayIndex: number
+                    targetEmployeeName: string
+                    targetDepartment: string
+                    targetShiftTime: string
+                    requesterId: string
+                    requesterName: string
+                    requesterDepartment: string
+                    offeredShiftTime: string
+                    companyFiscalCode: string
+                    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+                    createdAt: string
+                    decidedBy?: string
+                    decidedAt?: string
+                  }
+                  const load = (): ShiftSwapRequest[] => { try { const raw = localStorage.getItem('shift_swap_requests_v1'); return raw ? JSON.parse(raw) : [] } catch { return [] } }
+                  const save = (list: ShiftSwapRequest[]) => { try { localStorage.setItem('shift_swap_requests_v1', JSON.stringify(list)) } catch {} try { window.dispatchEvent(new Event('shift_swaps_updated')) } catch {} }
+                  const list = load().filter(r => (r.companyFiscalCode || '') === (companyData?.company?.fiscalCode || ''))
+                  if (list.length === 0) return <div className="text-sm text-gray-600">Nessuna richiesta da approvare.</div>
+                  const getWeekKey = (iso: string) => {
+                    const d = new Date(iso)
+                    const day = d.getDay()
+                    const diff = (day === 0 ? -6 : 1) - day
+                    d.setHours(0,0,0,0)
+                    d.setDate(d.getDate() + diff)
+                    const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+                    return `shifts_${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`
+                  }
+                  const applySwap = (r: ShiftSwapRequest) => {
+                    const key = getWeekKey(r.dateISO)
+                    let map: Record<string, { employee: string; time?: string; department?: string; role?: string }> = {}
+                    try { const raw = localStorage.getItem(key); map = raw ? JSON.parse(raw) : {} } catch {}
+                    const day = r.dayIndex
+                    const aKey = `${r.targetEmployeeName}-${day}`
+                    const bKey = `${r.requesterName}-${day}`
+                    map[aKey] = { employee: r.targetEmployeeName, time: r.offeredShiftTime, department: r.targetDepartment }
+                    map[bKey] = { employee: r.requesterName, time: r.targetShiftTime, department: r.requesterDepartment }
+                    try { localStorage.setItem(key, JSON.stringify(map)) } catch {}
+                  }
+                  return (
+                    <div className="space-y-2">
+                      {list.map(r => (
+                        <div key={r.id} className="border rounded p-3 text-sm flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-gray-900">{new Date(r.dateISO).toLocaleDateString('it-IT')} • {r.status}</div>
+                            <div className="text-gray-700">{r.requesterName} propone <span className="font-semibold">{r.offeredShiftTime}</span> ⇄ {r.targetEmployeeName} <span className="font-semibold">{r.targetShiftTime}</span></div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {r.status === 'PENDING' ? (
+                              <>
+                                <button onClick={() => { const updated: ShiftSwapRequest[] = load().map((x: ShiftSwapRequest) => x.id === r.id ? ({ ...x, status: 'APPROVED', decidedBy: (session?.user?.id as string) || '', decidedAt: new Date().toISOString() }) : x); applySwap(r); save(updated) }} className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">Approva</button>
+                                <button onClick={() => { const updated: ShiftSwapRequest[] = load().map((x: ShiftSwapRequest) => x.id === r.id ? ({ ...x, status: 'REJECTED', decidedBy: (session?.user?.id as string) || '', decidedAt: new Date().toISOString() }) : x); save(updated) }} className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Rifiuta</button>
+                              </>
+                            ) : (
+                              <span className={`px-2 py-1 rounded text-xs ${r.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{r.status}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
