@@ -34,6 +34,19 @@ interface PayrollAnalysis {
   }>
 }
 
+interface PayrollDocument {
+  id: string
+  type: 'busta_paga' | 'cu' | 'analisi'
+  month: string
+  year: string
+  fileName: string
+  uploadDate: string
+  fileSize: number
+  status: 'uploaded' | 'processed' | 'error'
+  downloadUrl?: string
+  analysis?: PayrollAnalysis
+}
+
 export default function PayrollPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -43,6 +56,8 @@ export default function PayrollPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [analysis, setAnalysis] = useState<PayrollAnalysis | null>(null)
   const [scanHistory, setScanHistory] = useState<PayrollAnalysis[]>([])
+  const [documents, setDocuments] = useState<PayrollDocument[]>([])
+  const [selectedTab, setSelectedTab] = useState<'scan' | 'history' | 'documents'>('scan')
 
   // Redirect se non autenticato
   useEffect(() => {
@@ -60,12 +75,107 @@ export default function PayrollPage() {
     } catch {}
   }, [])
 
+  // Carica documenti storici
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('payroll_documents_history')
+      if (saved) {
+        setDocuments(JSON.parse(saved))
+      } else {
+        // Dati di esempio per demo
+        const mockDocuments: PayrollDocument[] = [
+          {
+            id: 'doc_1',
+            type: 'busta_paga',
+            month: 'Dicembre',
+            year: '2024',
+            fileName: 'Busta_Paga_Dicembre_2024.pdf',
+            uploadDate: '2024-12-01',
+            fileSize: 245760,
+            status: 'processed',
+            downloadUrl: '#'
+          },
+          {
+            id: 'doc_2',
+            type: 'cu',
+            month: '2024',
+            year: '2024',
+            fileName: 'CU_2024.pdf',
+            uploadDate: '2024-03-01',
+            fileSize: 189440,
+            status: 'processed',
+            downloadUrl: '#'
+          },
+          {
+            id: 'doc_3',
+            type: 'busta_paga',
+            month: 'Novembre',
+            year: '2024',
+            fileName: 'Busta_Paga_Novembre_2024.pdf',
+            uploadDate: '2024-11-01',
+            fileSize: 234567,
+            status: 'processed',
+            downloadUrl: '#'
+          },
+          {
+            id: 'doc_4',
+            type: 'busta_paga',
+            month: 'Ottobre',
+            year: '2024',
+            fileName: 'Busta_Paga_Ottobre_2024.pdf',
+            uploadDate: '2024-10-01',
+            fileSize: 198765,
+            status: 'processed',
+            downloadUrl: '#'
+          }
+        ]
+        setDocuments(mockDocuments)
+        localStorage.setItem('payroll_documents_history', JSON.stringify(mockDocuments))
+      }
+    } catch {}
+  }, [])
+
   const saveToHistory = (analysis: PayrollAnalysis) => {
     const newHistory = [analysis, ...scanHistory.slice(0, 9)] // Mantieni ultimi 10
     setScanHistory(newHistory)
     try {
       localStorage.setItem('payroll_scan_history', JSON.stringify(newHistory))
     } catch {}
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const getDocumentIcon = (type: string): string => {
+    switch (type) {
+      case 'busta_paga': return '💰'
+      case 'cu': return '📄'
+      case 'analisi': return '🔍'
+      default: return '📁'
+    }
+  }
+
+  const getDocumentTypeLabel = (type: string): string => {
+    switch (type) {
+      case 'busta_paga': return 'Busta Paga'
+      case 'cu': return 'Certificato Unico'
+      case 'analisi': return 'Analisi AI'
+      default: return 'Documento'
+    }
+  }
+
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'processed': return 'text-green-600 bg-green-100'
+      case 'uploaded': return 'text-blue-600 bg-blue-100'
+      case 'error': return 'text-red-600 bg-red-100'
+      default: return 'text-gray-600 bg-gray-100'
+    }
   }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,7 +282,48 @@ export default function PayrollPage() {
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             
-            {/* Sezione Scansione */}
+            {/* Navigazione Tab */}
+            <div className="bg-white rounded-lg shadow mb-6">
+              <div className="border-b border-gray-200">
+                <nav className="flex space-x-8 px-6" aria-label="Tabs">
+                  <button
+                    onClick={() => setSelectedTab('scan')}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                      selectedTab === 'scan'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    🔍 Scansiona Busta Paga
+                  </button>
+                  <button
+                    onClick={() => setSelectedTab('history')}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                      selectedTab === 'history'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    📊 Storico Analisi
+                  </button>
+                  <button
+                    onClick={() => setSelectedTab('documents')}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                      selectedTab === 'documents'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    📁 Documenti Azienda
+                  </button>
+                </nav>
+              </div>
+            </div>
+
+            {/* Contenuto Tab */}
+            {selectedTab === 'scan' && (
+              <>
+                {/* Sezione Scansione */}
             <div className="bg-white rounded-lg shadow mb-6">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900">🔍 Scansiona Busta Paga</h2>
@@ -359,26 +510,115 @@ export default function PayrollPage() {
               </div>
             )}
 
-            {/* Storico Scansioni */}
-            {scanHistory.length > 0 && (
+              </>
+            )}
+
+            {/* Tab Storico Analisi */}
+            {selectedTab === 'history' && (
               <div className="bg-white rounded-lg shadow">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">📚 Storico Scansioni</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">📊 Storico Analisi AI</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Cronologia delle analisi effettuate con AI
+                  </p>
                 </div>
                 <div className="p-6">
-                  <div className="space-y-3">
-                    {scanHistory.map((scan, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                        <div>
-                          <div className="font-medium text-gray-900">{scan.employeeName}</div>
-                          <div className="text-sm text-gray-600">{scan.month} {scan.year}</div>
+                  {scanHistory.length > 0 ? (
+                    <div className="space-y-3">
+                      {scanHistory.map((scan, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                          <div>
+                            <div className="font-medium text-gray-900">{scan.employeeName}</div>
+                            <div className="text-sm text-gray-600">{scan.month} {scan.year}</div>
+                            <div className="text-xs text-gray-500">
+                              {scan.recommendations.length} raccomandazioni • {scan.errors.length} avvisi
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-gray-900">€{scan.netSalary.toFixed(2)}</div>
+                            <div className="text-sm text-gray-600">netto</div>
+                            <div className="text-xs text-green-600">
+                              +€{scan.recommendations.reduce((sum, r) => sum + (r.potentialSavings || 0), 0).toFixed(0)} potenziale
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-gray-900">€{scan.netSalary.toFixed(2)}</div>
-                          <div className="text-sm text-gray-600">netto</div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-2">🔍</div>
+                      <p>Nessuna analisi effettuata</p>
+                      <p className="text-sm">Scansiona una busta paga per iniziare</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab Documenti Azienda */}
+            {selectedTab === 'documents' && (
+              <div className="bg-white rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">📁 Documenti Azienda</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Buste paga e certificati unici ricevuti dall'azienda
+                  </p>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-4">
+                    {documents.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                        <div className="flex items-center space-x-4">
+                          <div className="text-2xl">{getDocumentIcon(doc.type)}</div>
+                          <div>
+                            <div className="font-medium text-gray-900">{doc.fileName}</div>
+                            <div className="text-sm text-gray-600">
+                              {getDocumentTypeLabel(doc.type)} • {doc.month} {doc.year}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Caricato il {new Date(doc.uploadDate).toLocaleDateString('it-IT')} • {formatFileSize(doc.fileSize)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(doc.status)}`}>
+                            {doc.status === 'processed' ? 'Processato' : 
+                             doc.status === 'uploaded' ? 'Caricato' : 'Errore'}
+                          </span>
+                          <button
+                            onClick={() => {
+                              // Simula download
+                              alert(`Download: ${doc.fileName}`)
+                            }}
+                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                          >
+                            📥 Scarica
+                          </button>
                         </div>
                       </div>
                     ))}
+                  </div>
+                  
+                  {/* Statistiche */}
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-50 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {documents.filter(d => d.type === 'busta_paga').length}
+                      </div>
+                      <div className="text-sm text-gray-600">Buste Paga</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {documents.filter(d => d.type === 'cu').length}
+                      </div>
+                      <div className="text-sm text-gray-600">Certificati Unici</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {documents.filter(d => d.status === 'processed').length}
+                      </div>
+                      <div className="text-sm text-gray-600">Processati</div>
+                    </div>
                   </div>
                 </div>
               </div>
