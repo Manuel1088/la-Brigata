@@ -11,7 +11,7 @@ import { ShiftSwapManager } from '@/components/ShiftSwapManager'
 import { getBookingsByDate, getCompanyEventsByDate } from '@/lib/bookings'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
-import { getEmployeesClient, type SimpleEmployee } from '@/lib/employees'
+import { type SimpleEmployee } from '@/lib/employees'
 import { useEmployees } from '@/hooks/useEmployees'
 
 interface ShiftCell {
@@ -224,10 +224,9 @@ export default function ShiftsPage() {
     if (employeesData) {
       try {
         setEmployees(employeesData.map((e: any) => ({ name: e.name, role: e.role, department: (e as any).department || 'sala' })))
-        return
       } catch {}
     }
-    setEmployees(getEmployeesClient())
+    // Rimuovo il fallback a getEmployeesClient() per usare solo dipendenti dell'azienda
   }, [employeesData])
 
   useEffect(() => {
@@ -542,7 +541,14 @@ export default function ShiftsPage() {
   })
 
   const handleCellClick = (employee: string, dayIndex: number) => {
-    const employeeDept = employees.find(e => e.name === employee)?.department
+    // Verifica che il dipendente sia della stessa azienda
+    const employeeData = employees.find(e => e.name === employee)
+    if (!employeeData) {
+      console.warn('Dipendente non trovato nella lista azienda:', employee)
+      return
+    }
+    
+    const employeeDept = employeeData.department
     const canEdit = manageAll || (manageDept && employeeDept === effectiveUserDepartment)
     const shiftKey = `${employee}-${dayIndex}`
     const existingShift = shifts[shiftKey]
