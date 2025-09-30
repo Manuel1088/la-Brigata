@@ -3,14 +3,23 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { getRestRules, updateRestRule, type RestRule } from '@/lib/restRules'
-import { getEmployeesByCompany } from '@/lib/employees'
+import { useEmployees } from '@/hooks/useEmployees'
 
 export default function RestRulesPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const [rules, setRules] = useState<RestRule[]>([])
-  const [employees, setEmployees] = useState<any[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<'cucina' | 'sala' | 'bar'>('sala')
+  
+  // Usa l'hook useEmployees per caricare solo i dipendenti dell'azienda
+  const { data: employeesData } = useEmployees((session?.user as any)?.companyId, true)
+  const employees = useMemo(() => {
+    if (!employeesData) return []
+    return employeesData.map((e: any) => ({ 
+      name: e.name, 
+      department: e.department || 'sala' 
+    }))
+  }, [employeesData])
   const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }>>({
     cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
     sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
@@ -19,16 +28,6 @@ export default function RestRulesPage() {
 
   useEffect(() => {
     setRules(getRestRules())
-    try {
-      const cid = (session?.user as any)?.companyId as string | undefined
-      if (cid) {
-        getEmployeesByCompany(cid, { active: true }).then(list => {
-          setEmployees(list.map((e:any)=>({ name: e.name, department: e.department || 'sala' })))
-        }).catch(() => setEmployees([]))
-      } else {
-        setEmployees([])
-      }
-    } catch { setEmployees([]) }
     // carica config reparto
     try {
       const raw = localStorage.getItem('rest_rules_department_v1')
