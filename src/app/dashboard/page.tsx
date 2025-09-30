@@ -10,13 +10,13 @@ import { UserRole } from '@/types/roles'
 import { NotificationBadge } from '@/components/NotificationBadge'
 import { NotificationCenter } from '@/components/NotificationCenter'
 
-// Color Palette La Brigata
+// Color Palette La Brigata - Originale
 const COLORS = {
-  coral: '#E17055',
-  orange: '#FDCB6E',
-  yellow: '#F9CA24',
-  lightBlue: '#74B9FF',
-  darkBlue: '#0984E3'
+  coral: '#D4918B',      // Rosa antico (pallina sinistra)
+  orange: '#E9A961',     // Arancio caldo (seconda pallina)
+  yellow: '#F2D06B',     // Giallo oro (pallina centrale)
+  lightBlue: '#A8C9E8', // Azzurro cielo (quarta pallina)
+  darkBlue: '#6B8CAE'   // Blu petrolio (pallina destra)
 }
 
 interface QuickAction {
@@ -281,7 +281,7 @@ export default function DashboardPage() {
         {savingsFound > 0 && (
           <div 
             className="bg-green-50 border-2 border-green-500 rounded-2xl p-5 mb-6 cursor-pointer transition-transform hover:scale-[1.02]"
-            onClick={() => router.push('/me')}
+            onClick={() => router.push('/payroll')}
           >
             <div className="flex justify-between items-center">
               <div>

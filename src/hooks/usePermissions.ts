@@ -106,6 +106,10 @@ export function usePermissions() {
   const canViewLeaveCalendar = (): boolean => can('ferie_calendar')
   const canManageLeaveBalance = (): boolean => can('ferie_balance')
 
+  const canViewPayroll = (): boolean => can('payroll_view')
+  const canManagePayroll = (): boolean => can('payroll_manage')
+  const canScanPayroll = (): boolean => can('payroll_scan')
+
   const canViewBasicReports = (): boolean => can('report_basic')
   const canViewAdvancedReports = (): boolean => can('report_advanced')
   const canViewFinancialReports = (): boolean => can('report_financial')
@@ -167,6 +171,11 @@ export function usePermissions() {
     canExportLeaves,
     canViewLeaveCalendar,
     canManageLeaveBalance,
+    
+    // Controlli specifici - Busta Paga
+    canViewPayroll,
+    canManagePayroll,
+    canScanPayroll,
     
     // Controlli specifici - Report
     canViewBasicReports,

@@ -5,7 +5,7 @@ export interface Permission {
   id: string
   name: string
   description: string
-  category: 'personale' | 'mance' | 'turni' | 'report' | 'admin' | 'ferie'
+  category: 'personale' | 'mance' | 'turni' | 'report' | 'admin' | 'ferie' | 'payroll'
   level: number // Livello minimo richiesto
 }
 
@@ -215,6 +215,29 @@ export const PERMISSIONS: Record<string, Permission> = {
     level: 8
   },
 
+  // 💰 BUSTA PAGA (3 permessi)
+  PAYROLL_VIEW: {
+    id: 'payroll_view',
+    name: 'Visualizzare Buste Paga',
+    description: 'Visualizzare le proprie buste paga e analisi',
+    category: 'payroll',
+    level: 1
+  },
+  PAYROLL_SCAN: {
+    id: 'payroll_scan',
+    name: 'Scansionare Buste Paga',
+    description: 'Utilizzare la funzionalità di scansione AI per analisi buste paga',
+    category: 'payroll',
+    level: 3
+  },
+  PAYROLL_MANAGE: {
+    id: 'payroll_manage',
+    name: 'Gestire Buste Paga',
+    description: 'Gestire e amministrare le buste paga del team',
+    category: 'payroll',
+    level: 8
+  },
+
   // 📊 REPORT (5 permessi)
   REPORT_BASIC: {
     id: 'report_basic',
@@ -352,6 +375,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'mance_view', 'mance_manage', 'mance_calculate', 'mance_approve', 'mance_history', 'mance_export',
     'turni_view', 'turni_manage', 'turni_assign', 'turni_approve', 'turni_export',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_view_all', 'ferie_export', 'ferie_calendar', 'ferie_balance',
+    'payroll_view', 'payroll_scan', 'payroll_manage',
     'report_basic', 'report_advanced', 'report_export',
     'bookings_view','bookings_manage','areas_manage','customers_view','customers_manage'
   ],
@@ -400,6 +424,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'mance_view',
     'turni_view',
     'ferie_view', 'ferie_request',
+    'payroll_view', 'payroll_scan',
     'bookings_view'
   ]
 }
