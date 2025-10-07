@@ -39,17 +39,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <Sidebar />
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Bar - Fixed at top */}
+      <TopBar />
       
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Bar */}
-        <TopBar />
+      {/* Main Layout */}
+      <div className="flex pt-16">
+        {/* Sidebar */}
+        <Sidebar />
         
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-auto pt-16">
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>
