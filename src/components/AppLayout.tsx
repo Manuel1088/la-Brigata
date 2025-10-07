@@ -49,7 +49,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <TopBar />
         
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto pt-16">
           {children}
         </main>
       </div>
