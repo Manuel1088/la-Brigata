@@ -230,7 +230,12 @@ export default function ShiftsCalendar() {
       if (emp?.department !== userDepartment) return
     }
 
+    // ✅ Determina il dipartimento corretto per il dipendente
+    const emp = employees.find(e => e.name === employee)
+    const employeeDepartment = emp?.department || 'sala'
+    
     setSelectedEmployee({ name: employee, dayIndex, isEdit: !!shifts[`${employee}-${dayIndex}`] })
+    setSelectedDepartment(employeeDepartment) // ✅ Imposta il dipartimento corretto
     setIsShiftSelectorOpen(true)
   }
 
