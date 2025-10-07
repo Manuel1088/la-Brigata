@@ -175,7 +175,7 @@ export function BreakEvenWidget({ userId, userRole }: BreakEvenWidgetProps) {
           <span className={`text-sm font-medium ${
             todayForecast.profitMargin > 0 ? 'text-green-600' : 'text-red-600'
           }`}>
-            {todayForecast.profitMargin.toFixed(1)}%
+            {isNaN(todayForecast.profitMargin) ? '0.0' : todayForecast.profitMargin.toFixed(1)}%
           </span>
         </div>
       </div>

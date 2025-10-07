@@ -205,7 +205,7 @@ export default function CalendarPage() {
                               <span className={`font-medium ${
                                 day.profitMargin > 0 ? 'text-green-600' : 'text-red-600'
                               }`}>
-                                {day.profitMargin.toFixed(1)}%
+                                {isNaN(day.profitMargin) ? '0.0' : day.profitMargin.toFixed(1)}%
                               </span>
                             </div>
                           </div>

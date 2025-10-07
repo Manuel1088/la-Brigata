@@ -55,9 +55,9 @@ export function CCNLManagement() {
               <div><span className="font-medium">Min:</span> €{currentPosition.minSalary.toLocaleString()}/mese</div>
               <div><span className="font-medium">Max:</span> €{currentPosition.maxSalary.toLocaleString()}/mese</div>
               <div><span className="font-medium">Ore/settimana:</span> {currentPosition.weeklyHours}h</div>
-              <div><span className="font-medium">Straordinari:</span> +{((currentPosition.overtimeRate - 1) * 100).toFixed(0)}%</div>
-              <div><span className="font-medium">Notturno:</span> +{((currentPosition.nightRate - 1) * 100).toFixed(0)}%</div>
-              <div><span className="font-medium">Festivi:</span> +{((currentPosition.holidayRate - 1) * 100).toFixed(0)}%</div>
+              <div><span className="font-medium">Straordinari:</span> +{isNaN(currentPosition.overtimeRate) ? '0' : ((currentPosition.overtimeRate - 1) * 100).toFixed(0)}%</div>
+              <div><span className="font-medium">Notturno:</span> +{isNaN(currentPosition.nightRate) ? '0' : ((currentPosition.nightRate - 1) * 100).toFixed(0)}%</div>
+              <div><span className="font-medium">Festivi:</span> +{isNaN(currentPosition.holidayRate) ? '0' : ((currentPosition.holidayRate - 1) * 100).toFixed(0)}%</div>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@ export function CCNLManagement() {
                     €{position.minSalary.toLocaleString()} - €{position.maxSalary.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    +{((position.overtimeRate - 1) * 100).toFixed(0)}%
+                    +{isNaN(position.overtimeRate) ? '0' : ((position.overtimeRate - 1) * 100).toFixed(0)}%
                   </td>
                 </tr>
               ))}

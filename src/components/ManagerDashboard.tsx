@@ -409,7 +409,7 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
           </div>
           <div className="text-center">
             <h4 className="font-semibold text-gray-700 mb-2">Per Dipendente</h4>
-            <p className="text-2xl font-bold text-purple-600">€{(getTotalTips() / shifts.length).toFixed(2)}</p>
+            <p className="text-2xl font-bold text-purple-600">€{shifts.length > 0 ? (getTotalTips() / shifts.length).toFixed(2) : '0.00'}</p>
             <p className="text-sm text-gray-500">Media giornaliera</p>
           </div>
         </div>
