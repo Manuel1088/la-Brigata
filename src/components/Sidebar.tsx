@@ -25,7 +25,8 @@ export default function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const { userRole, canManageEmployees } = usePermissions()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
 
   // Load pending approvals count for managers
@@ -201,8 +202,22 @@ export default function Sidebar() {
     await signOut({ callbackUrl: '/login' })
   }
 
+  const handleMouseEnter = () => {
+    setIsHovered(true)
+    setIsSidebarOpen(true)
+  }
+
+  const handleMouseLeave = () => {
+    setIsHovered(false)
+    setIsSidebarOpen(false)
+  }
+
   return (
-    <div className={`bg-gray-50 text-gray-900 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-16'} min-h-screen flex flex-col border-r border-gray-200`}>
+    <div 
+      className={`bg-gray-50 text-gray-900 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-16'} min-h-screen flex flex-col border-r border-gray-200 hover:w-64`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         {isSidebarOpen ? (
@@ -220,14 +235,6 @@ export default function Sidebar() {
           <span className="text-2xl mx-auto block">🍽️</span>
         )}
       </div>
-
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="absolute top-4 -right-3 bg-white text-gray-600 p-1 rounded-full hover:bg-gray-100 border border-gray-200 shadow-sm transition"
-      >
-        {isSidebarOpen ? '←' : '→'}
-      </button>
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-6">
