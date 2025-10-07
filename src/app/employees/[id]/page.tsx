@@ -67,6 +67,14 @@ export default function EmployeeDetailPage() {
   
   // ✅ USA IL CONTEXT invece degli hook diretti
   const { employees, isLoading: isLoadingEmployees, companyId } = useEmployeeContext()
+
+  // 🔥 FUNZIONE HELPER per formattare numeri
+  const formatNumber = (value: number | undefined | null): string => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '0'
+    }
+    return value.toString()
+  }
   
   // 🔥 Trova il dipendente con useMemo (nessun useEffect!)
   const employee = useMemo(() => {
@@ -110,8 +118,8 @@ export default function EmployeeDetailPage() {
       const rolBalance = balances.find(b => b.type === 'ROL')
       
       return {
-        prevVacationCarry: vacationBalance?.remaining || 0,
-        prevRolCarry: rolBalance?.remaining || 0
+        prevVacationCarry: vacationBalance?.remaining ?? 0, // ✅ Usa ?? invece di ||
+        prevRolCarry: rolBalance?.remaining ?? 0
       }
     } catch (error) {
       console.error('Errore nel caricamento saldi ferie:', error)
@@ -333,11 +341,11 @@ export default function EmployeeDetailPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Ferie Residue</span>
-                  <span className="font-medium text-blue-600">{prevVacationCarry} giorni</span>
+                  <span className="font-medium text-blue-600">{formatNumber(prevVacationCarry)} giorni</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">ROL Residui</span>
-                  <span className="font-medium text-purple-600">{prevRolCarry} ore</span>
+                  <span className="font-medium text-purple-600">{formatNumber(prevRolCarry)} ore</span>
                 </div>
                 <div className="border-t border-gray-200 pt-3 mt-3">
                   <button
