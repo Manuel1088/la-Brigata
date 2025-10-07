@@ -251,6 +251,17 @@ export default function EmployeeDetailPage() {
   const departmentInfo = departments[roleInfo?.department as keyof typeof departments]
   const availableSkills = commonSkills[roleInfo?.department as keyof typeof commonSkills] || []
 
+  // 🔍 DEBUG - Aggiungi PRIMA del return
+  console.log('🔍 DEBUG ALL VALUES:', {
+    'employee?.hourlyRate': employee?.hourlyRate,
+    'isNaN(hourlyRate)': isNaN(employee?.hourlyRate as any),
+    'prevVacationCarry': prevVacationCarry,
+    'isNaN(vacation)': isNaN(prevVacationCarry),
+    'prevRolCarry': prevRolCarry,
+    'isNaN(rol)': isNaN(prevRolCarry),
+    'employee?.skills': employee?.skills,
+    'employee': employee
+  })
 
   return (
     <div className="min-h-screen bg-gray-50">
