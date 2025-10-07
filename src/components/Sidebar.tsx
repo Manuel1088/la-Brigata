@@ -220,10 +220,14 @@ export default function Sidebar() {
       <nav className="flex-1 p-4 pt-6 space-y-6">
         {filteredSections.map((section, sectionIndex) => (
           <div key={sectionIndex}>
-            {isSidebarOpen && (
+            {isSidebarOpen ? (
               <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
                 {section.title}
               </h3>
+            ) : (
+              <div className="flex justify-center mb-3">
+                <div className="w-8 h-px bg-gray-300"></div>
+              </div>
             )}
             <ul className="space-y-2">
               {section.items.map((item, itemIndex) => {
