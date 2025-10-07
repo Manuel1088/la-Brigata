@@ -1,0 +1,391 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { useNotifications } from '@/hooks/useNotifications'
+import { useAudit } from '@/hooks/useAudit'
+
+interface Candidate {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  position: string
+  experience: string
+  skills: string[]
+  status: 'pending' | 'approved' | 'rejected' | 'hired'
+  createdAt: Date
+  notes?: string
+  resumeUrl?: string
+}
+
+export default function AdminCandidates() {
+  const { notifyCustom } = useNotifications()
+  const { logReadAction } = useAudit()
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('pending')
+  const [positionFilter, setPositionFilter] = useState<string>('all')
+
+  useEffect(() => {
+    loadCandidates()
+  }, [])
+
+  const loadCandidates = async () => {
+    try {
+      // Mock data - in produzione verrà dal database
+      const mockCandidates: Candidate[] = [
+        {
+          id: '1',
+          name: 'Giuseppe Rossi',
+          email: 'giuseppe.rossi@email.com',
+          phone: '+39 333 123 4567',
+          position: 'Chef de Partie',
+          experience: '3 anni',
+          skills: ['Cucina Italiana', 'Grill', 'Pastry'],
+          status: 'pending',
+          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          notes: 'Esperienza in ristoranti stellati',
+          resumeUrl: 'resume_giuseppe.pdf'
+        },
+        {
+          id: '2',
+          name: 'Maria Bianchi',
+          email: 'maria.bianchi@email.com',
+          phone: '+39 333 234 5678',
+          position: 'Responsabile Sala',
+          experience: '5 anni',
+          skills: ['Gestione Sala', 'Customer Service', 'Wine Knowledge'],
+          status: 'pending',
+          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+          notes: 'Ottime referenze dal precedente datore'
+        },
+        {
+          id: '3',
+          name: 'Luca Verdi',
+          email: 'luca.verdi@email.com',
+          phone: '+39 333 345 6789',
+          position: 'Dipendente Sala',
+          experience: '1 anno',
+          skills: ['Servizio', 'Lavastoviglie'],
+          status: 'approved',
+          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          notes: 'Giovane ma motivato'
+        },
+        {
+          id: '4',
+          name: 'Anna Neri',
+          email: 'anna.neri@email.com',
+          phone: '+39 333 456 7890',
+          position: 'Cassiere',
+          experience: '2 anni',
+          skills: ['Cassa', 'Gestione Pagamenti'],
+          status: 'rejected',
+          createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+          notes: 'Non ha esperienza in ristorazione'
+        }
+      ]
+      
+      setCandidates(mockCandidates)
+    } catch (error) {
+      console.error('Errore nel caricamento candidati:', error)
+      notifyCustom('Errore nel caricamento candidati', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCandidateAction = async (candidateId: string, action: 'approve' | 'reject' | 'hire') => {
+    try {
+      const candidate = candidates.find(c => c.id === candidateId)
+      if (!candidate) return
+
+      switch (action) {
+        case 'approve':
+          setCandidates(prev => prev.map(c => 
+            c.id === candidateId ? { ...c, status: 'approved' } : c
+          ))
+          notifyCustom(`Candidato ${candidate.name} approvato`, 'success')
+          logReadAction('candidate_approved', { candidateId, candidateName: candidate.name })
+          break
+        case 'reject':
+          setCandidates(prev => prev.map(c => 
+            c.id === candidateId ? { ...c, status: 'rejected' } : c
+          ))
+          notifyCustom(`Candidato ${candidate.name} rifiutato`, 'warning')
+          logReadAction('candidate_rejected', { candidateId, candidateName: candidate.name })
+          break
+        case 'hire':
+          setCandidates(prev => prev.map(c => 
+            c.id === candidateId ? { ...c, status: 'hired' } : c
+          ))
+          notifyCustom(`Candidato ${candidate.name} assunto`, 'success')
+          logReadAction('candidate_hired', { candidateId, candidateName: candidate.name })
+          break
+      }
+    } catch (error) {
+      notifyCustom('Errore nell\'operazione', 'error')
+    }
+  }
+
+  const filteredCandidates = candidates.filter(candidate => {
+    const matchesSearch = candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         candidate.position.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = statusFilter === 'all' || candidate.status === statusFilter
+    const matchesPosition = positionFilter === 'all' || candidate.position === positionFilter
+    
+    return matchesSearch && matchesStatus && matchesPosition
+  })
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'approved': return 'bg-green-100 text-green-800'
+      case 'rejected': return 'bg-red-100 text-red-800'
+      case 'hired': return 'bg-blue-100 text-blue-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending': return 'In Attesa'
+      case 'approved': return 'Approvato'
+      case 'rejected': return 'Rifiutato'
+      case 'hired': return 'Assunto'
+      default: return status
+    }
+  }
+
+  const getPositionIcon = (position: string) => {
+    switch (position) {
+      case 'Chef de Partie': return '👨‍🍳'
+      case 'Responsabile Sala': return '🍽️'
+      case 'Dipendente Sala': return '👤'
+      case 'Cassiere': return '💰'
+      case 'Barista': return '🍹'
+      default: return '💼'
+    }
+  }
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('it-IT')
+  }
+
+  const formatDaysAgo = (date: Date) => {
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    
+    if (days === 0) return 'Oggi'
+    if (days === 1) return 'Ieri'
+    return `${days} giorni fa`
+  }
+
+  const stats = {
+    total: candidates.length,
+    pending: candidates.filter(c => c.status === 'pending').length,
+    approved: candidates.filter(c => c.status === 'approved').length,
+    rejected: candidates.filter(c => c.status === 'rejected').length,
+    hired: candidates.filter(c => c.status === 'hired').length
+  }
+
+  const positions = Array.from(new Set(candidates.map(c => c.position))).sort()
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="text-4xl mb-4">📝</div>
+          <div className="text-xl text-gray-700">Caricamento candidati...</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Statistiche */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="bg-blue-50 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+          <div className="text-sm text-blue-700">Totali</div>
+        </div>
+        <div className="bg-yellow-50 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+          <div className="text-sm text-yellow-700">In Attesa</div>
+        </div>
+        <div className="bg-green-50 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+          <div className="text-sm text-green-700">Approvati</div>
+        </div>
+        <div className="bg-red-50 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+          <div className="text-sm text-red-700">Rifiutati</div>
+        </div>
+        <div className="bg-purple-50 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-purple-600">{stats.hired}</div>
+          <div className="text-sm text-purple-700">Assunti</div>
+        </div>
+      </div>
+
+      {/* Filtri */}
+      <div className="bg-gray-50 rounded-lg p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Cerca</label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Nome, email o posizione..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Stato</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Tutti</option>
+              <option value="pending">In Attesa</option>
+              <option value="approved">Approvati</option>
+              <option value="rejected">Rifiutati</option>
+              <option value="hired">Assunti</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Posizione</label>
+            <select
+              value={positionFilter}
+              onChange={(e) => setPositionFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Tutte</option>
+              {positions.map(position => (
+                <option key={position} value={position}>{position}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={loadCandidates}
+              className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              🔄 Aggiorna
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista Candidati */}
+      <div className="space-y-4">
+        {filteredCandidates.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-2">📝</div>
+            <p className="text-gray-500">Nessun candidato trovato</p>
+            <p className="text-sm text-gray-400 mt-1">Modifica i filtri per vedere più risultati</p>
+          </div>
+        ) : (
+          filteredCandidates.map(candidate => (
+            <div key={candidate.id} className="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="text-3xl">{getPositionIcon(candidate.position)}</div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">{candidate.name}</h3>
+                      <p className="text-gray-600">{candidate.position} • {candidate.experience}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(candidate.status)}`}>
+                      {getStatusLabel(candidate.status)}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
+                    <div>
+                      <span className="text-gray-600">Email:</span>
+                      <div className="font-medium">{candidate.email}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Telefono:</span>
+                      <div className="font-medium">{candidate.phone || 'Non fornito'}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <span className="text-gray-600 text-sm">Competenze:</span>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {candidate.skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {candidate.notes && (
+                    <div className="mb-3">
+                      <span className="text-gray-600 text-sm">Note:</span>
+                      <p className="text-sm text-gray-900 mt-1">{candidate.notes}</p>
+                    </div>
+                  )}
+                  
+                  <div className="text-sm text-gray-600">
+                    Candidato il {formatDate(candidate.createdAt)} ({formatDaysAgo(candidate.createdAt)})
+                  </div>
+                </div>
+                
+                {/* Azioni */}
+                <div className="flex gap-2 ml-4">
+                  {candidate.resumeUrl && (
+                    <button
+                      onClick={() => window.open(candidate.resumeUrl, '_blank')}
+                      className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 transition text-sm"
+                    >
+                      📄 CV
+                    </button>
+                  )}
+                  
+                  {candidate.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleCandidateAction(candidate.id, 'approve')}
+                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm"
+                      >
+                        ✅ Approva
+                      </button>
+                      <button
+                        onClick={() => handleCandidateAction(candidate.id, 'reject')}
+                        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
+                      >
+                        ❌ Rifiuta
+                      </button>
+                    </>
+                  )}
+                  
+                  {candidate.status === 'approved' && (
+                    <button
+                      onClick={() => handleCandidateAction(candidate.id, 'hire')}
+                      className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
+                    >
+                      💼 Assumi
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}

@@ -143,34 +143,10 @@ export default function Sidebar() {
     {
       title: 'AMMINISTRAZIONE',
       items: [
-        { 
-          icon: '🔧', 
-          label: 'Dashboard Admin', 
+        {
+          icon: '👑',
+          label: 'Amministrazione',
           path: '/admin',
-          roles: [UserRole.PROPRIETARIO]
-        },
-        { 
-          icon: '🏪', 
-          label: 'Aziende', 
-          path: '/admin/companies',
-          roles: [UserRole.PROPRIETARIO]
-        },
-        { 
-          icon: '👥', 
-          label: 'Utenti Piattaforma', 
-          path: '/admin/candidates',
-          roles: [UserRole.PROPRIETARIO]
-        },
-        { 
-          icon: '⚙️', 
-          label: 'CCNL', 
-          path: '/admin/ccnl',
-          roles: [UserRole.PROPRIETARIO]
-        },
-        { 
-          icon: '📈', 
-          label: 'Permessi', 
-          path: '/admin/permissions',
           roles: [UserRole.PROPRIETARIO]
         }
       ],
