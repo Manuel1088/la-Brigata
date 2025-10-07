@@ -338,6 +338,22 @@ export const PERMISSIONS: Record<string, Permission> = {
     description: 'Configurare le regole CCNL del sistema',
     category: 'admin',
     level: 10
+  },
+  
+  // ⚙️ IMPOSTAZIONI (2 permessi)
+  EDIT_PERSONAL_INFO: {
+    id: 'edit_personal_info',
+    name: 'Modificare Informazioni Personali',
+    description: 'Modificare le proprie informazioni personali e preferenze',
+    category: 'settings',
+    level: 1
+  },
+  MANAGE_COMPANY_SETTINGS: {
+    id: 'manage_company_settings',
+    name: 'Gestire Impostazioni Azienda',
+    description: 'Modificare le impostazioni aziendali e configurazioni',
+    category: 'settings',
+    level: 8
   }
 }
 

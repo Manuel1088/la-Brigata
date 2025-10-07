@@ -191,6 +191,10 @@ export function usePermissions() {
     canManageRoles,
     canManageSettings,
     canViewAudit,
-    canManageBackup
+    canManageBackup,
+    
+    // Controlli specifici - Settings
+    canEditPersonal: () => can('edit_personal_info'),
+    canManageCompany: () => can('manage_company_settings')
   }
 }
