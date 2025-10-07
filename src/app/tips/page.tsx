@@ -53,12 +53,9 @@ export default function TipsPage() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/dashboard')}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition"
+                className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span>Indietro</span>
+                ←
               </button>
               <h1 className="text-3xl font-bold text-gray-900">💰 Le Mie Mance</h1>
             </div>

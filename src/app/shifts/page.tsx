@@ -14,7 +14,7 @@ export default function ShiftsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('calendar')
   const { canManageEmployees } = usePermissions()
-
+  
   // Redirect se non autenticato
   useEffect(() => {
     if (status === 'loading') return
@@ -53,12 +53,9 @@ export default function ShiftsPage() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/dashboard')}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition"
+                className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span>Indietro</span>
+                ←
               </button>
               <h1 className="text-3xl font-bold text-gray-900">📅 Gestione Turni</h1>
             </div>
@@ -77,13 +74,13 @@ export default function ShiftsPage() {
           <div className="mb-6">
             <p className="text-gray-600">Organizza e gestisci i turni del tuo team</p>
           </div>
-
+          
           {/* Tab Navigation */}
           <div className="bg-white rounded-lg shadow mb-6">
             <div className="border-b border-gray-200">
               <nav className="flex -mb-px">
                 {visibleTabs.map(tab => (
-                  <button
+                <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`

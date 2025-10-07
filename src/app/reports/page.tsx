@@ -124,9 +124,9 @@ export default function ReportsPage() {
               
               <button
                 onClick={() => router.push('/dashboard')}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg"
               >
-                ← Torna Dashboard
+                ←
               </button>
             </div>
           </div>
