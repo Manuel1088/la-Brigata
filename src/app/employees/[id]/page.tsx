@@ -4,8 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useState, useMemo } from 'react'
 import { getLeaveBalances } from '@/lib/leaveSystem'
 import type { EmployeeFull } from '@/lib/employees'
-import { useCompanyData } from '@/hooks/useCompanyData'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import PayrollSection from '@/components/PayrollSection'
 
 // Configurazione ruoli e livelli (stessa del form nuovo)
@@ -66,14 +65,10 @@ export default function EmployeeDetailPage() {
   const params = useParams()
   const paramId = (params?.id as string) || ''
   
-  // Company data via SWR hook
-  const { data: companyResp } = useCompanyData(session?.user?.id)
-  const companyData = companyResp?.company as any | undefined
+  // ✅ USA IL CONTEXT invece degli hook diretti
+  const { employees, isLoading: isLoadingEmployees, companyId } = useEmployeeContext()
   
-  // Employees via SWR hook (active only)
-  const { data: employees, isLoading: isLoadingEmployees } = useEmployees(companyData?.id, true)
-  
-  // 🔥 SOLUZIONE: Usa useMemo invece di useEffect + useState
+  // 🔥 Trova il dipendente con useMemo (nessun useEffect!)
   const employee = useMemo(() => {
     if (!employees || employees.length === 0) {
       // Fallback per utenti registrati
@@ -95,7 +90,7 @@ export default function EmployeeDetailPage() {
     return employees.find((emp: any) => 
       emp.id === paramId || 
       (paramId === sessionId && emp.email === sessionEmail)
-    ) as EmployeeFull || null
+    ) || null
   }, [employees, paramId, session])
 
   // Stati per l'editing
@@ -105,9 +100,9 @@ export default function EmployeeDetailPage() {
   const [newSkill, setNewSkill] = useState('')
   const [editedEmployee, setEditedEmployee] = useState<EmployeeFull | null>(null)
   const [workingOwner, setWorkingOwner] = useState(false)
-  // Saldi Ferie/ROL in useMemo
-  const leaveBalances = useMemo(() => {
-    if (!employee?.id) return { vacation: 0, rol: 0 }
+  // Saldi Ferie - calcola solo quando employee cambia
+  const { prevVacationCarry, prevRolCarry } = useMemo(() => {
+    if (!employee?.id) return { prevVacationCarry: 0, prevRolCarry: 0 }
     
     try {
       const balances = getLeaveBalances(employee.id)
@@ -115,12 +110,12 @@ export default function EmployeeDetailPage() {
       const rolBalance = balances.find(b => b.type === 'ROL')
       
       return {
-        vacation: vacationBalance?.remaining || 0,
-        rol: rolBalance?.remaining || 0
+        prevVacationCarry: vacationBalance?.remaining || 0,
+        prevRolCarry: rolBalance?.remaining || 0
       }
     } catch (error) {
       console.error('Errore nel caricamento saldi ferie:', error)
-      return { vacation: 0, rol: 0 }
+      return { prevVacationCarry: 0, prevRolCarry: 0 }
     }
   }, [employee?.id])
 
@@ -141,9 +136,10 @@ export default function EmployeeDetailPage() {
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      // Qui implementerai la logica di salvataggio
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Simula chiamata API
+      // TODO: Implementa salvataggio API
+      await new Promise(resolve => setTimeout(resolve, 1000))
       setIsEditing(false)
+      setEditedEmployee(null)
       setMessage('Modifiche salvate con successo')
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
@@ -160,8 +156,8 @@ export default function EmployeeDetailPage() {
     
     setIsLoading(true)
     try {
-      // Qui implementerai la logica di eliminazione
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Simula chiamata API
+      // TODO: Implementa eliminazione API
+      await new Promise(resolve => setTimeout(resolve, 1000))
       router.push('/team')
     } catch (error) {
       console.error('Errore nell\'eliminazione:', error)
@@ -198,21 +194,7 @@ export default function EmployeeDetailPage() {
     }
   }
 
-  // Controlli permessi
-  const canEditPersonal = employee ? (
-    session?.user?.id === employee?.id || 
-    (session?.user as any)?.role === 'MANAGER' || 
-    (session?.user as any)?.role === 'PROPRIETARIO'
-  ) : false
-
-  // Usa editedEmployee quando in modalità editing, altrimenti employee
-  const currentEmployee = isEditing ? editedEmployee : employee
-
-  // Informazioni dipendente
-  const roleInfo = roleConfig[currentEmployee?.role as keyof typeof roleConfig]
-  const departmentInfo = departments[roleInfo?.department as keyof typeof departments]
-  const availableSkills = commonSkills[roleInfo?.department as keyof typeof commonSkills] || []
-
+  // Loading states
   if (status === 'loading' || isLoadingEmployees) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -224,7 +206,11 @@ export default function EmployeeDetailPage() {
     )
   }
 
-  // Non renderizzare se employee non è definito
+  if (!session) {
+    router.push('/login')
+    return null
+  }
+
   if (!employee) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -242,6 +228,21 @@ export default function EmployeeDetailPage() {
     )
   }
 
+  // Usa editedEmployee quando sei in editing, altrimenti employee
+  const currentEmployee = isEditing && editedEmployee ? editedEmployee : employee
+
+  // Controlli permessi
+  const canEditPersonal = (
+    session?.user?.id === currentEmployee.id || 
+    (session?.user as any)?.role === 'MANAGER' || 
+    (session?.user as any)?.role === 'PROPRIETARIO'
+  )
+
+  // Informazioni dipendente
+  const roleInfo = roleConfig[currentEmployee.role as keyof typeof roleConfig]
+  const departmentInfo = departments[roleInfo?.department as keyof typeof departments]
+  const availableSkills = commonSkills[roleInfo?.department as keyof typeof commonSkills] || []
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -256,14 +257,14 @@ export default function EmployeeDetailPage() {
                 ←
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{employee.name}</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{currentEmployee.name}</h1>
                 <p className="text-gray-600 mt-1">{roleInfo?.name} • {departmentInfo?.name}</p>
               </div>
             </div>
             
             {canEditPersonal && (
               <button
-                onClick={isEditing ? handleCancelEdit : handleEditMode}
+                onClick={() => isEditing ? setIsEditing(false) : handleEditMode()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
                 {isEditing ? 'Annulla Modifica' : 'Modifica Profilo'}
@@ -328,19 +329,23 @@ export default function EmployeeDetailPage() {
 
             {/* Saldi Ferie */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">🏖️ Saldi Ferie</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">🏖️ Ferie e ROL</h3>
               <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Ferie:</span>
-                  <span className="font-medium">20 giorni</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Ferie Residue</span>
+                  <span className="font-medium text-blue-600">{prevVacationCarry} giorni</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">ROL:</span>
-                  <span className="font-medium">8 giorni</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">ROL Residui</span>
+                  <span className="font-medium text-purple-600">{prevRolCarry} ore</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Permessi:</span>
-                  <span className="font-medium">2 giorni</span>
+                <div className="border-t border-gray-200 pt-3 mt-3">
+                  <button
+                    onClick={() => router.push(`/team?tab=leaves&employeeId=${employee.id}`)}
+                    className="w-full text-blue-600 hover:text-blue-800 transition text-sm font-medium"
+                  >
+                    Visualizza Dettagli Ferie
+                  </button>
                 </div>
               </div>
             </div>
