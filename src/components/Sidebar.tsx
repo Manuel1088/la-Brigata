@@ -232,7 +232,11 @@ export default function Sidebar() {
                   <li key={itemIndex}>
                     <button
                       onClick={() => router.push(item.path)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                      className={`w-full flex items-center rounded-lg transition-colors ${
+                        isSidebarOpen 
+                          ? 'gap-3 px-3 py-2' 
+                          : 'justify-center px-2 py-2'
+                      } ${
                         isActive 
                           ? 'bg-orange-500 text-white' 
                           : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
