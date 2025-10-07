@@ -200,7 +200,7 @@ export default function AdminAudit() {
               onChange={(e) => setActionFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">Tutte</option>
+              <option key="all" value="all">Tutte</option>
               {uniqueActions.map(action => (
                 <option key={action} value={action}>{action}</option>
               ))}
@@ -214,7 +214,7 @@ export default function AdminAudit() {
               onChange={(e) => setUserFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">Tutti</option>
+              <option key="all" value="all">Tutti</option>
               {uniqueUsers.map(user => (
                 <option key={user} value={user}>{user}</option>
               ))}
@@ -228,10 +228,10 @@ export default function AdminAudit() {
               onChange={(e) => setDateFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">Tutto</option>
-              <option value="today">Oggi</option>
-              <option value="week">Questa settimana</option>
-              <option value="month">Questo mese</option>
+              <option key="all" value="all">Tutto</option>
+              <option key="today" value="today">Oggi</option>
+              <option key="week" value="week">Questa settimana</option>
+              <option key="month" value="month">Questo mese</option>
             </select>
           </div>
         </div>
