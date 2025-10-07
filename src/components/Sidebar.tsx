@@ -158,15 +158,15 @@ export default function Sidebar() {
   }
 
   return (
-    <div className={`bg-gray-900 text-white transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-16'} min-h-screen flex flex-col`}>
+    <div className={`bg-gray-50 text-gray-900 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-16'} min-h-screen flex flex-col border-r border-gray-200`}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-700">
+      <div className="p-4 border-b border-gray-200">
         {isSidebarOpen ? (
           <div className="flex items-center gap-2">
             <span className="text-2xl">🍽️</span>
             <div>
-              <span className="font-bold text-lg text-gray-800">LA BRIGATA</span>
-              <p className="text-xs text-gray-500">
+              <span className="font-bold text-lg text-gray-900">LA BRIGATA</span>
+              <p className="text-xs text-gray-600">
                 {userRole === UserRole.PROPRIETARIO ? 'Owner' :
                  userRole === UserRole.MANAGER ? 'Manager' : 'Team'}
               </p>
@@ -180,7 +180,7 @@ export default function Sidebar() {
       {/* Toggle Button */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="absolute top-4 -right-3 bg-gray-800 text-white p-1 rounded-full hover:bg-gray-700 transition"
+        className="absolute top-4 -right-3 bg-white text-gray-600 p-1 rounded-full hover:bg-gray-100 border border-gray-200 shadow-sm transition"
       >
         {isSidebarOpen ? '←' : '→'}
       </button>
@@ -190,7 +190,7 @@ export default function Sidebar() {
         {filteredSections.map((section, sectionIndex) => (
           <div key={sectionIndex}>
             {isSidebarOpen && (
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
                 {section.title}
               </h3>
             )}
@@ -204,7 +204,7 @@ export default function Sidebar() {
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                         isActive 
                           ? 'bg-orange-500 text-white' 
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                       }`}
                       title={!isSidebarOpen ? item.label : undefined}
                     >
@@ -229,7 +229,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User Info & Logout */}
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-4 border-t border-gray-200">
         {isSidebarOpen ? (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
@@ -239,17 +239,17 @@ export default function Sidebar() {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
+                <p className="text-sm font-medium text-gray-900 truncate">
                   {session?.user?.name || 'Utente'}
                 </p>
-                <p className="text-xs text-gray-400 truncate">
+                <p className="text-xs text-gray-600 truncate">
                   {session?.user?.email || ''}
                 </p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors"
             >
               <span>🚪</span>
               <span>Logout</span>
@@ -264,7 +264,7 @@ export default function Sidebar() {
             </div>
             <button
               onClick={handleLogout}
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-gray-700 hover:text-gray-900 transition-colors"
               title="Logout"
             >
               🚪
