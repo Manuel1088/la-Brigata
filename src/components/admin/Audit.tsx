@@ -273,7 +273,7 @@ export default function AdminAudit() {
                         </span>
                       </div>
                       
-                      {Object.keys(log.details).length > 0 && (
+                      {log.details && Object.keys(log.details).length > 0 && (
                         <div className="mb-2">
                           <details className="text-sm">
                             <summary className="cursor-pointer text-gray-600 hover:text-gray-800">
