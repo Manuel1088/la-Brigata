@@ -333,3 +333,5 @@ export function NotificationCenter({ isOpen, onClose, userId }: NotificationCent
     </div>
   )
 }
+
+export default NotificationCenter
