@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -198,9 +198,6 @@ export default function Sidebar() {
       items: section.items.filter(item => !item.roles || item.roles.includes(userRole as UserRole))
     }))
 
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' })
-  }
 
   const handleMouseEnter = () => {
     setIsHovered(true)
@@ -262,50 +259,6 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* User Info & Logout */}
-      <div className="p-4 border-t border-gray-200">
-        {isSidebarOpen ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                <span className="text-sm font-bold">
-                  {session?.user?.name?.charAt(0) || 'U'}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {session?.user?.name || 'Utente'}
-                </p>
-                <p className="text-xs text-gray-600 truncate">
-                  {session?.user?.email || ''}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors"
-            >
-              <span>🚪</span>
-              <span>Logout</span>
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center space-y-3">
-            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-              <span className="text-sm font-bold">
-                {session?.user?.name?.charAt(0) || 'U'}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="text-gray-700 hover:text-gray-900 transition-colors"
-              title="Logout"
-            >
-              🚪
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   )
 }
