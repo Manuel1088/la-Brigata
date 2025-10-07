@@ -211,9 +211,11 @@ export default function EmployeeDetailPage() {
   }
 
   // Controlli permessi
-  const canEditPersonal = session?.user?.id === employee?.id || 
+  const canEditPersonal = employee ? (
+    session?.user?.id === employee?.id || 
     (session?.user as any)?.role === 'MANAGER' || 
     (session?.user as any)?.role === 'PROPRIETARIO'
+  ) : false
 
   // Informazioni dipendente
   const roleInfo = roleConfig[employee?.role as keyof typeof roleConfig]
