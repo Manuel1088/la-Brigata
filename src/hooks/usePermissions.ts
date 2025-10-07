@@ -183,6 +183,7 @@ export function usePermissions() {
     canViewFinancialReports,
     canExportReports,
     canViewAnalytics: () => can('report_advanced'),
+    canViewPredictions: () => can('report_advanced'),
     
     // Controlli specifici - Admin
     canManageUsers,
