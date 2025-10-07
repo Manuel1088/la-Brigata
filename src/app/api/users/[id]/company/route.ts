@@ -10,7 +10,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     }
 
-    // ✅ UNA SOLA QUERY con relazioni annidate
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -34,7 +33,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ company: null })
     }
 
-    // ✅ Query ottimizzata con select specifici
     const company = await prisma.company.findUnique({
       where: { id: companyId },
       select: {
