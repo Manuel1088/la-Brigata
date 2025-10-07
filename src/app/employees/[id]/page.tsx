@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState, useMemo } from 'react'
 import { getLeaveBalances } from '@/lib/leaveSystem'
 import type { EmployeeFull } from '@/lib/employees'
 import { useCompanyData } from '@/hooks/useCompanyData'
@@ -66,88 +66,76 @@ export default function EmployeeDetailPage() {
   const params = useParams()
   const paramId = (params?.id as string) || ''
   
-  // Stati
-  const [employee, setEmployee] = useState<EmployeeFull>(mockEmployee as unknown as EmployeeFull)
-  const [profileReady, setProfileReady] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState('')
   // Company data via SWR hook
   const { data: companyResp } = useCompanyData(session?.user?.id)
   const companyData = companyResp?.company as any | undefined
+  
   // Employees via SWR hook (active only)
-  const { data: employees } = useEmployees(companyData?.id, true)
-  const [newSkill, setNewSkill] = useState('')
-  const [workingOwner, setWorkingOwner] = useState(false)
-  // Saldi Ferie/ROL
-  const [prevVacationCarry, setPrevVacationCarry] = useState<number>(0)
-  const [prevRolCarry, setPrevRolCarry] = useState<number>(0)
-
-  // Redirect se non autenticato
-  useEffect(() => {
-    if (status === 'loading') return
-    if (!session) {
-      router.push('/login')
-      return
+  const { data: employees, isLoading: isLoadingEmployees } = useEmployees(companyData?.id, true)
+  
+  // 🔥 SOLUZIONE: Usa useMemo invece di useEffect + useState
+  const employee = useMemo(() => {
+    if (!employees || employees.length === 0) {
+      // Fallback per utenti registrati
+      const sessionId = session?.user?.id
+      if (paramId === sessionId) {
+        return {
+          ...mockEmployee,
+          id: sessionId,
+          name: session?.user?.name || 'Utente',
+          email: session?.user?.email || '',
+        } as EmployeeFull
+      }
+      return null
     }
-  }, [session, status, router])
+    
+    const sessionId = session?.user?.id
+    const sessionEmail = session?.user?.email
+    
+    return employees.find((emp: any) => 
+      emp.id === paramId || 
+      (paramId === sessionId && emp.email === sessionEmail)
+    ) as EmployeeFull || null
+  }, [employees, paramId, session])
 
-  // Carica dipendente da SWR (employees) con fallback alla sessione per utenti registrati
-  useEffect(() => {
-    if (status === 'loading') return
+  // Stati per l'editing
+  const [isEditing, setIsEditing] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [newSkill, setNewSkill] = useState('')
+  const [editedEmployee, setEditedEmployee] = useState<EmployeeFull | null>(null)
+  const [workingOwner, setWorkingOwner] = useState(false)
+  // Saldi Ferie/ROL in useMemo
+  const leaveBalances = useMemo(() => {
+    if (!employee?.id) return { vacation: 0, rol: 0 }
+    
     try {
-      const sessionId = session?.user?.id as string | undefined
-      const sessionEmail = session?.user?.email as string | undefined
-      if (employees && employees.length > 0) {
-        // Cerca dipendente per ID o per email (per utenti che visualizzano il proprio profilo)
-        const foundEmployee = employees.find((emp: any) => 
-          emp.id === paramId || 
-          (paramId === sessionId && emp.email === sessionEmail)
-        )
-        if (foundEmployee) {
-          setEmployee(foundEmployee as EmployeeFull)
-          setProfileReady(true)
-        } else {
-          setMessage('Dipendente non trovato')
-        }
-      } else {
-        // Fallback per utenti registrati che non sono ancora dipendenti
-        if (paramId === sessionId) {
-          setEmployee({
-            ...mockEmployee,
-            id: sessionId,
-            name: session?.user?.name || 'Utente',
-            email: session?.user?.email || '',
-          } as EmployeeFull)
-          setProfileReady(true)
-        } else {
-          setMessage('Dipendente non trovato')
-        }
+      const balances = getLeaveBalances(employee.id)
+      const vacationBalance = balances.find(b => b.type === 'VACATION')
+      const rolBalance = balances.find(b => b.type === 'ROL')
+      
+      return {
+        vacation: vacationBalance?.remaining || 0,
+        rol: rolBalance?.remaining || 0
       }
     } catch (error) {
-      console.error('Errore nel caricamento dipendente:', error)
-      setMessage('Errore nel caricamento')
+      console.error('Errore nel caricamento saldi ferie:', error)
+      return { vacation: 0, rol: 0 }
     }
-  }, [employees, paramId, session, status])
+  }, [employee?.id])
 
-  // Carica saldi ferie
-  useEffect(() => {
-    if (profileReady && employee?.id) {
-      try {
-        const balances = getLeaveBalances(employee?.id || '')
-        const vacationBalance = balances.find(b => b.type === 'VACATION')
-        const rolBalance = balances.find(b => b.type === 'ROL')
-        if (vacationBalance) {
-          setPrevVacationCarry(vacationBalance.remaining || 0)
-        }
-        if (rolBalance) {
-          setPrevRolCarry(rolBalance.remaining || 0)
-        }
-      } catch (error) {
-        console.error('Errore nel caricamento saldi ferie:', error)
-      }
-    }
-  }, [profileReady, employee])
+  // Quando entri in modalità editing, copia i dati
+  const handleEditMode = () => {
+    setEditedEmployee(employee)
+    setIsEditing(true)
+  }
+
+  // Quando esci dalla modalità editing
+  const handleCancelEdit = () => {
+    setEditedEmployee(null)
+    setIsEditing(false)
+  }
+
 
   // Gestione salvataggio
   const handleSave = async () => {
@@ -185,28 +173,28 @@ export default function EmployeeDetailPage() {
 
   // Gestione competenze
   const addSkill = () => {
-    if (newSkill.trim() && !employee?.skills?.includes(newSkill.trim())) {
-      setEmployee(prev => ({
+    if (newSkill.trim() && !editedEmployee?.skills?.includes(newSkill.trim())) {
+      setEditedEmployee(prev => prev ? ({
         ...prev,
-        skills: [...(prev?.skills || []), newSkill.trim()]
-      }))
+        skills: [...(prev.skills || []), newSkill.trim()]
+      }) : null)
       setNewSkill('')
     }
   }
 
   const removeSkill = (skill: string) => {
-    setEmployee(prev => ({
+    setEditedEmployee(prev => prev ? ({
       ...prev,
-      skills: (prev?.skills || []).filter(s => s !== skill)
-    }))
+      skills: (prev.skills || []).filter(s => s !== skill)
+    }) : null)
   }
 
   const addCommonSkill = (skill: string) => {
-    if (!employee?.skills?.includes(skill)) {
-      setEmployee(prev => ({
+    if (!editedEmployee?.skills?.includes(skill)) {
+      setEditedEmployee(prev => prev ? ({
         ...prev,
-        skills: [...(prev?.skills || []), skill]
-      }))
+        skills: [...(prev.skills || []), skill]
+      }) : null)
     }
   }
 
@@ -217,12 +205,15 @@ export default function EmployeeDetailPage() {
     (session?.user as any)?.role === 'PROPRIETARIO'
   ) : false
 
+  // Usa editedEmployee quando in modalità editing, altrimenti employee
+  const currentEmployee = isEditing ? editedEmployee : employee
+
   // Informazioni dipendente
-  const roleInfo = roleConfig[employee?.role as keyof typeof roleConfig]
+  const roleInfo = roleConfig[currentEmployee?.role as keyof typeof roleConfig]
   const departmentInfo = departments[roleInfo?.department as keyof typeof departments]
   const availableSkills = commonSkills[roleInfo?.department as keyof typeof commonSkills] || []
 
-  if (status === 'loading') {
+  if (status === 'loading' || isLoadingEmployees) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -233,12 +224,13 @@ export default function EmployeeDetailPage() {
     )
   }
 
-  if (!profileReady && message) {
+  // Non renderizzare se employee non è definito
+  if (!employee) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">❌</div>
-          <div className="text-xl text-gray-700">{message}</div>
+          <div className="text-xl text-gray-700">Dipendente non trovato</div>
           <button
             onClick={() => router.push('/team')}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -250,17 +242,6 @@ export default function EmployeeDetailPage() {
     )
   }
 
-  // Non renderizzare se employee non è definito
-  if (!employee) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <div className="text-xl text-gray-700">Caricamento dipendente...</div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -282,7 +263,7 @@ export default function EmployeeDetailPage() {
             
             {canEditPersonal && (
               <button
-                onClick={() => setIsEditing(!isEditing)}
+                onClick={isEditing ? handleCancelEdit : handleEditMode}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
                 {isEditing ? 'Annulla Modifica' : 'Modifica Profilo'}
@@ -452,7 +433,7 @@ export default function EmployeeDetailPage() {
               {isEditing ? (
                 <textarea
                   value={employee?.notes || ''}
-                  onChange={(e) => setEmployee(prev => ({ ...prev, notes: e.target.value }))}
+                  onChange={(e) => setEditedEmployee(prev => prev ? ({ ...prev, notes: e.target.value }) : null)}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   placeholder="Note aggiuntive, valutazioni, obiettivi..."
