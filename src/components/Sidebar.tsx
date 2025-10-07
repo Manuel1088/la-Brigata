@@ -211,7 +211,7 @@ export default function Sidebar() {
 
   return (
     <div 
-      className={`bg-gray-50 text-gray-900 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-16'} min-h-screen flex flex-col border-r border-gray-200 hover:w-64`}
+      className={`bg-gray-50 text-gray-900 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-16'} h-full flex flex-col border-r border-gray-200 hover:w-64`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

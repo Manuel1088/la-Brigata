@@ -45,11 +45,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
       
       {/* Main Layout */}
       <div className="flex pt-16">
-        {/* Sidebar */}
-        <Sidebar />
+        {/* Sidebar - Fixed */}
+        <div className="fixed left-0 top-16 bottom-0 z-40">
+          <Sidebar />
+        </div>
         
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto">
+        {/* Main Content - Scrollable with sidebar offset */}
+        <main className="flex-1 overflow-auto ml-16">
           {children}
         </main>
       </div>
