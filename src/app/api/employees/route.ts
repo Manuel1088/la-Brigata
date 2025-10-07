@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
     const employees = await prisma.user.findMany({
       where: {
         companyId,
-        ...(department ? { department } : {}),
-        ...(activeParam != null ? { isActive: activeParam === 'true' } : {})
+        ...(department && { department }),
+        ...(activeParam !== null && { isActive: activeParam === 'true' })
       },
       select: {
         id: true,
@@ -28,24 +28,25 @@ export async function GET(request: NextRequest) {
         department: true,
         isActive: true,
         avatar: true,
-      }
+      },
+      orderBy: { name: 'asc' }
     })
 
-    return NextResponse.json({ employees: employees.map(e => ({
-      id: e.id,
-      name: e.name,
-      email: e.email,
-      phone: e.phone,
-      role: e.role,
-      level: e.hierarchyLevel,
-      department: e.department,
-      isActive: e.isActive,
-      avatar: e.avatar || '👤'
-    })) })
+    return NextResponse.json({ 
+      employees: employees.map(e => ({
+        id: e.id,
+        name: e.name,
+        email: e.email,
+        phone: e.phone,
+        role: e.role,
+        level: e.hierarchyLevel,
+        department: e.department,
+        isActive: e.isActive,
+        avatar: e.avatar || '👤'
+      })) 
+    })
   } catch (error) {
     console.error('GET /api/employees error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
-
-

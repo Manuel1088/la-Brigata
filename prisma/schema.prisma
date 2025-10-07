@@ -28,6 +28,7 @@ model Restaurant {
   users              User[]
   company            Company?             @relation(fields: [companyId], references: [id])
 
+  @@index([companyId])
   @@map("restaurants")
 }
 
@@ -79,6 +80,10 @@ model User {
   informalCompany    InformalCompany?   @relation("InformalCompanyUsers", fields: [informalCompanyId], references: [id])
   restaurant         Restaurant         @relation(fields: [restaurantId], references: [id])
 
+  @@index([companyId])
+  @@index([companyId, isActive])
+  @@index([restaurantId])
+  @@index([informalCompanyId])
   @@map("users")
 }
 
@@ -95,6 +100,8 @@ model Shift {
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
   user         User       @relation(fields: [userId], references: [id])
 
+  @@index([userId, date])
+  @@index([restaurantId, date])
   @@map("shifts")
 }
 
