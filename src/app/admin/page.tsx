@@ -76,6 +76,8 @@ export default function AdminPage() {
   const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [auditStats, setAuditStats] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [restaurants, setRestaurants] = useState<any[]>([])
+  const [restaurantsLoading, setRestaurantsLoading] = useState(false)
 
   // ✅ FIX 1: Carica dati audit - RIMOSSO le funzioni dalle dipendenze
   const loadAuditData = useCallback(async () => {
@@ -94,11 +96,29 @@ export default function AdminPage() {
     }
   }, []) // ← Array vuoto - la funzione è stabile
 
-  useEffect(() => {
-    if (canViewAudit()) {
-      loadAuditData()
+  // Carica ristoranti registrati
+  const loadRestaurants = useCallback(async () => {
+    setRestaurantsLoading(true)
+    try {
+      const response = await fetch('/api/restaurants')
+      if (response.ok) {
+        const data = await response.json()
+        setRestaurants(data.restaurants || [])
+      }
+    } catch (error) {
+      console.error('Errore caricamento ristoranti:', error)
+    } finally {
+      setRestaurantsLoading(false)
     }
-  }, [activeTab]) // ← Solo quando cambia tab audit
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'audit' && canViewAudit()) {
+      loadAuditData()
+    } else if (activeTab === 'restaurants') {
+      loadRestaurants()
+    }
+  }, [activeTab, loadAuditData, loadRestaurants]) // ← Solo quando cambia tab
 
   // ✅ FIX 2: Log accesso - SOLO una volta per sessione
   useEffect(() => {
@@ -188,7 +208,7 @@ export default function AdminPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                🏪 Gestione Ristoranti
+                🏪 Ristoranti Registrati
               </button>
               {canViewAudit() && (
                 <button
@@ -417,175 +437,132 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* Tab: Gestione Ristoranti */}
+            {/* Tab: Ristoranti Registrati */}
             {activeTab === 'restaurants' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-gray-900">🏪 Gestione Ristoranti</h2>
-                  <button
-                    onClick={() => {
-                      // TODO: Implementare creazione nuovo ristorante
-                      alert('Funzionalità in sviluppo')
-                    }}
-                    className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition"
+                  <h2 className="text-2xl font-bold text-gray-900">🏪 Ristoranti Registrati</h2>
+                  <button 
+                    onClick={loadRestaurants}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
                   >
-                    ➕ Nuovo Ristorante
+                    🔄 Aggiorna
                   </button>
                 </div>
 
-                {/* Lista Ristoranti */}
-                <div className="bg-white rounded-lg shadow">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900">Ristoranti Registrati</h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Gestisci i ristoranti e le loro informazioni
-                    </p>
+                {restaurantsLoading ? (
+                  <div className="bg-white rounded-lg shadow p-8 text-center">
+                    <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-gray-600">Caricamento ristoranti...</p>
                   </div>
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      {/* Ristorante 1 */}
-                      <div className="border rounded-lg p-4 hover:bg-gray-50 transition">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                              <span className="text-2xl">🍽️</span>
-                            </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {restaurants.map((restaurant) => (
+                      <div key={restaurant.id} className="bg-white rounded-lg shadow hover:shadow-lg transition">
+                        <div className="p-6">
+                          <div className="flex items-start justify-between mb-4">
                             <div>
-                              <h4 className="font-semibold text-gray-900">La Brigata - Sede Centrale</h4>
-                              <p className="text-sm text-gray-600">Via Roma 123, Milano</p>
-                              <p className="text-xs text-gray-500">Tel: +39 02 1234567</p>
+                              <h3 className="text-lg font-semibold text-gray-900">{restaurant.name}</h3>
+                              <p className="text-sm text-gray-600">{restaurant.address}</p>
+                              {restaurant.phone && (
+                                <p className="text-sm text-gray-500">📞 {restaurant.phone}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Attivo
+                              </span>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="text-right">
-                              <div className="text-sm font-medium text-gray-900">15 dipendenti</div>
-                              <div className="text-xs text-gray-500">Attivo</div>
+
+                          {/* Informazioni Azienda */}
+                          {restaurant.company && (
+                            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                              <h4 className="text-sm font-medium text-gray-900 mb-1">🏢 Azienda</h4>
+                              <p className="text-sm text-gray-700">{restaurant.company.name}</p>
+                              <p className="text-xs text-gray-500">CF: {restaurant.company.fiscalCode}</p>
                             </div>
-                            <div className="flex space-x-2">
-                              <button className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                                ✏️ Modifica
-                              </button>
-                              <button className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-                                👥 Dipendenti
-                              </button>
+                          )}
+
+                          {/* Statistiche */}
+                          <div className="grid grid-cols-3 gap-3 mb-4">
+                            <div className="text-center p-2 bg-blue-50 rounded">
+                              <div className="text-lg font-bold text-blue-600">{restaurant._count.users}</div>
+                              <div className="text-xs text-blue-600">Dipendenti</div>
                             </div>
+                            <div className="text-center p-2 bg-green-50 rounded">
+                              <div className="text-lg font-bold text-green-600">{restaurant._count.bookings}</div>
+                              <div className="text-xs text-green-600">Prenotazioni</div>
+                            </div>
+                            <div className="text-center p-2 bg-yellow-50 rounded">
+                              <div className="text-lg font-bold text-yellow-600">{restaurant._count.tips}</div>
+                              <div className="text-xs text-yellow-600">Mance</div>
+                            </div>
+                          </div>
+
+                          {/* Dipendenti Attivi */}
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-gray-900 mb-2">👥 Dipendenti Attivi</h4>
+                            <div className="space-y-1">
+                              {restaurant.users.filter(u => u.isActive).slice(0, 3).map((user) => (
+                                <div key={user.id} className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-700">{user.name}</span>
+                                  <span className="text-xs text-gray-500">{user.role}</span>
+                                </div>
+                              ))}
+                              {restaurant.users.filter(u => u.isActive).length > 3 && (
+                                <p className="text-xs text-gray-500">
+                                  +{restaurant.users.filter(u => u.isActive).length - 3} altri...
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Azioni */}
+                          <div className="flex space-x-2">
+                            <button className="flex-1 bg-orange-600 text-white px-3 py-2 rounded text-sm hover:bg-orange-700 transition">
+                              👁️ Visualizza
+                            </button>
+                            <button className="flex-1 bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-gray-700 transition">
+                              ⚙️ Gestisci
+                            </button>
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )}
 
-                      {/* Ristorante 2 */}
-                      <div className="border rounded-lg p-4 hover:bg-gray-50 transition">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                              <span className="text-2xl">🍕</span>
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-900">La Brigata - Filiale Nord</h4>
-                              <p className="text-sm text-gray-600">Corso Italia 456, Milano</p>
-                              <p className="text-xs text-gray-500">Tel: +39 02 7654321</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="text-right">
-                              <div className="text-sm font-medium text-gray-900">8 dipendenti</div>
-                              <div className="text-xs text-gray-500">Attivo</div>
-                            </div>
-                            <div className="flex space-x-2">
-                              <button className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                                ✏️ Modifica
-                              </button>
-                              <button className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-                                👥 Dipendenti
-                              </button>
-                            </div>
-                          </div>
+                {/* Statistiche Generali */}
+                {restaurants.length > 0 && (
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold mb-4">📊 Statistiche Generali</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">{restaurants.length}</div>
+                        <div className="text-sm text-blue-600">Ristoranti Totali</div>
+                      </div>
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">
+                          {restaurants.reduce((sum, r) => sum + r._count.users, 0)}
                         </div>
+                        <div className="text-sm text-green-600">Dipendenti Totali</div>
                       </div>
-
-                      {/* Ristorante 3 */}
-                      <div className="border rounded-lg p-4 hover:bg-gray-50 transition">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                              <span className="text-2xl">🍝</span>
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-900">La Brigata - Filiale Sud</h4>
-                              <p className="text-sm text-gray-600">Via Garibaldi 789, Milano</p>
-                              <p className="text-xs text-gray-500">Tel: +39 02 9876543</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="text-right">
-                              <div className="text-sm font-medium text-gray-900">12 dipendenti</div>
-                              <div className="text-xs text-gray-500">Attivo</div>
-                            </div>
-                            <div className="flex space-x-2">
-                              <button className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                                ✏️ Modifica
-                              </button>
-                              <button className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-                                👥 Dipendenti
-                              </button>
-                            </div>
-                          </div>
+                      <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                        <div className="text-2xl font-bold text-yellow-600">
+                          {restaurants.reduce((sum, r) => sum + r._count.bookings, 0)}
                         </div>
+                        <div className="text-sm text-yellow-600">Prenotazioni Totali</div>
+                      </div>
+                      <div className="text-center p-4 bg-purple-50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {restaurants.reduce((sum, r) => sum + r._count.tips, 0)}
+                        </div>
+                        <div className="text-sm text-purple-600">Mance Totali</div>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Statistiche Ristoranti */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <span className="text-2xl">🏪</span>
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Totale Ristoranti</p>
-                        <p className="text-2xl font-bold text-gray-900">3</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <span className="text-2xl">👥</span>
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Totale Dipendenti</p>
-                        <p className="text-2xl font-bold text-gray-900">35</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <span className="text-2xl">📊</span>
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Fatturato Mensile</p>
-                        <p className="text-2xl font-bold text-gray-900">€125K</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <span className="text-2xl">⭐</span>
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Rating Medio</p>
-                        <p className="text-2xl font-bold text-gray-900">4.8</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
