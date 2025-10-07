@@ -48,12 +48,12 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
     const headers = ['Data','Tipo','Importo','Location']
     const rows = tipEntries
       .filter(e => { const d = new Date(e.date); return d.getFullYear() === targetMonth.getFullYear() && d.getMonth() === targetMonth.getMonth() })
-      .map(e => `<tr><td>${new Date(e.date).toLocaleDateString('it-IT')}</td><td>${e.type}</td><td>€${Number(e.amount).toFixed(2)}</td><td>${e.location}</td></tr>`)
+      .map(e => `<tr><td>${new Date(e.date).toLocaleDateString('it-IT')}</td><td>${e.type}</td><td>€${isNaN(Number(e.amount)) ? '0.00' : Number(e.amount).toFixed(2)}</td><td>${e.location}</td></tr>`)
       .join('')
     return `
       <div class=\"h1\">Riepilogo Mance - ${monthName}</div>
       <div class=\"meta\">${new Date().toLocaleString('it-IT')}</div>
-      <div class=\"small\">Totale: Contanti €${totals.cash.toFixed(2)} • Carta €${totals.card.toFixed(2)} • Estere €${totals.foreign.toFixed(2)}</div>
+      <div class=\"small\">Totale: Contanti €${isNaN(totals.cash) ? '0.00' : totals.cash.toFixed(2)} • Carta €${isNaN(totals.card) ? '0.00' : totals.card.toFixed(2)} • Estere €${isNaN(totals.foreign) ? '0.00' : totals.foreign.toFixed(2)}</div>
       <table class=\"table\" cellspacing=\"0\" cellpadding=\"0\"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
     `
   }
@@ -105,7 +105,7 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
         .slice(0, 26)
       monthRows.forEach(e => {
         x = 32
-        const row = [new Date(e.date).toLocaleDateString('it-IT'), e.type, `€${Number(e.amount).toFixed(2)}`, e.location]
+        const row = [new Date(e.date).toLocaleDateString('it-IT'), e.type, `€${isNaN(Number(e.amount)) ? '0.00' : Number(e.amount).toFixed(2)}`, e.location]
         row.forEach((val, i) => { ctx.fillText(String(val), x, y); x += cols[i] })
         y += 22
       })
@@ -251,15 +251,15 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
       <div className="grid md:grid-cols-3 gap-4">
         <div className="p-3 rounded-lg border bg-green-50 text-center">
           <div className="text-sm text-gray-600 mb-1">💵 Contanti</div>
-          <div className="text-xl font-semibold text-green-700">€{totals.cash.toFixed(2)}</div>
+          <div className="text-xl font-semibold text-green-700">€{isNaN(totals.cash) ? '0.00' : totals.cash.toFixed(2)}</div>
         </div>
         <div className="p-3 rounded-lg border bg-blue-50 text-center">
           <div className="text-sm text-gray-600 mb-1">💳 Carta</div>
-          <div className="text-xl font-semibold text-blue-700">€{totals.card.toFixed(2)}</div>
+          <div className="text-xl font-semibold text-blue-700">€{isNaN(totals.card) ? '0.00' : totals.card.toFixed(2)}</div>
         </div>
         <div className="p-3 rounded-lg border bg-purple-50 text-center">
           <div className="text-sm text-gray-600 mb-1">🌍 Monete Estere</div>
-          <div className="text-xl font-semibold text-purple-700">€{totals.foreign.toFixed(2)}</div>
+          <div className="text-xl font-semibold text-purple-700">€{isNaN(totals.foreign) ? '0.00' : totals.foreign.toFixed(2)}</div>
         </div>
       </div>
 

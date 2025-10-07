@@ -293,15 +293,15 @@ export default function TipsOverview() {
         <div className="mt-4 grid md:grid-cols-3 gap-4">
           <div className="p-3 rounded-lg border bg-green-50 text-center cursor-pointer" onClick={() => setExpandedType(prev => prev === 'cash' ? null : 'cash')}>
             <div className="text-sm text-gray-600 mb-1">💵 Contanti</div>
-            <div className="text-xl font-semibold text-green-700">€{monthTotalsByType.cash.toFixed(2)}</div>
+            <div className="text-xl font-semibold text-green-700">€{isNaN(monthTotalsByType.cash) ? '0.00' : monthTotalsByType.cash.toFixed(2)}</div>
           </div>
           <div className="p-3 rounded-lg border bg-blue-50 text-center cursor-pointer" onClick={() => setExpandedType(prev => prev === 'card' ? null : 'card')}>
             <div className="text-sm text-gray-600 mb-1">💳 Carta</div>
-            <div className="text-xl font-semibold text-blue-700">€{monthTotalsByType.card.toFixed(2)}</div>
+            <div className="text-xl font-semibold text-blue-700">€{isNaN(monthTotalsByType.card) ? '0.00' : monthTotalsByType.card.toFixed(2)}</div>
           </div>
           <div className="p-3 rounded-lg border bg-purple-50 text-center cursor-pointer" onClick={() => setExpandedType(prev => prev === 'foreign' ? null : 'foreign')}>
             <div className="text-sm text-gray-600 mb-1">🌍 Monete Estere</div>
-            <div className="text-xl font-semibold text-purple-700">€{monthTotalsByType.foreign.toFixed(2)}</div>
+            <div className="text-xl font-semibold text-purple-700">€{isNaN(monthTotalsByType.foreign) ? '0.00' : monthTotalsByType.foreign.toFixed(2)}</div>
           </div>
         </div>
       </div>

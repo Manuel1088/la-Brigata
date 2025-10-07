@@ -180,7 +180,7 @@ export default function TipsHistory() {
         <h3 className="text-lg font-semibold mb-4">📊 Statistiche</h3>
         <div className="grid md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">€{stats.total.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-gray-900">€{isNaN(stats.total) ? '0.00' : stats.total.toFixed(2)}</div>
             <div className="text-sm text-gray-600">Totale</div>
           </div>
           <div className="text-center p-4 bg-gray-50 rounded-lg">
@@ -188,11 +188,11 @@ export default function TipsHistory() {
             <div className="text-sm text-gray-600">Transazioni</div>
           </div>
           <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">€{stats.count > 0 ? (stats.total / stats.count).toFixed(2) : '0.00'}</div>
+            <div className="text-2xl font-bold text-gray-900">€{stats.count > 0 ? (isNaN(stats.total) ? '0.00' : (stats.total / stats.count).toFixed(2)) : '0.00'}</div>
             <div className="text-sm text-gray-600">Media</div>
           </div>
           <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">€{stats.byType.cash.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-gray-900">€{isNaN(stats.byType.cash) ? '0.00' : stats.byType.cash.toFixed(2)}</div>
             <div className="text-sm text-gray-600">Contanti</div>
           </div>
         </div>
