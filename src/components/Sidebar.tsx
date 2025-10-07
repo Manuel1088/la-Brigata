@@ -30,9 +30,53 @@ export default function Sidebar() {
 
   // Load pending approvals count for managers
   useEffect(() => {
-    if (canManageEmployees()) {
-      // Simulate loading pending approvals
-      setPendingApprovals(3)
+    const calculatePendingApprovals = () => {
+      if (!canManageEmployees()) {
+        setPendingApprovals(0)
+        return
+      }
+      
+      let count = 0
+      
+      try {
+        // Conteggio richieste ferie
+        const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]')
+        count += leaveRequests.filter((req: any) => req.status === 'PENDING').length
+        
+        // Conteggio richieste swap turni
+        const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]')
+        count += swapRequests.filter((req: any) => req.status === 'PENDING').length
+        
+        // Conteggio richieste dipendenti
+        const employeeRequests = JSON.parse(localStorage.getItem('employee_requests') || '[]')
+        count += employeeRequests.filter((req: any) => req.status === 'PENDING').length
+        
+        // Conteggio richieste payroll
+        const payrollRequests = JSON.parse(localStorage.getItem('payroll_requests') || '[]')
+        count += payrollRequests.filter((req: any) => req.status === 'PENDING').length
+      } catch (error) {
+        console.error('Errore nel calcolo approvazioni:', error)
+      }
+      
+      setPendingApprovals(count)
+    }
+    
+    calculatePendingApprovals()
+    
+    // Listener per aggiornamenti
+    const handleUpdate = () => calculatePendingApprovals()
+    window.addEventListener('approvals_updated', handleUpdate)
+    window.addEventListener('leave_system_updated', handleUpdate)
+    window.addEventListener('shift_swaps_updated', handleUpdate)
+    window.addEventListener('employee_requests_updated', handleUpdate)
+    window.addEventListener('payroll_requests_updated', handleUpdate)
+    
+    return () => {
+      window.removeEventListener('approvals_updated', handleUpdate)
+      window.removeEventListener('leave_system_updated', handleUpdate)
+      window.removeEventListener('shift_swaps_updated', handleUpdate)
+      window.removeEventListener('employee_requests_updated', handleUpdate)
+      window.removeEventListener('payroll_requests_updated', handleUpdate)
     }
   }, [canManageEmployees])
 
@@ -64,6 +108,13 @@ export default function Sidebar() {
           label: 'Il Mio Team', 
           path: '/team', 
           color: '#FDCB6E',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+        },
+        { 
+          icon: '✅', 
+          label: 'Approvazioni', 
+          path: '/approvals', 
+          color: '#00B894',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE],
           badge: pendingApprovals > 0 ? pendingApprovals : undefined
         },
