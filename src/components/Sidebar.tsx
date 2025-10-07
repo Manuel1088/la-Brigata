@@ -218,26 +218,9 @@ export default function Sidebar() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        {isSidebarOpen ? (
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🍽️</span>
-            <div>
-              <span className="font-bold text-lg text-gray-900">LA BRIGATA</span>
-              <p className="text-xs text-gray-600">
-                {userRole === UserRole.PROPRIETARIO ? 'Owner' :
-                 userRole === UserRole.MANAGER ? 'Manager' : 'Team'}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <span className="text-2xl mx-auto block">🍽️</span>
-        )}
-      </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-6">
+      <nav className="flex-1 p-4 pt-6 space-y-6">
         {filteredSections.map((section, sectionIndex) => (
           <div key={sectionIndex}>
             {isSidebarOpen && (
