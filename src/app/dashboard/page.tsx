@@ -43,7 +43,7 @@ export default function DashboardPage() {
 
   // Simulate AI suggestions
   const aiSuggestions = [
-    { icon: '🎯', text: 'Richiedi sabato libero (90% approvazione)', action: () => router.push('/leaves') },
+    { icon: '🎯', text: 'Richiedi sabato libero (90% approvazione)', action: () => router.push('/leaves/new') },
     { icon: '💼', text: 'Controlla nuove opportunità di carriera', action: () => router.push('/me') },
     { icon: '📚', text: 'Corso disponibile: Servizio Avanzato', action: () => {} }
   ]
@@ -129,7 +129,7 @@ export default function DashboardPage() {
       id: 'employees', 
       icon: '👥', 
       label: 'Il Mio Team', 
-      path: '/employees', 
+      path: '/team', 
       color: COLORS.orange,
       roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
     },

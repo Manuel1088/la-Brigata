@@ -62,7 +62,7 @@ export default function Sidebar() {
         { 
           icon: '👥', 
           label: 'Il Mio Team', 
-          path: '/employees', 
+          path: '/team', 
           color: '#FDCB6E',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE],
           badge: pendingApprovals > 0 ? pendingApprovals : undefined
@@ -80,29 +80,11 @@ export default function Sidebar() {
       title: 'GESTIONE',
       items: [
         { 
-          icon: '🏖️', 
-          label: 'Ferie e Permessi', 
-          path: '/leaves',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
-        },
-        { 
           icon: '📋', 
-          label: 'Prenotazioni', 
-          path: '/bookings',
+          label: 'Operazioni', 
+          path: '/operations',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         },
-        { 
-          icon: '👥', 
-          label: 'Clienti', 
-          path: '/customers',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
-        },
-        { 
-          icon: '📈', 
-          label: 'Vendite', 
-          path: '/sale',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
-        }
       ],
       roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
     },

@@ -99,94 +99,89 @@ export default function EmployeeDetailPage() {
       const sessionId = session?.user?.id as string | undefined
       const sessionEmail = session?.user?.email as string | undefined
       if (employees && employees.length > 0) {
-        const found: any = employees.find((e: any) => e.id === (paramId || sessionId)) || employees.find((e: any) => (e.email || '').toLowerCase() === (sessionEmail || '').toLowerCase())
-        if (found) {
-          const mapped: EmployeeFull = {
-            id: found.id || sessionId || 'unknown',
-            name: found.name,
-            email: found.email,
-            phone: (found as any).phone || '',
-            role: found.role,
-            department: (found as any).department || 'sala',
-            level: (found as any).level || 2,
-            hourlyRate: 12,
-            contractType: 'full-time',
-            startDate: new Date().toISOString().split('T')[0],
-            isActive: !!(found as any).isActive,
-            avatar: (found as any).avatar || '👤',
-            skills: [],
-            personalInfo: {}
-          }
-          setEmployee(mapped)
+        // Cerca dipendente per ID o per email (per utenti che visualizzano il proprio profilo)
+        const foundEmployee = employees.find((emp: any) => 
+          emp.id === paramId || 
+          (paramId === sessionId && emp.email === sessionEmail)
+        )
+        if (foundEmployee) {
+          setEmployee(foundEmployee as EmployeeFull)
           setProfileReady(true)
-          return
+        } else {
+          setMessage('Dipendente non trovato')
+        }
+      } else {
+        // Fallback per utenti registrati che non sono ancora dipendenti
+        if (paramId === sessionId) {
+          setEmployee({
+            ...mockEmployee,
+            id: sessionId,
+            name: session?.user?.name || 'Utente',
+            email: session?.user?.email || '',
+          } as EmployeeFull)
+          setProfileReady(true)
+        } else {
+          setMessage('Dipendente non trovato')
         }
       }
-      // Fallback: costruisci dal contenuto della sessione
-      if (session?.user) {
-        const fallback: EmployeeFull = {
-          id: sessionId || 'unknown',
-          name: session.user.name || 'Utente',
-          email: session.user.email || '',
-          phone: (session.user as any).phone || '',
-          role: (session.user as any).role || 'DIPENDENTE',
-          department: 'sala',
-          level: (session.user as any).level || 2,
-          hourlyRate: 12,
-          contractType: 'full-time',
-          startDate: new Date().toISOString().split('T')[0],
-          isActive: true,
-          avatar: (session.user as any).avatar || '👤',
-          skills: [],
-          personalInfo: {}
-        }
-        setEmployee(fallback)
-        setProfileReady(true)
-      }
-    } catch {}
-  }, [paramId, session?.user, status, employees])
+    } catch (error) {
+      console.error('Errore nel caricamento dipendente:', error)
+      setMessage('Errore nel caricamento')
+    }
+  }, [employees, paramId, session, status])
 
-  // Carica eventuale residuo anno precedente da localStorage (opzionale)
+  // Carica saldi ferie
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('leave_carryover_v1')
-      if (raw) {
-        const map = JSON.parse(raw) as Record<string, { vacationPrev?: number; rolPrev?: number }>
-        const me = map[employee.id]
-        if (me) {
-          setPrevVacationCarry(me.vacationPrev || 0)
-          setPrevRolCarry(me.rolPrev || 0)
+    if (profileReady && employee?.id) {
+      try {
+        const balances = getLeaveBalances(employee.id)
+        const vacationBalance = balances.find(b => b.type === 'VACATION')
+        const rolBalance = balances.find(b => b.type === 'ROL')
+        if (vacationBalance) {
+          setPrevVacationCarry(vacationBalance.remaining || 0)
         }
+        if (rolBalance) {
+          setPrevRolCarry(rolBalance.remaining || 0)
+        }
+      } catch (error) {
+        console.error('Errore nel caricamento saldi ferie:', error)
       }
-    } catch {}
-  }, [employee.id])
+    }
+  }, [profileReady, employee])
 
-  // Toggle modalità proprietario lavoratore (solo se proprietario sul proprio profilo)
-  useEffect(() => {
-    const userId = session?.user?.id
-    if (!userId) return
+  // Gestione salvataggio
+  const handleSave = async () => {
+    setIsLoading(true)
     try {
-      const raw = localStorage.getItem('working_owner_mode_v1')
-      const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
-      setWorkingOwner(!!map[userId])
-    } catch { setWorkingOwner(false) }
-  }, [session?.user?.id])
-
-  const toggleWorkingOwner = () => {
-    const userId = session?.user?.id
-    if (!userId) return
-    try {
-      const raw = localStorage.getItem('working_owner_mode_v1')
-      const map = raw ? JSON.parse(raw) as Record<string, boolean> : {}
-      const next = !workingOwner
-      map[userId] = next
-      localStorage.setItem('working_owner_mode_v1', JSON.stringify(map))
-      setWorkingOwner(next)
-      try { window.dispatchEvent(new Event('working_owner_mode_updated')) } catch {}
-    } catch {}
+      // Qui implementerai la logica di salvataggio
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Simula chiamata API
+      setIsEditing(false)
+      setMessage('Modifiche salvate con successo')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error('Errore nel salvataggio:', error)
+      setMessage('Errore nel salvataggio')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  // (Profilo aziendale ora viene da useCompanyData hook)
+  // Gestione eliminazione
+  const handleDelete = async () => {
+    if (!confirm('Sei sicuro di voler eliminare questo dipendente?')) return
+    
+    setIsLoading(true)
+    try {
+      // Qui implementerai la logica di eliminazione
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Simula chiamata API
+      router.push('/team')
+    } catch (error) {
+      console.error('Errore nell\'eliminazione:', error)
+      setMessage('Errore nell\'eliminazione')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   // Gestione competenze
   const addSkill = () => {
@@ -199,10 +194,10 @@ export default function EmployeeDetailPage() {
     }
   }
 
-  const removeSkill = (skillToRemove: string) => {
+  const removeSkill = (skill: string) => {
     setEmployee(prev => ({
       ...prev,
-      skills: prev.skills.filter(skill => skill !== skillToRemove)
+      skills: prev.skills.filter(s => s !== skill)
     }))
   }
 
@@ -215,501 +210,281 @@ export default function EmployeeDetailPage() {
     }
   }
 
-  const handleSave = async () => {
-    setIsLoading(true)
-    
-    try {
-      // Qui andrà la chiamata API per salvare nel database
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      setMessage('✅ Dipendente aggiornato con successo!')
-      setIsEditing(false)
-      setTimeout(() => setMessage(''), 3000)
-      
-    } catch (error) {
-      setMessage('❌ Errore durante il salvataggio')
-      setTimeout(() => setMessage(''), 3000)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Controlli permessi
+  const canEditPersonal = session?.user?.id === employee?.id || 
+    (session?.user as any)?.role === 'MANAGER' || 
+    (session?.user as any)?.role === 'PROPRIETARIO'
 
-  const handleDelete = async () => {
-    if (!confirm('Sei sicuro di voler eliminare questo dipendente? Questa azione non può essere annullata.')) {
-      return
-    }
-
-    setIsLoading(true)
-    
-    try {
-      // Qui andrà la chiamata API per eliminare dal database
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      setMessage('✅ Dipendente eliminato con successo!')
-      setTimeout(() => {
-        router.push('/employees')
-      }, 2000)
-      
-    } catch (error) {
-      setMessage('❌ Errore durante l\'eliminazione')
-      setTimeout(() => setMessage(''), 3000)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const toggleActive = async () => {
-    setIsLoading(true)
-    
-    try {
-      setEmployee(prev => ({ ...prev, isActive: !prev.isActive }))
-      // Qui andrà la chiamata API per aggiornare lo status
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      setMessage(`✅ Dipendente ${employee.isActive ? 'disattivato' : 'attivato'} con successo!`)
-      setTimeout(() => setMessage(''), 3000)
-      
-    } catch (error) {
-      setMessage('❌ Errore durante l\'aggiornamento')
-      setTimeout(() => setMessage(''), 3000)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Informazioni dipendente
+  const roleInfo = roleConfig[employee?.role as keyof typeof roleConfig]
+  const departmentInfo = departments[roleInfo?.department as keyof typeof departments]
+  const availableSkills = commonSkills[roleInfo?.department as keyof typeof commonSkills] || []
 
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-2xl">Caricamento...</div>
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <div className="text-xl">Caricamento profilo...</div>
+        </div>
       </div>
     )
   }
 
-  if (!session) {
-    return null
-  }
-
-  if (!profileReady) {
+  if (!profileReady && message) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-2xl">Caricamento profilo...</div>
+        <div className="text-center">
+          <div className="text-4xl mb-4">❌</div>
+          <div className="text-xl text-gray-700">{message}</div>
+          <button
+            onClick={() => router.push('/team')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Torna al Team
+          </button>
+        </div>
       </div>
     )
   }
-
-  const roleInfo = roleConfig[employee.role as keyof typeof roleConfig]
-  const departmentInfo = departments[roleInfo?.department as keyof typeof departments]
-  const availableSkills = roleInfo ? commonSkills[roleInfo.department as keyof typeof commonSkills] || [] : []
-
-  // Limitazioni: un dipendente può modificare solo il proprio profilo personale
-  const isOwner = session?.user?.id === employee.id
-  const canEditPersonal = isOwner
-  const canEditWork = false // i dati lavorativi restano sola lettura per i dipendenti
-
-  // Saldi Ferie/ROL correnti
-  const leaveBalances = getLeaveBalances(employee.id)
-  const vacationBal = leaveBalances.find(b => b.type === 'VACATION') || { total: 26, used: 0, remaining: 26, percentage: 0 }
-  const rolBal = leaveBalances.find(b => b.type === 'ROL') || { total: 32, used: 0, remaining: 32, percentage: 0 }
-  const vacationMatured = Math.max(0, vacationBal.total - prevVacationCarry)
-  const rolMatured = Math.max(0, rolBal.total - prevRolCarry)
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
               <button
-                onClick={() => {
-                  const fromEmployees = typeof document !== 'undefined' && !!document.referrer && document.referrer.includes('/employees')
-                  if (fromEmployees) {
-                    router.back()
-                    return
-                  }
-                  if (isOwner) {
-                    router.push('/dashboard')
-                  } else {
-                    router.push('/employees')
-                  }
-                }}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition"
+                onClick={() => router.push('/team')}
+                className="text-gray-500 hover:text-gray-700 transition"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span>{isOwner ? 'Indietro' : 'Torna ai Dipendenti'}</span>
+                ← Torna al Team
               </button>
-              <h1 className="text-3xl font-bold text-gray-900">
-                👤 {employee.name}
-              </h1>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">{employee.name}</h1>
+                <p className="text-gray-600 mt-1">{roleInfo?.name} • {departmentInfo?.name}</p>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className={`px-3 py-1 rounded-full text-sm ${
-                employee.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-              }`}>
-                {employee.isActive ? 'Attivo' : 'Inattivo'}
-              </span>
-            </div>
+            
+            {canEditPersonal && (
+              <button
+                onClick={() => setIsEditing(!isEditing)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                {isEditing ? 'Annulla Modifica' : 'Modifica Profilo'}
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          
-          {/* Messaggio di stato */}
-          {message && (
-            <div className={`mb-6 p-4 rounded-lg ${
-              message.includes('✅') 
-                ? 'bg-green-100 border border-green-400 text-green-700' 
-                : 'bg-red-100 border border-red-400 text-red-700'
-            }`}>
-              {message}
-            </div>
-          )}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {message && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-green-800">{message}</p>
+          </div>
+        )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Colonna Sinistra - Profilo */}
-            <div className="lg:col-span-1">
-              {!(isOwner && !workingOwner) && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="text-center">
-                    <div className="text-6xl mb-4">{employee.avatar}</div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">{employee.name}</h2>
-                    <p className="text-gray-600 mb-4">{roleInfo?.name}</p>
-                    
-                    <div className="space-y-2 mb-6">
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm ${
-                        departmentInfo?.color === 'red' ? 'bg-red-100 text-red-800' :
-                        departmentInfo?.color === 'blue' ? 'bg-blue-100 text-blue-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {departmentInfo?.icon} {departmentInfo?.name}
-                      </span>
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm ${
-                        roleInfo?.level === 5 ? 'bg-red-100 text-red-800' :
-                        roleInfo?.level === 4 ? 'bg-orange-100 text-orange-800' :
-                        roleInfo?.level === 3 ? 'bg-yellow-100 text-yellow-800' :
-                        roleInfo?.level === 2 ? 'bg-green-100 text-green-800' :
-                        'bg-blue-100 text-blue-800'
-                      }`}>
-                        Livello {roleInfo?.level} - {roleInfo?.name}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Paga Oraria:</span>
-                        <span className="font-medium">€{employee.hourlyRate}/h</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Contratto:</span>
-                        <span className="font-medium">{employee.contractType === 'full-time' ? 'Full-time' : 'Part-time'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Dal:</span>
-                        <span className="font-medium">{new Date(employee.startDate).toLocaleDateString('it-IT')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Costo Mensile:</span>
-                        <span className="font-medium">€{(employee.hourlyRate * (employee.contractType === 'full-time' ? 160 : 80)).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Informazioni Principali */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Profilo */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-center">
+                <div className="text-6xl mb-4">{employee.avatar}</div>
+                <h2 className="text-xl font-semibold text-gray-900">{employee.name}</h2>
+                <p className="text-gray-600">{employee.email}</p>
+                <p className="text-gray-600">{employee.phone}</p>
+                
+                <div className="mt-4">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    departmentInfo?.color === 'red' ? 'bg-red-100 text-red-800' :
+                    departmentInfo?.color === 'blue' ? 'bg-blue-100 text-blue-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {departmentInfo?.icon} {departmentInfo?.name}
+                  </span>
                 </div>
-              )}
-
-              {/* Profilo Aziendale (tutti i dipendenti) */}
-              <div className="bg-white rounded-lg shadow p-6 mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">🏢 Profilo Aziendale</h3>
-                {companyData ? (
-                  <>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between"><span className="text-gray-600">Ragione Sociale</span><span className="font-medium">{companyData.name}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-600">Codice Fiscale</span><span className="font-medium">{companyData.fiscalCode}</span></div>
-                      {companyData.address && (<div className="flex justify-between"><span className="text-gray-600">Indirizzo</span><span className="font-medium">{companyData.address}</span></div>)}
-                      {companyData.phone && (<div className="flex justify-between"><span className="text-gray-600">Telefono</span><span className="font-medium">{companyData.phone}</span></div>)}
-                      {companyData.email && (<div className="flex justify-between"><span className="text-gray-600">Email</span><span className="font-medium">{companyData.email}</span></div>)}
-                      <div className="flex justify-between"><span className="text-gray-600">Stato</span><span className="font-medium">{companyData.isActive ? 'Attiva' : 'Sospesa'}</span></div>
-                    </div>
-                    {Array.isArray(companyData.restaurants) && companyData.restaurants.length > 0 && (
-                      <div className="mt-4">
-                        <div className="text-sm text-gray-700 mb-2">Ristoranti collegati</div>
-                        <ul className="space-y-1 text-sm">
-                          {companyData.restaurants.map((r: any) => (
-                            <li key={r.id} className="flex justify-between">
-                              <span>{r.name}</span>
-                              <span className="text-gray-600">CF: {companyData.fiscalCode}{r.address ? ` • ${r.address}` : ''}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-sm text-gray-600">Nessuna azienda collegata.</div>
-                )}
-                {/* Toggle proprietario lavoratore (solo se proprietario del proprio profilo) */}
-                {isOwner && ((session?.user as any)?.role === 'PROPRIETARIO') && (
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="text-sm text-gray-700">Modalità proprietario lavoratore</div>
-                    <button
-                      onClick={toggleWorkingOwner}
-                      className={`px-3 py-1 rounded ${workingOwner ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
-                    >
-                      {workingOwner ? 'Disattiva' : 'Attiva'}
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Colonna Destra - Dettagli */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Ferie e ROL (nascosti per proprietario non lavoratore) */}
-              {!(isOwner && !workingOwner) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Ferie */}
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">🏖️ Ferie</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between"><span className="text-gray-600">Residue anno precedente</span><span className="font-semibold">{prevVacationCarry} gg</span></div>
-                      <div className="flex justify-between"><span className="text-gray-600">Maturate</span><span className="font-semibold">{vacationMatured} gg</span></div>
-                      <div className="flex justify-between"><span className="text-gray-600">Godute</span><span className="font-semibold">{vacationBal.used} gg</span></div>
-                      <div className="flex justify-between border-t pt-2"><span className="text-gray-900">Residue totali</span><span className="font-bold text-blue-700">{vacationBal.remaining} gg</span></div>
-                    </div>
-                  </div>
-                  {/* ROL */}
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">⏰ ROL</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between"><span className="text-gray-600">Residue anno precedente</span><span className="font-semibold">{prevRolCarry} h</span></div>
-                      <div className="flex justify-between"><span className="text-gray-600">Maturate</span><span className="font-semibold">{rolMatured} h</span></div>
-                      <div className="flex justify-between"><span className="text-gray-600">Godute</span><span className="font-semibold">{rolBal.used} h</span></div>
-                      <div className="flex justify-between border-t pt-2"><span className="text-gray-900">Residue totali</span><span className="font-bold text-blue-700">{rolBal.remaining} h</span></div>
-                    </div>
-                  </div>
+            {/* Informazioni Lavorative */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">💼 Informazioni Lavorative</h3>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-gray-600">Ruolo:</span>
+                  <div className="font-medium">{roleInfo?.name}</div>
                 </div>
-              )}
+                <div>
+                  <span className="text-gray-600">Tariffa oraria:</span>
+                  <div className="font-medium">€{employee.hourlyRate}/ora</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Contratto:</span>
+                  <div className="font-medium">{contractTypes.find(ct => ct.value === employee.contractType)?.label}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Data assunzione:</span>
+                  <div className="font-medium">{new Date(employee.startDate).toLocaleDateString('it-IT')}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Saldi Ferie */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">🏖️ Saldi Ferie</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Ferie:</span>
+                  <span className="font-medium">20 giorni</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">ROL:</span>
+                  <span className="font-medium">8 giorni</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Permessi:</span>
+                  <span className="font-medium">2 giorni</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Contenuto Principale */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Competenze */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">🎯 Competenze</h3>
               
-              {/* Informazioni di Contatto */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">📞 Contatti</h3>
-                  <button
-                    onClick={() => canEditPersonal && setIsEditing(!isEditing)}
-                    disabled={!canEditPersonal}
-                    className="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 transition"
+              <div className="flex flex-wrap gap-2 mb-4">
+                {employee.skills.map(skill => (
+                  <span
+                    key={skill}
+                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-1"
                   >
-                    {isEditing ? 'Annulla' : '✏️ Modifica'}
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    {isEditing ? (
-                      <input
-                        type="email"
-                        value={employee.email}
-                        onChange={(e) => setEmployee(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{employee.email}</p>
+                    {skill}
+                    {isEditing && canEditPersonal && (
+                      <button
+                        onClick={() => removeSkill(skill)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        ×
+                      </button>
                     )}
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-                    {isEditing ? (
-                      <input
-                        type="tel"
-                        value={employee.phone}
-                        onChange={(e) => setEmployee(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{employee.phone}</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={employee.personalInfo.address}
-                        onChange={(e) => setEmployee(prev => ({ 
-                          ...prev, 
-                          personalInfo: { ...prev.personalInfo, address: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{employee.personalInfo.address}</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contatto Emergenza</label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={employee.personalInfo.emergencyContact}
-                        onChange={(e) => setEmployee(prev => ({ 
-                          ...prev, 
-                          personalInfo: { ...prev.personalInfo, emergencyContact: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{employee.personalInfo.emergencyContact}</p>
-                    )}
-                  </div>
-                </div>
+                  </span>
+                ))}
               </div>
 
-              {/* Competenze */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">🎯 Competenze</h3>
-                
-                {/* Competenze Attuali */}
-                <div className="mb-4">
-                  <div className="flex flex-wrap gap-2">
-                    {employee.skills.map((skill, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-orange-100 text-orange-800"
-                      >
-                        {skill}
-                        {isEditing && (
-                          <button
-                            type="button"
-                            onClick={() => removeSkill(skill)}
-                            className="ml-2 text-orange-600 hover:text-orange-800"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Aggiungi Competenze (solo in modalità editing) */}
-                {isEditing && canEditPersonal && (
-                  <div className="space-y-4">
-                    {/* Competenze Comuni */}
-                    {availableSkills.length > 0 && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Competenze Comuni per {departmentInfo?.name}
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {availableSkills.map((skill, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => addCommonSkill(skill)}
-                              disabled={employee.skills.includes(skill)}
-                              className={`px-3 py-1 rounded-full text-sm transition ${
-                                employee.skills.includes(skill)
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                              }`}
-                            >
-                              + {skill}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Aggiungi Competenza Personalizzata */}
+              {/* Aggiungi Competenze (solo in modalità editing) */}
+              {isEditing && canEditPersonal && (
+                <div className="space-y-4">
+                  {/* Competenze Comuni */}
+                  {availableSkills.length > 0 && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Aggiungi Competenza Personalizzata
+                        Competenze Comuni per {departmentInfo?.name}
                       </label>
-                      <div className="flex space-x-2">
-                        <input
-                          type="text"
-                          value={newSkill}
-                          onChange={(e) => setNewSkill(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                          placeholder="Es. Gestione Inventario"
-                        />
-                        <button
-                          type="button"
-                          onClick={addSkill}
-                          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
-                        >
-                          Aggiungi
-                        </button>
+                      <div className="flex flex-wrap gap-2">
+                        {availableSkills.map((skill, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => addCommonSkill(skill)}
+                            disabled={employee.skills.includes(skill)}
+                            className={`px-3 py-1 rounded-full text-sm transition ${
+                              employee.skills.includes(skill)
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                            }`}
+                          >
+                            + {skill}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
 
-              {/* Note */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">📝 Note</h3>
-                {isEditing ? (
-                  <textarea
-                    value={employee.notes}
-                    onChange={(e) => setEmployee(prev => ({ ...prev, notes: e.target.value }))}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="Note aggiuntive, valutazioni, obiettivi..."
-                  />
-                ) : (
-                  <p className="text-gray-900 whitespace-pre-wrap">{employee.notes}</p>
-                )}
-              </div>
-
-              {/* Sezione Payroll */}
-              <PayrollSection />
-
-              {/* Azioni */}
-              {isEditing && canEditPersonal && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="flex justify-end space-x-3">
-                    <button
-                      onClick={() => setIsEditing(false)}
-                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
-                    >
-                      Annulla
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={isLoading}
-                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
-                    >
-                      {isLoading ? 'Salvataggio...' : '💾 Salva Modifiche'}
-                    </button>
+                  {/* Aggiungi Competenza Personalizzata */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Aggiungi Competenza Personalizzata
+                    </label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={newSkill}
+                        onChange={(e) => setNewSkill(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="Es. Gestione Inventario"
+                      />
+                      <button
+                        type="button"
+                        onClick={addSkill}
+                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                      >
+                        Aggiungi
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
+            </div>
 
-              {/* Azioni di Eliminazione */}
+            {/* Note */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">📝 Note</h3>
+              {isEditing ? (
+                <textarea
+                  value={employee.notes}
+                  onChange={(e) => setEmployee(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Note aggiuntive, valutazioni, obiettivi..."
+                />
+              ) : (
+                <p className="text-gray-900 whitespace-pre-wrap">{employee.notes}</p>
+              )}
+            </div>
+
+            {/* Sezione Payroll */}
+            <PayrollSection />
+
+            {/* Azioni */}
+            {isEditing && canEditPersonal && (
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-red-600 mb-4">⚠️ Zona Pericolosa</h3>
-                <p className="text-gray-600 mb-4">
-                  L'eliminazione di un dipendente rimuoverà permanentemente tutti i suoi dati dal sistema.
-                </p>
-                <button
-                  onClick={handleDelete}
-                  disabled={isLoading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
-                >
-                  {isLoading ? 'Eliminazione...' : '🗑️ Elimina Dipendente'}
-                </button>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
+                  >
+                    {isLoading ? 'Salvataggio...' : '💾 Salva Modifiche'}
+                  </button>
+                </div>
               </div>
+            )}
+
+            {/* Azioni di Eliminazione */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-red-600 mb-4">⚠️ Zona Pericolosa</h3>
+              <p className="text-gray-600 mb-4">
+                L'eliminazione di un dipendente rimuoverà permanentemente tutti i suoi dati dal sistema.
+              </p>
+              <button
+                onClick={handleDelete}
+                disabled={isLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {isLoading ? 'Eliminazione...' : '🗑️ Elimina Dipendente'}
+              </button>
             </div>
           </div>
         </div>
