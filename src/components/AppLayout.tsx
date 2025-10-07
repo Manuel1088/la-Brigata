@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import Sidebar from './Sidebar'
+import TopBar from './TopBar'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -44,6 +45,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
+        {/* Top Bar */}
+        <TopBar />
+        
+        {/* Main Content Area */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>
