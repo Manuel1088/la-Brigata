@@ -275,6 +275,7 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
   }
 
   const formatCurrency = (amount: number) => {
+    if (isNaN(amount)) return '€0,00'
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
       currency: 'EUR'

@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { getRestRules, updateRestRule, type RestRule } from '@/lib/restRules'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 export default function ShiftsRules() {
   const router = useRouter()
@@ -12,7 +12,7 @@ export default function ShiftsRules() {
   const [selectedDepartment, setSelectedDepartment] = useState<'cucina' | 'sala' | 'bar'>('sala')
   
   // Usa l'hook useEmployees per caricare solo i dipendenti dell'azienda
-  const { data: employeesData } = useEmployees((session?.user as any)?.companyId, true)
+  const { employees: employeesData, isLoading } = useEmployeeContext()
   const employees = useMemo(() => {
     if (!employeesData) return []
     return employeesData.map((e: any) => ({ 

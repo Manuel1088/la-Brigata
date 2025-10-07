@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 export default function TeamEmployees() {
   const { data: session, status } = useSession()
@@ -16,7 +16,7 @@ export default function TeamEmployees() {
   const [sortBy, setSortBy] = useState<'name' | 'role' | 'department' | 'startDate'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  const { data: employeesData } = useEmployees((session?.user as any)?.companyId, true)
+  const { employees: employeesData, isLoading } = useEmployeeContext()
 
   // Mock data per dipendenti (in produzione verrà dal database)
   const employeesDefault = [

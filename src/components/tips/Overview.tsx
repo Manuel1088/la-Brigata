@@ -2,7 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useCompanyData } from '@/hooks/useCompanyData'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
 
 interface TipDistribution {
@@ -66,7 +66,7 @@ export default function TipsOverview() {
   }, [tipsKey])
 
   // Dipendenti via SWR per companyId
-  const { data: employeesData } = useEmployees((session?.user as any)?.companyId as string | undefined, true)
+  const { employees: employeesData, isLoading } = useEmployeeContext()
   const employees = (employeesData || []).map((e: any) => ({
     name: e.name,
     role: e.role,

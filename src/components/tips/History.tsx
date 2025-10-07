@@ -2,7 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useCompanyData } from '@/hooks/useCompanyData'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 interface TipEntry {
   id: string

@@ -19,7 +19,7 @@ import {
   proposeLeaveDates,
   updateLeaveRequestStatus 
 } from '@/lib/leaveSystem'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import { UserRole } from '@/types/roles'
 
 export default function TeamLeaves() {
@@ -47,7 +47,7 @@ export default function TeamLeaves() {
   const [filterEmployee, setFilterEmployee] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
 
-  const { data: employeesData } = useEmployees((session?.user as any)?.companyId, true)
+  const { employees: employeesData, isLoading } = useEmployeeContext()
 
   // Carica dati
   useEffect(() => {

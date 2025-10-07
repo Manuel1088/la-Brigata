@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { getEmployeesFullClient } from '@/lib/employees'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 type Props = {
   month?: Date
@@ -24,7 +24,7 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
   const [tipEntries, setTipEntries] = useState<TipEntry[]>([])
   const [employeesList, setEmployeesList] = useState<any[]>(getEmployeesFullClient())
   const waitingForCompany = !!session && !(session.user as any)?.companyId
-  const { data: employeesData, mutate: mutateEmployees } = useEmployees((session?.user as any)?.companyId, true)
+  const { employees: employeesData, mutate: mutateEmployees, isLoading } = useEmployeeContext()
   const [isExportOpen, setIsExportOpen] = useState(false)
   
   // Helpers export

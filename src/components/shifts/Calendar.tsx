@@ -8,7 +8,7 @@ import { useNotifications } from '@/hooks/useNotifications'
 import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
 import { type SimpleEmployee } from '@/lib/employees'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 interface ShiftCell {
   employee: string
@@ -47,7 +47,7 @@ export default function ShiftsCalendar() {
   const [showCcnlDetails, setShowCcnlDetails] = useState(false)
   const [shifts, setShifts] = useState<{[key: string]: ShiftCell}>({})
   const [employees, setEmployees] = useState<SimpleEmployee[]>([])
-  const { data: employeesData, mutate: mutateEmployees } = useEmployees((session?.user as any)?.companyId, true)
+  const { employees: employeesData, mutate: mutateEmployees, isLoading } = useEmployeeContext()
   const [userDepartment, setUserDepartment] = useState<string>('sala')
   const [accessScope, setAccessScope] = useState<'own' | 'department' | 'all' | null>(null)
   const [accessCanEdit, setAccessCanEdit] = useState<boolean | null>(null)

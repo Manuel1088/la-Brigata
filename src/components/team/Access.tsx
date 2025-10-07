@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 type DashboardSection = 'bookings' | 'sale' | 'customers' | 'leaves' | 'shifts' | 'rest' | 'tips' | 'admin'
 type ShiftViewScope = 'own' | 'department' | 'all'
@@ -25,7 +25,7 @@ export default function TeamAccess() {
   const { canAccessAdmin } = usePermissions()
 
   const [employees, setEmployees] = useState<any[]>([])
-  const { data: employeesData, mutate: mutateEmployees } = useEmployees((session?.user as any)?.companyId, true)
+  const { employees: employeesData, mutate: mutateEmployees, isLoading } = useEmployeeContext()
   const [accessMap, setAccessMap] = useState<AccessStore>({})
   const [permMap, setPermMap] = useState<Record<string, { permissions: string[] }>>({})
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)

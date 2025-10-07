@@ -165,7 +165,7 @@ export function BreakEvenWidget({ userId, userRole }: BreakEvenWidgetProps) {
         </div>
         <div className="flex justify-between items-center border-t pt-2">
           <span className="text-sm font-medium text-gray-900">Totale Costi</span>
-          <span className="text-sm font-bold">{formatCurrency(todayForecast.totalEmployeeCost + todayForecast.fixedCosts)}</span>
+          <span className="text-sm font-bold">{formatCurrency((todayForecast.totalEmployeeCost || 0) + (todayForecast.fixedCosts || 0))}</span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">Ticket Medio</span>

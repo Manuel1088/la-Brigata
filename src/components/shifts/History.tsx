@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 interface ShiftHistoryEntry {
   id: string
@@ -18,7 +18,7 @@ interface ShiftHistoryEntry {
 
 export default function ShiftsHistory() {
   const { data: session } = useSession()
-  const { data: employeesData } = useEmployees((session?.user as any)?.companyId, true)
+  const { employees: employeesData, isLoading } = useEmployeeContext()
   const [history, setHistory] = useState<ShiftHistoryEntry[]>([])
   const [filterEmployee, setFilterEmployee] = useState<string>('all')
   const [filterDepartment, setFilterDepartment] = useState<string>('all')

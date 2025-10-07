@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import { useNotifications } from '@/hooks/useNotifications'
 
 interface AvailabilityRule {
@@ -17,7 +17,7 @@ interface AvailabilityRule {
 export default function ShiftsAvailability() {
   const { data: session } = useSession()
   const { notifyCustom } = useNotifications()
-  const { data: employeesData } = useEmployees((session?.user as any)?.companyId, true)
+  const { employees: employeesData, isLoading } = useEmployeeContext()
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
   const [selectedDay, setSelectedDay] = useState<number>(1) // Lunedì

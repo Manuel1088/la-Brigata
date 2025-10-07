@@ -1,13 +1,13 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 export default function TipsManage() {
   const { data: session } = useSession()
   
   // Dipendenti via SWR
-  const { data: employeesData } = useEmployees((session?.user as any)?.companyId as string | undefined, true)
+  const { employees: employeesData, isLoading } = useEmployeeContext()
   const employees = (employeesData || []).map((e: any) => ({
     name: e.name,
     role: e.role,
