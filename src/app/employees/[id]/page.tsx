@@ -134,7 +134,7 @@ export default function EmployeeDetailPage() {
   useEffect(() => {
     if (profileReady && employee?.id) {
       try {
-        const balances = getLeaveBalances(employee.id)
+        const balances = getLeaveBalances(employee?.id || '')
         const vacationBalance = balances.find(b => b.type === 'VACATION')
         const rolBalance = balances.find(b => b.type === 'ROL')
         if (vacationBalance) {
@@ -185,10 +185,10 @@ export default function EmployeeDetailPage() {
 
   // Gestione competenze
   const addSkill = () => {
-    if (newSkill.trim() && !employee.skills.includes(newSkill.trim())) {
+    if (newSkill.trim() && !employee?.skills?.includes(newSkill.trim())) {
       setEmployee(prev => ({
         ...prev,
-        skills: [...prev.skills, newSkill.trim()]
+        skills: [...(prev?.skills || []), newSkill.trim()]
       }))
       setNewSkill('')
     }
@@ -197,15 +197,15 @@ export default function EmployeeDetailPage() {
   const removeSkill = (skill: string) => {
     setEmployee(prev => ({
       ...prev,
-      skills: prev.skills.filter(s => s !== skill)
+      skills: (prev?.skills || []).filter(s => s !== skill)
     }))
   }
 
   const addCommonSkill = (skill: string) => {
-    if (!employee.skills.includes(skill)) {
+    if (!employee?.skills?.includes(skill)) {
       setEmployee(prev => ({
         ...prev,
-        skills: [...prev.skills, skill]
+        skills: [...(prev?.skills || []), skill]
       }))
     }
   }
@@ -243,6 +243,18 @@ export default function EmployeeDetailPage() {
           >
             Torna al Team
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Non renderizzare se employee non è definito
+  if (!employee) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <div className="text-xl text-gray-700">Caricamento dipendente...</div>
         </div>
       </div>
     )
@@ -291,10 +303,10 @@ export default function EmployeeDetailPage() {
             {/* Profilo */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="text-center">
-                <div className="text-6xl mb-4">{employee.avatar}</div>
-                <h2 className="text-xl font-semibold text-gray-900">{employee.name}</h2>
-                <p className="text-gray-600">{employee.email}</p>
-                <p className="text-gray-600">{employee.phone}</p>
+                <div className="text-6xl mb-4">{employee?.avatar || '👤'}</div>
+                <h2 className="text-xl font-semibold text-gray-900">{employee?.name || 'Nome non disponibile'}</h2>
+                <p className="text-gray-600">{employee?.email || 'Email non disponibile'}</p>
+                <p className="text-gray-600">{employee?.phone || 'Telefono non disponibile'}</p>
                 
                 <div className="mt-4">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -318,15 +330,15 @@ export default function EmployeeDetailPage() {
                 </div>
                 <div>
                   <span className="text-gray-600">Tariffa oraria:</span>
-                  <div className="font-medium">€{employee.hourlyRate}/ora</div>
+                  <div className="font-medium">€{employee?.hourlyRate || 0}/ora</div>
                 </div>
                 <div>
                   <span className="text-gray-600">Contratto:</span>
-                  <div className="font-medium">{contractTypes.find(ct => ct.value === employee.contractType)?.label}</div>
+                  <div className="font-medium">{contractTypes.find(ct => ct.value === employee?.contractType)?.label}</div>
                 </div>
                 <div>
                   <span className="text-gray-600">Data assunzione:</span>
-                  <div className="font-medium">{new Date(employee.startDate).toLocaleDateString('it-IT')}</div>
+                  <div className="font-medium">{employee?.startDate ? new Date(employee.startDate).toLocaleDateString('it-IT') : 'Non disponibile'}</div>
                 </div>
               </div>
             </div>
@@ -358,7 +370,7 @@ export default function EmployeeDetailPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">🎯 Competenze</h3>
               
               <div className="flex flex-wrap gap-2 mb-4">
-                {employee.skills.map(skill => (
+                {employee?.skills?.map(skill => (
                   <span
                     key={skill}
                     className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-1"
@@ -391,9 +403,9 @@ export default function EmployeeDetailPage() {
                             key={index}
                             type="button"
                             onClick={() => addCommonSkill(skill)}
-                            disabled={employee.skills.includes(skill)}
+                            disabled={employee?.skills?.includes(skill)}
                             className={`px-3 py-1 rounded-full text-sm transition ${
-                              employee.skills.includes(skill)
+                              employee?.skills?.includes(skill)
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
                             }`}
@@ -437,14 +449,14 @@ export default function EmployeeDetailPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">📝 Note</h3>
               {isEditing ? (
                 <textarea
-                  value={employee.notes}
+                  value={employee?.notes || ''}
                   onChange={(e) => setEmployee(prev => ({ ...prev, notes: e.target.value }))}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   placeholder="Note aggiuntive, valutazioni, obiettivi..."
                 />
               ) : (
-                <p className="text-gray-900 whitespace-pre-wrap">{employee.notes}</p>
+                <p className="text-gray-900 whitespace-pre-wrap">{employee?.notes || 'Nessuna nota disponibile'}</p>
               )}
             </div>
 
