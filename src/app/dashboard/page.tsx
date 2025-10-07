@@ -238,7 +238,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Mance questo mese</p>
-                <p className="text-2xl font-bold text-gray-900">€{monthlyTips.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-900">€{isNaN(monthlyTips) ? '0.00' : monthlyTips.toFixed(2)}</p>
               </div>
               <div className="text-3xl">💰</div>
             </div>
@@ -256,7 +256,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Mance live oggi</p>
-                  <p className="text-2xl font-bold text-green-600">€{liveTips.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-green-600">€{isNaN(liveTips) ? '0.00' : liveTips.toFixed(2)}</p>
                 </div>
                 <div className="text-3xl animate-pulse">⚡</div>
               </div>
