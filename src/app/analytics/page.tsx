@@ -3,31 +3,23 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
-import AdminOverview from '@/components/admin/Overview'
-import AdminUsers from '@/components/admin/Users'
-import AdminCompanies from '@/components/admin/Companies'
-import AdminCandidates from '@/components/admin/Candidates'
-import AdminCCNL from '@/components/admin/CCNL'
-import AdminPermissions from '@/components/admin/Permissions'
-import AdminAudit from '@/components/admin/Audit'
-import AdminSettings from '@/components/admin/Settings'
+import AnalyticsDashboard from '@/components/analytics/Dashboard'
+import AnalyticsCustomers from '@/components/analytics/Customers'
+import AnalyticsOperations from '@/components/analytics/Operations'
+import AnalyticsPredictions from '@/components/analytics/Predictions'
 
-export default function AdminPage() {
+export default function AnalyticsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get('tab') || 'overview'
+  const initialTab = searchParams.get('tab') || 'dashboard'
   const [activeTab, setActiveTab] = useState(initialTab)
   
   const { 
-    canAccessAdmin, 
-    canManageUsers, 
-    canManageCompanies, 
-    canManageCandidates,
-    canManageCCNL,
-    canManageRoles,
-    canViewAudit,
-    canManageSettings 
+    canViewAdvancedReports,
+    canViewAnalytics,
+    canViewPredictions,
+    canExportReports
   } = usePermissions()
 
   useEffect(() => {
@@ -36,72 +28,44 @@ export default function AdminPage() {
       router.push('/login')
       return
     }
-    if (!canAccessAdmin()) {
+    if (!canViewAnalytics()) {
       router.push('/dashboard')
       return
     }
-  }, [session, status, router, canAccessAdmin])
+  }, [session, status, router, canViewAnalytics])
 
   useEffect(() => {
-    setActiveTab(searchParams.get('tab') || 'overview')
+    setActiveTab(searchParams.get('tab') || 'dashboard')
   }, [searchParams])
 
   const tabs = [
     { 
-      id: 'overview', 
-      label: 'Panoramica', 
+      id: 'dashboard', 
+      label: 'Dashboard', 
       icon: '📊', 
-      component: AdminOverview,
-      permission: canAccessAdmin()
+      component: AnalyticsDashboard,
+      permission: canViewAnalytics()
     },
     { 
-      id: 'users', 
-      label: 'Utenti', 
+      id: 'customers', 
+      label: 'Clienti', 
       icon: '👥', 
-      component: AdminUsers,
-      permission: canManageUsers()
+      component: AnalyticsCustomers,
+      permission: canViewAdvancedReports()
     },
     { 
-      id: 'companies', 
-      label: 'Aziende', 
-      icon: '🏢', 
-      component: AdminCompanies,
-      permission: canManageCompanies()
-    },
-    { 
-      id: 'candidates', 
-      label: 'Candidati', 
-      icon: '📝', 
-      component: AdminCandidates,
-      permission: canManageCandidates()
-    },
-    { 
-      id: 'ccnl', 
-      label: 'CCNL', 
-      icon: '📋', 
-      component: AdminCCNL,
-      permission: canManageCCNL()
-    },
-    { 
-      id: 'permissions', 
-      label: 'Permessi', 
-      icon: '🔐', 
-      component: AdminPermissions,
-      permission: canManageRoles()
-    },
-    { 
-      id: 'audit', 
-      label: 'Audit', 
-      icon: '📋', 
-      component: AdminAudit,
-      permission: canViewAudit()
-    },
-    { 
-      id: 'settings', 
-      label: 'Impostazioni', 
+      id: 'operations', 
+      label: 'Operazioni', 
       icon: '⚙️', 
-      component: AdminSettings,
-      permission: canManageSettings()
+      component: AnalyticsOperations,
+      permission: canViewAdvancedReports()
+    },
+    { 
+      id: 'predictions', 
+      label: 'Previsioni', 
+      icon: '🔮', 
+      component: AnalyticsPredictions,
+      permission: canViewPredictions()
     }
   ]
 
@@ -115,15 +79,15 @@ export default function AdminPage() {
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
-    router.push(`/admin?tab=${tabId}`)
+    router.push(`/analytics?tab=${tabId}`)
   }
 
   if (status === 'loading' || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl mb-4">👑</div>
-          <div className="text-xl text-gray-700">Caricamento amministrazione...</div>
+          <div className="text-4xl mb-4">📈</div>
+          <div className="text-xl text-gray-700">Caricamento analytics...</div>
         </div>
       </div>
     )
@@ -135,15 +99,27 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">👑 Amministrazione</h1>
-              <p className="text-gray-600 mt-2">Gestione completa del sistema La Brigata</p>
+              <h1 className="text-3xl font-bold text-gray-900">📈 Analytics Avanzate</h1>
+              <p className="text-gray-600 mt-2">Analisi predittive e business intelligence</p>
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-lg">
-                <div className="text-sm font-medium">Sistema</div>
-                <div className="text-lg font-bold">Amministrazione</div>
+              <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-4 py-2 rounded-lg">
+                <div className="text-sm font-medium">Business Intelligence</div>
+                <div className="text-lg font-bold">Analytics</div>
               </div>
+              
+              {canExportReports() && (
+                <button
+                  onClick={() => {
+                    // Implementa export analytics
+                    console.log('Export all analytics')
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                >
+                  📤 Esporta Analytics
+                </button>
+              )}
               
               <button
                 onClick={() => router.push('/dashboard')}
@@ -166,7 +142,7 @@ export default function AdminPage() {
                   onClick={() => handleTabChange(tab.id)}
                   className={`
                     ${activeTab === tab.id
-                      ? 'border-orange-500 text-orange-600'
+                      ? 'border-purple-500 text-purple-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
                     whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center
                   `}

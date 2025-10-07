@@ -317,6 +317,27 @@ export const PERMISSIONS: Record<string, Permission> = {
     description: 'Eseguire operazioni di manutenzione del sistema',
     category: 'admin',
     level: 10
+  },
+  ADMIN_COMPANIES: {
+    id: 'admin_companies',
+    name: 'Gestire Aziende',
+    description: 'Gestire le aziende registrate nel sistema',
+    category: 'admin',
+    level: 10
+  },
+  ADMIN_CANDIDATES: {
+    id: 'admin_candidates',
+    name: 'Gestire Candidati',
+    description: 'Gestire le candidature e gli utenti in attesa',
+    category: 'admin',
+    level: 10
+  },
+  ADMIN_CCNL: {
+    id: 'admin_ccnl',
+    name: 'Gestire CCNL',
+    description: 'Configurare le regole CCNL del sistema',
+    category: 'admin',
+    level: 10
   }
 }
 

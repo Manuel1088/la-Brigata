@@ -123,6 +123,12 @@ export default function Sidebar() {
           label: 'I Miei Dati', 
           path: '/me', 
           color: '#2D3436' 
+        },
+        { 
+          icon: '🔔', 
+          label: 'Notifiche', 
+          path: '/notifications', 
+          color: '#74B9FF' 
         }
       ]
     },
@@ -136,8 +142,37 @@ export default function Sidebar() {
           path: '/operations',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         },
+        { 
+          icon: '📊', 
+          label: 'Report', 
+          path: '/reports',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+        },
+        { 
+          icon: '📈', 
+          label: 'Analytics', 
+          path: '/analytics',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+        },
+        { 
+          icon: '📅', 
+          label: 'Calendario', 
+          path: '/calendar',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+        },
       ],
       roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+    },
+    // IMPOSTAZIONI - Tutti gli utenti
+    {
+      title: 'IMPOSTAZIONI',
+      items: [
+        { 
+          icon: '⚙️', 
+          label: 'Impostazioni', 
+          path: '/settings'
+        }
+      ]
     },
     // AMMINISTRAZIONE - Solo Proprietario
     {

@@ -185,6 +185,9 @@ export function usePermissions() {
     
     // Controlli specifici - Admin
     canManageUsers,
+    canManageCompanies: () => can('admin_companies'),
+    canManageCandidates: () => can('admin_candidates'),
+    canManageCCNL: () => can('admin_ccnl'),
     canManageRoles,
     canManageSettings,
     canViewAudit,
