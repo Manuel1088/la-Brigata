@@ -72,7 +72,7 @@ export default function AdminPage() {
   const { canManageUsers, canManageRoles, canViewAudit, canManageSettings } = usePermissions()
   const { getLogs, getStats, logReadAction } = useAudit()
   
-  const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'audit' | 'settings'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'restaurants' | 'audit' | 'settings'>('users')
   const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [auditStats, setAuditStats] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -180,6 +180,16 @@ export default function AdminPage() {
                   🔐 Ruoli e Permessi
                 </button>
               )}
+              <button
+                onClick={() => setActiveTab('restaurants')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'restaurants'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                🏪 Gestione Ristoranti
+              </button>
               {canViewAudit() && (
                 <button
                   onClick={() => {
@@ -402,6 +412,178 @@ export default function AdminPage() {
                         </tr>
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Gestione Ristoranti */}
+            {activeTab === 'restaurants' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-900">🏪 Gestione Ristoranti</h2>
+                  <button
+                    onClick={() => {
+                      // TODO: Implementare creazione nuovo ristorante
+                      alert('Funzionalità in sviluppo')
+                    }}
+                    className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition"
+                  >
+                    ➕ Nuovo Ristorante
+                  </button>
+                </div>
+
+                {/* Lista Ristoranti */}
+                <div className="bg-white rounded-lg shadow">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900">Ristoranti Registrati</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Gestisci i ristoranti e le loro informazioni
+                    </p>
+                  </div>
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      {/* Ristorante 1 */}
+                      <div className="border rounded-lg p-4 hover:bg-gray-50 transition">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                              <span className="text-2xl">🍽️</span>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900">La Brigata - Sede Centrale</h4>
+                              <p className="text-sm text-gray-600">Via Roma 123, Milano</p>
+                              <p className="text-xs text-gray-500">Tel: +39 02 1234567</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <div className="text-right">
+                              <div className="text-sm font-medium text-gray-900">15 dipendenti</div>
+                              <div className="text-xs text-gray-500">Attivo</div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                ✏️ Modifica
+                              </button>
+                              <button className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                👥 Dipendenti
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Ristorante 2 */}
+                      <div className="border rounded-lg p-4 hover:bg-gray-50 transition">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                              <span className="text-2xl">🍕</span>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900">La Brigata - Filiale Nord</h4>
+                              <p className="text-sm text-gray-600">Corso Italia 456, Milano</p>
+                              <p className="text-xs text-gray-500">Tel: +39 02 7654321</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <div className="text-right">
+                              <div className="text-sm font-medium text-gray-900">8 dipendenti</div>
+                              <div className="text-xs text-gray-500">Attivo</div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                ✏️ Modifica
+                              </button>
+                              <button className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                👥 Dipendenti
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Ristorante 3 */}
+                      <div className="border rounded-lg p-4 hover:bg-gray-50 transition">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                              <span className="text-2xl">🍝</span>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900">La Brigata - Filiale Sud</h4>
+                              <p className="text-sm text-gray-600">Via Garibaldi 789, Milano</p>
+                              <p className="text-xs text-gray-500">Tel: +39 02 9876543</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <div className="text-right">
+                              <div className="text-sm font-medium text-gray-900">12 dipendenti</div>
+                              <div className="text-xs text-gray-500">Attivo</div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                ✏️ Modifica
+                              </button>
+                              <button className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                👥 Dipendenti
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Statistiche Ristoranti */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <span className="text-2xl">🏪</span>
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-600">Totale Ristoranti</p>
+                        <p className="text-2xl font-bold text-gray-900">3</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <span className="text-2xl">👥</span>
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-600">Totale Dipendenti</p>
+                        <p className="text-2xl font-bold text-gray-900">35</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <span className="text-2xl">📊</span>
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-600">Fatturato Mensile</p>
+                        <p className="text-2xl font-bold text-gray-900">€125K</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <span className="text-2xl">⭐</span>
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-600">Rating Medio</p>
+                        <p className="text-2xl font-bold text-gray-900">4.8</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
