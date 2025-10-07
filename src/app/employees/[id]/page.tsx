@@ -6,6 +6,7 @@ import { getLeaveBalances } from '@/lib/leaveSystem'
 import type { EmployeeFull } from '@/lib/employees'
 import { useCompanyData } from '@/hooks/useCompanyData'
 import { useEmployees } from '@/hooks/useEmployees'
+import PayrollSection from '@/components/PayrollSection'
 
 // Configurazione ruoli e livelli (stessa del form nuovo)
 const roleConfig = {
@@ -670,6 +671,9 @@ export default function EmployeeDetailPage() {
                   <p className="text-gray-900 whitespace-pre-wrap">{employee.notes}</p>
                 )}
               </div>
+
+              {/* Sezione Payroll */}
+              <PayrollSection />
 
               {/* Azioni */}
               {isEditing && canEditPersonal && (

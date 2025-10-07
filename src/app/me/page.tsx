@@ -13,12 +13,16 @@ export default function MeRedirectPage() {
       router.replace('/login')
       return
     }
+    // Redirect alla pagina del profilo utente
     router.replace(`/employees/${session.user.id}`)
   }, [session?.user?.id, status, router])
 
   return (
     <div className="min-h-screen flex items-center justify-center text-gray-700">
-      Caricamento profilo...
+      <div className="text-center">
+        <div className="text-4xl mb-4">👤</div>
+        <div className="text-xl">Caricamento profilo...</div>
+      </div>
     </div>
   )
 }
