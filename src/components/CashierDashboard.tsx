@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { formatCurrency, safeSum } from '@/lib/formatNumber'
 
 interface CashierDashboardProps {
   userId: string
@@ -186,7 +187,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
   }
 
   const getTotalTips = () => {
-    return dailyTips.reduce((sum, tip) => sum + tip.total, 0)
+    return safeSum(...dailyTips.map(tip => tip.total))
   }
 
   const getTodayTips = () => {

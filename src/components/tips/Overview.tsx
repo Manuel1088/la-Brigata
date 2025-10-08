@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useCompanyData } from '@/hooks/useCompanyData'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
+import { formatCurrency, safeSum } from '@/lib/formatNumber'
 
 interface TipDistribution {
   employeeName: string
@@ -160,7 +161,7 @@ export default function TipsOverview() {
     monthEntries.forEach(e => {
       const key = e.date
       const t = byDate.get(key) || { cash: 0, card: 0, foreign: 0 }
-      const amt = Number(e.amount) || 0
+      const amt = safeSum(e.amount)
       if (e.type === 'cash') t.cash += amt
       else if (e.type === 'card') t.card += amt
       else if (e.type === 'foreign') t.foreign += amt
@@ -293,15 +294,15 @@ export default function TipsOverview() {
         <div className="mt-4 grid md:grid-cols-3 gap-4">
           <div className="p-3 rounded-lg border bg-green-50 text-center cursor-pointer" onClick={() => setExpandedType(prev => prev === 'cash' ? null : 'cash')}>
             <div className="text-sm text-gray-600 mb-1">💵 Contanti</div>
-            <div className="text-xl font-semibold text-green-700">€{isNaN(monthTotalsByType.cash) ? '0.00' : monthTotalsByType.cash.toFixed(2)}</div>
+            <div className="text-xl font-semibold text-green-700">{formatCurrency(monthTotalsByType.cash)}</div>
           </div>
           <div className="p-3 rounded-lg border bg-blue-50 text-center cursor-pointer" onClick={() => setExpandedType(prev => prev === 'card' ? null : 'card')}>
             <div className="text-sm text-gray-600 mb-1">💳 Carta</div>
-            <div className="text-xl font-semibold text-blue-700">€{isNaN(monthTotalsByType.card) ? '0.00' : monthTotalsByType.card.toFixed(2)}</div>
+            <div className="text-xl font-semibold text-blue-700">{formatCurrency(monthTotalsByType.card)}</div>
           </div>
           <div className="p-3 rounded-lg border bg-purple-50 text-center cursor-pointer" onClick={() => setExpandedType(prev => prev === 'foreign' ? null : 'foreign')}>
             <div className="text-sm text-gray-600 mb-1">🌍 Monete Estere</div>
-            <div className="text-xl font-semibold text-purple-700">€{isNaN(monthTotalsByType.foreign) ? '0.00' : monthTotalsByType.foreign.toFixed(2)}</div>
+            <div className="text-xl font-semibold text-purple-700">{formatCurrency(monthTotalsByType.foreign)}</div>
           </div>
         </div>
       </div>

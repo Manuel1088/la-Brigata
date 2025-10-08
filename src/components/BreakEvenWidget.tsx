@@ -8,6 +8,7 @@ import {
   DailyForecast,
   CompanyEvent
 } from '@/lib/breakEvenCalculator'
+import { formatPercentage } from '@/lib/formatNumber'
 
 interface BreakEvenWidgetProps {
   userId?: string
@@ -176,7 +177,7 @@ export function BreakEvenWidget({ userId, userRole }: BreakEvenWidgetProps) {
           <span className={`text-sm font-medium ${
             todayForecast.profitMargin > 0 ? 'text-green-600' : 'text-red-600'
           }`}>
-            {isNaN(todayForecast.profitMargin) ? '0.0' : todayForecast.profitMargin.toFixed(1)}%
+            {formatPercentage(todayForecast.profitMargin, { decimals: 1, isDecimal: false })}
           </span>
         </div>
       </div>

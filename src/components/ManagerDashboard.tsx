@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { formatCurrency, safeSum, safeAverage } from '@/lib/formatNumber'
 
 interface ManagerDashboardProps {
   userId: string
@@ -209,14 +210,19 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('it-IT', { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'short' 
-    })
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('it-IT', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'short' 
+      })
+    } catch {
+      return dateString
+    }
   }
 
+  // ✅ CALCOLI SICURI con utility functions
   const getTotalBookings = () => {
     return bookings.length
   }
@@ -226,11 +232,15 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
   }
 
   const getTotalGuests = () => {
-    return bookings.reduce((sum, booking) => sum + booking.guests, 0)
+    return bookings.reduce((sum, booking) => {
+      return safeSum(sum, booking.guests)
+    }, 0)
   }
 
   const getTotalTips = () => {
-    return tipReports.reduce((sum, report) => sum + report.totalTips, 0)
+    return tipReports.reduce((sum, report) => {
+      return safeSum(sum, report.totalTips)
+    }, 0)
   }
 
   const getPendingLeaves = () => {
@@ -239,6 +249,21 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
 
   const getUrgentLeaves = () => {
     return leaveRequests.filter(l => l.isUrgent && l.status === 'pending').length
+  }
+
+  // ✅ Calcolo media sicuro
+  const getAverageTipsPerEmployee = () => {
+    const total = getTotalTips()
+    const count = shifts.length
+    return count > 0 ? total / count : 0
+  }
+
+  // ✅ Calcolo stima mensile sicuro
+  const getMonthlyTipsEstimate = () => {
+    const daily = getTotalTips()
+    const monthly = daily * 30
+    // Verifica che il risultato sia finito
+    return isFinite(monthly) ? monthly : 0
   }
 
   const handleApproveLeave = (leaveId: string) => {
@@ -252,7 +277,6 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
       leave.id === leaveId ? { ...leave, status: 'rejected' } : leave
     ))
   }
-
 
   return (
     <div className="space-y-6">
@@ -268,7 +292,7 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-3xl mb-4">💰</div>
           <h3 className="text-lg font-semibold mb-2">Mance Oggi</h3>
-          <p className="text-2xl font-bold text-green-600">€{getTotalTips().toFixed(2)}</p>
+          <p className="text-2xl font-bold text-green-600">{formatCurrency(getTotalTips())}</p>
           <p className="text-sm text-gray-500">Totale giornaliero</p>
         </div>
         
@@ -296,24 +320,24 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
             <div className="flex space-x-2">
               <button 
                 onClick={() => setSelectedPeriod('day')}
-                className={`px-3 py-1 rounded text-sm ${
-                  selectedPeriod === 'day' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                className={`px-3 py-1 rounded text-sm transition ${
+                  selectedPeriod === 'day' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
                 Giorno
               </button>
               <button 
                 onClick={() => setSelectedPeriod('week')}
-                className={`px-3 py-1 rounded text-sm ${
-                  selectedPeriod === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                className={`px-3 py-1 rounded text-sm transition ${
+                  selectedPeriod === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
                 Settimana
               </button>
               <button 
                 onClick={() => setSelectedPeriod('month')}
-                className={`px-3 py-1 rounded text-sm ${
-                  selectedPeriod === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                className={`px-3 py-1 rounded text-sm transition ${
+                  selectedPeriod === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
                 Mese
@@ -322,11 +346,11 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
           </div>
           <div className="space-y-3">
             {bookings.map((booking) => (
-              <div key={booking.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+              <div key={booking.id} className="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition">
                 <div>
                   <p className="font-medium">{booking.customerName}</p>
                   <p className="text-sm text-gray-600">
-                    {formatDate(booking.date)} - {booking.time} | {booking.guests} persone
+                    {formatDate(booking.date)} - {booking.time} | {booking.guests} {booking.guests === 1 ? 'persona' : 'persone'}
                   </p>
                 </div>
                 <div className="text-right">
@@ -358,7 +382,7 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
           </div>
           <div className="space-y-3">
             {shifts.map((shift) => (
-              <div key={shift.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+              <div key={shift.id} className="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition">
                 <div>
                   <p className="font-medium">{shift.employee}</p>
                   <p className="text-sm text-gray-600">
@@ -397,19 +421,19 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
           </div>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="text-center">
+          <div className="text-center p-4 bg-green-50 rounded-lg">
             <h4 className="font-semibold text-gray-700 mb-2">Giornaliero</h4>
-            <p className="text-2xl font-bold text-green-600">€{getTotalTips().toFixed(2)}</p>
+            <p className="text-2xl font-bold text-green-600">{formatCurrency(getTotalTips())}</p>
             <p className="text-sm text-gray-500">Oggi</p>
           </div>
-          <div className="text-center">
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
             <h4 className="font-semibold text-gray-700 mb-2">Mensile</h4>
-            <p className="text-2xl font-bold text-blue-600">€{(getTotalTips() * 30).toFixed(2)}</p>
+            <p className="text-2xl font-bold text-blue-600">{formatCurrency(getMonthlyTipsEstimate())}</p>
             <p className="text-sm text-gray-500">Stima mensile</p>
           </div>
-          <div className="text-center">
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
             <h4 className="font-semibold text-gray-700 mb-2">Per Dipendente</h4>
-            <p className="text-2xl font-bold text-purple-600">€{shifts.length > 0 ? (getTotalTips() / shifts.length).toFixed(2) : '0.00'}</p>
+            <p className="text-2xl font-bold text-purple-600">{formatCurrency(getAverageTipsPerEmployee())}</p>
             <p className="text-sm text-gray-500">Media giornaliera</p>
           </div>
         </div>
@@ -422,8 +446,8 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
         </div>
         <div className="space-y-3">
           {leaveRequests.map((request) => (
-            <div key={request.id} className={`flex justify-between items-center p-3 rounded ${
-              request.isUrgent ? 'bg-red-50 border-l-4 border-red-400' : 'bg-gray-50'
+            <div key={request.id} className={`flex justify-between items-center p-3 rounded transition ${
+              request.isUrgent ? 'bg-red-50 border-l-4 border-red-400' : 'bg-gray-50 hover:bg-gray-100'
             }`}>
               <div>
                 <p className="font-medium">{request.employee}</p>
@@ -434,7 +458,7 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
               </div>
               <div className="flex items-center space-x-2">
                 {request.isUrgent && (
-                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">URGENTE</span>
+                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-medium">URGENTE</span>
                 )}
                 <span className={`px-2 py-1 rounded text-xs ${
                   request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
@@ -447,13 +471,15 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
                   <div className="flex space-x-1">
                     <button 
                       onClick={() => handleApproveLeave(request.id)}
-                      className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition text-xs"
+                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-xs"
+                      title="Approva"
                     >
                       ✓
                     </button>
                     <button 
                       onClick={() => handleRejectLeave(request.id)}
-                      className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition text-xs"
+                      className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition text-xs"
+                      title="Rifiuta"
                     >
                       ✗
                     </button>
@@ -467,10 +493,6 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
           )}
         </div>
       </div>
-
-      
-
     </div>
   )
 }
-

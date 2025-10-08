@@ -88,7 +88,7 @@ export default function AdminCandidates() {
       setCandidates(mockCandidates)
     } catch (error) {
       console.error('Errore nel caricamento candidati:', error)
-      notifyCustom('Errore nel caricamento candidati', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nel caricamento candidati')
     } finally {
       setLoading(false)
     }
@@ -104,26 +104,26 @@ export default function AdminCandidates() {
           setCandidates(prev => prev.map(c => 
             c.id === candidateId ? { ...c, status: 'approved' } : c
           ))
-          notifyCustom(`Candidato ${candidate.name} approvato`, 'success')
-          logReadAction('candidate_approved', { candidateId, candidateName: candidate.name })
+          notifyCustom('SUCCESS', 'PERSONNEL', 'Candidato Approvato', `Candidato ${candidate.name} approvato con successo`)
+          logReadAction('candidate_approved', candidateId)
           break
         case 'reject':
           setCandidates(prev => prev.map(c => 
             c.id === candidateId ? { ...c, status: 'rejected' } : c
           ))
-          notifyCustom(`Candidato ${candidate.name} rifiutato`, 'warning')
-          logReadAction('candidate_rejected', { candidateId, candidateName: candidate.name })
+          notifyCustom('WARNING', 'PERSONNEL', 'Candidato Rifiutato', `Candidato ${candidate.name} rifiutato`)
+          logReadAction('candidate_rejected', candidateId)
           break
         case 'hire':
           setCandidates(prev => prev.map(c => 
             c.id === candidateId ? { ...c, status: 'hired' } : c
           ))
-          notifyCustom(`Candidato ${candidate.name} assunto`, 'success')
-          logReadAction('candidate_hired', { candidateId, candidateName: candidate.name })
+          notifyCustom('SUCCESS', 'PERSONNEL', 'Candidato Assunto', `Candidato ${candidate.name} assunto con successo`)
+          logReadAction('candidate_hired', candidateId)
           break
       }
     } catch (error) {
-      notifyCustom('Errore nell\'operazione', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nell\'operazione')
     }
   }
 
@@ -182,15 +182,23 @@ export default function AdminCandidates() {
     return `${days} giorni fa`
   }
 
+  // 🔥 RIGA 185 - Stats sicure con fallback
   const stats = {
-    total: candidates.length,
-    pending: candidates.filter(c => c.status === 'pending').length,
-    approved: candidates.filter(c => c.status === 'approved').length,
-    rejected: candidates.filter(c => c.status === 'rejected').length,
-    hired: candidates.filter(c => c.status === 'hired').length
+    total: candidates?.length || 0,
+    pending: candidates?.filter(c => c.status === 'pending').length || 0,
+    approved: candidates?.filter(c => c.status === 'approved').length || 0,
+    rejected: candidates?.filter(c => c.status === 'rejected').length || 0,
+    hired: candidates?.filter(c => c.status === 'hired').length || 0
   }
 
-  const positions = Array.from(new Set(candidates.map(c => c.position))).sort()
+  // 🔥 RIGA 193 - Filtra positions valide
+  const positions = Array.from(
+    new Set(
+      candidates
+        ?.map(c => c.position)
+        ?.filter(p => p && typeof p === 'string' && p.trim() !== '') || [] // ← Filtra valori invalidi
+    )
+  ).sort()
 
   if (loading) {
     return (
@@ -208,23 +216,23 @@ export default function AdminCandidates() {
       {/* Statistiche */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-blue-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+          <div className="text-2xl font-bold text-blue-600">{stats.total || 0}</div>
           <div className="text-sm text-blue-700">Totali</div>
         </div>
         <div className="bg-yellow-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+          <div className="text-2xl font-bold text-yellow-600">{stats.pending || 0}</div>
           <div className="text-sm text-yellow-700">In Attesa</div>
         </div>
         <div className="bg-green-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+          <div className="text-2xl font-bold text-green-600">{stats.approved || 0}</div>
           <div className="text-sm text-green-700">Approvati</div>
         </div>
         <div className="bg-red-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+          <div className="text-2xl font-bold text-red-600">{stats.rejected || 0}</div>
           <div className="text-sm text-red-700">Rifiutati</div>
         </div>
         <div className="bg-purple-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-purple-600">{stats.hired}</div>
+          <div className="text-2xl font-bold text-purple-600">{stats.hired || 0}</div>
           <div className="text-sm text-purple-700">Assunti</div>
         </div>
       </div>
@@ -266,8 +274,10 @@ export default function AdminCandidates() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tutte</option>
-              {positions.map(position => (
-                <option key={position} value={position}>{position}</option>
+              {positions.map((position, index) => (
+                <option key={`position-${index}`} value={position}>
+                  {position}
+                </option>
               ))}
             </select>
           </div>

@@ -141,10 +141,17 @@ export default function AdminCompanies() {
     active: companies.filter(c => c.status === 'active').length,
     inactive: companies.filter(c => c.status === 'inactive').length,
     pending: companies.filter(c => c.status === 'pending').length,
-    totalEmployees: companies.reduce((sum, c) => sum + c.employeeCount, 0)
+    totalEmployees: companies.reduce((sum, c) => sum + (Number(c.employeeCount) || 0), 0) // ← Fallback NaN
   }
 
-  const regions = Array.from(new Set(companies.map(c => c.region))).sort()
+  // 🔥 RIGA 147 - Filtra regions valide
+  const regions = Array.from(
+    new Set(
+      companies
+        .map(c => c.region)
+        .filter(r => r && typeof r === 'string' && r.trim() !== '') // ← Filtra valori invalidi
+    )
+  ).sort()
 
   if (loading) {
     return (
@@ -178,7 +185,7 @@ export default function AdminCompanies() {
           <div className="text-sm text-yellow-700">In Attesa</div>
         </div>
         <div className="bg-purple-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-purple-600">{stats.totalEmployees}</div>
+          <div className="text-2xl font-bold text-purple-600">{stats.totalEmployees || 0}</div>
           <div className="text-sm text-purple-700">Dipendenti</div>
         </div>
       </div>
@@ -219,8 +226,10 @@ export default function AdminCompanies() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option key="all" value="all">Tutte</option>
-              {regions.map(region => (
-                <option key={region} value={region}>{region}</option>
+              {regions.map((region, index) => (
+                <option key={`region-${index}`} value={region}>
+                  {region}
+                </option>
               ))}
             </select>
           </div>
@@ -279,7 +288,7 @@ export default function AdminCompanies() {
                     </div>
                     <div>
                       <span className="text-gray-600">Dipendenti:</span>
-                      <div className="font-medium text-lg">{company.employeeCount}</div>
+                      <div className="font-medium text-lg">{company.employeeCount ?? 0}</div>
                     </div>
                   </div>
                   

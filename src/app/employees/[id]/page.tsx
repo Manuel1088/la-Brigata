@@ -6,6 +6,7 @@ import { getLeaveBalances } from '@/lib/leaveSystem'
 import type { EmployeeFull } from '@/lib/employees'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import PayrollSection from '@/components/PayrollSection'
+import { formatNumber } from '@/lib/formatNumber'
 
 // Configurazione ruoli e livelli (stessa del form nuovo)
 const roleConfig = {

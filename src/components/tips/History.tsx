@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useCompanyData } from '@/hooks/useCompanyData'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
+import { formatCurrency, safeSum } from '@/lib/formatNumber'
 
 interface TipEntry {
   id: string
@@ -107,15 +108,15 @@ export default function TipsHistory() {
 
   // Calcola statistiche
   const stats = {
-    total: filteredEntries.reduce((sum, e) => sum + e.amount, 0),
+    total: safeSum(...filteredEntries.map(e => e.amount)),
     count: filteredEntries.length,
     byType: {
-      cash: filteredEntries.filter(e => e.type === 'cash').reduce((sum, e) => sum + e.amount, 0),
-      card: filteredEntries.filter(e => e.type === 'card').reduce((sum, e) => sum + e.amount, 0),
-      foreign: filteredEntries.filter(e => e.type === 'foreign').reduce((sum, e) => sum + e.amount, 0)
+      cash: safeSum(...filteredEntries.filter(e => e.type === 'cash').map(e => e.amount)),
+      card: safeSum(...filteredEntries.filter(e => e.type === 'card').map(e => e.amount)),
+      foreign: safeSum(...filteredEntries.filter(e => e.type === 'foreign').map(e => e.amount))
     },
     byLocation: locations.reduce((acc, loc) => {
-      acc[loc.name] = filteredEntries.filter(e => e.location === loc.name).reduce((sum, e) => sum + e.amount, 0)
+      acc[loc.name] = safeSum(...filteredEntries.filter(e => e.location === loc.name).map(e => e.amount))
       return acc
     }, {} as Record<string, number>)
   }
