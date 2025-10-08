@@ -70,10 +70,12 @@ export default function ShiftsRules() {
   }
 
   const getEmployeeRules = (employeeName: string) => {
+    if (!rules || !Array.isArray(rules)) return []
     return rules.filter(rule => rule.employeeName === employeeName)
   }
 
   const getDepartmentEmployees = (department: string) => {
+    if (!employees || !Array.isArray(employees)) return []
     return employees.filter(emp => emp.department === department)
   }
 
