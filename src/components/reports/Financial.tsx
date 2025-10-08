@@ -1,6 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNotifications } from '@/hooks/useNotifications'
+import { formatCurrency, safeSum } from '@/lib/formatNumber'
 
 interface FinancialReport {
   id: string
@@ -12,12 +13,15 @@ interface FinancialReport {
   details: Record<string, any>
 }
 
+type ReportPeriod = 'week' | 'month' | 'quarter' | 'year'
+type ReportType = 'all' | 'tips' | 'sales' | 'payroll' | 'expenses'
+
 export default function ReportsFinancial() {
   const { notifyCustom } = useNotifications()
   const [reports, setReports] = useState<FinancialReport[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedPeriod, setSelectedPeriod] = useState('month')
-  const [selectedType, setSelectedType] = useState('all')
+  const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>('month')
+  const [selectedType, setSelectedType] = useState<ReportType>('all')
 
   useEffect(() => {
     loadFinancialReports()
@@ -25,7 +29,14 @@ export default function ReportsFinancial() {
 
   const loadFinancialReports = async () => {
     try {
-      // Mock data - in produzione verrà dal database
+      setLoading(true)
+      // TODO: Sostituire con chiamata API reale
+      // const response = await fetch(`/api/reports/financial?period=${selectedPeriod}`)
+      // const data = await response.json()
+      // setReports(data.reports)
+      
+      // Mock data temporaneo
+      await new Promise(resolve => setTimeout(resolve, 500))
       const mockReports: FinancialReport[] = [
         {
           id: '1',
@@ -88,19 +99,33 @@ export default function ReportsFinancial() {
       setReports(mockReports)
     } catch (error) {
       console.error('Errore nel caricamento report finanziari:', error)
-      notifyCustom('Errore nel caricamento report finanziari', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nel caricamento report finanziari')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleExport = async (reportType: string) => {
+  const handleExport = async (reportType: string, format: 'csv' | 'pdf' = 'csv') => {
     try {
-      // Simula export
+      // TODO: Implementare export reale
+      // const response = await fetch(`/api/reports/export`, {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ type: reportType, period: selectedPeriod, format })
+      // })
+      // const blob = await response.blob()
+      // const url = window.URL.createObjectURL(blob)
+      // const a = document.createElement('a')
+      // a.href = url
+      // a.download = `report-${reportType}-${selectedPeriod}.${format}`
+      // a.click()
+      // window.URL.revokeObjectURL(url)
+      
       await new Promise(resolve => setTimeout(resolve, 1000))
-      notifyCustom(`Report ${reportType} esportato con successo`, 'success')
+      notifyCustom('SUCCESS', 'SYSTEM', 'Export Completato', `Report ${reportType} esportato con successo`)
     } catch (error) {
-      notifyCustom('Errore nell\'esportazione', 'error')
+      console.error('Export error:', error)
+      notifyCustom('ERROR', 'SYSTEM', 'Errore Export', 'Errore nell\'esportazione del report')
     }
   }
 
@@ -142,19 +167,26 @@ export default function ReportsFinancial() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    if (isNaN(amount)) return '€0,00'
+  const formatCurrency = (amount: number | undefined) => {
+    if (typeof amount !== 'number' || isNaN(amount)) return '€0,00'
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
       currency: 'EUR'
     }).format(amount)
   }
 
-  const filteredReports = reports.filter(report => {
-    return selectedType === 'all' || report.type === selectedType
-  })
+  // Memoized calculations
+  const filteredReports = useMemo(() => 
+    reports.filter(report => 
+      selectedType === 'all' || report.type === selectedType
+    ), 
+    [reports, selectedType]
+  )
 
-  const totalAmount = filteredReports.reduce((sum, report) => sum + report.amount, 0)
+  const totalAmount = useMemo(() => 
+    safeSum(...filteredReports.map(report => report.amount)),
+    [filteredReports]
+  )
 
   if (loading) {
     return (
@@ -176,13 +208,13 @@ export default function ReportsFinancial() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Periodo</label>
             <select
               value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
+              onChange={(e) => setSelectedPeriod(e.target.value as ReportPeriod)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="week">Questa Settimana</option>
               <option value="month">Questo Mese</option>
               <option value="quarter">Questo Trimestre</option>
-              <option value="year">Quest\'Anno</option>
+              <option value="year">Quest'Anno</option>
             </select>
           </div>
           
@@ -190,7 +222,7 @@ export default function ReportsFinancial() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
             <select
               value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
+              onChange={(e) => setSelectedType(e.target.value as ReportType)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tutti</option>
@@ -345,7 +377,7 @@ export default function ReportsFinancial() {
               </button>
               <button
                 onClick={() => {
-                  // Implementa visualizzazione dettagli
+                  // TODO: Implementa visualizzazione dettagli
                   console.log('View details for', report.type)
                 }}
                 className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"

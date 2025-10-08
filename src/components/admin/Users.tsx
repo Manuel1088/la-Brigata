@@ -35,7 +35,6 @@ export default function AdminUsers() {
 
   const loadUsers = async () => {
     try {
-      // Mock data - in produzione verrà dal database
       const mockUsers: User[] = [
         {
           id: '1',
@@ -102,7 +101,7 @@ export default function AdminUsers() {
       setUsers(mockUsers)
     } catch (error) {
       console.error('Errore nel caricamento utenti:', error)
-      notifyCustom('Errore nel caricamento utenti', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nel caricamento utenti')
     } finally {
       setLoading(false)
     }
@@ -118,32 +117,32 @@ export default function AdminUsers() {
           setUsers(prev => prev.map(u => 
             u.id === userId ? { ...u, isActive: true } : u
           ))
-          notifyCustom(`Utente ${user.name} attivato`, 'success')
-          logReadAction('user_activated', { userId, userName: user.name })
+          notifyCustom('SUCCESS', 'PERSONNEL', 'Utente Attivato', `Utente ${user.name} attivato con successo`)
+          logReadAction('user_activated', userId)
           break
         case 'deactivate':
           setUsers(prev => prev.map(u => 
             u.id === userId ? { ...u, isActive: false } : u
           ))
-          notifyCustom(`Utente ${user.name} disattivato`, 'warning')
-          logReadAction('user_deactivated', { userId, userName: user.name })
+          notifyCustom('WARNING', 'PERSONNEL', 'Utente Disattivato', `Utente ${user.name} disattivato`)
+          logReadAction('user_deactivated', userId)
           break
         case 'delete':
           if (confirm(`Sei sicuro di voler eliminare l'utente ${user.name}?`)) {
             setUsers(prev => prev.filter(u => u.id !== userId))
-            notifyCustom(`Utente ${user.name} eliminato`, 'success')
-            logReadAction('user_deleted', { userId, userName: user.name })
+            notifyCustom('SUCCESS', 'PERSONNEL', 'Utente Eliminato', `Utente ${user.name} eliminato con successo`)
+            logReadAction('user_deleted', userId)
           }
           break
       }
     } catch (error) {
-      notifyCustom('Errore nell\'operazione', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nell\'operazione')
     }
   }
 
   const handleBulkAction = async (action: 'activate' | 'deactivate' | 'delete') => {
     if (selectedUsers.length === 0) {
-      notifyCustom('Seleziona almeno un utente', 'warning')
+      notifyCustom('WARNING', 'SYSTEM', 'Attenzione', 'Seleziona almeno un utente')
       return
     }
 
@@ -153,24 +152,24 @@ export default function AdminUsers() {
           setUsers(prev => prev.map(u => 
             selectedUsers.includes(u.id) ? { ...u, isActive: true } : u
           ))
-          notifyCustom(`${selectedUsers.length} utenti attivati`, 'success')
+          notifyCustom('SUCCESS', 'PERSONNEL', 'Utenti Attivati', `${selectedUsers.length} utenti attivati con successo`)
           break
         case 'deactivate':
           setUsers(prev => prev.map(u => 
             selectedUsers.includes(u.id) ? { ...u, isActive: false } : u
           ))
-          notifyCustom(`${selectedUsers.length} utenti disattivati`, 'warning')
+          notifyCustom('WARNING', 'PERSONNEL', 'Utenti Disattivati', `${selectedUsers.length} utenti disattivati`)
           break
         case 'delete':
           if (confirm(`Sei sicuro di voler eliminare ${selectedUsers.length} utenti?`)) {
             setUsers(prev => prev.filter(u => !selectedUsers.includes(u.id)))
-            notifyCustom(`${selectedUsers.length} utenti eliminati`, 'success')
+            notifyCustom('SUCCESS', 'PERSONNEL', 'Utenti Eliminati', `${selectedUsers.length} utenti eliminati con successo`)
           }
           break
       }
       setSelectedUsers([])
     } catch (error) {
-      notifyCustom('Errore nell\'operazione bulk', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nell\'operazione bulk')
     }
   }
 
@@ -198,6 +197,21 @@ export default function AdminUsers() {
     return matchesSearch && matchesRole && matchesStatus
   })
 
+  // ✅ HELPER: Conta utenti online nelle ultime 24h CON VALIDAZIONE
+  const getOnlineUsersCount = (): number => {
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
+    return users.filter(u => {
+      // ✅ Validazione: verifica che lastLogin sia una data valida
+      if (!u.lastLogin) return false
+      try {
+        const lastLoginTime = new Date(u.lastLogin).getTime()
+        return isFinite(lastLoginTime) && lastLoginTime > oneDayAgo
+      } catch {
+        return false
+      }
+    }).length
+  }
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'PROPRIETARIO': return 'bg-purple-100 text-purple-800'
@@ -221,18 +235,32 @@ export default function AdminUsers() {
   }
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('it-IT')
+    try {
+      return new Date(date).toLocaleDateString('it-IT')
+    } catch {
+      return 'N/A'
+    }
   }
 
-  const formatLastLogin = (date: Date) => {
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const hours = Math.floor(diff / (1000 * 60 * 60))
+  const formatLastLogin = (date: Date | null | undefined): string => {
+    if (!date) return 'Mai'
     
-    if (hours < 1) return 'Ora'
-    if (hours < 24) return `${hours}h fa`
-    const days = Math.floor(hours / 24)
-    return `${days}g fa`
+    try {
+      const now = Date.now()
+      const lastLogin = new Date(date).getTime()
+      
+      if (!isFinite(lastLogin)) return 'N/A'
+      
+      const diff = now - lastLogin
+      const hours = Math.floor(diff / (1000 * 60 * 60))
+      
+      if (hours < 1) return 'Ora'
+      if (hours < 24) return `${hours}h fa`
+      const days = Math.floor(hours / 24)
+      return `${days}g fa`
+    } catch {
+      return 'N/A'
+    }
   }
 
   if (loading) {
@@ -250,25 +278,25 @@ export default function AdminUsers() {
     <div className="space-y-6">
       {/* Statistiche */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 rounded-lg p-4 text-center">
+        <div className="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
           <div className="text-2xl font-bold text-blue-600">{users.length}</div>
           <div className="text-sm text-blue-700">Totali</div>
         </div>
-        <div className="bg-green-50 rounded-lg p-4 text-center">
+        <div className="bg-green-50 rounded-lg p-4 text-center border border-green-200">
           <div className="text-2xl font-bold text-green-600">
             {users.filter(u => u.isActive).length}
           </div>
           <div className="text-sm text-green-700">Attivi</div>
         </div>
-        <div className="bg-red-50 rounded-lg p-4 text-center">
+        <div className="bg-red-50 rounded-lg p-4 text-center border border-red-200">
           <div className="text-2xl font-bold text-red-600">
             {users.filter(u => !u.isActive).length}
           </div>
           <div className="text-sm text-red-700">Inattivi</div>
         </div>
-        <div className="bg-purple-50 rounded-lg p-4 text-center">
+        <div className="bg-purple-50 rounded-lg p-4 text-center border border-purple-200">
           <div className="text-2xl font-bold text-purple-600">
-            {users.filter(u => u.lastLogin > new Date(Date.now() - 24 * 60 * 60 * 1000)).length}
+            {getOnlineUsersCount()}
           </div>
           <div className="text-sm text-purple-700">Online 24h</div>
         </div>
@@ -329,7 +357,7 @@ export default function AdminUsers() {
 
         {/* Azioni Bulk */}
         {selectedUsers.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => handleBulkAction('activate')}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
@@ -388,7 +416,7 @@ export default function AdminUsers() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
                       type="checkbox"
@@ -420,7 +448,7 @@ export default function AdminUsers() {
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {user.isActive ? 'Attivo' : 'Inattivo'}
+                      {user.isActive ? '✅ Attivo' : '❌ Inattivo'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -431,21 +459,21 @@ export default function AdminUsers() {
                       {!user.isActive ? (
                         <button
                           onClick={() => handleUserAction(user.id, 'activate')}
-                          className="text-green-600 hover:text-green-900"
+                          className="text-green-600 hover:text-green-900 transition"
                         >
                           ✅ Attiva
                         </button>
                       ) : (
                         <button
                           onClick={() => handleUserAction(user.id, 'deactivate')}
-                          className="text-yellow-600 hover:text-yellow-900"
+                          className="text-yellow-600 hover:text-yellow-900 transition"
                         >
                           ⏸️ Disattiva
                         </button>
                       )}
                       <button
                         onClick={() => handleUserAction(user.id, 'delete')}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 transition"
                       >
                         🗑️ Elimina
                       </button>
