@@ -2,8 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useCompanyData } from '@/hooks/useCompanyData'
-import { useEmployeeContext } from '@/contexts/EmployeeContext'
-import { formatCurrency, safeSum } from '@/lib/formatNumber'
+import { formatCurrency, safeSum, safeAverage } from '@/lib/formatNumber'
 
 interface TipEntry {
   id: string
@@ -64,7 +63,10 @@ export default function TipsHistory() {
           return cb - ca
         })
         setEntries(list)
-      } catch { setEntries([]) }
+      } catch (error) {
+        console.error('Error loading tips:', error)
+        setEntries([])
+      }
     }
     load()
     const onUpdate = () => load()
@@ -89,12 +91,17 @@ export default function TipsHistory() {
         const areas = raw ? JSON.parse(raw) : []
         const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
         if (!cancelled) setLocations(locs)
-      } catch { if (!cancelled) setLocations([]) }
+      } catch {
+        if (!cancelled) setLocations([])
+      }
     }
     load()
     const onUpdate = () => load()
     try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
-    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}; cancelled = true }
+    return () => {
+      try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}
+      cancelled = true
+    }
   }, [companyData])
 
   // Filtra entries
@@ -106,22 +113,62 @@ export default function TipsHistory() {
     return true
   })
 
-  // Calcola statistiche
+  // ✅ Calcola statistiche con helper functions sicure
+  const calculateTipsByType = (type: 'cash' | 'card' | 'foreign'): number => {
+    const filtered = filteredEntries.filter(e => e.type === type)
+    if (filtered.length === 0) return 0
+    return safeSum(...filtered.map(e => e.amount))
+  }
+
+  const calculateTipsByLocation = (locationName: string): number => {
+    const filtered = filteredEntries.filter(e => e.location === locationName)
+    if (filtered.length === 0) return 0
+    return safeSum(...filtered.map(e => e.amount))
+  }
+
   const stats = {
-    total: safeSum(...filteredEntries.map(e => e.amount)),
+    total: filteredEntries.length > 0 ? safeSum(...filteredEntries.map(e => e.amount)) : 0,
     count: filteredEntries.length,
+    average: filteredEntries.length > 0 
+      ? safeAverage(filteredEntries.map(e => e.amount))
+      : 0,
     byType: {
-      cash: safeSum(...filteredEntries.filter(e => e.type === 'cash').map(e => e.amount)),
-      card: safeSum(...filteredEntries.filter(e => e.type === 'card').map(e => e.amount)),
-      foreign: safeSum(...filteredEntries.filter(e => e.type === 'foreign').map(e => e.amount))
+      cash: calculateTipsByType('cash'),
+      card: calculateTipsByType('card'),
+      foreign: calculateTipsByType('foreign')
     },
     byLocation: locations.reduce((acc, loc) => {
-      acc[loc.name] = safeSum(...filteredEntries.filter(e => e.location === loc.name).map(e => e.amount))
+      acc[loc.name] = calculateTipsByLocation(loc.name)
       return acc
     }, {} as Record<string, number>)
   }
 
-  if (waitingCtx) return <div className="text-center py-8">Caricamento...</div>
+  const getPaymentTypeLabel = (type: string): string => {
+    switch (type) {
+      case 'cash': return '💵 Contanti'
+      case 'card': return '💳 Carta'
+      case 'foreign': return '🌍 Monete Estere'
+      default: return type
+    }
+  }
+
+  const getPaymentTypeBadgeClass = (type: string): string => {
+    switch (type) {
+      case 'cash': return 'bg-green-500'
+      case 'card': return 'bg-blue-500'
+      case 'foreign': return 'bg-purple-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  if (waitingCtx) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+        <p className="text-gray-600">Caricamento...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -174,27 +221,66 @@ export default function TipsHistory() {
             />
           </div>
         </div>
+
+        {/* Pulsante Reset Filtri */}
+        {(filterType !== 'all' || filterLocation !== 'all' || filterDateFrom || filterDateTo) && (
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                setFilterType('all')
+                setFilterLocation('all')
+                setFilterDateFrom('')
+                setFilterDateTo('')
+              }}
+              className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+            >
+              🔄 Reset Filtri
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Statistiche */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold mb-4">📊 Statistiche</h3>
         <div className="grid md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">€{isNaN(stats.total) ? '0.00' : stats.total.toFixed(2)}</div>
+          <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900">{formatCurrency(stats.total)}</div>
             <div className="text-sm text-gray-600">Totale</div>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">{stats.count}</div>
-            <div className="text-sm text-gray-600">Transazioni</div>
+          <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
+            <div className="text-2xl font-bold text-blue-900">{stats.count}</div>
+            <div className="text-sm text-blue-700">Transazioni</div>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">€{stats.count > 0 ? (isNaN(stats.total) ? '0.00' : (stats.total / stats.count).toFixed(2)) : '0.00'}</div>
-            <div className="text-sm text-gray-600">Media</div>
+          <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
+            <div className="text-2xl font-bold text-green-900">{formatCurrency(stats.average)}</div>
+            <div className="text-sm text-green-700">Media per Transazione</div>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">€{isNaN(stats.byType.cash) ? '0.00' : stats.byType.cash.toFixed(2)}</div>
-            <div className="text-sm text-gray-600">Contanti</div>
+          <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg">
+            <div className="text-2xl font-bold text-orange-900">{formatCurrency(stats.byType.cash)}</div>
+            <div className="text-sm text-orange-700">Contanti</div>
+          </div>
+        </div>
+
+        {/* Breakdown per Tipo */}
+        <div className="mt-6 grid md:grid-cols-3 gap-4">
+          <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-green-800">💵 Contanti</span>
+              <span className="text-lg font-bold text-green-900">{formatCurrency(stats.byType.cash)}</span>
+            </div>
+          </div>
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-blue-800">💳 Carta</span>
+              <span className="text-lg font-bold text-blue-900">{formatCurrency(stats.byType.card)}</span>
+            </div>
+          </div>
+          <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-purple-800">🌍 Estere</span>
+              <span className="text-lg font-bold text-purple-900">{formatCurrency(stats.byType.foreign)}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -203,32 +289,41 @@ export default function TipsHistory() {
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b">
           <h3 className="text-lg font-semibold">📋 Storico Completo</h3>
-          <p className="text-sm text-gray-600">Mostrando {filteredEntries.length} di {entries.length} transazioni</p>
+          <p className="text-sm text-gray-600">
+            Mostrando {filteredEntries.length} di {entries.length} transazioni
+          </p>
         </div>
         <div className="p-6">
           {filteredEntries.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">Nessuna transazione trovata con i filtri selezionati</p>
+            <div className="text-center py-8">
+              <div className="text-4xl mb-2">📭</div>
+              <p className="text-gray-500">Nessuna transazione trovata con i filtri selezionati</p>
+              <p className="text-sm text-gray-400 mt-1">Prova a modificare i criteri di ricerca</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {filteredEntries.map(entry => (
-                <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                <div 
+                  key={entry.id} 
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition"
+                >
                   <div className="flex items-center gap-4">
-                    <div className="text-sm text-gray-600">
-                      {new Date(entry.date).toLocaleDateString('it-IT')}
+                    <div className="text-sm font-medium text-gray-900 min-w-[100px]">
+                      {new Date(entry.date).toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
                     </div>
                     <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
-                      {entry.location}
+                      📍 {entry.location}
                     </span>
-                    <span className={`px-2 py-1 rounded-full text-xs text-white ${
-                      entry.type === 'cash' ? 'bg-green-500' : 
-                      entry.type === 'card' ? 'bg-blue-500' : 'bg-purple-500'
-                    }`}>
-                      {entry.type === 'cash' ? '💵 Contanti' : 
-                       entry.type === 'card' ? '💳 Carta' : '🌍 Monete Estere'}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getPaymentTypeBadgeClass(entry.type)}`}>
+                      {getPaymentTypeLabel(entry.type)}
                     </span>
                   </div>
-                  <div className="font-semibold text-gray-900">
-                    €{entry.amount.toFixed(2)}
+                  <div className="font-semibold text-gray-900 text-lg">
+                    {formatCurrency(entry.amount)}
                   </div>
                 </div>
               ))}

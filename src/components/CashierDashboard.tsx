@@ -35,7 +35,6 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
   const [showTipModal, setShowTipModal] = useState(false)
   const [showShiftModal, setShowShiftModal] = useState(false)
   const [showEditTipModal, setShowEditTipModal] = useState(false)
-  const [selectedDate, setSelectedDate] = useState('')
   const [selectedTip, setSelectedTip] = useState<DailyTip | null>(null)
 
   // Form data per inserimento mance
@@ -115,23 +114,44 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('it-IT', { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'short' 
-    })
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('it-IT', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'short' 
+      })
+    } catch {
+      return dateString
+    }
+  }
+
+  // ✅ HELPER: Calcola totale sicuro da tre valori
+  const calculateTipTotal = (cash: string, card: string, foreign: string): number => {
+    const cashValue = parseFloat(cash) || 0
+    const cardValue = parseFloat(card) || 0
+    const foreignValue = parseFloat(foreign) || 0
+    
+    return safeSum(cashValue, cardValue, foreignValue)
   }
 
   const handleTipSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // ✅ CALCOLO SICURO del totale
+    const total = calculateTipTotal(
+      tipForm.cashTips, 
+      tipForm.cardTips, 
+      tipForm.foreignCurrencyTips
+    )
+    
     const newTip: DailyTip = {
       id: Date.now().toString(),
       date: tipForm.date,
       cashTips: parseFloat(tipForm.cashTips) || 0,
       cardTips: parseFloat(tipForm.cardTips) || 0,
       foreignCurrencyTips: parseFloat(tipForm.foreignCurrencyTips) || 0,
-      total: (parseFloat(tipForm.cashTips) || 0) + (parseFloat(tipForm.cardTips) || 0) + (parseFloat(tipForm.foreignCurrencyTips) || 0),
+      total: total,
       status: 'completed'
     }
     
@@ -172,12 +192,19 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
     e.preventDefault()
     if (!selectedTip) return
 
+    // ✅ CALCOLO SICURO del totale
+    const total = calculateTipTotal(
+      tipForm.cashTips, 
+      tipForm.cardTips, 
+      tipForm.foreignCurrencyTips
+    )
+
     const updatedTip: DailyTip = {
       ...selectedTip,
       cashTips: parseFloat(tipForm.cashTips) || 0,
       cardTips: parseFloat(tipForm.cardTips) || 0,
       foreignCurrencyTips: parseFloat(tipForm.foreignCurrencyTips) || 0,
-      total: (parseFloat(tipForm.cashTips) || 0) + (parseFloat(tipForm.cardTips) || 0) + (parseFloat(tipForm.foreignCurrencyTips) || 0)
+      total: total
     }
 
     setDailyTips(dailyTips.map(tip => tip.id === selectedTip.id ? updatedTip : tip))
@@ -186,7 +213,9 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
     setTipForm({ date: '', cashTips: '', cardTips: '', foreignCurrencyTips: '' })
   }
 
+  // ✅ CALCOLI SICURI
   const getTotalTips = () => {
+    if (dailyTips.length === 0) return 0
     return safeSum(...dailyTips.map(tip => tip.total))
   }
 
@@ -199,18 +228,18 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
   return (
     <div className="space-y-6">
       {/* Statistiche Cassiere */}
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-3xl mb-4">💰</div>
           <h3 className="text-lg font-semibold mb-2">Mance di Oggi</h3>
-          <p className="text-2xl font-bold text-green-600">€{getTodayTips().toFixed(2)}</p>
+          <p className="text-2xl font-bold text-green-600">{formatCurrency(getTodayTips())}</p>
           <p className="text-sm text-gray-500">Totale giornaliero</p>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-3xl mb-4">📊</div>
           <h3 className="text-lg font-semibold mb-2">Totale Settimana</h3>
-          <p className="text-2xl font-bold text-blue-600">€{getTotalTips().toFixed(2)}</p>
+          <p className="text-2xl font-bold text-blue-600">{formatCurrency(getTotalTips())}</p>
           <p className="text-sm text-gray-500">Ultimi 7 giorni</p>
         </div>
         
@@ -220,8 +249,6 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
           <p className="text-2xl font-bold text-orange-600">{shifts.length}</p>
           <p className="text-sm text-gray-500">Dipendenti in servizio</p>
         </div>
-        
-        
       </div>
 
       {/* Sezioni Principali */}
@@ -239,18 +266,21 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
           </div>
           <div className="space-y-3">
             {dailyTips.slice(0, 5).map((tip) => (
-              <div key={tip.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                <div>
+              <div key={tip.id} className="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition">
+                <div className="flex-1">
                   <p className="font-medium">{formatDate(tip.date)}</p>
                   <p className="text-sm text-gray-600">
-                    Contanti: €{tip.cashTips} | Carta: €{tip.cardTips} | Estere: €{tip.foreignCurrencyTips}
+                    Contanti: {formatCurrency(tip.cashTips)} | 
+                    Carta: {formatCurrency(tip.cardTips)} | 
+                    Estere: {formatCurrency(tip.foreignCurrencyTips)}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="font-semibold text-green-600">€{tip.total.toFixed(2)}</span>
+                  <span className="font-semibold text-green-600">{formatCurrency(tip.total)}</span>
                   <button 
                     onClick={() => handleEditTip(tip)}
-                    className="text-blue-600 hover:text-blue-800 text-sm"
+                    className="text-blue-600 hover:text-blue-800 text-sm p-1"
+                    title="Modifica"
                   >
                     ✏️
                   </button>
@@ -276,7 +306,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
           </div>
           <div className="space-y-3">
             {shifts.slice(0, 5).map((shift) => (
-              <div key={shift.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+              <div key={shift.id} className="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition">
                 <div>
                   <p className="font-medium">{shift.employee}</p>
                   <p className="text-sm text-gray-600">
@@ -294,8 +324,6 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
           </div>
         </div>
       </div>
-
-      
 
       {/* Modal Inserimento Mance */}
       {showTipModal && (
@@ -323,6 +351,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={tipForm.cashTips}
                     onChange={(e) => setTipForm({...tipForm, cashTips: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -336,6 +365,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={tipForm.cardTips}
                     onChange={(e) => setTipForm({...tipForm, cardTips: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -349,6 +379,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={tipForm.foreignCurrencyTips}
                     onChange={(e) => setTipForm({...tipForm, foreignCurrencyTips: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -360,7 +391,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
                 <button
                   type="button"
                   onClick={() => setShowTipModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition"
                 >
                   Annulla
                 </button>
@@ -393,6 +424,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
                     onChange={(e) => setTipForm({...tipForm, date: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                     required
+                    disabled
                   />
                 </div>
                 <div>
@@ -402,6 +434,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={tipForm.cashTips}
                     onChange={(e) => setTipForm({...tipForm, cashTips: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -415,6 +448,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={tipForm.cardTips}
                     onChange={(e) => setTipForm({...tipForm, cardTips: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -428,6 +462,7 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={tipForm.foreignCurrencyTips}
                     onChange={(e) => setTipForm({...tipForm, foreignCurrencyTips: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -438,8 +473,12 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   type="button"
-                  onClick={() => setShowEditTipModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  onClick={() => {
+                    setShowEditTipModal(false)
+                    setSelectedTip(null)
+                    setTipForm({ date: '', cashTips: '', cardTips: '', foreignCurrencyTips: '' })
+                  }}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition"
                 >
                   Annulla
                 </button>
@@ -538,8 +577,11 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   type="button"
-                  onClick={() => setShowShiftModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  onClick={() => {
+                    setShowShiftModal(false)
+                    setShiftForm({ date: '', employee: '', startTime: '', endTime: '', department: '' })
+                  }}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition"
                 >
                   Annulla
                 </button>

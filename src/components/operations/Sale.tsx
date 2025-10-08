@@ -44,28 +44,16 @@ export default function OperationsSale() {
     dinnerClose: '23:00' 
   })
 
-  // editing
-  const [editingId, setEditingId] = useState<string>('')
-  const [editMap, setEditMap] = useState<Record<string, BookingArea>>({})
-
   const { data: companyData } = useCompanyData(session?.user?.id)
-
-  const loadAreas = () => {
-    try {
-      if (!areasKey) return
-      const raw = localStorage.getItem(areasKey)
-      setAreas(raw ? JSON.parse(raw) : [])
-    } catch {
-      setAreas([])
-    }
-  }
 
   const saveAreas = (next: BookingArea[]) => {
     setAreas(next)
     try {
       localStorage.setItem(areasKey, JSON.stringify(next))
       window.dispatchEvent(new CustomEvent('booking_areas_updated'))
-    } catch {}
+    } catch (error) {
+      console.error('Error saving areas:', error)
+    }
   }
 
   // Carica aree
@@ -83,15 +71,34 @@ export default function OperationsSale() {
           setAreas(areasData)
           if (!selectedArea && areasData.length > 0) setSelectedArea(areasData[0].id)
         }
-      } catch {
+      } catch (error) {
+        console.error('Error loading areas:', error)
         if (!cancelled) setAreas([])
       }
     }
     load()
     const onUpdate = () => load()
     try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
-    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}; cancelled = true }
+    return () => {
+      try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}
+      cancelled = true
+    }
   }, [selectedArea, companyData])
+
+  // ✅ HELPER: Parse sicuro per numeri
+  const safeParseInt = (value: string, defaultValue: number = 1): number => {
+    const parsed = parseInt(value, 10)
+    return isNaN(parsed) || !isFinite(parsed) ? defaultValue : Math.max(1, parsed)
+  }
+
+  // ✅ HELPER: Statistiche per tipo
+  const getAreaCountByType = (type: AreaType): number => {
+    return areas.filter(a => a.type === type).length
+  }
+
+  const getTwoServicesCount = (): number => {
+    return areas.filter(a => a.hasTwoServices).length
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -150,8 +157,8 @@ export default function OperationsSale() {
     })
   }
 
-  const getAreaTypeLabel = (type: AreaType) => {
-    const labels = {
+  const getAreaTypeLabel = (type: AreaType): string => {
+    const labels: Record<AreaType, string> = {
       'sala': '🍽️ Sala',
       'sala_colazioni': '🌅 Sala Colazioni',
       'bar': '🍹 Bar',
@@ -163,8 +170,8 @@ export default function OperationsSale() {
     return labels[type] || type
   }
 
-  const getAreaTypeColor = (type: AreaType) => {
-    const colors = {
+  const getAreaTypeColor = (type: AreaType): string => {
+    const colors: Record<AreaType, string> = {
       'sala': 'bg-blue-50 border-blue-200',
       'sala_colazioni': 'bg-yellow-50 border-yellow-200',
       'bar': 'bg-green-50 border-green-200',
@@ -176,7 +183,7 @@ export default function OperationsSale() {
     return colors[type] || 'bg-gray-50 border-gray-200'
   }
 
-  const formatTime = (time: string) => {
+  const formatTime = (time: string): string => {
     return time.slice(0, 5) // HH:MM format
   }
 
@@ -206,25 +213,25 @@ export default function OperationsSale() {
 
         {/* Statistiche */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50 rounded-lg p-4 text-center">
+          <div className="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
             <div className="text-2xl font-bold text-blue-600">{areas.length}</div>
             <div className="text-sm text-blue-700">Aree Totali</div>
           </div>
-          <div className="bg-green-50 rounded-lg p-4 text-center">
+          <div className="bg-green-50 rounded-lg p-4 text-center border border-green-200">
             <div className="text-2xl font-bold text-green-600">
-              {areas.filter(a => a.type === 'sala').length}
+              {getAreaCountByType('sala')}
             </div>
             <div className="text-sm text-green-700">Sale</div>
           </div>
-          <div className="bg-purple-50 rounded-lg p-4 text-center">
+          <div className="bg-purple-50 rounded-lg p-4 text-center border border-purple-200">
             <div className="text-2xl font-bold text-purple-600">
-              {areas.filter(a => a.type === 'bar').length}
+              {getAreaCountByType('bar')}
             </div>
             <div className="text-sm text-purple-700">Bar</div>
           </div>
-          <div className="bg-yellow-50 rounded-lg p-4 text-center">
+          <div className="bg-yellow-50 rounded-lg p-4 text-center border border-yellow-200">
             <div className="text-2xl font-bold text-yellow-600">
-              {areas.filter(a => a.hasTwoServices).length}
+              {getTwoServicesCount()}
             </div>
             <div className="text-sm text-yellow-700">Doppio Servizio</div>
           </div>
@@ -246,7 +253,7 @@ export default function OperationsSale() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {areas.map(area => (
-                  <div key={area.id} className={`border rounded-lg p-4 ${getAreaTypeColor(area.type)}`}>
+                  <div key={area.id} className={`border rounded-lg p-4 transition hover:shadow-md ${getAreaTypeColor(area.type)}`}>
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{area.name}</h4>
@@ -316,7 +323,7 @@ export default function OperationsSale() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4">
-                {editingArea ? 'Modifica Area' : 'Nuova Area'}
+                {editingArea ? '✏️ Modifica Area' : '➕ Nuova Area'}
               </h3>
               
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -356,7 +363,10 @@ export default function OperationsSale() {
                     type="number"
                     min="1"
                     value={form.quantity || ''}
-                    onChange={(e) => setForm(prev => ({ ...prev, quantity: e.target.value ? parseInt(e.target.value) : undefined }))}
+                    onChange={(e) => setForm(prev => ({ 
+                      ...prev, 
+                      quantity: e.target.value ? safeParseInt(e.target.value, 1) : undefined 
+                    }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Numero di tavoli o posti"
                   />
@@ -391,7 +401,10 @@ export default function OperationsSale() {
                     min="1"
                     max="10"
                     value={form.seatingsPerService}
-                    onChange={(e) => setForm(prev => ({ ...prev, seatingsPerService: parseInt(e.target.value) }))}
+                    onChange={(e) => setForm(prev => ({ 
+                      ...prev, 
+                      seatingsPerService: safeParseInt(e.target.value, 1) 
+                    }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -410,9 +423,9 @@ export default function OperationsSale() {
                 </div>
 
                 {form.hasTwoServices && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Pranzo - Apertura</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">🌞 Pranzo - Apertura</label>
                       <input
                         type="time"
                         value={form.lunchOpen}
@@ -422,7 +435,7 @@ export default function OperationsSale() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Pranzo - Chiusura</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">🌞 Pranzo - Chiusura</label>
                       <input
                         type="time"
                         value={form.lunchClose}
@@ -432,7 +445,7 @@ export default function OperationsSale() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Cena - Apertura</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">🌙 Cena - Apertura</label>
                       <input
                         type="time"
                         value={form.dinnerOpen}
@@ -442,7 +455,7 @@ export default function OperationsSale() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Cena - Chiusura</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">🌙 Cena - Chiusura</label>
                       <input
                         type="time"
                         value={form.dinnerClose}
@@ -453,7 +466,7 @@ export default function OperationsSale() {
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2 pt-4">
+                <div className="flex justify-end gap-2 pt-4 border-t">
                   <button
                     type="button"
                     onClick={() => {

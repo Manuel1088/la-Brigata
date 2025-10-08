@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
+import { formatCurrency, safeSum } from '@/lib/formatNumber'
 
 interface PayrollAnalysis {
   employeeName: string
@@ -64,7 +65,9 @@ export default function PayrollSection() {
       if (saved) {
         setScanHistory(JSON.parse(saved))
       }
-    } catch {}
+    } catch (error) {
+      console.error('Error loading scan history:', error)
+    }
   }, [])
 
   // Carica documenti storici
@@ -113,8 +116,32 @@ export default function PayrollSection() {
         setDocuments(mockDocuments)
         localStorage.setItem('payroll_documents_history', JSON.stringify(mockDocuments))
       }
-    } catch {}
+    } catch (error) {
+      console.error('Error loading documents:', error)
+    }
   }, [])
+
+  // ✅ HELPER: Calcolo somma detrazioni sicuro
+  const calculateTotalDeductions = (deductions: Array<{amount: number}>) => {
+    if (!deductions || deductions.length === 0) return 0
+    return safeSum(...deductions.map(d => d.amount))
+  }
+
+  // ✅ HELPER: Calcolo somma bonus sicuro
+  const calculateTotalBonuses = (bonuses: Array<{amount: number}>) => {
+    if (!bonuses || bonuses.length === 0) return 0
+    return safeSum(...bonuses.map(b => b.amount))
+  }
+
+  // ✅ HELPER: Formattazione file size sicura
+  const formatFileSize = (bytes: number | undefined | null): string => {
+    if (bytes == null || bytes === 0 || !isFinite(bytes)) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    const size = bytes / Math.pow(k, i)
+    return `${size.toFixed(2)} ${sizes[i]}`
+  }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -181,21 +208,6 @@ export default function PayrollSection() {
     }
   }
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount)
-  }
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'processed': return 'bg-green-100 text-green-800'
@@ -219,7 +231,7 @@ export default function PayrollSection() {
       case 'error': return '❌'
       case 'warning': return '⚠️'
       case 'info': return 'ℹ️'
-      default: return '📝'
+      default: return '📋'
     }
   }
 
@@ -282,7 +294,7 @@ export default function PayrollSection() {
           {selectedTab === 'scan' && (
             <div className="space-y-6">
               {/* Upload File */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition">
                 <div className="text-4xl mb-4">📄</div>
                 <h4 className="text-lg font-medium text-gray-900 mb-2">Carica Documento Payroll</h4>
                 <p className="text-gray-600 mb-4">
@@ -300,7 +312,7 @@ export default function PayrollSection() {
                   htmlFor="file-upload"
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer"
                 >
-                  📁 Seleziona File
+                  📎 Seleziona File
                 </label>
                 
                 {uploadedFile && (
@@ -321,7 +333,7 @@ export default function PayrollSection() {
                   <button
                     onClick={handleScanDocument}
                     disabled={isScanning}
-                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isScanning ? (
                       <>
@@ -359,7 +371,7 @@ export default function PayrollSection() {
                     </div>
                     <div className="bg-red-50 rounded-lg p-4 text-center">
                       <div className="text-2xl font-bold text-red-600">
-                        -{formatCurrency(analysis.deductions.reduce((sum, d) => sum + d.amount, 0))}
+                        -{formatCurrency(calculateTotalDeductions(analysis.deductions))}
                       </div>
                       <div className="text-sm text-red-700">Detrazioni</div>
                     </div>
@@ -378,7 +390,7 @@ export default function PayrollSection() {
                       <h5 className="font-semibold text-gray-900 mb-3">📉 Detrazioni</h5>
                       <div className="space-y-2">
                         {analysis.deductions.map((deduction, index) => (
-                          <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                             <div>
                               <div className="font-medium text-gray-900">{deduction.type}</div>
                               <div className="text-sm text-gray-600">{deduction.description}</div>
@@ -396,7 +408,7 @@ export default function PayrollSection() {
                       <h5 className="font-semibold text-gray-900 mb-3">🎯 Bonus</h5>
                       <div className="space-y-2">
                         {analysis.bonuses.map((bonus, index) => (
-                          <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                             <div>
                               <div className="font-medium text-gray-900">{bonus.type}</div>
                               <div className="text-sm text-gray-600">{bonus.description}</div>
@@ -417,7 +429,7 @@ export default function PayrollSection() {
                       <div className="space-y-2">
                         {analysis.errors.map((error, index) => (
                           <div key={index} className="flex items-start gap-2">
-                            <span className="text-lg">{getErrorIcon(error.type)}</span>
+                            <span className="text-lg flex-shrink-0">{getErrorIcon(error.type)}</span>
                             <div>
                               <div className="font-medium text-yellow-800">{error.message}</div>
                               {error.suggestion && (
@@ -437,7 +449,7 @@ export default function PayrollSection() {
                       <div className="space-y-3">
                         {analysis.recommendations.map((rec, index) => (
                           <div key={index} className="flex items-start gap-3">
-                            <span className="text-lg">{getRecommendationIcon(rec.category)}</span>
+                            <span className="text-lg flex-shrink-0">{getRecommendationIcon(rec.category)}</span>
                             <div className="flex-1">
                               <div className="font-medium text-blue-800">{rec.title}</div>
                               <div className="text-sm text-blue-700 mt-1">{rec.description}</div>
@@ -491,13 +503,13 @@ export default function PayrollSection() {
                         <div>
                           <span className="text-gray-600">Detrazioni:</span>
                           <div className="font-medium text-red-600">
-                            -{formatCurrency(item.deductions.reduce((sum, d) => sum + d.amount, 0))}
+                            -{formatCurrency(calculateTotalDeductions(item.deductions))}
                           </div>
                         </div>
                         <div>
                           <span className="text-gray-600">Bonus:</span>
                           <div className="font-medium text-green-600">
-                            +{formatCurrency(item.bonuses.reduce((sum, b) => sum + b.amount, 0))}
+                            +{formatCurrency(calculateTotalBonuses(item.bonuses))}
                           </div>
                         </div>
                       </div>
