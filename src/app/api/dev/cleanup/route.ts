@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       // Events / rules / locations
       try { await tx.staffRequirement.deleteMany({}) } catch {}
       try { await tx.restaurantEvent.deleteMany({}) } catch {}
-      try { await tx.ccnlRules.deleteMany({}) } catch {}
+      try { await tx.cCNLRules.deleteMany({}) } catch {}
       try { await tx.restaurantLocation.deleteMany({}) } catch {}
 
       // Bookings / tables
