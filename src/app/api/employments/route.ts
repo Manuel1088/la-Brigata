@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Esegui la query
-    const employments = await prisma.employment.findMany({
+    const employments = await (prisma as any).employment.findMany({
       where,
       include: {
         user: {
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verifica se esiste già un employment per questa combinazione
-    const existingEmployment = await prisma.employment.findFirst({
+    const existingEmployment = await (prisma as any).employment.findFirst({
       where: {
         userId,
         restaurantId,
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Crea il nuovo employment
-    const employment = await prisma.employment.create({
+    const employment = await (prisma as any).employment.create({
       data: {
         userId,
         restaurantId,
@@ -205,7 +205,7 @@ export async function PATCH(request: NextRequest) {
     if (role) dataToUpdate.role = role
     if (department !== undefined) dataToUpdate.department = department
 
-    const employment = await prisma.employment.update({
+    const employment = await (prisma as any).employment.update({
       where: {
         id,
       },
@@ -263,7 +263,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    await prisma.employment.delete({
+    await (prisma as any).employment.delete({
       where: {
         id,
       },
