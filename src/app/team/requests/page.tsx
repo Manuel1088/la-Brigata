@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { formatCurrency } from '@/lib/formatNumber'
+import { useEmployments } from '@/hooks/useEmployments'
 
 interface PendingRequest {
   id: string
@@ -21,30 +22,17 @@ interface PendingRequest {
 
 export default function PendingRequestsPage() {
   const { data: session } = useSession()
-  const [requests, setRequests] = useState<PendingRequest[]>([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'PENDING' | 'ALL'>('PENDING')
   
-  useEffect(() => {
-    loadRequests()
-  }, [filter])
-  
-  const loadRequests = async () => {
-    try {
-      setLoading(true)
-      const queryParam = filter === 'PENDING' ? '?status=PENDING' : ''
-      const res = await fetch(`/api/employments${queryParam}`)
-      const data = await res.json()
-      
-      if (data.success) {
-        setRequests(data.employments)
-      }
-    } catch (error) {
-      console.error('Errore caricamento richieste:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // ✅ USA SWR invece di fetch manuale
+  const { 
+    employments: requests, 
+    isLoading: loading, 
+    mutate: reloadRequests 
+  } = useEmployments({
+    status: filter === 'PENDING' ? 'PENDING' : undefined,
+    enabled: true
+  })
   
   const handleApprove = async (id: string, userName: string) => {
     if (!confirm(`Vuoi approvare la richiesta di ${userName}?`)) return
@@ -64,7 +52,7 @@ export default function PendingRequestsPage() {
       
       if (data.success) {
         alert(`✅ ${data.message}`)
-        loadRequests()
+        reloadRequests() // ✅ SWR mutate
       } else {
         alert(`❌ Errore: ${data.error}`)
       }
@@ -89,7 +77,7 @@ export default function PendingRequestsPage() {
       
       if (data.success) {
         alert(`✅ ${data.message}`)
-        loadRequests()
+        reloadRequests() // ✅ SWR mutate
       } else {
         alert(`❌ Errore: ${data.error}`)
       }
