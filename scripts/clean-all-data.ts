@@ -7,17 +7,17 @@ async function main() {
   console.log('⚠️  ATTENZIONE: Questa operazione eliminerà TUTTI i dati!')
   
   try {
-    // Conta i record prima della pulizia
+    // Conta i record prima della pulizia (con gestione errori per tabelle che potrebbero non esistere)
     const counts = {
-      users: await prisma.user.count(),
-      employees: await prisma.employee.count(),
-      companies: await prisma.company.count(),
-      restaurants: await prisma.restaurant.count(),
-      employments: await prisma.employment.count(),
-      shifts: await prisma.shift.count(),
-      tipEntries: await prisma.tipEntry.count(),
-      leaveRequests: await prisma.leaveRequest.count(),
-      bookings: await prisma.booking.count()
+      users: await prisma.user.count().catch(() => 0),
+      employees: await prisma.employee.count().catch(() => 0),
+      companies: await prisma.company.count().catch(() => 0),
+      restaurants: await prisma.restaurant.count().catch(() => 0),
+      employments: await prisma.employment.count().catch(() => 0),
+      shifts: await prisma.shift.count().catch(() => 0),
+      tipEntries: await prisma.tipEntry.count().catch(() => 0),
+      leaveRequests: await prisma.leaveRequest.count().catch(() => 0),
+      bookings: await prisma.booking.count().catch(() => 0)
     }
     
     console.log('\n📊 Record da eliminare:')
@@ -66,7 +66,7 @@ async function main() {
     const delTables = await prisma.table.deleteMany()
     console.log(`✅ Tables eliminati: ${delTables.count}`)
     
-    const delEmployments = await prisma.employment.deleteMany()
+    const delEmployments = await prisma.employment.deleteMany().catch(() => ({ count: 0 }))
     console.log(`✅ Employments eliminati: ${delEmployments.count}`)
     
     const delUserPerms = await prisma.userPermission.deleteMany()
@@ -119,11 +119,11 @@ async function main() {
     
     // Verifica che tutto sia vuoto
     const finalCounts = {
-      users: await prisma.user.count(),
-      employees: await prisma.employee.count(),
-      companies: await prisma.company.count(),
-      restaurants: await prisma.restaurant.count(),
-      employments: await prisma.employment.count()
+      users: await prisma.user.count().catch(() => 0),
+      employees: await prisma.employee.count().catch(() => 0),
+      companies: await prisma.company.count().catch(() => 0),
+      restaurants: await prisma.restaurant.count().catch(() => 0),
+      employments: await prisma.employment.count().catch(() => 0)
     }
     
     console.log(`  👥 Users: ${finalCounts.users}`)
