@@ -185,15 +185,6 @@ export default function TopBar() {
               <span className="text-xl">❓</span>
             </button>
 
-            {/* User Profile Button */}
-            <button
-              onClick={() => router.push('/me')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Il Profilo"
-            >
-              <span className="text-xl">👤</span>
-            </button>
-
             {/* Settings Button */}
             <button
               onClick={() => router.push('/settings')}
@@ -205,8 +196,12 @@ export default function TopBar() {
 
             {/* User Info + Logout */}
             <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
-              {/* User Avatar & Name */}
-              <div className="flex items-center gap-2">
+              {/* User Avatar & Name - Clickable */}
+              <button 
+                onClick={() => router.push('/me')}
+                className="flex items-center gap-2 hover:bg-gray-100 rounded-lg p-1 transition-colors"
+                title="Vai al Profilo"
+              >
                 <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center">
                   <span className="text-white font-medium text-sm">
                     {session?.user?.name?.charAt(0) || 'U'}
@@ -222,7 +217,7 @@ export default function TopBar() {
                      userRole === UserRole.DIRETTORE ? 'Direttore' : 'Dipendente'}
                   </p>
                 </div>
-              </div>
+              </button>
 
               {/* Logout Button */}
               <button

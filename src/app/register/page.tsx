@@ -36,41 +36,80 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow p-8">
-        {step === 1 && (
-          <RegistrationTypeSelector 
-            onSelect={(type) => {
-              setRegistrationType(type)
-              setStep(2)
-            }}
-            onBack={() => router.push('/')}
-          />
-        )}
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-12">
+      <div className="container mx-auto px-4">
+        {/* Titolo e sottotitolo */}
+        <div className="text-center mb-12">
+          <h1 className="text-6xl font-bold text-gray-900 mb-4">
+            🍽️ LA BRIGATA
+          </h1>
+          <p className="text-2xl text-gray-600">
+            Gestione digitale per la ristorazione italiana
+          </p>
+        </div>
         
-        {step === 2 && registrationType === 'company' && (
-          <CompanyRegistrationForm 
-            onSubmit={(data) => handleRegistration('company', data)}
-            onBack={() => setStep(1)}
-            loading={loading}
-          />
-        )}
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8">
+          {step === 1 && (
+            <RegistrationTypeSelector 
+              onSelect={(type) => {
+                setRegistrationType(type)
+                setStep(2)
+              }}
+              onBack={() => router.push('/')}
+            />
+          )}
+          
+          {step === 2 && registrationType === 'company' && (
+            <CompanyRegistrationForm 
+              onSubmit={(data) => handleRegistration('company', data)}
+              onBack={() => setStep(1)}
+              loading={loading}
+            />
+          )}
+          
+          {step === 2 && registrationType === 'employee' && (
+            <EmployeeRegistrationForm 
+              onSubmit={(data) => handleRegistration('employee', data)}
+              onBack={() => setStep(1)}
+              loading={loading}
+            />
+          )}
+          
+          {step === 2 && registrationType === 'candidate' && (
+            <CandidateRegistrationForm 
+              onSubmit={(data) => handleRegistration('candidate', data)}
+              onBack={() => setStep(1)}
+              loading={loading}
+            />
+          )}
+        </div>
         
-        {step === 2 && registrationType === 'employee' && (
-          <EmployeeRegistrationForm 
-            onSubmit={(data) => handleRegistration('employee', data)}
-            onBack={() => setStep(1)}
-            loading={loading}
-          />
-        )}
-        
-        {step === 2 && registrationType === 'candidate' && (
-          <CandidateRegistrationForm 
-            onSubmit={(data) => handleRegistration('candidate', data)}
-            onBack={() => setStep(1)}
-            loading={loading}
-          />
-        )}
+        {/* Descrizioni funzionalità */}
+        <div className="grid md:grid-cols-4 gap-6 mt-16 max-w-5xl mx-auto">
+          <div className="text-center">
+            <div className="text-4xl mb-4">📅</div>
+            <h3 className="font-semibold">Gestione Turni</h3>
+            <p className="text-sm text-gray-600">AI ottimizzata</p>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-4xl mb-4">💰</div>
+            <h3 className="font-semibold">Mance Digitali</h3>
+            <p className="text-sm text-gray-600">Distribuzione automatica</p>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-4xl mb-4">🏖️</div>
+            <h3 className="font-semibold">Ferie & Permessi</h3>
+            <p className="text-sm text-gray-600">Workflow digitale</p>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-4xl mb-4">📊</div>
+            <h3 className="font-semibold">Reports</h3>
+            <p className="text-sm text-gray-600">Analytics avanzate</p>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -80,17 +119,17 @@ export default function RegisterPage() {
 function RegistrationTypeSelector({ onSelect, onBack }: { onSelect: (type: RegistrationType) => void, onBack: () => void }) {
   return (
     <div>
-      <div className="flex items-center mb-6">
-        <button onClick={onBack} className="mr-4 text-gray-600 hover:text-gray-900">
-          ← Indietro
+      <div className="relative mb-6">
+        <button onClick={onBack} className="absolute left-0 text-gray-600 hover:text-gray-900 text-2xl">
+          ←
         </button>
-        <h2 className="text-2xl font-bold">Scegli tipo di registrazione</h2>
+        <h2 className="text-2xl font-bold text-center whitespace-nowrap">Come ti registri?</h2>
       </div>
       
       <div className="space-y-4">
         <button
           onClick={() => onSelect('company')}
-          className="w-full p-6 text-left border-2 border-gray-200 rounded-lg hover:border-orange-500 transition"
+          className="w-full p-6 text-center border-2 border-gray-200 rounded-lg hover:border-orange-500 transition"
         >
           <div className="text-xl font-semibold mb-2">🏢 Sono un Ristoratore</div>
           <p className="text-gray-600 text-sm">
@@ -100,7 +139,7 @@ function RegistrationTypeSelector({ onSelect, onBack }: { onSelect: (type: Regis
         
         <button
           onClick={() => onSelect('employee')}
-          className="w-full p-6 text-left border-2 border-gray-200 rounded-lg hover:border-blue-500 transition"
+          className="w-full p-6 text-center border-2 border-gray-200 rounded-lg hover:border-blue-500 transition"
         >
           <div className="text-xl font-semibold mb-2">👥 Lavoro in un Ristorante</div>
           <p className="text-gray-600 text-sm">
@@ -110,7 +149,7 @@ function RegistrationTypeSelector({ onSelect, onBack }: { onSelect: (type: Regis
         
         <button
           onClick={() => onSelect('candidate')}
-          className="w-full p-6 text-left border-2 border-gray-200 rounded-lg hover:border-purple-500 transition"
+          className="w-full p-6 text-center border-2 border-gray-200 rounded-lg hover:border-purple-500 transition"
         >
           <div className="text-xl font-semibold mb-2">🔍 Cerco Lavoro</div>
           <p className="text-gray-600 text-sm">
@@ -141,11 +180,11 @@ function CompanyRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (dat
       e.preventDefault()
       onSubmit(formData)
     }}>
-      <div className="flex items-center mb-6">
-        <button type="button" onClick={onBack} className="mr-4 text-gray-600 hover:text-gray-900">
-          ← Indietro
+      <div className="relative mb-6">
+        <button type="button" onClick={onBack} className="absolute left-0 text-gray-600 hover:text-gray-900 text-2xl">
+          ←
         </button>
-        <h3 className="text-xl font-semibold">Registrazione Ristorante</h3>
+        <h3 className="text-xl font-semibold text-center">Registrazione Ristorante</h3>
       </div>
       
       <div className="space-y-4">
@@ -232,11 +271,11 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
       e.preventDefault()
       onSubmit(formData)
     }}>
-      <div className="flex items-center mb-6">
-        <button type="button" onClick={onBack} className="mr-4 text-gray-600 hover:text-gray-900">
-          ← Indietro
+      <div className="relative mb-6">
+        <button type="button" onClick={onBack} className="absolute left-0 text-gray-600 hover:text-gray-900 text-2xl">
+          ←
         </button>
-        <h3 className="text-xl font-semibold">Registrazione Dipendente</h3>
+        <h3 className="text-xl font-semibold text-center">Registrazione Dipendente</h3>
       </div>
       
       <div className="space-y-4">
@@ -334,11 +373,11 @@ function CandidateRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (d
       e.preventDefault()
       onSubmit(formData)
     }}>
-      <div className="flex items-center mb-6">
-        <button type="button" onClick={onBack} className="mr-4 text-gray-600 hover:text-gray-900">
-          ← Indietro
+      <div className="relative mb-6">
+        <button type="button" onClick={onBack} className="absolute left-0 text-gray-600 hover:text-gray-900 text-2xl">
+          ←
         </button>
-        <h3 className="text-xl font-semibold">Profilo Candidato</h3>
+        <h3 className="text-xl font-semibold text-center">Profilo Candidato</h3>
       </div>
       
       <div className="space-y-4">

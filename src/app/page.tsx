@@ -42,7 +42,7 @@ export default function HomePage() {
           </div>
         </div>
         
-        <div className="grid md:grid-cols-4 gap-6 mt-16">
+        <div className="grid md:grid-cols-4 gap-6 mt-16 max-w-5xl mx-auto">
           <div className="text-center">
             <div className="text-4xl mb-4">📅</div>
             <h3 className="font-semibold">Gestione Turni</h3>
