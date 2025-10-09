@@ -7,6 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { UserRole } from '@/types/roles'
 import { PendingEmploymentsBadge } from './PendingEmploymentsBadge'
 import { RestaurantSelector } from './RestaurantSelector'
+import { NotificationCenter } from './NotificationCenter'
 
 export default function TopBar() {
   const { data: session, status } = useSession()
@@ -14,6 +15,7 @@ export default function TopBar() {
   const pathname = usePathname()
   const { userRole } = usePermissions()
   const [pendingNotifications, setPendingNotifications] = useState(0)
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false)
 
   // Calculate pending notifications
   useEffect(() => {
@@ -158,7 +160,7 @@ export default function TopBar() {
             
             {/* Notifications */}
             <button
-              onClick={() => router.push('/notifications')}
+              onClick={() => setIsNotificationCenterOpen(!isNotificationCenterOpen)}
               className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               title="Centro Notifiche"
             >
@@ -233,6 +235,24 @@ export default function TopBar() {
           </div>
         </div>
       </div>
+
+      {/* Notification Center Sidebar con Overlay */}
+      {isNotificationCenterOpen && (
+        <>
+          {/* Overlay scuro per chiudere cliccando fuori */}
+          <div 
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+            onClick={() => setIsNotificationCenterOpen(false)}
+          />
+          
+          {/* Pannello Notifiche */}
+          <NotificationCenter 
+            isOpen={isNotificationCenterOpen}
+            onClose={() => setIsNotificationCenterOpen(false)}
+            userId={(session?.user as any)?.id}
+          />
+        </>
+      )}
     </div>
   )
 }
