@@ -108,10 +108,7 @@ export function NotificationCenter({ isOpen, onClose, userId }: NotificationCent
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 flex items-start justify-end z-50">
-      <div 
-        className="bg-white w-full max-w-md h-full shadow-xl overflow-hidden border-l border-gray-200 flex flex-col"
-      >
+    <div className="bg-white w-full max-w-md h-full shadow-xl overflow-hidden border-l border-gray-200 flex flex-col">
         {/* Header */}
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -329,7 +326,6 @@ export function NotificationCenter({ isOpen, onClose, userId }: NotificationCent
             </p>
           </div>
         </div>
-      </div>
     </div>
   )
 }

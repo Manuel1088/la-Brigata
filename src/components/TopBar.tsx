@@ -102,9 +102,10 @@ export default function TopBar() {
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <>
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
           {/* Left Section - Logo + Brand + Breadcrumb */}
           <div className="flex items-center gap-4">
             {/* Logo + Brand */}
@@ -235,24 +236,27 @@ export default function TopBar() {
           </div>
         </div>
       </div>
+    </div>
 
-      {/* Notification Center Sidebar con Overlay */}
+      {/* Notification Center Sidebar con Overlay - FUORI dal TopBar */}
       {isNotificationCenterOpen && (
         <>
           {/* Overlay scuro per chiudere cliccando fuori */}
           <div 
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60]"
             onClick={() => setIsNotificationCenterOpen(false)}
           />
           
-          {/* Pannello Notifiche */}
-          <NotificationCenter 
-            isOpen={isNotificationCenterOpen}
-            onClose={() => setIsNotificationCenterOpen(false)}
-            userId={(session?.user as any)?.id}
-          />
+          {/* Pannello Notifiche - Z-index più alto */}
+          <div className="fixed top-0 right-0 h-full z-[70]">
+            <NotificationCenter 
+              isOpen={isNotificationCenterOpen}
+              onClose={() => setIsNotificationCenterOpen(false)}
+              userId={(session?.user as any)?.id}
+            />
+          </div>
         </>
       )}
-    </div>
+    </>
   )
 }
