@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { UserRole } from '@/types/roles'
+import { PendingEmploymentsBadge } from './PendingEmploymentsBadge'
+import { RestaurantSelector } from './RestaurantSelector'
 
 export default function TopBar() {
   const { data: session, status } = useSession()
@@ -141,8 +143,19 @@ export default function TopBar() {
             </div>
           </div>
 
-          {/* Right Section - Notifications, Help, User */}
+          {/* Right Section - Restaurant Selector, Pending Employments, Notifications, Help, User */}
           <div className="flex items-center gap-3">
+            {/* Restaurant Selector - Solo se ha multiple employments */}
+            <RestaurantSelector />
+            
+            {/* Pending Employments Badge - Solo per admin/proprietario/manager */}
+            {(userRole === UserRole.ADMIN || 
+              userRole === UserRole.PROPRIETARIO || 
+              userRole === UserRole.MANAGER || 
+              userRole === UserRole.DIRETTORE) && (
+              <PendingEmploymentsBadge />
+            )}
+            
             {/* Notifications */}
             <button
               onClick={() => router.push('/notifications')}

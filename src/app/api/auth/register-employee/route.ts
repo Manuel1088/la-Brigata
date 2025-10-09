@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
 import { PrismaClient } from '@prisma/client'
+import { createNotification } from '@/lib/notifications'
 
 const prisma = new PrismaClient()
 
@@ -49,20 +50,29 @@ export async function POST(request: NextRequest) {
     let informalCompanyId: string | null = null
     let teamCode: string | null = null
 
-    // CASO 1: Collegamento ad azienda esistente
+    // CASO 1: Collegamento ad azienda esistente tramite CF
+    let foundCompany: any = null
     if (companyFiscalCode) {
-      const company = await prisma.company.findUnique({
-        where: { fiscalCode: companyFiscalCode }
+      foundCompany = await prisma.company.findUnique({
+        where: { fiscalCode: companyFiscalCode },
+        include: {
+          restaurants: true // Include i ristoranti dell'azienda
+        }
       })
       
-      if (!company) {
+      if (!foundCompany) {
         return NextResponse.json(
-          { error: 'Azienda non trovata con questo codice fiscale' },
-          { status: 400 }
+          { error: 'Azienda non trovata con questo codice fiscale. Verifica il CF o crea un gruppo temporaneo.' },
+          { status: 404 }
         )
       }
       
-      companyId = company.id
+      companyId = foundCompany.id
+      
+      // Usa il primo ristorante dell'azienda o creane uno
+      if (foundCompany.restaurants && foundCompany.restaurants.length > 0) {
+        restaurantId = foundCompany.restaurants[0].id
+      }
     }
     
     // CASO 2: Team informale (stessa azienda non registrata)
@@ -139,14 +149,81 @@ export async function POST(request: NextRequest) {
         informalCompanyId,
         teamCode,
         restaurantId,
-        isActive: companyId ? false : true
+        isActive: true // Sempre attivo, gestione tramite Employment
       }
     })
+
+    // 🔥 NUOVO: Se collegato ad azienda registrata, crea Employment PENDING
+    let employmentId: string | null = null
+    if (companyId && restaurantId) {
+      try {
+        const employment = await prisma.employment.create({
+          data: {
+            userId: user.id,
+            restaurantId: restaurantId,
+            status: 'PENDING', // ⏳ Richiede approvazione
+            role: role || 'DIPENDENTE',
+            department: department || null,
+            requestedAt: new Date()
+          }
+        })
+        
+        employmentId = employment.id
+        
+        // 🔔 Crea notifica per proprietario/manager dell'azienda
+        try {
+          createNotification({
+            type: 'URGENT',
+            category: 'PERSONNEL',
+            title: '👥 Nuova Richiesta Dipendente',
+            message: `${user.name} ha richiesto di lavorare per ${foundCompany.name}. Ruolo: ${role || 'DIPENDENTE'}, Reparto: ${department || 'Non specificato'}`,
+            isUrgent: true,
+            userId: foundCompany.ownerId, // Notifica al proprietario se presente
+            actions: [
+              {
+                label: 'Visualizza Richieste',
+                action: '/team/requests',
+                variant: 'primary',
+                icon: '👁️'
+              },
+              {
+                label: 'Approva Subito',
+                action: `/api/employments/${employment.id}/approve`,
+                variant: 'primary',
+                icon: '✅'
+              }
+            ],
+            metadata: {
+              employmentId: employment.id,
+              userId: user.id,
+              userName: user.name,
+              companyId: foundCompany.id,
+              companyName: foundCompany.name
+            }
+          })
+          
+          console.log(`✅ Employment PENDING creato per ${user.name} - ID: ${employment.id}`)
+          console.log(`🔔 Notifica inviata al proprietario dell'azienda`)
+          
+        } catch (notifError) {
+          console.error('Errore creazione notifica:', notifError)
+          // Non bloccare se la notifica fallisce
+        }
+        
+      } catch (employmentError) {
+        console.error('Errore creazione employment:', employmentError)
+        // Non blocchiamo la registrazione se employment fallisce
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 
       userId: user.id,
-      message: 'Registrazione completata con successo!'
+      employmentId: employmentId,
+      status: employmentId ? 'PENDING' : 'ACTIVE',
+      message: employmentId 
+        ? 'Registrazione completata! La tua richiesta è in attesa di approvazione dal proprietario.' 
+        : 'Registrazione completata con successo!'
     })
 
   } catch (error) {
