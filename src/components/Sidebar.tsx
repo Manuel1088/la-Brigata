@@ -177,16 +177,16 @@ export default function Sidebar() {
     },
     // AMMINISTRAZIONE - Solo Proprietario
     {
-      title: 'AMMINISTRAZIONE',
+      title: 'SUPER ADMIN',
       items: [
         {
-          icon: '👑',
-          label: 'Amministrazione',
+          icon: '🛡️',
+          label: 'Super Admin Panel',
           path: '/admin',
-          roles: [UserRole.PROPRIETARIO]
+          roles: [UserRole.ADMIN]  // 🛡️ SOLO ADMIN
         }
       ],
-      roles: [UserRole.PROPRIETARIO]
+      roles: [UserRole.ADMIN]  // 🛡️ SOLO ADMIN
     }
   ]
 

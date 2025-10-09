@@ -36,11 +36,16 @@ export default function AdminPage() {
       router.push('/login')
       return
     }
-    if (!canAccessAdmin()) {
+    
+    // 🛡️ SOLO ADMIN (livello 11) può accedere
+    const userRole = (session.user as any)?.role
+    const userLevel = (session.user as any)?.level
+    
+    if (userRole !== 'ADMIN' || userLevel !== 11) {
       router.push('/dashboard')
       return
     }
-  }, [session, status, router, canAccessAdmin])
+  }, [session, status, router])
 
   useEffect(() => {
     setActiveTab(searchParams.get('tab') || 'overview')
@@ -118,12 +123,46 @@ export default function AdminPage() {
     router.push(`/admin?tab=${tabId}`)
   }
 
-  if (status === 'loading' || !session) {
+  // 🛡️ Controllo accesso ADMIN
+  const userRole = (session?.user as any)?.role
+  const userLevel = (session?.user as any)?.level
+  const isAdmin = userRole === 'ADMIN' && userLevel === 11
+
+  if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl mb-4">👑</div>
+          <div className="text-4xl mb-4">🛡️</div>
           <div className="text-xl text-gray-700">Caricamento amministrazione...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // 🛡️ SOLO ADMIN (livello 11) può vedere questa pagina
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center bg-white rounded-2xl shadow-xl p-12 max-w-md">
+          <div className="text-8xl mb-6">🚫</div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Accesso Negato</h2>
+          <p className="text-lg text-gray-600 mb-6">
+            Solo il <span className="font-bold text-blue-600">Super Admin</span> può accedere alla pagina di amministrazione.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800">
+              <strong>Il tuo ruolo:</strong> {userRole} (Livello {userLevel})
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              <strong>Richiesto:</strong> ADMIN (Livello 11)
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+          >
+            ← Torna alla Dashboard
+          </button>
         </div>
       </div>
     )
@@ -135,8 +174,8 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">👑 Amministrazione</h1>
-              <p className="text-gray-600 mt-2">Gestione completa del sistema La Brigata</p>
+              <h1 className="text-3xl font-bold text-gray-900">🛡️ Super Admin Panel</h1>
+              <p className="text-gray-600 mt-2">Gestione completa del sistema La Brigata - Solo per Super Admin</p>
               </div>
             
             <div className="flex items-center gap-4">
