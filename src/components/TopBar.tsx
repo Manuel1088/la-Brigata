@@ -189,7 +189,7 @@ export default function TopBar() {
             <button
               onClick={() => router.push('/me')}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Il Mio Profilo"
+              title="Il Profilo"
             >
               <span className="text-xl">👤</span>
             </button>
@@ -227,10 +227,10 @@ export default function TopBar() {
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                 title="Logout"
               >
-                <span className="text-xl">🚪</span>
+                <span className="text-xl">Esci</span>
               </button>
             </div>
           </div>

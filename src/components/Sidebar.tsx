@@ -95,24 +95,30 @@ export default function Sidebar() {
       items: [
         { 
           icon: '💰', 
-          label: 'Le Mie Mance', 
+          label: 'Le Mance', 
           path: '/tips', 
           color: '#FDCB6E' 
         },
         { 
           icon: '📅', 
-          label: 'I Miei Turni', 
+          label: 'I Turni', 
           path: '/shifts', 
           color: '#74B9FF' 
         },
         { 
           icon: '👥', 
-          label: 'Il Mio Team', 
+          label: 'Il Team', 
           path: '/team', 
           color: '#FDCB6E',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         },
         { 
+          icon: '👤', 
+          label: 'Il Profilo', 
+          path: '/me', 
+          color: '#2D3436' 
+        },
+        {
           icon: '✅', 
           label: 'Approvazioni', 
           path: '/approvals', 
@@ -120,12 +126,7 @@ export default function Sidebar() {
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE],
           badge: pendingApprovals > 0 ? pendingApprovals : undefined
         },
-        { 
-          icon: '👤', 
-          label: 'Il Mio Profilo', 
-          path: '/me', 
-          color: '#2D3436' 
-        },
+        
         { 
           icon: '🔔', 
           label: 'Notifiche', 
