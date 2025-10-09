@@ -48,16 +48,19 @@ export default function TipsPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-start">
+            <div className="flex items-start space-x-4">
               <button
                 onClick={() => router.push('/dashboard')}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg"
+                className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg mt-1"
               >
                 ←
               </button>
-              <h1 className="text-3xl font-bold text-gray-900">💰 Le Mie Mance</h1>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">💰 Le Mie Mance</h1>
+                <p className="text-gray-600 mt-2">Gestisci e monitora le tue mance</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-700">{session.user?.name}</span>
@@ -71,9 +74,6 @@ export default function TipsPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="mb-6">
-            <p className="text-gray-600">Gestisci e monitora le tue mance</p>
-          </div>
 
           {/* Tab Navigation */}
           <div className="bg-white rounded-lg shadow mb-6">

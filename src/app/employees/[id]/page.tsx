@@ -167,7 +167,9 @@ export default function EmployeeDetailPage() {
     try {
       // TODO: Implementa eliminazione API
       await new Promise(resolve => setTimeout(resolve, 1000))
-      router.push('/team')
+      // Determina dove tornare dopo l'eliminazione
+      const isOwnProfile = session?.user?.id === employee?.id
+      router.push(isOwnProfile ? '/dashboard' : '/team')
     } catch (error) {
       console.error('Errore nell\'eliminazione:', error)
       setMessage('Errore nell\'eliminazione')
@@ -227,10 +229,10 @@ export default function EmployeeDetailPage() {
           <div className="text-4xl mb-4">❌</div>
           <div className="text-xl text-gray-700">Dipendente non trovato</div>
           <button
-            onClick={() => router.push('/team')}
+            onClick={() => router.push('/dashboard')}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
-            Torna al Team
+            Torna alla Dashboard
           </button>
         </div>
       </div>
@@ -246,6 +248,15 @@ export default function EmployeeDetailPage() {
     (session?.user as any)?.role === 'MANAGER' || 
     (session?.user as any)?.role === 'PROPRIETARIO'
   )
+
+  // Gestione navigazione indietro intelligente
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back() // Torna alla pagina precedente
+    } else {
+      router.push('/dashboard') // Fallback sicuro
+    }
+  }
 
   // Informazioni dipendente
   const roleInfo = roleConfig[currentEmployee.role as keyof typeof roleConfig]
@@ -271,8 +282,9 @@ export default function EmployeeDetailPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/team')}
+                onClick={handleBack}
                 className="text-gray-500 hover:text-gray-700 transition text-lg"
+                title="Torna indietro"
               >
                 ←
               </button>
