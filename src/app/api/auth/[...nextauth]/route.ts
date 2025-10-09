@@ -38,11 +38,9 @@ const demoAccounts = {
   // Gli utenti reali verranno caricati dal database PostgreSQL
 }
 
-const handler = NextAuth({
+export const authOptions = {
   // Usa SECRET stabile: env in prod, fallback dev per evitare warning/decryption fail
   secret: process.env.NEXTAUTH_SECRET ?? (process.env.NODE_ENV === 'development' ? 'dev-nextauth-secret' : undefined),
-  // Consente host dinamici in dev/preview se NEXTAUTH_URL non è impostato
-  trustHost: true,
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -193,5 +191,7 @@ const handler = NextAuth({
     }
   }
 })
+
+const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST }

@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
     let companyId: string | null = null
     let informalCompanyId: string | null = null
     let teamCode: string | null = null
+    let restaurantId: string | undefined = undefined
 
     // CASO 1: Collegamento ad azienda esistente tramite CF
     let foundCompany: any = null
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Assicurati di avere un restaurantId valido (campo richiesto nello schema)
-    let restaurantId: string
+    // restaurantId già dichiarato sopra
     const anyRestaurant = await prisma.restaurant.findFirst({
       where: {
         OR: [
@@ -134,13 +135,21 @@ export async function POST(request: NextRequest) {
       restaurantId = created.id
     }
 
+    // Verifica che restaurantId sia definito
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'Impossibile determinare il ristorante. Contatta il supporto.' },
+        { status: 500 }
+      )
+    }
+
     // Crea utente
     const user = await prisma.user.create({
       data: {
         email,
         name,
         password: hashedPassword,
-        role: role || 'DIPENDENTE',
+        role: (role || 'DIPENDENTE') as any,
         userType: 'EMPLOYEE',
         hierarchyLevel: 5,
         department,
@@ -162,7 +171,7 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             restaurantId: restaurantId,
             status: 'PENDING', // ⏳ Richiede approvazione
-            role: role || 'DIPENDENTE',
+            role: (role || 'DIPENDENTE') as any,
             department: department || null,
             requestedAt: new Date()
           }

@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      employments: employments, // Mantieni compatibilità con codice esistente
+      employments: employments,
       data: employments,
       count: employments.length,
     })
