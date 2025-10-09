@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth'
+import NextAuth, { AuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { logLogin, logLogout } from '@/lib/audit'
 import { getEmployeesFullClient } from '@/lib/employees'
@@ -38,7 +38,7 @@ const demoAccounts = {
   // Gli utenti reali verranno caricati dal database PostgreSQL
 }
 
-export const authOptions = {
+export const authOptions: AuthOptions = {
   // Usa SECRET stabile: env in prod, fallback dev per evitare warning/decryption fail
   secret: process.env.NEXTAUTH_SECRET ?? (process.env.NODE_ENV === 'development' ? 'dev-nextauth-secret' : undefined),
   providers: [
@@ -145,11 +145,11 @@ export const authOptions = {
     signIn: '/login',
   },
   session: {
-    strategy: 'jwt',
+    strategy: 'jwt' as const,
     maxAge: 8 * 60 * 60, // 8 ore
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user && 'role' in user) {
         token.role = (user as any).role;
         token.level = (user as any).level;
@@ -170,7 +170,7 @@ export const authOptions = {
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (token && session.user) {
         (session.user as any).id = token.sub;
         (session.user as any).role = token.role as string;
@@ -190,7 +190,7 @@ export const authOptions = {
       }
     }
   }
-})
+};
 
 const handler = NextAuth(authOptions)
 

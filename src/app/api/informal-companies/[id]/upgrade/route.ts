@@ -65,10 +65,10 @@ export async function POST(
         name: legalName || informalCompany.name,
         fiscalCode: fiscalCode,
         address: address || informalCompany.address,
-        ownerName: ownerName,
-        ownerEmail: ownerEmail,
+        email: ownerEmail,
         phone: phone,
         isActive: true
+        // Note: ownerName non è nel modello Company, viene usato solo nella form
       }
     })
 
