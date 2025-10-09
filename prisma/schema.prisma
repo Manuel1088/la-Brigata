@@ -27,6 +27,7 @@ model Restaurant {
   tables             Table[]
   users              User[]
   company            Company?             @relation(fields: [companyId], references: [id])
+  employments        Employment[]         @relation("RestaurantEmployments")
 
   @@index([companyId])
   @@map("restaurants")
@@ -79,6 +80,7 @@ model User {
   company            Company?           @relation("CompanyUsers", fields: [companyId], references: [id])
   informalCompany    InformalCompany?   @relation("InformalCompanyUsers", fields: [informalCompanyId], references: [id])
   restaurant         Restaurant         @relation(fields: [restaurantId], references: [id])
+  employments        Employment[]       @relation("UserEmployments")
 
   @@index([companyId])
   @@index([companyId, isActive])
@@ -589,4 +591,40 @@ enum PaymentType {
   CARD
   CASH
   FOREIGN
+}
+
+enum EmploymentStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  REJECTED
+  TERMINATED
+}
+
+model Employment {
+  id           String           @id @default(cuid())
+  userId       String           @map("user_id")
+  user         User             @relation("UserEmployments", fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String           @map("restaurant_id")
+  restaurant   Restaurant       @relation("RestaurantEmployments", fields: [restaurantId], references: [id], onDelete: Cascade)
+  
+  status       EmploymentStatus @default(PENDING)
+  role         UserRole         @default(DIPENDENTE)
+  department   String?
+  
+  requestedAt  DateTime         @default(now()) @map("requested_at")
+  reviewedAt   DateTime?        @map("reviewed_at")
+  reviewedBy   String?          @map("reviewed_by")
+  
+  startDate    DateTime?        @map("start_date")
+  endDate      DateTime?        @map("end_date")
+  
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  
+  @@unique([userId, restaurantId])
+  @@index([userId])
+  @@index([restaurantId])
+  @@index([status])
+  @@map("employments")
 }
