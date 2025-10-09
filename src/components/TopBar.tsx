@@ -182,9 +182,28 @@ export default function TopBar() {
               <span className="text-xl">❓</span>
             </button>
 
-            {/* User Menu */}
-            <div className="relative group">
-              <button className="flex items-center gap-2 p-1 hover:bg-gray-100 rounded-lg transition-colors">
+            {/* User Profile Button */}
+            <button
+              onClick={() => router.push('/me')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Il Mio Profilo"
+            >
+              <span className="text-xl">👤</span>
+            </button>
+
+            {/* Settings Button */}
+            <button
+              onClick={() => router.push('/settings')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Impostazioni"
+            >
+              <span className="text-xl">⚙️</span>
+            </button>
+
+            {/* User Info + Logout */}
+            <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
+              {/* User Avatar & Name */}
+              <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center">
                   <span className="text-white font-medium text-sm">
                     {session?.user?.name?.charAt(0) || 'U'}
@@ -200,66 +219,16 @@ export default function TopBar() {
                      userRole === UserRole.DIRETTORE ? 'Direttore' : 'Dipendente'}
                   </p>
                 </div>
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {/* Dropdown Menu */}
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                {/* User Info */}
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-medium">
-                        {session?.user?.name?.charAt(0) || 'U'}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {session?.user?.name || 'Utente'}
-                      </p>
-                      <p className="text-xs text-gray-600 truncate">
-                        {session?.user?.email || ''}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {userRole === UserRole.PROPRIETARIO ? 'Proprietario' :
-                         userRole === UserRole.MANAGER ? 'Manager' :
-                         userRole === UserRole.DIRETTORE ? 'Direttore' : 'Dipendente'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Menu Items */}
-                <div className="py-2">
-                  <button
-                    onClick={() => router.push('/me')}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                  >
-                    <span>👤</span>
-                    <span>Il Mio Profilo</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push('/settings')}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                  >
-                    <span>⚙️</span>
-                    <span>Impostazioni</span>
-                  </button>
-                  
-                  <div className="border-t border-gray-100 my-2"></div>
-                  
-                  <button
-                    onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
-                  >
-                    <span>🚪</span>
-                    <span>Logout</span>
-                  </button>
-                </div>
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                title="Logout"
+              >
+                <span className="text-xl">🚪</span>
+              </button>
             </div>
           </div>
         </div>
