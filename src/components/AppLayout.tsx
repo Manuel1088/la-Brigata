@@ -50,11 +50,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <Sidebar />
         </div>
         
-        {/* Main Content - Scrollable with sidebar offset - Padding ridotto */}
-        <main className="flex-1 overflow-auto ml-64">
-          <div className="pl-2 pr-4 py-4">
-            {children}
-          </div>
+        {/* Main Content - Scrollable with sidebar offset */}
+        <main className="flex-1 overflow-auto" style={{ marginLeft: '250px' }}>
+          {children}
         </main>
       </div>
     </div>
