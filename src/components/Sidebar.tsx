@@ -25,7 +25,7 @@ export default function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const { userRole, canManageEmployees } = usePermissions()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)  // 🔓 Sempre aperta
   const [isHovered, setIsHovered] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
 
@@ -201,17 +201,17 @@ export default function Sidebar() {
 
   const handleMouseEnter = () => {
     setIsHovered(true)
-    setIsSidebarOpen(true)
+    // 🔓 Sidebar sempre aperta - non cambiare stato
   }
 
   const handleMouseLeave = () => {
     setIsHovered(false)
-    setIsSidebarOpen(false)
+    // 🔓 Sidebar sempre aperta - non chiudere
   }
 
   return (
     <div 
-      className={`bg-gray-50 text-gray-900 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-16'} h-full flex flex-col border-r border-gray-200 hover:w-64`}
+      className={`bg-gray-50 text-gray-900 w-64 h-full flex flex-col border-r border-gray-200`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -220,15 +220,9 @@ export default function Sidebar() {
       <nav className="flex-1 p-4 pt-6 space-y-6">
         {filteredSections.map((section, sectionIndex) => (
           <div key={sectionIndex}>
-            {isSidebarOpen ? (
-              <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
-                {section.title}
-              </h3>
-            ) : (
-              <div className="flex justify-center mb-3">
-                <div className="w-8 h-px bg-gray-300"></div>
-              </div>
-            )}
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
+              {section.title}
+            </h3>
             <ul className="space-y-2">
               {section.items.map((item, itemIndex) => {
                 const isActive = pathname === item.path
@@ -236,27 +230,18 @@ export default function Sidebar() {
                   <li key={itemIndex}>
                     <button
                       onClick={() => router.push(item.path)}
-                      className={`w-full flex items-center rounded-lg transition-colors ${
-                        isSidebarOpen 
-                          ? 'gap-3 px-3 py-2' 
-                          : 'justify-center px-2 py-2'
-                      } ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                         isActive 
                           ? 'bg-orange-500 text-white' 
                           : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                       }`}
-                      title={!isSidebarOpen ? item.label : undefined}
                     >
                       <span className="text-lg">{item.icon}</span>
-                      {isSidebarOpen && (
-                        <>
-                          <span className="flex-1 text-left">{item.label}</span>
-                          {item.badge && (
-                            <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
-                              {item.badge}
-                            </span>
-                          )}
-                        </>
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {item.badge && (
+                        <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                          {item.badge}
+                        </span>
                       )}
                     </button>
                   </li>
