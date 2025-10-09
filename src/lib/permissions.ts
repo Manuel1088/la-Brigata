@@ -340,6 +340,43 @@ export const PERMISSIONS: Record<string, Permission> = {
     level: 10
   },
   
+  // 🛡️ SUPER ADMIN - Funzioni Esclusive (livello 11)
+  SUPER_ADMIN_DELETE_COMPANY: {
+    id: 'super_admin_delete_company',
+    name: 'Eliminare Aziende',
+    description: 'SOLO ADMIN: Eliminare aziende dal sistema',
+    category: 'admin',
+    level: 11
+  },
+  SUPER_ADMIN_SYSTEM_CONFIG: {
+    id: 'super_admin_system_config',
+    name: 'Configurazione Sistema',
+    description: 'SOLO ADMIN: Modificare configurazioni critiche del sistema',
+    category: 'admin',
+    level: 11
+  },
+  SUPER_ADMIN_DATABASE_ACCESS: {
+    id: 'super_admin_database_access',
+    name: 'Accesso Database',
+    description: 'SOLO ADMIN: Accesso diretto al database',
+    category: 'admin',
+    level: 11
+  },
+  SUPER_ADMIN_FULL_AUDIT: {
+    id: 'super_admin_full_audit',
+    name: 'Audit Completo Multi-Azienda',
+    description: 'SOLO ADMIN: Visualizzare audit di tutte le aziende',
+    category: 'admin',
+    level: 11
+  },
+  SUPER_ADMIN_OVERRIDE_PERMISSIONS: {
+    id: 'super_admin_override_permissions',
+    name: 'Override Permessi',
+    description: 'SOLO ADMIN: Modificare permessi di qualsiasi utente',
+    category: 'admin',
+    level: 11
+  },
+  
   // ⚙️ IMPOSTAZIONI (2 permessi)
   EDIT_PERSONAL_INFO: {
     id: 'edit_personal_info',
@@ -396,8 +433,12 @@ PERMISSIONS['customers_manage'] = {
 
 // Configurazione permessi per ruolo
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
-  PROPRIETARIO: Object.keys(PERMISSIONS), // Tutti i permessi
-  ADMIN: Object.keys(PERMISSIONS),
+  ADMIN: Object.keys(PERMISSIONS), // ADMIN: TUTTI i permessi (inclusi livello 11)
+  PROPRIETARIO: Object.keys(PERMISSIONS).filter(key => {
+    // PROPRIETARIO: Tutti i permessi ECCETTO quelli di livello 11 (Super Admin)
+    const perm = PERMISSIONS[key as keyof typeof PERMISSIONS]
+    return !perm || perm.level !== 11
+  }),
   DIRETTORE: [
     'personale_view', 'personale_create', 'personale_edit', 'personale_activate', 'personale_export', 'personale_salary', 'personale_skills',
     'mance_view', 'mance_manage', 'mance_calculate', 'mance_approve', 'mance_history', 'mance_export',
