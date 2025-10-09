@@ -120,8 +120,8 @@ export default function Sidebar() {
           badge: pendingApprovals > 0 ? pendingApprovals : undefined
         },
         { 
-          icon: '📊', 
-          label: 'I Miei Dati', 
+          icon: '👤', 
+          label: 'Il Mio Profilo', 
           path: '/me', 
           color: '#2D3436' 
         },
