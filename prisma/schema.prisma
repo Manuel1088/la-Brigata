@@ -86,6 +86,7 @@ model User {
   @@index([companyId, isActive])
   @@index([restaurantId])
   @@index([informalCompanyId])
+  @@index([id, restaurantId])  // ✅ NUOVO - Per query dashboard rapide
   @@map("users")
 }
 
