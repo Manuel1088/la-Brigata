@@ -4,29 +4,18 @@ import { prisma } from '@/lib/db'
 // GET - Ottieni employments con filtri
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams
+    const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
     const restaurantId = searchParams.get('restaurantId')
     const status = searchParams.get('status')
 
-    // Costruisci il where clause
-    const where: any = {}
-    
-    if (userId) {
-      where.userId = userId
-    }
-    
-    if (restaurantId) {
-      where.restaurantId = restaurantId
-    }
-    
-    if (status) {
-      where.status = status
-    }
-
-    // Esegui la query
+    // Costruisci il where clause in modo pulito
     const employments = await (prisma as any).employment.findMany({
-      where,
+      where: {
+        ...(status && { status }),
+        ...(userId && { userId }),
+        ...(restaurantId && { restaurantId })
+      },
       include: {
         user: {
           select: {
