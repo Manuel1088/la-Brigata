@@ -2,16 +2,24 @@
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { usePermissions } from '@/hooks/usePermissions'
-import NotificationCenter from '@/components/NotificationCenter'
+import { 
+  Notification,
+  getNotifications,
+  getNotificationStats,
+  markAsRead,
+  markAllAsRead,
+  dismissNotification,
+  NOTIFICATION_CATEGORIES,
+  formatTimestamp
+} from '@/lib/notifications'
 
 export default function NotificationsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [filter, setFilter] = useState(searchParams.get('filter') || 'all')
-  
-  const { canViewNotifications } = usePermissions()
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [stats, setStats] = useState(getNotificationStats())
 
   useEffect(() => {
     if (status === 'loading') return
@@ -19,7 +27,33 @@ export default function NotificationsPage() {
       router.push('/login')
       return
     }
+    loadNotifications()
   }, [session, status, router])
+
+  const loadNotifications = () => {
+    const userId = (session?.user as any)?.id
+    const allNotifications = getNotifications(userId)
+    setNotifications(allNotifications)
+    setStats(getNotificationStats(userId))
+  }
+
+  const handleMarkAsRead = (notificationId: string) => {
+    markAsRead(notificationId)
+    loadNotifications()
+  }
+
+  const handleMarkAllAsRead = () => {
+    const userId = (session?.user as any)?.id
+    const count = markAllAsRead(userId)
+    if (count > 0) {
+      loadNotifications()
+    }
+  }
+
+  const handleDismiss = (notificationId: string) => {
+    dismissNotification(notificationId)
+    loadNotifications()
+  }
 
   const handleFilterChange = (newFilter: string) => {
     setFilter(newFilter)
@@ -96,11 +130,107 @@ export default function NotificationsPage() {
           </div>
         </div>
 
-        {/* Centro Notifiche */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6">
-            <NotificationCenter filter={filter} />
+        {/* Azioni rapide */}
+        {stats.unread > 0 && (
+          <div className="bg-white rounded-lg shadow mb-6 p-4">
+            <button
+              onClick={handleMarkAllAsRead}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              ✅ Segna tutte come lette ({stats.unread})
+            </button>
           </div>
+        )}
+
+        {/* Lista Notifiche */}
+        <div className="bg-white rounded-lg shadow">
+          {notifications.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-6xl mb-4">🔔</div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">
+                Nessuna notifica
+              </h3>
+              <p className="text-gray-500 mb-6">
+                Non hai notifiche al momento. Quando ci saranno aggiornamenti, li vedrai qui.
+              </p>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Torna alla Dashboard
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`p-6 hover:bg-gray-50 transition-colors ${
+                    !notification.isRead ? 'bg-blue-50/30' : ''
+                  } ${notification.isUrgent ? 'border-l-4 border-red-500' : ''}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-4 flex-1">
+                      <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-blue-100 ${
+                        notification.isUrgent ? 'animate-pulse' : ''
+                      }`}>
+                        <span className="text-2xl">📢</span>
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className={`text-base font-semibold ${
+                            !notification.isRead ? 'text-gray-900' : 'text-gray-700'
+                          }`}>
+                            {notification.title}
+                          </h4>
+                          {!notification.isRead && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          )}
+                          {notification.isUrgent && (
+                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                              🚨 Urgente
+                            </span>
+                          )}
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 mb-2">
+                          {notification.message}
+                        </p>
+                        
+                        <div className="flex items-center space-x-4 text-xs text-gray-500">
+                          <span>{formatTimestamp(notification.timestamp)}</span>
+                          {notification.category && NOTIFICATION_CATEGORIES[notification.category] && (
+                            <span>
+                              {NOTIFICATION_CATEGORIES[notification.category].icon}{' '}
+                              {NOTIFICATION_CATEGORIES[notification.category].name}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {!notification.isRead && (
+                          <button
+                            onClick={() => handleMarkAsRead(notification.id)}
+                            className="mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            Segna come letta
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => handleDismiss(notification.id)}
+                      className="ml-4 text-gray-400 hover:text-gray-600"
+                      title="Elimina notifica"
+                    >
+                      <span className="text-xl">✕</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
