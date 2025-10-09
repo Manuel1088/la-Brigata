@@ -66,13 +66,16 @@ export async function GET(
       new Map(restaurants.filter(r => r !== null).map(r => [r!.id, r])).values()
     )
 
+    // ✅ FIX: Restituisci 200 anche se non ci sono ristoranti (utente valido ma non ancora assegnato)
     if (uniqueRestaurants.length === 0) {
       return NextResponse.json(
         {
-          success: false,
-          error: 'Nessun ristorante trovato per questo utente',
+          success: true,
+          data: null,
+          message: 'Utente non ancora associato a nessun ristorante',
+          hasMultiple: false,
         },
-        { status: 404 }
+        { status: 200 } // ✅ 200 invece di 404
       )
     }
 

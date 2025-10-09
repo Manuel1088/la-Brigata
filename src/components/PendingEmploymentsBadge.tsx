@@ -1,38 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { usePendingEmploymentsCount } from '@/hooks/useEmployments'
 
 export function PendingEmploymentsBadge() {
   const router = useRouter()
-  const [pendingCount, setPendingCount] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const { count: pendingCount, isLoading } = usePendingEmploymentsCount()
 
-  useEffect(() => {
-    loadPendingCount()
-    
-    // Aggiorna ogni 30 secondi
-    const interval = setInterval(loadPendingCount, 30000)
-    
-    return () => clearInterval(interval)
-  }, [])
-
-  const loadPendingCount = async () => {
-    try {
-      const res = await fetch('/api/employments?status=PENDING')
-      const data = await res.json()
-      
-      if (data.success) {
-        setPendingCount(data.employments?.length || 0)
-      }
-    } catch (error) {
-      console.error('Errore caricamento richieste pending:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading || pendingCount === 0) {
+  if (isLoading || pendingCount === 0) {
     return null // Non mostrare se non ci sono richieste
   }
 

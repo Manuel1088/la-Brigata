@@ -626,5 +626,8 @@ model Employment {
   @@index([userId])
   @@index([restaurantId])
   @@index([status])
+  @@index([userId, status])      // Per query: "tutti i PENDING di un user"
+  @@index([restaurantId, status]) // Per query: "tutti i PENDING di un restaurant"
+  @@index([createdAt])            // Per ordinamento temporale
   @@map("employments")
 }

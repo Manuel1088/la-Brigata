@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
+import { useEmployments } from '@/hooks/useEmployments'
 
 interface Employment {
   id: string
@@ -30,49 +31,31 @@ const RestaurantContext = createContext<RestaurantContextType | undefined>(undef
 export function RestaurantProvider({ children }: { children: ReactNode }) {
   const { data: session } = useSession()
   const [activeRestaurantId, setActiveRestaurantIdState] = useState<string | null>(null)
-  const [employments, setEmployments] = useState<Employment[]>([])
-  const [loading, setLoading] = useState(true)
 
   const userId = (session?.user as any)?.id
 
-  useEffect(() => {
-    if (userId) {
-      loadEmployments()
-    }
-  }, [userId])
+  // ✅ Usa il nuovo hook con SWR (cache + deduplicazione automatica)
+  const { employments: rawEmployments, isLoading: loading, mutate } = useEmployments({
+    userId: userId,
+    status: 'ACTIVE',
+    enabled: !!userId
+  })
 
-  const loadEmployments = async () => {
-    if (!userId) return
-    
-    try {
-      setLoading(true)
-      const res = await fetch(`/api/employments?userId=${userId}&status=ACTIVE`)
-      const data = await res.json()
+  // Filtra solo employments ACTIVE (doppia sicurezza)
+  const employments = rawEmployments.filter((e: any) => e.status === 'ACTIVE')
+
+  useEffect(() => {
+    // Seleziona automaticamente il primo restaurant se non ce n'è uno attivo
+    if (!activeRestaurantId && employments.length > 0 && userId) {
+      const savedRestaurantId = localStorage.getItem(`activeRestaurant_${userId}`)
       
-      if (data.success && data.employments) {
-        const activeEmployments = data.employments.filter(
-          (e: Employment) => e.status === 'ACTIVE'
-        )
-        
-        setEmployments(activeEmployments)
-        
-        // Se non c'è un restaurant attivo, seleziona il primo
-        if (!activeRestaurantId && activeEmployments.length > 0) {
-          const savedRestaurantId = localStorage.getItem(`activeRestaurant_${userId}`)
-          
-          if (savedRestaurantId && activeEmployments.find((e: Employment) => e.restaurantId === savedRestaurantId)) {
-            setActiveRestaurantIdState(savedRestaurantId)
-          } else {
-            setActiveRestaurantIdState(activeEmployments[0].restaurantId)
-          }
-        }
+      if (savedRestaurantId && employments.find((e: any) => e.restaurantId === savedRestaurantId)) {
+        setActiveRestaurantIdState(savedRestaurantId)
+      } else {
+        setActiveRestaurantIdState(employments[0].restaurantId)
       }
-    } catch (error) {
-      console.error('Errore caricamento employments:', error)
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [employments, activeRestaurantId, userId])
 
   const setActiveRestaurantId = (id: string) => {
     setActiveRestaurantIdState(id)
@@ -87,7 +70,7 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
   }
 
   const refreshEmployments = async () => {
-    await loadEmployments()
+    await mutate() // ✅ SWR mutate per refresh automatico
   }
 
   const hasMultipleRestaurants = employments.length > 1
