@@ -51,7 +51,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </div>
         
         {/* Main Content - Scrollable with sidebar offset */}
-        <main className="flex-1 overflow-auto ml-16">
+        <main className="flex-1 overflow-auto ml-64">
           {children}
         </main>
       </div>
