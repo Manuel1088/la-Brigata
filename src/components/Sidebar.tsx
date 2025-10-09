@@ -10,6 +10,7 @@ interface MenuItem {
   icon: string
   label: string
   path: string
+  color?: string
   badge?: number
   roles?: UserRole[]
 }
