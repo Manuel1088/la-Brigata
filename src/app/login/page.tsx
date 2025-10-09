@@ -76,38 +76,33 @@ export default function LoginPage() {
           </button>
         </form>
 
-      {/* Ruoli disponibili (promemoria) */}
-      <div className="mt-4 text-xs text-gray-600">
-        <div className="font-semibold mb-1">Ruoli disponibili:</div>
-        <div className="grid grid-cols-2 gap-y-1">
-          <span>👑 PROPRIETARIO</span>
-          <span>🛡️ ADMIN</span>
-          <span>👔 DIRETTORE</span>
-          <span>📊 MANAGER</span>
-          <span>🍽️ RESPONSABILE_SALA</span>
-          <span>👨‍🍳 HEAD_CHEF</span>
-          <span>🍸 HEAD_BARMAN</span>
-          <span>🍷 HEAD_SOMMELIER</span>
-          <span>💰 CASSIERE</span>
-          <span>👤 DIPENDENTE</span>
+      {/* Account Admin */}
+      <div className="mt-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+        <div className="flex items-start gap-3">
+          <div className="text-3xl">🛡️</div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-blue-900 mb-2">Account Super Admin</p>
+            <div className="bg-white rounded p-2 mb-2">
+              <div className="text-xs text-gray-600">Email:</div>
+              <div className="font-mono text-sm text-blue-600">admin@brigata.it</div>
+            </div>
+            <div className="bg-white rounded p-2">
+              <div className="text-xs text-gray-600">Password:</div>
+              <div className="font-mono text-sm text-blue-600">admin123</div>
+            </div>
+            <p className="text-xs text-blue-700 mt-2">
+              Livello 11 - Accesso completo al sistema
+            </p>
+          </div>
         </div>
       </div>
 
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 mb-3 font-medium">🔑 Account collegati ai dipendenti (demo):</p>
-          <div className="grid grid-cols-1 gap-2 text-xs">
-            <div className="flex justify-between"><span className="text-gray-600">👑 Admin/Proprietario →</span><span className="text-gray-800">Giuseppe Rossi (Proprietario A, id 1) — admin@brigata.it / admin123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">👑 Proprietario →</span><span className="text-gray-800">Giuseppe Rossi (Proprietario B, id 1) — proprietario@brigata.it / prop123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">👔 Direttore →</span><span className="text-gray-800">Anna Bianchi (Direttore, id 2) — direttore@brigata.it / dir123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">📊 Manager →</span><span className="text-gray-800">Anna Bianchi (Manager, id 2) — manager@brigata.it / mgr123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">👨‍🍳 Head Chef →</span><span className="text-gray-800">Giuseppe Rossi (Head Chef, id 1) — headchef@brigata.it / chef123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">🍽️ Responsabile Sala →</span><span className="text-gray-800">Sofia Neri (id 4) — responsabile@brigata.it / resp123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">💰 Cassiere →</span><span className="text-gray-800">Luca Blu (id 5) — cassiere@brigata.it / cassa123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">🍸 Head Barman →</span><span className="text-gray-800">Paolo Barman (id 6) — headbarman@brigata.it / hb123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">🍷 Head Sommelier →</span><span className="text-gray-800">Chiara Sommelier (id 7) — sommelier@brigata.it / som123</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">👤 Dipendente →</span><span className="text-gray-800">Marco Verdi (id 3) — dipendente@brigata.it / dip123</span></div>
-          </div>
-        </div>
+      {/* Info dipendenti database */}
+      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+        <p className="text-xs text-gray-600">
+          💡 <strong>Altri utenti:</strong> I dipendenti accedono con le loro credenziali registrate nel database.
+        </p>
+      </div>
 
         {/* Freccia indietro */}
         <div className="mt-4">

@@ -34,105 +34,8 @@ const demoAccounts = {
       avatar: '🛡️'
     } 
   },
-  'proprietario': {
-    password: 'prop123',
-    user: {
-      id: '10',
-      email: 'proprietario@brigata.it',
-      name: 'Proprietario Demo',
-      role: 'PROPRIETARIO',
-      level: 10,
-      avatar: '👑'
-    }
-  },
-  'direttore': { 
-    password: 'dir123', 
-    user: { 
-      id: '2', 
-      email: 'direttore@brigata.it', 
-      name: 'Marco Direttore', 
-      role: 'DIRETTORE',
-      level: 9,
-      avatar: '👔'
-    } 
-  },
-  'manager': { 
-    password: 'mgr123', 
-    user: { 
-      id: '3', 
-      email: 'manager@brigata.it', 
-      name: 'Anna Manager', 
-      role: 'MANAGER',
-      level: 8,
-      avatar: '📊'
-    } 
-  },
-  'responsabile': {
-    password: 'resp123',
-    user: {
-      id: '7',
-      email: 'responsabile@brigata.it',
-      name: 'Responsabile Sala Demo',
-      role: 'RESPONSABILE_SALA',
-      level: 7,
-      avatar: '🍽️'
-    }
-  },
-  'headchef': {
-    password: 'chef123',
-    user: {
-      id: '8',
-      email: 'headchef@brigata.it',
-      name: 'Head Chef Demo',
-      role: 'HEAD_CHEF',
-      level: 7,
-      avatar: '👨‍🍳'
-    }
-  },
-  'cassiere': { 
-    password: 'cassa123', 
-    user: { 
-      id: '4', 
-      email: 'cassiere@brigata.it', 
-      name: 'Luca Cassiere', 
-      role: 'CASSIERE',
-      level: 6,
-      avatar: '💰'
-    } 
-  },
-  'headbarman': {
-    password: 'hb123',
-    user: {
-      id: '11',
-      email: 'headbarman@brigata.it',
-      name: 'Head Barman Demo',
-      role: 'HEAD_BARMAN',
-      level: 7,
-      avatar: '🍸'
-    }
-  },
-  'sommelier': {
-    password: 'som123',
-    user: {
-      id: '12',
-      email: 'sommelier@brigata.it',
-      name: 'Head Sommelier Demo',
-      role: 'HEAD_SOMMELIER',
-      level: 7,
-      avatar: '🍷'
-    }
-  },
-  'dipendente': { 
-    password: 'dip123', 
-    user: { 
-      id: '5', 
-      email: 'dipendente@brigata.it', 
-      name: 'Sofia Dipendente', 
-      role: 'DIPENDENTE',
-      level: 5,
-      avatar: '👤'
-    } 
-  }
+  // 🗑️ Tutti gli altri account demo sono stati rimossi
+  // Gli utenti reali verranno caricati dal database PostgreSQL
 }
 
 const handler = NextAuth({
@@ -184,20 +87,9 @@ const handler = NextAuth({
         if (demoAccounts[username as keyof typeof demoAccounts]) {
           const account = demoAccounts[username as keyof typeof demoAccounts]
           if (account.password === credentials.password) {
-            // Mappa gli account demo a un dipendente reale (per gestione accessi)
+            // Mappa account admin
             const loginToEmployeeId: Record<string, string> = {
-              // Direzione
-              admin: '1',
-              proprietario: '1',
-              direttore: '2',
-              manager: '2',
-              // Reparti
-              headchef: '1', // EXECUTIVE_CHEF
-              responsabile: '4', // DIPENDENTE_SALA (usata come responsabile demo)
-              cassiere: '5', // DIPENDENTE_BAR
-              dipendente: '3', // CHEF_DE_PARTIE
-              headbarman: '6', // HEAD_BARMAN
-              sommelier: '7', // HEAD_SOMMELIER
+              admin: '1'  // 🛡️ SOLO ADMIN disponibile
             }
             const mappedId = loginToEmployeeId[username]
             // Collega tutti i demo (tranne admin) ad una stessa azienda demo
