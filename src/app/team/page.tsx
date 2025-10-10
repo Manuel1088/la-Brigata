@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import TeamEmployees from '@/components/team/Employees'
-import TeamLeaves from '@/components/team/Leaves'
 import TeamAccess from '@/components/team/Access'
 
 export default function TeamPage() {
@@ -13,10 +12,7 @@ export default function TeamPage() {
   const [activeTab, setActiveTab] = useState('employees')
   const { 
     canManageEmployees, 
-    canViewAllLeaves, 
-    canAccessAdmin,
-    canRequestLeave,
-    canApproveLeave 
+    canAccessAdmin
   } = usePermissions()
 
   useEffect(() => {
@@ -30,14 +26,7 @@ export default function TeamPage() {
       label: 'Team', 
       icon: '👥', 
       component: TeamEmployees,
-      permission: canManageEmployees() || canRequestLeave()
-    },
-    { 
-      id: 'leaves', 
-      label: 'Ferie', 
-      icon: '🏖️', 
-      component: TeamLeaves,
-      permission: canViewAllLeaves() || canRequestLeave() || canApproveLeave()
+      permission: canManageEmployees()
     },
     { 
       id: 'access', 

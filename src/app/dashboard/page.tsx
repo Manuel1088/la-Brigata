@@ -68,7 +68,7 @@ export default function DashboardPage() {
     { 
       icon: '🎯', 
       text: 'Richiedi sabato libero (90% approvazione)', 
-      action: () => router.push('/leaves/new') 
+      action: () => router.push('/time-management?tab=leaves') 
     },
     { 
       icon: '💼', 
@@ -214,8 +214,8 @@ export default function DashboardPage() {
     { 
       id: 'shifts', 
       icon: '📅', 
-      label: 'I Miei Turni', 
-      path: '/shifts', 
+      label: 'Time Management', 
+      path: '/time-management', 
       color: COLORS.lightBlue 
     },
     { 
@@ -392,7 +392,7 @@ export default function DashboardPage() {
               <div className="text-3xl">📅</div>
             </div>
             <button
-              onClick={() => router.push('/calendar')}
+              onClick={() => router.push('/time-management')}
               className="text-sm text-orange-600 font-semibold hover:underline"
             >
               Vedi calendario →
@@ -481,7 +481,7 @@ export default function DashboardPage() {
                 </p>
               </div>
               <button
-                onClick={() => router.push('/shifts')}
+                onClick={() => router.push('/time-management')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Dettagli

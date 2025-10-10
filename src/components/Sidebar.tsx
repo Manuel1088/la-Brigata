@@ -100,16 +100,11 @@ export default function Sidebar() {
           color: '#FDCB6E' 
         },
         { 
-          icon: '🔄', 
-          label: 'I Turni', 
-          path: '/shifts', 
-          color: '#74B9FF' 
-        },
-        { 
-          icon: '🏖️', 
-          label: 'Ferie e Permessi', 
-          path: '/leaves/new', 
-          color: '#00B894' 
+          icon: '📅', 
+          label: 'Time Management', 
+          path: '/time-management', 
+          color: '#74B9FF',
+          description: 'Turni, Ferie, Permessi, Scambi'
         },
         { 
           icon: '👤', 

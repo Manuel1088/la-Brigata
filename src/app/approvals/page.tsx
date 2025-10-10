@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useNotifications } from '@/hooks/useNotifications'
-import ApprovalsLeaves from '@/components/approvals/Leaves'
 import ApprovalsSwaps from '@/components/approvals/Swaps'
 import ApprovalsEmployees from '@/components/approvals/Employees'
 import ApprovalsPayroll from '@/components/approvals/Payroll'
@@ -28,10 +27,9 @@ export interface ApprovalItem {
 export default function ApprovalsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('leaves')
+  const [activeTab, setActiveTab] = useState('swaps')
   const [pendingCount, setPendingCount] = useState(0)
   const { 
-    canApproveLeave, 
     canManageEmployees, 
     canManagePayroll,
     canManageShifts 
@@ -43,18 +41,12 @@ export default function ApprovalsPage() {
     if (!session) router.push('/login')
   }, [session, status, router])
 
-  // Calcola conteggio approvazioni in sospeso
+  // Calcola conteggio approvazioni in sospeso (ESCLUSE FERIE - ora in Time Management)
   useEffect(() => {
     const calculatePendingCount = () => {
       let count = 0
       
       try {
-        // Conteggio richieste ferie
-        if (canApproveLeave()) {
-          const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]')
-          count += leaveRequests.filter((req: any) => req.status === 'pending').length
-        }
-        
         // Conteggio richieste swap turni
         if (canManageShifts()) {
           const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]')
@@ -84,25 +76,15 @@ export default function ApprovalsPage() {
     // Listener per aggiornamenti
     const handleUpdate = () => calculatePendingCount()
     window.addEventListener('approvals_updated', handleUpdate)
-    window.addEventListener('leave_system_updated', handleUpdate)
     window.addEventListener('shift_swaps_updated', handleUpdate)
     
     return () => {
       window.removeEventListener('approvals_updated', handleUpdate)
-      window.removeEventListener('leave_system_updated', handleUpdate)
       window.removeEventListener('shift_swaps_updated', handleUpdate)
     }
-  }, [canApproveLeave, canManageEmployees, canManagePayroll, canManageShifts])
+  }, [canManageEmployees, canManagePayroll, canManageShifts])
 
   const tabs = [
-    { 
-      id: 'leaves', 
-      label: 'Ferie', 
-      icon: '🏖️', 
-      component: ApprovalsLeaves,
-      permission: canApproveLeave(),
-      badge: 0 // Sarà calcolato dinamicamente
-    },
     { 
       id: 'swaps', 
       label: 'Cambi Turno', 
