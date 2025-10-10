@@ -272,7 +272,7 @@ export default function DashboardPage() {
         {savingsFound > 0 && (
           <div 
             className="bg-green-50 border-2 border-green-500 rounded-2xl p-5 mb-6 cursor-pointer transition-transform hover:scale-[1.02]"
-            onClick={() => router.push('/me')}
+            onClick={() => router.push('/approvals?tab=payroll')}
           >
             <div className="flex justify-between items-center">
               <div>

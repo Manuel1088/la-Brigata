@@ -1,6 +1,6 @@
 'use client'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -27,6 +27,7 @@ export interface ApprovalItem {
 export default function ApprovalsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState('swaps')
   const [pendingCount, setPendingCount] = useState(0)
   const { 
@@ -40,6 +41,14 @@ export default function ApprovalsPage() {
     if (status === 'loading') return
     if (!session) router.push('/login')
   }, [session, status, router])
+
+  // Gestisci query param ?tab=payroll
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['swaps', 'employees', 'payroll'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
 
   // Calcola conteggio approvazioni in sospeso (ESCLUSE FERIE - ora in Time Management)
   useEffect(() => {
