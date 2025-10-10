@@ -2,18 +2,13 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { usePermissions } from '@/hooks/usePermissions'
 import OperationsBookings from '@/components/operations/Bookings'
 import OperationsCustomers from '@/components/operations/Customers'
-import OperationsSale from '@/components/operations/Sale'
-import OperationsAnalytics from '@/components/operations/Analytics'
-import OperationsReports from '@/components/operations/Reports'
 
 export default function OperationsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('bookings')
-  const { canManageEmployees, can } = usePermissions()
 
   // Redirect se non autenticato
   useEffect(() => {
@@ -22,17 +17,9 @@ export default function OperationsPage() {
   }, [session, status, router])
 
   const tabs = [
-    { id: 'bookings', label: 'Prenotazioni', icon: '📅', roles: ['all'] },
-    { id: 'customers', label: 'Clienti', icon: '👥', roles: ['all'] },
-    { id: 'sale', label: 'Sale e Aree', icon: '🏢', roles: ['manager'] },
-    { id: 'analytics', label: 'Analytics', icon: '📊', roles: ['manager'] },
-    { id: 'reports', label: 'Report', icon: '📋', roles: ['manager'] }
+    { id: 'bookings', label: 'Prenotazioni', icon: '📅' },
+    { id: 'customers', label: 'Clienti', icon: '👥' }
   ]
-
-  const visibleTabs = tabs.filter(tab => 
-    tab.roles.includes('all') || 
-    (tab.roles.includes('manager') && canManageEmployees())
-  )
 
   if (status === 'loading') {
     return (
@@ -58,8 +45,8 @@ export default function OperationsPage() {
                 ←
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">🏢 Operations</h1>
-                <p className="text-gray-600 mt-2">Gestisci prenotazioni, clienti e analizza le performance del ristorante</p>
+                <h1 className="text-3xl font-bold text-gray-900">📅 Prenotazioni</h1>
+                <p className="text-gray-600 mt-2">Gestisci prenotazioni e clienti del ristorante</p>
               </div>
             </div>
           </div>
@@ -73,7 +60,7 @@ export default function OperationsPage() {
           <div className="bg-white rounded-lg shadow mb-6">
             <div className="border-b border-gray-200">
               <nav className="flex -mb-px">
-                {visibleTabs.map(tab => (
+                {tabs.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
@@ -97,9 +84,6 @@ export default function OperationsPage() {
             <div className="p-6">
               {activeTab === 'bookings' && <OperationsBookings />}
               {activeTab === 'customers' && <OperationsCustomers />}
-              {activeTab === 'sale' && <OperationsSale />}
-              {activeTab === 'analytics' && <OperationsAnalytics />}
-              {activeTab === 'reports' && <OperationsReports />}
             </div>
           </div>
         </div>

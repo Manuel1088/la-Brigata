@@ -140,8 +140,8 @@ export default function Sidebar() {
       title: 'GESTIONE',
       items: [
         { 
-          icon: '📋', 
-          label: 'Operazioni', 
+          icon: '📅', 
+          label: 'Prenotazioni', 
           path: '/operations',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         },
