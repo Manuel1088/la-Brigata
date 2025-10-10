@@ -217,7 +217,8 @@ export default function TopBar() {
                     {session?.user?.name || 'Utente'}
                   </p>
                   <p className="text-xs text-gray-600">
-                    {userRole === UserRole.PROPRIETARIO ? 'Proprietario' :
+                    {userRole === UserRole.ADMIN ? 'Amministratore' :
+                     userRole === UserRole.PROPRIETARIO ? 'Proprietario' :
                      userRole === UserRole.MANAGER ? 'Manager' :
                      userRole === UserRole.DIRETTORE ? 'Direttore' : 'Dipendente'}
                   </p>
