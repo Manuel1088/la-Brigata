@@ -100,6 +100,12 @@ export default function Sidebar() {
           color: '#FDCB6E' 
         },
         { 
+          icon: '📄', 
+          label: 'Buste Paga', 
+          path: '/buste-paga', 
+          color: '#00B894' 
+        },
+        { 
           icon: '📅', 
           label: 'I Miei Turni', 
           path: '/shifts', 

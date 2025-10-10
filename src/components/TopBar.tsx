@@ -77,6 +77,7 @@ export default function TopBar() {
       const currentPath = segments.join('/')
       const pageNames: Record<string, string> = {
         'tips': 'Mance',
+        'buste-paga': 'Buste Paga',
         'shifts': 'Turni',
         'leaves': 'Ferie e Permessi',
         'team': 'Team',
