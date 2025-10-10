@@ -18,6 +18,12 @@ export default function ProfilePage() {
     email: '',
     phone: ''
   })
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [personalForm, setPersonalForm] = useState({
     birthDate: '',
     birthPlace: '',
@@ -145,6 +151,59 @@ export default function ProfilePage() {
       }, 1500)
     } catch (error) {
       setMessage('❌ Errore nel salvataggio')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!session?.user?.id) return
+    
+    // Validazione
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setMessage('❌ Compila tutti i campi password')
+      return
+    }
+    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setMessage('❌ Le password non coincidono')
+      return
+    }
+    
+    if (passwordForm.newPassword.length < 8) {
+      setMessage('❌ La nuova password deve essere di almeno 8 caratteri')
+      return
+    }
+    
+    setIsLoading(true)
+    setMessage('')
+    
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: session.user.id,
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Errore nel cambio password')
+      }
+
+      setMessage('✅ Password cambiata con successo!')
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      })
+      setIsChangingPassword(false)
+    } catch (error) {
+      setMessage(error instanceof Error ? `❌ ${error.message}` : '❌ Errore nel cambio password')
     } finally {
       setIsLoading(false)
     }
@@ -339,6 +398,81 @@ export default function ProfilePage() {
                   </span>
                 </div>
               </div>
+            </div>
+
+            {/* Cambio Password */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">🔒 Sicurezza</h3>
+              
+              {!isChangingPassword ? (
+                <button
+                  onClick={() => setIsChangingPassword(true)}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  Cambia Password
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Password Attuale
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nuova Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="••••••••"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Minimo 8 caratteri</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Conferma Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={() => {
+                        setIsChangingPassword(false)
+                        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                      }}
+                      className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                    >
+                      Annulla
+                    </button>
+                    <button
+                      onClick={handleChangePassword}
+                      disabled={isLoading}
+                      className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
+                    >
+                      {isLoading ? 'Salvataggio...' : 'Salva'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Dati Azienda */}
