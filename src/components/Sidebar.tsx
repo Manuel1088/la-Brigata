@@ -174,6 +174,12 @@ export default function Sidebar() {
           icon: '⚙️', 
           label: 'Impostazioni', 
           path: '/settings'
+        },
+        { 
+          icon: '💳', 
+          label: 'Abbonamenti', 
+          path: '/subscription',
+          color: '#FDCB6E'
         }
       ]
     },
