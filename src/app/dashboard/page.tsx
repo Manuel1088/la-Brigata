@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { UserRole } from '@/types/roles'
 import { formatCurrency, safeSum } from '@/lib/formatNumber'
+import { useDashboardData } from '@/hooks/useDashboardData'
 
 // Color Palette La Brigata
 const COLORS = {
@@ -35,6 +36,17 @@ export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { userRole } = usePermissions()
+  
+  // ✅ NUOVO: Hook ottimizzato per dashboard (1 API invece di 4!)
+  const { 
+    company, 
+    restaurant,
+    stats, 
+    pendingEmployments,
+    companyEmployees,
+    activeEmployments,
+    isLoading: isLoadingDashboard 
+  } = useDashboardData()
   
   // States con valori di default sicuri
   const [monthlyTips, setMonthlyTips] = useState<number>(0)
@@ -388,6 +400,73 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+
+        {/* ✅ DATI REALI DA API BATCH - Company & Team Info */}
+        {!isLoadingDashboard && (company || stats.totalEmployees > 0 || pendingEmployments.length > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            
+            {/* Company Info */}
+            {company && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm text-gray-600">Azienda</p>
+                    <p className="text-lg font-bold text-gray-900">{company.name}</p>
+                  </div>
+                  <div className="text-3xl">🏢</div>
+                </div>
+                {restaurant && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    📍 {restaurant.name}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Pending Requests (solo per manager/owner) */}
+            {pendingEmployments.length > 0 && (
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm text-orange-700 font-medium">Richieste in attesa</p>
+                    <p className="text-2xl font-bold text-orange-600">{pendingEmployments.length}</p>
+                  </div>
+                  <div className="text-3xl">⏳</div>
+                </div>
+                <button
+                  onClick={() => router.push('/approvals')}
+                  className="text-sm text-orange-600 font-semibold hover:underline"
+                >
+                  Gestisci →
+                </button>
+              </div>
+            )}
+
+            {/* Team Stats */}
+            {stats.totalEmployees > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm text-gray-600">Team</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.totalEmployees}</p>
+                  </div>
+                  <div className="text-3xl">👥</div>
+                </div>
+                <div className="space-y-1 text-sm text-gray-600">
+                  {stats.activeContracts > 0 && (
+                    <p>✅ {stats.activeContracts} contratti attivi</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => router.push('/team')}
+                  className="text-sm text-orange-600 font-semibold hover:underline mt-2"
+                >
+                  Vedi team →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Today's Shift Info */}
         {todayShift && (
