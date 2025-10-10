@@ -3,7 +3,6 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
-import SettingsProfile from '@/components/settings/Profile'
 import SettingsPreferences from '@/components/settings/Preferences'
 import SettingsSecurity from '@/components/settings/Security'
 import SettingsNotifications from '@/components/settings/Notifications'
@@ -13,7 +12,7 @@ export default function SettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get('tab') || 'profile'
+  const initialTab = searchParams.get('tab') || 'preferences'
   const [activeTab, setActiveTab] = useState(initialTab)
   
   const { 
@@ -31,17 +30,10 @@ export default function SettingsPage() {
   }, [session, status, router])
 
   useEffect(() => {
-    setActiveTab(searchParams.get('tab') || 'profile')
+    setActiveTab(searchParams.get('tab') || 'preferences')
   }, [searchParams])
 
   const tabs = [
-    { 
-      id: 'profile', 
-      label: 'Profilo', 
-      icon: '👤', 
-      component: SettingsProfile,
-      permission: canEditPersonal()
-    },
     { 
       id: 'preferences', 
       label: 'Preferenze', 
