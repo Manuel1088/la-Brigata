@@ -96,10 +96,21 @@ export default function ShiftsCalendar() {
     bar: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' }
   })
 
-  // ✅ Carica dipendenti e configurazioni
+  // ✅ Carica dipendenti OPERATIVI (esclusi proprietari non lavoratori)
   useEffect(() => {
     if (employeesData) {
-      setEmployees(employeesData.map((e: any) => ({
+      // Filtra solo dipendenti operativi e proprietari lavoratori
+      const operativeEmployees = employeesData.filter((e: any) => {
+        const role = e.role || ''
+        // Escludi proprietari non lavoratori e direttori non operativi
+        return ![
+          'PROPRIETARIO', // Proprietario NON lavoratore
+          'DIRETTORE_GENERALE' // Direttore generale (ruolo amministrativo)
+        ].includes(role)
+        // INCLUDE: PROPRIETARIO_OPERATIVO e tutti gli altri ruoli operativi
+      })
+      
+      setEmployees(operativeEmployees.map((e: any) => ({
         name: e.name,
         department: e.department || 'sala',
         role: e.role || 'DIPENDENTE_SALA'
