@@ -2,15 +2,12 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { useCompanyData } from '@/hooks/useCompanyData'
 
 export default function ProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [isEditingPersonal, setIsEditingPersonal] = useState(false)
-  const [isEditingCompany, setIsEditingCompany] = useState(false)
-  const [isEditingRestaurant, setIsEditingRestaurant] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [formData, setFormData] = useState({
@@ -37,21 +34,6 @@ export default function ProfilePage() {
     emergencyPhone: '',
     notes: ''
   })
-  const [companyForm, setCompanyForm] = useState({
-    name: '',
-    fiscalCode: '',
-    address: '',
-    phone: '',
-    email: ''
-  })
-  const [restaurantForm, setRestaurantForm] = useState({
-    name: '',
-    address: '',
-    phone: ''
-  })
-  
-  // Carica dati azienda
-  const { data: companyData, isLoading: isLoadingCompany } = useCompanyData(session?.user?.id)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -66,27 +48,7 @@ export default function ProfilePage() {
       email: session.user?.email || '',
       phone: (session.user as any)?.phone || ''
     })
-    
-    // Inizializza form azienda
-    if (companyData?.company) {
-      setCompanyForm({
-        name: companyData.company.name || '',
-        fiscalCode: companyData.company.fiscalCode || '',
-        address: companyData.company.address || '',
-        phone: companyData.company.phone || '',
-        email: companyData.company.email || ''
-      })
-    }
-    
-    // Inizializza form ristorante
-    if (companyData?.restaurant) {
-      setRestaurantForm({
-        name: companyData.restaurant.name || '',
-        address: companyData.restaurant.address || '',
-        phone: companyData.restaurant.phone || ''
-      })
-    }
-  }, [session, status, router, companyData])
+  }, [session, status, router])
 
   const handleSave = async () => {
     if (!session?.user?.id) return
@@ -209,69 +171,6 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSaveCompany = async () => {
-    if (!companyData?.company?.id) return
-    
-    setIsLoading(true)
-    setMessage('')
-    
-    try {
-      const response = await fetch('/api/companies', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: companyData.company.id,
-          ...companyForm
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Errore nel salvataggio azienda')
-      }
-
-      setMessage('✅ Dati azienda salvati!')
-      setIsEditingCompany(false)
-      
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    } catch (error) {
-      setMessage('❌ Errore nel salvataggio azienda')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleSaveRestaurant = async () => {
-    if (!companyData?.restaurant?.id) return
-    
-    setIsLoading(true)
-    setMessage('')
-    
-    try {
-      const response = await fetch(`/api/restaurants/${companyData.restaurant.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(restaurantForm)
-      })
-
-      if (!response.ok) {
-        throw new Error('Errore nel salvataggio ristorante')
-      }
-
-      setMessage('✅ Dati ristorante salvati!')
-      setIsEditingRestaurant(false)
-      
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    } catch (error) {
-      setMessage('❌ Errore nel salvataggio ristorante')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -287,7 +186,6 @@ export default function ProfilePage() {
 
   const userRole = (session.user as any)?.role || 'DIPENDENTE'
   const userAvatar = (session.user as any)?.avatar || '👤'
-  const isOwner = userRole === 'PROPRIETARIO' || userRole === 'PROPRIETARIO_OPERATIVO' || userRole === 'DIRETTORE_GENERALE'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
@@ -474,131 +372,9 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-
-            {/* Dati Azienda */}
-            {isLoadingCompany && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <p className="text-blue-800">⏳ Caricamento dati azienda...</p>
-              </div>
-            )}
-            
-            {!isLoadingCompany && !companyData?.company && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <p className="text-blue-800 font-medium mb-2">ℹ️ Nessuna azienda associata</p>
-                <p className="text-sm text-blue-700">
-                  Non sei ancora associato a un'azienda. Se sei un dipendente, chiedi al tuo manager di aggiungerti.
-                </p>
-              </div>
-            )}
-            
-            {companyData?.company && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">🏢 Azienda</h3>
-                  {isOwner && (
-                    <div className="flex gap-2">
-                      {isEditingCompany ? (
-                        <>
-                          <button
-                            onClick={() => setIsEditingCompany(false)}
-                            className="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                          >
-                            Annulla
-                          </button>
-                          <button
-                            onClick={handleSaveCompany}
-                            disabled={isLoading}
-                            className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                          >
-                            {isLoading ? 'Salvataggio...' : 'Salva'}
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => setIsEditingCompany(true)}
-                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                          Modifica
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Nome Azienda:</span>
-                    {isEditingCompany ? (
-                      <input
-                        type="text"
-                        value={companyForm.name}
-                        onChange={(e) => setCompanyForm({...companyForm, name: e.target.value})}
-                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                      />
-                    ) : (
-                      <div className="font-medium text-right">{companyData.company.name}</div>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Codice Fiscale:</span>
-                    {isEditingCompany ? (
-                      <input
-                        type="text"
-                        value={companyForm.fiscalCode}
-                        onChange={(e) => setCompanyForm({...companyForm, fiscalCode: e.target.value.toUpperCase()})}
-                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                      />
-                    ) : (
-                      <div className="font-medium text-right">{companyData.company.fiscalCode}</div>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Indirizzo Sede:</span>
-                    {isEditingCompany ? (
-                      <input
-                        type="text"
-                        value={companyForm.address}
-                        onChange={(e) => setCompanyForm({...companyForm, address: e.target.value})}
-                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                        placeholder="Indirizzo..."
-                      />
-                    ) : (
-                      <div className="font-medium text-right">{companyData.company.address || 'Non specificato'}</div>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Telefono Azienda:</span>
-                    {isEditingCompany ? (
-                      <input
-                        type="tel"
-                        value={companyForm.phone}
-                        onChange={(e) => setCompanyForm({...companyForm, phone: e.target.value})}
-                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                        placeholder="Telefono..."
-                      />
-                    ) : (
-                      <div className="font-medium text-right">{companyData.company.phone || 'Non specificato'}</div>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-600">Email Azienda:</span>
-                    {isEditingCompany ? (
-                      <input
-                        type="email"
-                        value={companyForm.email}
-                        onChange={(e) => setCompanyForm({...companyForm, email: e.target.value})}
-                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                        placeholder="Email..."
-                      />
-                    ) : (
-                      <div className="font-medium text-right">{companyData.company.email || 'Non specificata'}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Colonna Destra: Informazioni Personali + Ristorante */}
+          {/* Colonna Destra: Informazioni Personali */}
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
@@ -818,86 +594,6 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
-
-            {/* Dati Ristorante */}
-            {companyData?.restaurant && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">🍽️ Ristorante</h3>
-                  {isOwner && (
-                    <div className="flex gap-2">
-                      {isEditingRestaurant ? (
-                        <>
-                          <button
-                            onClick={() => setIsEditingRestaurant(false)}
-                            className="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                          >
-                            Annulla
-                          </button>
-                          <button
-                            onClick={handleSaveRestaurant}
-                            disabled={isLoading}
-                            className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                          >
-                            {isLoading ? 'Salvataggio...' : 'Salva'}
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => setIsEditingRestaurant(true)}
-                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                          Modifica
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Nome Ristorante:</span>
-                    {isEditingRestaurant ? (
-                      <input
-                        type="text"
-                        value={restaurantForm.name}
-                        onChange={(e) => setRestaurantForm({...restaurantForm, name: e.target.value})}
-                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                      />
-                    ) : (
-                      <div className="font-medium text-right">{companyData.restaurant.name}</div>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Indirizzo:</span>
-                    {isEditingRestaurant ? (
-                      <input
-                        type="text"
-                        value={restaurantForm.address}
-                        onChange={(e) => setRestaurantForm({...restaurantForm, address: e.target.value})}
-                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                        placeholder="Indirizzo..."
-                      />
-                    ) : (
-                      <div className="font-medium text-right">{companyData.restaurant.address || 'Non specificato'}</div>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-600">Telefono:</span>
-                    {isEditingRestaurant ? (
-                      <input
-                        type="tel"
-                        value={restaurantForm.phone}
-                        onChange={(e) => setRestaurantForm({...restaurantForm, phone: e.target.value})}
-                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                        placeholder="Telefono..."
-                      />
-                    ) : (
-                      <div className="font-medium text-right">{companyData.restaurant.phone || 'Non specificato'}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </main>

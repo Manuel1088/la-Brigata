@@ -6,8 +6,6 @@ import { usePermissions } from '@/hooks/usePermissions'
 import SettingsPreferences from '@/components/settings/Preferences'
 import SettingsSecurity from '@/components/settings/Security'
 import SettingsNotifications from '@/components/settings/Notifications'
-import SettingsRestaurant from '@/components/settings/Restaurant'
-import SettingsCompany from '@/components/settings/Company'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -18,8 +16,7 @@ export default function SettingsPage() {
   
   const { 
     canEditPersonal,
-    canManageSettings,
-    canManageCompany
+    canManageSettings
   } = usePermissions()
 
   useEffect(() => {
@@ -55,20 +52,6 @@ export default function SettingsPage() {
       icon: '🔔', 
       component: SettingsNotifications,
       permission: canEditPersonal()
-    },
-    { 
-      id: 'restaurant', 
-      label: 'Ristorante', 
-      icon: '🍽️', 
-      component: SettingsRestaurant,
-      permission: canManageCompany()
-    },
-    { 
-      id: 'company', 
-      label: 'Azienda', 
-      icon: '🏢', 
-      component: SettingsCompany,
-      permission: canManageCompany()
     }
   ]
 

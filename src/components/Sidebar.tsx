@@ -166,6 +166,20 @@ export default function Sidebar() {
       ],
       roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
     },
+    // AZIENDA - Solo Proprietari/Manager
+    {
+      title: 'AZIENDA',
+      items: [
+        { 
+          icon: '🏢', 
+          label: 'Company', 
+          path: '/company',
+          color: '#FDCB6E',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+        }
+      ],
+      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+    },
     // IMPOSTAZIONI - Tutti gli utenti
     {
       title: 'IMPOSTAZIONI',
