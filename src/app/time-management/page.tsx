@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
+import ShiftsCalendar from '@/components/shifts/Calendar'
 
 // Stati richiesta ferie
 export enum LeaveStatus {
@@ -33,6 +34,7 @@ export default function TimeManagementPage() {
   const managerTabs = [
     { id: 'master-calendar', label: 'Calendario Master', icon: '📅' },
     { id: 'approvals', label: 'Approvazioni', icon: '✅' },
+    { id: 'events', label: 'Eventi Aziendali', icon: '🎉' },
     { id: 'auto-schedule', label: 'Auto Scheduling', icon: '🤖' },
     { id: 'analytics', label: 'Analytics Tempo', icon: '📊' },
     { id: 'config', label: 'Configurazione', icon: '⚙️' }
@@ -115,106 +117,36 @@ export default function TimeManagementPage() {
             {/* DIPENDENTE: Il Mio Calendario */}
             {activeTab === 'my-calendar' && !isManager && (
               <div>
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <h3 className="font-semibold text-blue-900 mb-2">📅 Il Tuo Calendario Personale</h3>
                   <p className="text-sm text-blue-700">
-                    Vedi i tuoi turni, ferie approvate e permessi in un'unica vista
+                    I tuoi turni, ferie approvate e permessi in un'unica vista
+                  </p>
+                  <p className="text-xs text-blue-600 mt-2">
+                    🔵 Turno | 🟢 Ferie | 🔴 Permesso | ⚪ Riposo | 🟣 Evento Aziendale
                   </p>
                 </div>
 
-                {/* Filtro Settimana */}
-                <div className="flex justify-between items-center mb-6">
-                  <button
-                    onClick={() => setCurrentWeek(new Date(currentWeek.getTime() - 7 * 24 * 60 * 60 * 1000))}
-                    className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-                  >
-                    ← Settimana Precedente
-                  </button>
-                  <div className="text-lg font-semibold">
-                    {currentWeek.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
-                  </div>
-                  <button
-                    onClick={() => setCurrentWeek(new Date(currentWeek.getTime() + 7 * 24 * 60 * 60 * 1000))}
-                    className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-                  >
-                    Settimana Successiva →
-                  </button>
-                </div>
-
-                {/* Calendario Placeholder */}
-                <div className="bg-white border rounded-lg p-6">
-                  <div className="text-center py-12">
-                    <div className="text-6xl mb-4">📅</div>
-                    <h4 className="text-xl font-semibold text-gray-900 mb-2">
-                      Il Tuo Calendario Personale
-                    </h4>
-                    <p className="text-gray-600">
-                      Qui vedrai i tuoi turni, ferie e permessi integrati
-                    </p>
-                    <p className="text-sm text-gray-500 mt-4">
-                      🔵 Turno | 🟢 Ferie | 🔴 Permesso | ⚪ Riposo | 🟣 Evento Aziendale
-                    </p>
-                  </div>
-                </div>
+                {/* Componente Calendario Integrato */}
+                <ShiftsCalendar />
               </div>
             )}
 
             {/* MANAGER: Calendario Master */}
             {activeTab === 'master-calendar' && isManager && (
               <div>
-                <div className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <h3 className="font-semibold text-orange-900 mb-2">🎯 Calendario Master</h3>
+                <div className="mb-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <h3 className="font-semibold text-orange-900 mb-2">🎯 Calendario Master Team</h3>
                   <p className="text-sm text-orange-700">
                     Vista completa: turni + ferie + permessi + eventi di tutto il team
                   </p>
+                  <p className="text-xs text-orange-600 mt-2">
+                    🔵 Turno | 🟢 Ferie | 🟡 Pending | 🔴 Permesso | ⚪ Riposo | 🟣 Evento
+                  </p>
                 </div>
 
-                {/* Filtri */}
-                <div className="flex gap-4 mb-6">
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  >
-                    <option value="all">👁️ Tutti i Reparti</option>
-                    <option value="cucina">🍴 Cucina</option>
-                    <option value="sala">🍷 Sala</option>
-                    <option value="bar">🍸 Bar</option>
-                  </select>
-                  
-                  <button
-                    onClick={() => setCurrentWeek(new Date(currentWeek.getTime() - 7 * 24 * 60 * 60 * 1000))}
-                    className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-                  >
-                    ← Settimana Prec
-                  </button>
-                  <div className="flex-1 text-center py-2 font-semibold">
-                    {currentWeek.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
-                  </div>
-                  <button
-                    onClick={() => setCurrentWeek(new Date(currentWeek.getTime() + 7 * 24 * 60 * 60 * 1000))}
-                    className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-                  >
-                    Settimana Succ →
-                  </button>
-                </div>
-
-                {/* Calendario Master Placeholder */}
-                <div className="bg-white border rounded-lg p-6">
-                  <div className="text-center py-12">
-                    <div className="text-6xl mb-4">📊</div>
-                    <h4 className="text-xl font-semibold text-gray-900 mb-2">
-                      Calendario Master Team
-                    </h4>
-                    <p className="text-gray-600 mb-2">
-                      Vista unificata di turni, ferie e permessi filtrata per reparto: <strong>{selectedDepartment === 'all' ? 'Tutti' : selectedDepartment}</strong>
-                    </p>
-                    <div className="mt-4 space-y-2 text-sm text-gray-500">
-                      <p>🔵 Turno Lavorativo | 🟢 Ferie Approvate | 🟡 Ferie Pending</p>
-                      <p>🔴 Permesso/Malattia | ⚪ Riposo | 🟣 Evento Aziendale</p>
-                    </div>
-                  </div>
-                </div>
+                {/* Componente Calendario Integrato (Manager vede tutti) */}
+                <ShiftsCalendar />
               </div>
             )}
 
@@ -429,6 +361,79 @@ export default function TimeManagementPage() {
                         ❌ Rifiuta
                       </button>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* MANAGER: Eventi Aziendali */}
+            {activeTab === 'events' && isManager && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">🎉 Eventi Aziendali</h3>
+                    <p className="text-sm text-gray-600">Chiusure, festività e eventi che impattano i turni</p>
+                  </div>
+                  <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    ➕ Nuovo Evento
+                  </button>
+                </div>
+
+                {/* Lista Eventi */}
+                <div className="space-y-3">
+                  {/* Evento Esempio */}
+                  <div className="bg-white border-2 border-purple-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="text-3xl">🎄</div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Chiusura Natale</h4>
+                          <p className="text-sm text-gray-600">25-26 Dicembre 2025</p>
+                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full mt-1 inline-block">
+                            Ristorante Chiuso
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                          Modifica
+                        </button>
+                        <button className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+                          Elimina
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border-2 border-green-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="text-3xl">🎉</div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Team Building</h4>
+                          <p className="text-sm text-gray-600">15 Gennaio 2026</p>
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full mt-1 inline-block">
+                            Evento Aziendale
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                          Modifica
+                        </button>
+                        <button className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+                          Elimina
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Placeholder per nuovi eventi */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                    <div className="text-4xl mb-3">📅</div>
+                    <p className="text-gray-600">
+                      Aggiungi eventi che impattano i turni: chiusure, festività, team building
+                    </p>
                   </div>
                 </div>
               </div>
