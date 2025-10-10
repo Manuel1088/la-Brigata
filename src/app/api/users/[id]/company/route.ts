@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
-// GET - Ottieni il ristorante principale e gli altri ristoranti dove lavora l'utente
+// GET - Ottieni il ristorante principale e gli altri ristoranti dove lavora l'utente (OTTIMIZZATO)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,18 +19,62 @@ export async function GET(
       )
     }
 
-    // Cerca l'utente con ristorante e azienda
-    const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-      include: {
-        restaurant: true,
-        company: true,
-      },
+    // ✅ SINGLE OPTIMIZED QUERY con select specifico
+    const userData = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        // ✅ Company: solo campi necessari
+        company: {
+          select: {
+            id: true,
+            name: true,
+            fiscalCode: true,
+            address: true,
+            phone: true,
+            email: true,
+          }
+        },
+        // ✅ Restaurant principale: solo campi necessari
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            phone: true,
+            companyId: true,
+            createdAt: true,
+            updatedAt: true,
+          }
+        },
+        // ✅ Employments con restaurants in UN'UNICA QUERY
+        employments: {
+          where: {
+            status: { in: ['APPROVED', 'ACTIVE'] },
+          },
+          select: {
+            id: true,
+            status: true,
+            role: true,
+            restaurant: {
+              select: {
+                id: true,
+                name: true,
+                address: true,
+                phone: true,
+                companyId: true,
+                createdAt: true,
+                updatedAt: true,
+              }
+            }
+          }
+        }
+      }
     })
 
-    if (!user) {
+    if (!userData) {
       return NextResponse.json(
         {
           success: false,
@@ -40,83 +84,56 @@ export async function GET(
       )
     }
 
-    // Cerca anche gli employments attivi in altri ristoranti (se la tabella esiste)
-    let employments: any[] = []
-    try {
-      employments = await (prisma as any).employment.findMany({
-        where: {
-          userId: userId,
-          status: {
-            in: ['APPROVED', 'ACTIVE'],
-          },
-        },
-        include: {
-          restaurant: true,
-        },
-      })
-    } catch (employmentError) {
-      // Tabella employment potrebbe non esistere ancora
-      console.log('Employment table not found, using only primary restaurant')
-      employments = []
-    }
+    // ✅ Costruisci array restaurants (già filtrato e ottimizzato)
+    const allRestaurants = [
+      userData.restaurant,
+      ...userData.employments.map(emp => emp.restaurant)
+    ].filter(Boolean) // Rimuovi null
 
-    const restaurants = [user.restaurant, ...employments.map((e: any) => e.restaurant)]
-    
-    // Rimuovi duplicati e null
+    // ✅ Deduplica usando Set (più veloce di Map)
     const uniqueRestaurants = Array.from(
-      new Map(restaurants.filter(r => r !== null).map(r => [r!.id, r])).values()
-    )
+      new Set(allRestaurants.map(r => r!.id))
+    ).map(id => allRestaurants.find(r => r!.id === id)!)
 
-    // ✅ FIX: Restituisci 200 anche se non ci sono ristoranti (utente valido ma non ancora assegnato)
+    // Se non ha ristoranti
     if (uniqueRestaurants.length === 0) {
-      return NextResponse.json(
-        {
-          success: true,
-          data: null,
-          company: user.company,
-          restaurant: null,
-          message: 'Utente non ancora associato a nessun ristorante',
-          hasMultiple: false,
-        },
-        { status: 200 } // ✅ 200 invece di 404
-      )
+      return NextResponse.json({
+        success: true,
+        data: null,
+        company: userData.company,
+        restaurant: null,
+        restaurants: [],
+        hasMultiple: false,
+        message: 'Utente non ancora associato a nessun ristorante',
+      })
     }
 
-    // Prepara i dati azienda
-    const companyInfo = user.company ? {
-      id: user.company.id,
-      name: user.company.name,
-      fiscalCode: user.company.fiscalCode,
-      address: user.company.address,
-      phone: user.company.phone,
-      email: user.company.email
-    } : null
-
-    // Se ha solo un ristorante, restituiscilo con dati azienda
+    // Se ha solo un ristorante
     if (uniqueRestaurants.length === 1) {
       return NextResponse.json({
         success: true,
         data: uniqueRestaurants[0],
         restaurant: uniqueRestaurants[0],
-        company: companyInfo,
+        company: userData.company,
         hasMultiple: false,
       })
     }
 
-    // Altrimenti restituisci tutti i ristoranti con dati azienda
+    // Se ha più ristoranti
     return NextResponse.json({
       success: true,
       data: uniqueRestaurants,
       restaurants: uniqueRestaurants,
-      restaurant: user.restaurant,
-      company: companyInfo,
-      primary: user.restaurant,
+      restaurant: userData.restaurant,
+      company: userData.company,
+      primary: userData.restaurant,
       hasMultiple: true,
       count: uniqueRestaurants.length,
+      employments: userData.employments,
       message: 'Utente associato a più ristoranti',
     })
   } catch (error) {
-    console.error('Errore nel recupero ristorante:', error)
+    console.error('Error fetching company data:', error)
     return NextResponse.json(
       {
         success: false,

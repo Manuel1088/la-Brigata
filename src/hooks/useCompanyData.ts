@@ -1,19 +1,32 @@
-// src/hooks/useCompanyData.ts
+// src/hooks/useCompanyData.ts - OTTIMIZZATO
 import useSWR from 'swr'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export function useCompanyData(userId: string | undefined) {
-  return useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     userId ? `/api/users/${userId}/company` : null,
     fetcher,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      dedupingInterval: 300000, // 5 minuti di cache
-      errorRetryCount: 2
+      dedupingInterval: 5 * 60 * 1000, // ✅ Cache 5 minuti
+      errorRetryCount: 2,
+      keepPreviousData: true, // ✅ Mantieni dati precedenti durante ricaricamento
     }
   )
+
+  return {
+    data: data?.success ? data : null,
+    company: data?.company || null,
+    restaurant: data?.restaurant || null,
+    restaurants: data?.restaurants || [],
+    hasMultiple: data?.hasMultiple || false,
+    employments: data?.employments || [],
+    isLoading,
+    error,
+    mutate,
+  }
 }
 
 // Tipi TypeScript per la risposta

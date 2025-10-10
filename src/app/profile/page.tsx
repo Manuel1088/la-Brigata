@@ -8,6 +8,7 @@ export default function ProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false)
   const [isEditingCompany, setIsEditingCompany] = useState(false)
   const [isEditingRestaurant, setIsEditingRestaurant] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -16,6 +17,19 @@ export default function ProfilePage() {
     name: '',
     email: '',
     phone: ''
+  })
+  const [personalForm, setPersonalForm] = useState({
+    birthDate: '',
+    birthPlace: '',
+    maritalStatus: '',
+    children: '',
+    education: '',
+    languages: '',
+    hobbies: '',
+    sports: '',
+    emergencyContact: '',
+    emergencyPhone: '',
+    notes: ''
   })
   const [companyForm, setCompanyForm] = useState({
     name: '',
@@ -92,6 +106,39 @@ export default function ProfilePage() {
 
       setMessage('✅ Modifiche salvate con successo!')
       setIsEditing(false)
+      
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } catch (error) {
+      setMessage('❌ Errore nel salvataggio')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSavePersonal = async () => {
+    if (!session?.user?.id) return
+    
+    setIsLoading(true)
+    setMessage('')
+    
+    try {
+      const response = await fetch('/api/employees', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: session.user.id,
+          ...personalForm
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Errore nel salvataggio')
+      }
+
+      setMessage('✅ Informazioni personali salvate!')
+      setIsEditingPersonal(false)
       
       setTimeout(() => {
         window.location.reload()
@@ -184,7 +231,7 @@ export default function ProfilePage() {
   const isOwner = userRole === 'PROPRIETARIO' || userRole === 'PROPRIETARIO_OPERATIVO' || userRole === 'DIRETTORE_GENERALE'
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
@@ -247,9 +294,10 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profilo */}
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Colonna Sinistra: Profilo + Azienda */}
+          <div className="space-y-6">
+            {/* Profilo */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="text-center">
                 <div className="text-6xl mb-4">{userAvatar}</div>
@@ -292,18 +340,14 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Informazioni */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Loading dati azienda */}
+            {/* Dati Azienda */}
             {isLoadingCompany && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                 <p className="text-blue-800">⏳ Caricamento dati azienda...</p>
               </div>
             )}
             
-            {/* Messaggio se non ha azienda */}
             {!isLoadingCompany && !companyData?.company && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                 <p className="text-blue-800 font-medium mb-2">ℹ️ Nessuna azienda associata</p>
@@ -313,7 +357,6 @@ export default function ProfilePage() {
               </div>
             )}
             
-            {/* Dati Aziendali */}
             {companyData?.company && (
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex justify-between items-center mb-4">
@@ -348,78 +391,300 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div className="space-y-3">
-                  <div>
-                    <span className="text-gray-600 block mb-1">Nome Azienda:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Nome Azienda:</span>
                     {isEditingCompany ? (
                       <input
                         type="text"
                         value={companyForm.name}
                         onChange={(e) => setCompanyForm({...companyForm, name: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                       />
                     ) : (
-                      <div className="font-medium">{companyData.company.name}</div>
+                      <div className="font-medium text-right">{companyData.company.name}</div>
                     )}
                   </div>
-                  <div>
-                    <span className="text-gray-600 block mb-1">Codice Fiscale:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Codice Fiscale:</span>
                     {isEditingCompany ? (
                       <input
                         type="text"
                         value={companyForm.fiscalCode}
                         onChange={(e) => setCompanyForm({...companyForm, fiscalCode: e.target.value.toUpperCase()})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                       />
                     ) : (
-                      <div className="font-medium">{companyData.company.fiscalCode}</div>
+                      <div className="font-medium text-right">{companyData.company.fiscalCode}</div>
                     )}
                   </div>
-                  <div>
-                    <span className="text-gray-600 block mb-1">Indirizzo Sede:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Indirizzo Sede:</span>
                     {isEditingCompany ? (
                       <input
                         type="text"
                         value={companyForm.address}
                         onChange={(e) => setCompanyForm({...companyForm, address: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="Indirizzo..."
                       />
                     ) : (
-                      <div className="font-medium">{companyData.company.address || 'Non specificato'}</div>
+                      <div className="font-medium text-right">{companyData.company.address || 'Non specificato'}</div>
                     )}
                   </div>
-                  <div>
-                    <span className="text-gray-600 block mb-1">Telefono Azienda:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Telefono Azienda:</span>
                     {isEditingCompany ? (
                       <input
                         type="tel"
                         value={companyForm.phone}
                         onChange={(e) => setCompanyForm({...companyForm, phone: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="Telefono..."
                       />
                     ) : (
-                      <div className="font-medium">{companyData.company.phone || 'Non specificato'}</div>
+                      <div className="font-medium text-right">{companyData.company.phone || 'Non specificato'}</div>
                     )}
                   </div>
-                  <div>
-                    <span className="text-gray-600 block mb-1">Email Azienda:</span>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-600">Email Azienda:</span>
                     {isEditingCompany ? (
                       <input
                         type="email"
                         value={companyForm.email}
                         onChange={(e) => setCompanyForm({...companyForm, email: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="Email..."
                       />
                     ) : (
-                      <div className="font-medium">{companyData.company.email || 'Non specificata'}</div>
+                      <div className="font-medium text-right">{companyData.company.email || 'Non specificata'}</div>
                     )}
                   </div>
                 </div>
               </div>
             )}
-            
+          </div>
+
+          {/* Colonna Destra: Informazioni Personali + Ristorante */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">👤 Informazioni Personali</h3>
+                <div className="flex gap-2">
+                  {isEditingPersonal ? (
+                    <>
+                      <button
+                        onClick={() => setIsEditingPersonal(false)}
+                        className="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                      >
+                        Annulla
+                      </button>
+                      <button
+                        onClick={handleSavePersonal}
+                        disabled={isLoading}
+                        className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                      >
+                        {isLoading ? 'Salvataggio...' : 'Salva'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setIsEditingPersonal(true)}
+                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Modifica
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Data di Nascita */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Data di Nascita:</span>
+                  {isEditingPersonal ? (
+                    <input
+                      type="date"
+                      value={personalForm.birthDate}
+                      onChange={(e) => setPersonalForm({...personalForm, birthDate: e.target.value})}
+                      className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                    />
+                  ) : (
+                    <div className="font-medium text-right">{personalForm.birthDate || 'Non specificata'}</div>
+                  )}
+                </div>
+
+                {/* Luogo di Nascita */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Luogo di Nascita:</span>
+                  {isEditingPersonal ? (
+                    <input
+                      type="text"
+                      value={personalForm.birthPlace}
+                      onChange={(e) => setPersonalForm({...personalForm, birthPlace: e.target.value})}
+                      className="w-1/2 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="Città"
+                    />
+                  ) : (
+                    <div className="font-medium text-right">{personalForm.birthPlace || 'Non specificato'}</div>
+                  )}
+                </div>
+
+                {/* Stato Civile */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Stato Civile:</span>
+                  {isEditingPersonal ? (
+                    <select
+                      value={personalForm.maritalStatus}
+                      onChange={(e) => setPersonalForm({...personalForm, maritalStatus: e.target.value})}
+                      className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white"
+                    >
+                      <option value="">Seleziona...</option>
+                      <option value="single">Celibe/Nubile</option>
+                      <option value="married">Coniugato/a</option>
+                      <option value="divorced">Divorziato/a</option>
+                      <option value="widowed">Vedovo/a</option>
+                    </select>
+                  ) : (
+                    <div className="font-medium text-right">
+                      {personalForm.maritalStatus === 'single' ? 'Celibe/Nubile' :
+                       personalForm.maritalStatus === 'married' ? 'Coniugato/a' :
+                       personalForm.maritalStatus === 'divorced' ? 'Divorziato/a' :
+                       personalForm.maritalStatus === 'widowed' ? 'Vedovo/a' : 'Non specificato'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Figli */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Numero Figli:</span>
+                  {isEditingPersonal ? (
+                    <input
+                      type="number"
+                      min="0"
+                      value={personalForm.children}
+                      onChange={(e) => setPersonalForm({...personalForm, children: e.target.value})}
+                      className="w-24 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="0"
+                    />
+                  ) : (
+                    <div className="font-medium text-right">{personalForm.children || '0'}</div>
+                  )}
+                </div>
+
+                {/* Titolo di Studio */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100 md:col-span-2">
+                  <span className="text-gray-600">Titolo di Studio:</span>
+                  {isEditingPersonal ? (
+                    <input
+                      type="text"
+                      value={personalForm.education}
+                      onChange={(e) => setPersonalForm({...personalForm, education: e.target.value})}
+                      className="w-2/3 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="Es: Diploma alberghiero, Laurea in..."
+                    />
+                  ) : (
+                    <div className="font-medium text-right">{personalForm.education || 'Non specificato'}</div>
+                  )}
+                </div>
+
+                {/* Lingue */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100 md:col-span-2">
+                  <span className="text-gray-600">Lingue Parlate:</span>
+                  {isEditingPersonal ? (
+                    <input
+                      type="text"
+                      value={personalForm.languages}
+                      onChange={(e) => setPersonalForm({...personalForm, languages: e.target.value})}
+                      className="w-2/3 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="Es: Italiano, Inglese, Francese"
+                    />
+                  ) : (
+                    <div className="font-medium text-right">{personalForm.languages || 'Non specificato'}</div>
+                  )}
+                </div>
+
+                {/* Hobby */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100 md:col-span-2">
+                  <span className="text-gray-600">Hobby e Interessi:</span>
+                  {isEditingPersonal ? (
+                    <input
+                      type="text"
+                      value={personalForm.hobbies}
+                      onChange={(e) => setPersonalForm({...personalForm, hobbies: e.target.value})}
+                      className="w-2/3 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="Es: Lettura, Cucina, Fotografia"
+                    />
+                  ) : (
+                    <div className="font-medium text-right">{personalForm.hobbies || 'Non specificato'}</div>
+                  )}
+                </div>
+
+                {/* Sport */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100 md:col-span-2">
+                  <span className="text-gray-600">Sport Praticati:</span>
+                  {isEditingPersonal ? (
+                    <input
+                      type="text"
+                      value={personalForm.sports}
+                      onChange={(e) => setPersonalForm({...personalForm, sports: e.target.value})}
+                      className="w-2/3 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="Es: Calcio, Nuoto, Palestra"
+                    />
+                  ) : (
+                    <div className="font-medium text-right">{personalForm.sports || 'Non specificato'}</div>
+                  )}
+                </div>
+
+                {/* Contatto Emergenza */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Contatto Emergenza:</span>
+                  {isEditingPersonal ? (
+                    <input
+                      type="text"
+                      value={personalForm.emergencyContact}
+                      onChange={(e) => setPersonalForm({...personalForm, emergencyContact: e.target.value})}
+                      className="w-1/2 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="Nome"
+                    />
+                  ) : (
+                    <div className="font-medium text-right">{personalForm.emergencyContact || 'Non specificato'}</div>
+                  )}
+                </div>
+
+                {/* Telefono Emergenza */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Telefono Emergenza:</span>
+                  {isEditingPersonal ? (
+                    <input
+                      type="tel"
+                      value={personalForm.emergencyPhone}
+                      onChange={(e) => setPersonalForm({...personalForm, emergencyPhone: e.target.value})}
+                      className="w-1/2 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="+39 ..."
+                    />
+                  ) : (
+                    <div className="font-medium text-right">{personalForm.emergencyPhone || 'Non specificato'}</div>
+                  )}
+                </div>
+
+                {/* Note */}
+                <div className="py-2 md:col-span-2">
+                  <span className="text-gray-600 block mb-2">Note Personali:</span>
+                  {isEditingPersonal ? (
+                    <textarea
+                      value={personalForm.notes}
+                      onChange={(e) => setPersonalForm({...personalForm, notes: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      rows={3}
+                      placeholder="Informazioni aggiuntive..."
+                    />
+                  ) : (
+                    <div className="font-medium text-gray-700">{personalForm.notes || 'Nessuna nota'}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Dati Ristorante */}
             {companyData?.restaurant && (
               <div className="bg-white rounded-lg shadow p-6">
@@ -455,61 +720,50 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div className="space-y-3">
-                  <div>
-                    <span className="text-gray-600 block mb-1">Nome Ristorante:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Nome Ristorante:</span>
                     {isEditingRestaurant ? (
                       <input
                         type="text"
                         value={restaurantForm.name}
                         onChange={(e) => setRestaurantForm({...restaurantForm, name: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                       />
                     ) : (
-                      <div className="font-medium">{companyData.restaurant.name}</div>
+                      <div className="font-medium text-right">{companyData.restaurant.name}</div>
                     )}
                   </div>
-                  <div>
-                    <span className="text-gray-600 block mb-1">Indirizzo:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Indirizzo:</span>
                     {isEditingRestaurant ? (
                       <input
                         type="text"
                         value={restaurantForm.address}
                         onChange={(e) => setRestaurantForm({...restaurantForm, address: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="Indirizzo..."
                       />
                     ) : (
-                      <div className="font-medium">{companyData.restaurant.address || 'Non specificato'}</div>
+                      <div className="font-medium text-right">{companyData.restaurant.address || 'Non specificato'}</div>
                     )}
                   </div>
-                  <div>
-                    <span className="text-gray-600 block mb-1">Telefono:</span>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-600">Telefono:</span>
                     {isEditingRestaurant ? (
                       <input
                         type="tel"
                         value={restaurantForm.phone}
                         onChange={(e) => setRestaurantForm({...restaurantForm, phone: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="Telefono..."
                       />
                     ) : (
-                      <div className="font-medium">{companyData.restaurant.phone || 'Non specificato'}</div>
+                      <div className="font-medium text-right">{companyData.restaurant.phone || 'Non specificato'}</div>
                     )}
                   </div>
                 </div>
               </div>
             )}
-            
-            {/* Informazioni */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">ℹ️ Informazioni</h3>
-              <p className="text-gray-600">
-                Questa è la tua pagina profilo personale. Puoi modificare i tuoi dati di base.
-              </p>
-              <p className="text-gray-600 mt-2">
-                Per informazioni più dettagliate (turni, ferie, mance), usa la dashboard o le sezioni dedicate.
-              </p>
-            </div>
           </div>
         </div>
       </main>
