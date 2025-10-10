@@ -62,12 +62,6 @@ export default function OperationsPage() {
                 <p className="text-gray-600 mt-2">Gestisci prenotazioni, clienti e analizza le performance del ristorante</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">{session.user?.name}</span>
-              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
-                {session.user?.role}
-              </span>
-            </div>
           </div>
         </div>
       </header>
