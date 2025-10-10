@@ -101,9 +101,15 @@ export default function Sidebar() {
         },
         { 
           icon: '📅', 
-          label: 'Time Management', 
-          path: '/time-management', 
-          color: '#74B9FF'
+          label: 'I Miei Turni', 
+          path: '/shifts', 
+          color: '#74B9FF' 
+        },
+        { 
+          icon: '🏖️', 
+          label: 'Ferie e Permessi', 
+          path: '/leaves', 
+          color: '#00B894' 
         },
         { 
           icon: '👤', 
@@ -150,6 +156,13 @@ export default function Sidebar() {
           icon: '📅', 
           label: 'Prenotazioni', 
           path: '/operations',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+        },
+        { 
+          icon: '🎉', 
+          label: 'Eventi e Festività', 
+          path: '/events',
+          color: '#A29BFE',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         },
         { 

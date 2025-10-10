@@ -77,10 +77,12 @@ export default function TopBar() {
       const currentPath = segments.join('/')
       const pageNames: Record<string, string> = {
         'tips': 'Mance',
-        'time-management': 'Time Management',
+        'shifts': 'Turni',
+        'leaves': 'Ferie e Permessi',
         'team': 'Team',
         'approvals': 'Approvazioni',
         'operations': 'Prenotazioni',
+        'events': 'Eventi e Festività',
         'reports': 'Report',
         'analytics': 'Analytics',
         'notifications': 'Notifiche',
