@@ -119,11 +119,13 @@ export default function SubscriptionPage() {
   const router = useRouter()
   const { canManageCompany } = usePermissions()
   
-  const [activeTab, setActiveTab] = useState<'employee' | 'company'>('employee')
   const [currentPlan, setCurrentPlan] = useState<string | null>(null)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<any>(null)
+  
+  // Determina automaticamente se è proprietario o dipendente
+  const isCompanyOwner = canManageCompany()
 
   useEffect(() => {
     if (status === 'loading') return
@@ -140,13 +142,6 @@ export default function SubscriptionPage() {
       console.error('Error loading subscription:', error)
     }
   }, [session, status, router])
-
-  // Determina tab iniziale basato su permessi
-  useEffect(() => {
-    if (canManageCompany()) {
-      setActiveTab('company')
-    }
-  }, [canManageCompany])
 
   const handleUpgrade = (plan: any) => {
     setSelectedPlan(plan)
@@ -251,46 +246,23 @@ export default function SubscriptionPage() {
             >
               ←
             </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">💳 Abbonamenti</h1>
-              <p className="text-gray-600 mt-2">Scegli il piano perfetto per te o la tua azienda</p>
-            </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">💳 Abbonamenti</h1>
+                <p className="text-gray-600 mt-2">
+                  {isCompanyOwner 
+                    ? 'Scegli il piano perfetto per la tua azienda'
+                    : 'Potenzia la tua esperienza con il piano Premium'
+                  }
+                </p>
+              </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         
-        {/* Tab Selector */}
-        <div className="bg-white rounded-lg shadow mb-8 p-2 flex gap-2">
-          <button
-            onClick={() => setActiveTab('employee')}
-            className={`flex-1 py-3 px-6 rounded-lg font-medium transition ${
-              activeTab === 'employee'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <span className="text-xl mr-2">👤</span>
-            Piano Dipendente
-          </button>
-          {canManageCompany() && (
-            <button
-              onClick={() => setActiveTab('company')}
-              className={`flex-1 py-3 px-6 rounded-lg font-medium transition ${
-                activeTab === 'company'
-                  ? 'bg-orange-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <span className="text-xl mr-2">🏢</span>
-              Piani Azienda
-            </button>
-          )}
-        </div>
-
-        {/* Employee Plan */}
-        {activeTab === 'employee' && (
+        {/* Employee Plan - Solo se NON è proprietario */}
+        {!isCompanyOwner && (
           <div className="max-w-md mx-auto">
             <div className={`bg-white rounded-2xl shadow-xl border-2 ${getColorClasses(EMPLOYEE_PLAN.color).border} overflow-hidden`}>
               {/* Header */}
@@ -339,8 +311,8 @@ export default function SubscriptionPage() {
           </div>
         )}
 
-        {/* Company Plans */}
-        {activeTab === 'company' && (
+        {/* Company Plans - Solo se è proprietario */}
+        {isCompanyOwner && (
           <div>
             {/* Billing Toggle */}
             <div className="flex justify-center mb-8">
