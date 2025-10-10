@@ -169,30 +169,22 @@ export default function AdminPage() {
   }
 
   return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
         <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start space-x-4">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
+            >
+              ←
+            </button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">🛡️ Admin Panel</h1>
               <p className="text-gray-600 mt-2">Gestione completa del sistema La Brigata</p>
-              </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-lg">
-                <div className="text-sm font-medium">Sistema</div>
-                <div className="text-lg font-bold">Amministrazione</div>
-              </div>
-              
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg"
-              >
-                ←
-              </button>
-              </div>
             </div>
           </div>
+        </div>
         </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
