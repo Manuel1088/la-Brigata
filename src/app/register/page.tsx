@@ -172,6 +172,7 @@ function CompanyRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (dat
     ownerName: '',
     ownerEmail: '',
     ownerPhone: '',
+    ownerRole: 'PROPRIETARIO_LAVORATORE',
     password: ''
   })
 
@@ -222,6 +223,23 @@ function CompanyRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (dat
           onChange={(e) => setFormData({...formData, ownerName: e.target.value})}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
         />
+        
+        <select
+          value={formData.ownerRole}
+          onChange={(e) => setFormData({...formData, ownerRole: e.target.value as any})}
+          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white appearance-none cursor-pointer h-[42px]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 0.75rem center',
+            backgroundSize: '1.25rem'
+          }}
+          required
+        >
+          <option value="PROPRIETARIO_LAVORATORE">Proprietario Lavoratore</option>
+          <option value="PROPRIETARIO_NON_LAVORATORE">Proprietario non Lavoratore</option>
+          <option value="GENERAL_MANAGER">General Manager</option>
+        </select>
         
         <input
           type="email"
@@ -300,11 +318,17 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
         <select
           value={formData.department}
           onChange={(e) => setFormData({...formData, department: e.target.value as any})}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none cursor-pointer h-[42px]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 0.75rem center',
+            backgroundSize: '1.25rem'
+          }}
         >
-          <option value="sala">🍽️ Sala</option>
-          <option value="cucina">🔥 Cucina</option>
-          <option value="bar">🍹 Bar</option>
+          <option value="sala">Sala</option>
+          <option value="cucina">Cucina</option>
+          <option value="bar">Bar</option>
         </select>
         
         <input
@@ -402,11 +426,17 @@ function CandidateRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (d
         <select
           value={formData.department}
           onChange={(e) => setFormData({...formData, department: e.target.value as any})}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white appearance-none cursor-pointer h-[42px]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 0.75rem center',
+            backgroundSize: '1.25rem'
+          }}
         >
-          <option value="sala">🍽️ Sala</option>
-          <option value="cucina">🔥 Cucina</option>
-          <option value="bar">🍹 Bar</option>
+          <option value="sala">Sala</option>
+          <option value="cucina">Cucina</option>
+          <option value="bar">Bar</option>
         </select>
         
         <textarea

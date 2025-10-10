@@ -115,7 +115,7 @@ export default function Sidebar() {
         { 
           icon: '👤', 
           label: 'Il Profilo', 
-          path: '/me', 
+          path: '/profile', 
           color: '#2D3436' 
         },
         {

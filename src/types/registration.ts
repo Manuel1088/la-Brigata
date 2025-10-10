@@ -12,6 +12,7 @@ export interface CompanyRegistration {
   ownerName: string
   ownerEmail: string
   ownerPhone: string
+  ownerRole: 'PROPRIETARIO_LAVORATORE' | 'PROPRIETARIO_NON_LAVORATORE' | 'GENERAL_MANAGER'
   password: string
   restaurantName?: string
   restaurantAddress?: string

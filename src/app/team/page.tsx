@@ -71,8 +71,18 @@ export default function TeamPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">👥 Gestione Team</h1>
-          <p className="text-gray-600 mt-2">Gestisci dipendenti, ferie e controlli di accesso</p>
+          <div className="flex items-start space-x-4">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
+            >
+              ←
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">👥 Gestione Team</h1>
+              <p className="text-gray-600 mt-2">Gestisci dipendenti, ferie e controlli di accesso</p>
+            </div>
+          </div>
         </div>
       </header>
 

@@ -13,8 +13,8 @@ export default function MeRedirectPage() {
       router.replace('/login')
       return
     }
-    // Redirect alla pagina del profilo utente
-    router.replace(`/employees/${session.user.id}`)
+    // Redirect alla pagina profilo semplificata (accessibile a tutti)
+    router.replace('/profile')
   }, [session?.user?.id, status, router])
 
   return (

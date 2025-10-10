@@ -149,11 +149,14 @@ export const authOptions: AuthOptions = {
     maxAge: 8 * 60 * 60, // 8 ore
   },
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user, trigger }: any) {
+      // Al primo login, salva i dati dell'utente
       if (user && 'role' in user) {
         token.role = (user as any).role;
         token.level = (user as any).level;
         token.avatar = (user as any).avatar;
+        token.name = user.name;
+        token.email = user.email;
       }
       if (user && 'id' in user) {
         token.sub = (user as any).id;
@@ -168,11 +171,32 @@ export const authOptions: AuthOptions = {
       if (user && 'informalCompanyId' in user) {
         (token as any).informalCompanyId = (user as any).informalCompanyId;
       }
+      
+      // Ricarica i dati dal database ogni volta per avere sempre i dati freschi
+      // (o almeno quando c'è un update trigger)
+      if (token.sub && !user) {
+        try {
+          const dbUser = await prisma.user.findUnique({ 
+            where: { id: token.sub as string }
+          })
+          if (dbUser) {
+            token.name = dbUser.name
+            token.email = dbUser.email
+            token.role = dbUser.role as any
+            token.avatar = (dbUser as any).avatar ?? '👤'
+          }
+        } catch (e) {
+          console.error('Error refreshing user data in JWT:', e)
+        }
+      }
+      
       return token;
     },
     async session({ session, token }: any) {
       if (token && session.user) {
         (session.user as any).id = token.sub;
+        (session.user as any).name = token.name;  // ← Aggiornato dal JWT
+        (session.user as any).email = token.email;  // ← Aggiornato dal JWT
         (session.user as any).role = token.role as string;
         (session.user as any).level = token.level as number;
         (session.user as any).avatar = token.avatar as string;

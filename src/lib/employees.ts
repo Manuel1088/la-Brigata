@@ -143,7 +143,7 @@ export async function getEmployeesByCompany(companyId: string, opts?: { active?:
   const res = await fetch(`/api/employees?${q.toString()}`)
   if (!res.ok) throw new Error('Failed to load employees')
   const data = await res.json()
-  return data.employees as Array<Pick<EmployeeFull, 'id' | 'name' | 'email' | 'phone' | 'role' | 'department' | 'level' | 'isActive' | 'avatar'>>
+  return data.employees as EmployeeFull[]
 }
 
 

@@ -53,7 +53,7 @@ export default function TipsPage() {
             <div className="flex items-start space-x-4">
               <button
                 onClick={() => router.push('/dashboard')}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg mt-1"
+                className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
               >
                 ←
               </button>
@@ -73,7 +73,7 @@ export default function TipsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+        <div className="px-4 sm:px-0">
 
           {/* Tab Navigation */}
           <div className="bg-white rounded-lg shadow mb-6">

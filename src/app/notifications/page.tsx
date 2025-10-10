@@ -75,24 +75,16 @@ export default function NotificationsPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start space-x-4">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
+            >
+              ←
+            </button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">🔔 Centro Notifiche</h1>
               <p className="text-gray-600 mt-2">Gestisci tutte le notifiche e comunicazioni</p>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg">
-                <div className="text-sm font-medium">Comunicazioni</div>
-                <div className="text-lg font-bold">Notifiche</div>
-              </div>
-              
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg"
-              >
-                ←
-              </button>
             </div>
           </div>
         </div>

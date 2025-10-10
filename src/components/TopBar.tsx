@@ -87,7 +87,8 @@ export default function TopBar() {
         'notifications': 'Notifiche',
         'settings': 'Impostazioni',
         'admin': 'Amministrazione',
-        'me': 'Profilo'
+        'me': 'Profilo',
+        'profile': 'Profilo'
       }
       
       const pageName = pageNames[segments[0]] || segments[0]
@@ -198,7 +199,7 @@ export default function TopBar() {
             <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
               {/* User Avatar & Name - Clickable */}
               <button 
-                onClick={() => router.push('/me')}
+                onClick={() => router.push('/profile')}
                 className="flex items-center gap-2 hover:bg-gray-100 rounded-lg p-1 transition-colors"
                 title="Vai al Profilo"
               >

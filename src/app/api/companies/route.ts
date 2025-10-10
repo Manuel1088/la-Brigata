@@ -23,4 +23,35 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const { id, name, fiscalCode, address, phone, email } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID azienda richiesto' }, { status: 400 })
+    }
+
+    const updatedCompany = await prisma.company.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(fiscalCode && { fiscalCode }),
+        ...(address !== undefined && { address }),
+        ...(phone !== undefined && { phone }),
+        ...(email !== undefined && { email })
+      }
+    })
+
+    return NextResponse.json({ 
+      success: true,
+      company: updatedCompany,
+      message: 'Azienda aggiornata con successo'
+    })
+  } catch (error) {
+    console.error('PUT /api/companies error:', error)
+    return NextResponse.json({ error: 'Errore nel salvataggio' }, { status: 500 })
+  }
+}
+
 

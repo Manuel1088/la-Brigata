@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       ownerName,
       ownerEmail,
       ownerPhone,
+      ownerRole,
       password,
       restaurantName,
       restaurantAddress
@@ -29,10 +30,20 @@ export async function POST(request: NextRequest) {
       ownerName: string
       ownerEmail: string
       ownerPhone?: string
+      ownerRole?: 'PROPRIETARIO_LAVORATORE' | 'PROPRIETARIO_NON_LAVORATORE' | 'GENERAL_MANAGER'
       password: string
       restaurantName?: string
       restaurantAddress?: string
     }
+
+    // Mappatura ruoli user-friendly a ruoli sistema
+    const roleMapping: Record<string, { role: string; level: number }> = {
+      'PROPRIETARIO_LAVORATORE': { role: 'PROPRIETARIO_OPERATIVO', level: 10 },
+      'PROPRIETARIO_NON_LAVORATORE': { role: 'PROPRIETARIO', level: 10 },
+      'GENERAL_MANAGER': { role: 'DIRETTORE_GENERALE', level: 9 }
+    }
+    
+    const mappedRole = roleMapping[ownerRole || 'PROPRIETARIO_NON_LAVORATORE']
 
     // Validazioni minime
     if (!companyName || !fiscalCode || !ownerName || !ownerEmail || !password) {
@@ -95,15 +106,15 @@ export async function POST(request: NextRequest) {
         } as Prisma.RestaurantUncheckedCreateInput
       })
 
-      // 3. Crea utente proprietario
+      // 3. Crea utente proprietario con ruolo mappato
       const owner = await tx.user.create({
         data: {
           email: ownerEmail,
           name: ownerName,
           password: hashedPassword,
-          role: 'PROPRIETARIO',
+          role: mappedRole.role,
           userType: 'OWNER',
-          hierarchyLevel: 10,
+          hierarchyLevel: mappedRole.level,
           phone: ownerPhone || undefined,
           companyId: company.id,
           restaurantId: restaurant.id,

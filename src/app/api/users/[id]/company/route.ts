@@ -19,13 +19,14 @@ export async function GET(
       )
     }
 
-    // Cerca l'utente e il suo ristorante principale
+    // Cerca l'utente con ristorante e azienda
     const user = await prisma.user.findUnique({
       where: {
         id: userId,
       },
       include: {
         restaurant: true,
+        company: true,
       },
     })
 
@@ -72,6 +73,8 @@ export async function GET(
         {
           success: true,
           data: null,
+          company: user.company,
+          restaurant: null,
           message: 'Utente non ancora associato a nessun ristorante',
           hasMultiple: false,
         },
@@ -79,19 +82,34 @@ export async function GET(
       )
     }
 
-    // Se ha solo un ristorante, restituiscilo direttamente
+    // Prepara i dati azienda
+    const companyInfo = user.company ? {
+      id: user.company.id,
+      name: user.company.name,
+      fiscalCode: user.company.fiscalCode,
+      address: user.company.address,
+      phone: user.company.phone,
+      email: user.company.email
+    } : null
+
+    // Se ha solo un ristorante, restituiscilo con dati azienda
     if (uniqueRestaurants.length === 1) {
       return NextResponse.json({
         success: true,
         data: uniqueRestaurants[0],
+        restaurant: uniqueRestaurants[0],
+        company: companyInfo,
         hasMultiple: false,
       })
     }
 
-    // Altrimenti restituisci tutti i ristoranti
+    // Altrimenti restituisci tutti i ristoranti con dati azienda
     return NextResponse.json({
       success: true,
       data: uniqueRestaurants,
+      restaurants: uniqueRestaurants,
+      restaurant: user.restaurant,
+      company: companyInfo,
       primary: user.restaurant,
       hasMultiple: true,
       count: uniqueRestaurants.length,

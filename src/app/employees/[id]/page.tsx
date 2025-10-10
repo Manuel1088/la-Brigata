@@ -67,7 +67,7 @@ export default function EmployeeDetailPage() {
   const paramId = (params?.id as string) || ''
   
   // ✅ USA IL CONTEXT invece degli hook diretti
-  const { employees, isLoading: isLoadingEmployees, companyId } = useEmployeeContext()
+  const { employees, isLoading: isLoadingEmployees, companyId, mutate } = useEmployeeContext()
 
   // 🔥 FUNZIONE HELPER per formattare numeri
   const formatNumber = (value: number | undefined | null): string => {
@@ -77,21 +77,9 @@ export default function EmployeeDetailPage() {
     return value.toString()
   }
   
-  // 🔥 Trova il dipendente con useMemo (nessun useEffect!)
+  // Trova il dipendente dall'API
   const employee = useMemo(() => {
-    if (!employees || employees.length === 0) {
-      // Fallback per utenti registrati
-      const sessionId = session?.user?.id
-      if (paramId === sessionId) {
-        return {
-          ...mockEmployee,
-          id: sessionId,
-          name: session?.user?.name || 'Utente',
-          email: session?.user?.email || '',
-        } as EmployeeFull
-      }
-      return null
-    }
+    if (!employees || employees.length === 0) return null
     
     const sessionId = session?.user?.id
     const sessionEmail = session?.user?.email
@@ -143,17 +131,49 @@ export default function EmployeeDetailPage() {
 
   // Gestione salvataggio
   const handleSave = async () => {
+    if (!editedEmployee) return
+    
     setIsLoading(true)
+    setMessage('')
     try {
-      // TODO: Implementa salvataggio API
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch('/api/employees', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editedEmployee.id,
+          name: editedEmployee.name,
+          email: editedEmployee.email,
+          phone: editedEmployee.phone,
+          role: editedEmployee.role,
+          hourlyRate: editedEmployee.hourlyRate,
+          contractType: editedEmployee.contractType,
+          startDate: editedEmployee.startDate,
+          notes: editedEmployee.notes,
+          skills: editedEmployee.skills || []
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.details || result.error || 'Errore nel salvataggio')
+      }
+      
+      // Aggiorna il Context
+      if (mutate) {
+        await mutate()
+      }
+      
+      setMessage('✅ Modifiche salvate con successo!')
       setIsEditing(false)
       setEditedEmployee(null)
-      setMessage('Modifiche salvate con successo')
-      setTimeout(() => setMessage(''), 3000)
+      
+      // Ricarica la pagina
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
     } catch (error) {
-      console.error('Errore nel salvataggio:', error)
-      setMessage('Errore nel salvataggio')
+      setMessage(`❌ Errore nel salvataggio`)
     } finally {
       setIsLoading(false)
     }
@@ -206,12 +226,12 @@ export default function EmployeeDetailPage() {
   }
 
   // Loading states
-  if (status === 'loading' || isLoadingEmployees) {
+  if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">⏳</div>
-          <div className="text-xl">Caricamento profilo...</div>
+          <div className="text-xl">Caricamento autenticazione...</div>
         </div>
       </div>
     )
@@ -222,6 +242,20 @@ export default function EmployeeDetailPage() {
     return null
   }
 
+  // Mostra loading solo mentre carica dall'API
+  if (isLoadingEmployees) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <div className="text-xl">Caricamento profilo...</div>
+          <p className="text-sm text-gray-500 mt-2">Recupero dati dipendente...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Se non trova il dipendente, mostra errore
   if (!employee) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -229,10 +263,10 @@ export default function EmployeeDetailPage() {
           <div className="text-4xl mb-4">❌</div>
           <div className="text-xl text-gray-700">Dipendente non trovato</div>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/team')}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
-            Torna alla Dashboard
+            Torna al Team
           </button>
         </div>
       </div>
@@ -263,44 +297,52 @@ export default function EmployeeDetailPage() {
   const departmentInfo = departments[roleInfo?.department as keyof typeof departments]
   const availableSkills = commonSkills[roleInfo?.department as keyof typeof commonSkills] || []
 
-  // 🔍 DEBUG - Aggiungi PRIMA del return
-  console.log('🔍 DEBUG ALL VALUES:', {
-    'employee?.hourlyRate': employee?.hourlyRate,
-    'isNaN(hourlyRate)': isNaN(employee?.hourlyRate as any),
-    'prevVacationCarry': prevVacationCarry,
-    'isNaN(vacation)': isNaN(prevVacationCarry),
-    'prevRolCarry': prevRolCarry,
-    'isNaN(rol)': isNaN(prevRolCarry),
-    'employee?.skills': employee?.skills,
-    'employee': employee
-  })
-
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-start space-x-4">
               <button
                 onClick={handleBack}
-                className="text-gray-500 hover:text-gray-700 transition text-lg"
+                className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
                 title="Torna indietro"
               >
                 ←
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{currentEmployee.name}</h1>
-                <p className="text-gray-600 mt-1">{roleInfo?.name} • {departmentInfo?.name}</p>
+                <h1 className="text-3xl font-bold text-gray-900">👤 {currentEmployee.name}</h1>
+                <p className="text-gray-600 mt-2">{roleInfo?.name} • {departmentInfo?.name}</p>
               </div>
             </div>
             
             {canEditPersonal && (
-              <button
-                onClick={() => isEditing ? setIsEditing(false) : handleEditMode()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                {isEditing ? 'Annulla Modifica' : 'Modifica Profilo'}
-              </button>
+              <div className="flex items-center gap-3">
+                {isEditing ? (
+                  <>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                    >
+                      Annulla
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={isLoading}
+                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
+                    >
+                      {isLoading ? 'Salvataggio...' : 'Salva'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleEditMode}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Modifica Profilo
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -319,10 +361,38 @@ export default function EmployeeDetailPage() {
             {/* Profilo */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="text-center">
-                <div className="text-6xl mb-4">{employee?.avatar || '👤'}</div>
-                <h2 className="text-xl font-semibold text-gray-900">{employee?.name || 'Nome non disponibile'}</h2>
-                <p className="text-gray-600">{employee?.email || 'Email non disponibile'}</p>
-                <p className="text-gray-600">{employee?.phone || 'Telefono non disponibile'}</p>
+                <div className="text-6xl mb-4">{currentEmployee?.avatar || '👤'}</div>
+                {isEditing ? (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={editedEmployee?.name || ''}
+                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, name: e.target.value}) : null)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center font-semibold"
+                      placeholder="Nome"
+                    />
+                    <input
+                      type="email"
+                      value={editedEmployee?.email || ''}
+                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, email: e.target.value}) : null)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center"
+                      placeholder="Email"
+                    />
+                    <input
+                      type="tel"
+                      value={editedEmployee?.phone || ''}
+                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, phone: e.target.value}) : null)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center"
+                      placeholder="Telefono"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-xl font-semibold text-gray-900">{currentEmployee?.name || 'Nome non disponibile'}</h2>
+                    <p className="text-gray-600">{currentEmployee?.email || 'Email non disponibile'}</p>
+                    <p className="text-gray-600">{currentEmployee?.phone || 'Telefono non disponibile'}</p>
+                  </>
+                )}
                 
                 <div className="mt-4">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -341,20 +411,64 @@ export default function EmployeeDetailPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">💼 Informazioni Lavorative</h3>
               <div className="space-y-3">
                 <div>
-                  <span className="text-gray-600">Ruolo:</span>
-                  <div className="font-medium">{roleInfo?.name}</div>
+                  <span className="text-gray-600 block mb-2">Ruolo:</span>
+                  {isEditing ? (
+                    <select
+                      value={editedEmployee?.role || ''}
+                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, role: e.target.value as any}) : null)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                    >
+                      {Object.entries(roleConfig).map(([key, config]) => (
+                        <option key={key} value={key}>{config.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="font-medium">{roleInfo?.name}</div>
+                  )}
                 </div>
                 <div>
-                  <span className="text-gray-600">Tariffa oraria:</span>
-                  <div className="font-medium">€{employee?.hourlyRate || 0}/ora</div>
+                  <span className="text-gray-600 block mb-2">Tariffa oraria:</span>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editedEmployee?.hourlyRate || 0}
+                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, hourlyRate: parseFloat(e.target.value)}) : null)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      placeholder="€/ora"
+                    />
+                  ) : (
+                    <div className="font-medium">€{currentEmployee?.hourlyRate || 0}/ora</div>
+                  )}
                 </div>
                 <div>
-                  <span className="text-gray-600">Contratto:</span>
-                  <div className="font-medium">{contractTypes.find(ct => ct.value === employee?.contractType)?.label}</div>
+                  <span className="text-gray-600 block mb-2">Contratto:</span>
+                  {isEditing ? (
+                    <select
+                      value={editedEmployee?.contractType || 'full-time'}
+                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, contractType: e.target.value as any}) : null)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                    >
+                      {contractTypes.map(ct => (
+                        <option key={ct.value} value={ct.value}>{ct.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="font-medium">{contractTypes.find(ct => ct.value === currentEmployee?.contractType)?.label}</div>
+                  )}
                 </div>
                 <div>
-                  <span className="text-gray-600">Data assunzione:</span>
-                  <div className="font-medium">{employee?.startDate ? new Date(employee.startDate).toLocaleDateString('it-IT') : 'Non disponibile'}</div>
+                  <span className="text-gray-600 block mb-2">Data assunzione:</span>
+                  {isEditing ? (
+                    <input
+                      type="date"
+                      value={editedEmployee?.startDate || ''}
+                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, startDate: e.target.value}) : null)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                    />
+                  ) : (
+                    <div className="font-medium">{currentEmployee?.startDate ? new Date(currentEmployee.startDate).toLocaleDateString('it-IT') : 'Non disponibile'}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -390,7 +504,7 @@ export default function EmployeeDetailPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">🎯 Competenze</h3>
               
               <div className="flex flex-wrap gap-2 mb-4">
-                {employee?.skills?.map(skill => (
+                {currentEmployee?.skills?.map(skill => (
                   <span
                     key={skill}
                     className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-1"
@@ -423,9 +537,9 @@ export default function EmployeeDetailPage() {
                             key={index}
                             type="button"
                             onClick={() => addCommonSkill(skill)}
-                            disabled={employee?.skills?.includes(skill)}
+                            disabled={editedEmployee?.skills?.includes(skill)}
                             className={`px-3 py-1 rounded-full text-sm transition ${
-                              employee?.skills?.includes(skill)
+                              editedEmployee?.skills?.includes(skill)
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
                             }`}
@@ -469,40 +583,19 @@ export default function EmployeeDetailPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">📝 Note</h3>
               {isEditing ? (
                 <textarea
-                  value={employee?.notes || ''}
+                  value={editedEmployee?.notes || ''}
                   onChange={(e) => setEditedEmployee(prev => prev ? ({ ...prev, notes: e.target.value }) : null)}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   placeholder="Note aggiuntive, valutazioni, obiettivi..."
                 />
               ) : (
-                <p className="text-gray-900 whitespace-pre-wrap">{employee?.notes || 'Nessuna nota disponibile'}</p>
+                <p className="text-gray-900 whitespace-pre-wrap">{currentEmployee?.notes || 'Nessuna nota disponibile'}</p>
               )}
             </div>
 
             {/* Sezione Payroll */}
             <PayrollSection />
-
-            {/* Azioni */}
-            {isEditing && canEditPersonal && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-end space-x-3">
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
-                  >
-                    Annulla
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isLoading}
-                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
-                  >
-                    {isLoading ? 'Salvataggio...' : '💾 Salva Modifiche'}
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Azioni di Eliminazione */}
             <div className="bg-white rounded-lg shadow p-6">

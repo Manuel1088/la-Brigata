@@ -125,13 +125,13 @@ export default function CalendarPage() {
         <header className="bg-white shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex justify-between items-start">
-              <div className="flex items-start space-x-4">
-                <button
-                  onClick={() => router.push('/dashboard')}
-                  className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg mt-1"
-                >
-                  ←
-                </button>
+            <div className="flex items-start space-x-4">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
+              >
+                ←
+              </button>
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">
                     📅 Calendario Aziendale
@@ -152,7 +152,7 @@ export default function CalendarPage() {
         </header>
 
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
+          <div className="px-4 sm:px-0">
             
             {/* Previsione settimanale */}
             <div className="bg-white rounded-lg shadow mb-6">
