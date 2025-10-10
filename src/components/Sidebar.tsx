@@ -273,10 +273,10 @@ export default function Sidebar() {
                   <li key={itemIndex}>
                     <button
                       onClick={() => router.push(item.path)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1 rounded-lg transition-colors ${
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1 rounded-lg transition-all relative ${
                         isActive 
-                          ? 'bg-orange-500 text-white' 
-                          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                          ? 'bg-gray-100 text-gray-900 font-semibold shadow-sm border-l-4 border-orange-500' 
+                          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                     >
                       <span className="text-lg">{item.icon}</span>
