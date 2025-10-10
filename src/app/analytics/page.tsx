@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import AnalyticsDashboard from '@/components/analytics/Dashboard'
-import AnalyticsCustomers from '@/components/analytics/Customers'
 import AnalyticsOperations from '@/components/analytics/Operations'
 import AnalyticsPredictions from '@/components/analytics/Predictions'
 
@@ -45,13 +44,6 @@ export default function AnalyticsPage() {
       icon: '📊', 
       component: AnalyticsDashboard,
       permission: canViewAnalytics()
-    },
-    { 
-      id: 'customers', 
-      label: 'Clienti', 
-      icon: '👥', 
-      component: AnalyticsCustomers,
-      permission: canViewAdvancedReports()
     },
     { 
       id: 'operations', 
