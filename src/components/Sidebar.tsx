@@ -137,13 +137,6 @@ export default function Sidebar() {
           color: '#00B894',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE],
           badge: pendingApprovals > 0 ? pendingApprovals : undefined
-        },
-        { 
-          icon: '➕', 
-          label: 'Aggiungi Dipendente', 
-          path: '/employees/new', 
-          color: '#74B9FF',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         }
       ],
       roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
