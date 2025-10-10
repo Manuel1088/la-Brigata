@@ -35,70 +35,27 @@ export default function AdminUsers() {
 
   const loadUsers = async () => {
     try {
-      const mockUsers: User[] = [
-        {
-          id: '1',
-          name: 'Admin Proprietario',
-          email: 'admin@brigata.it',
-          role: 'PROPRIETARIO',
-          level: 10,
-          avatar: '👑',
-          isActive: true,
-          lastLogin: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          createdAt: new Date('2024-01-01'),
-          company: 'La Brigata'
-        },
-        {
-          id: '2',
-          name: 'Marco Direttore',
-          email: 'direttore@brigata.it',
-          role: 'DIRETTORE',
-          level: 9,
-          avatar: '👔',
-          isActive: true,
-          lastLogin: new Date(Date.now() - 1 * 60 * 60 * 1000),
-          createdAt: new Date('2024-01-15'),
-          company: 'La Brigata'
-        },
-        {
-          id: '3',
-          name: 'Anna Manager',
-          email: 'manager@brigata.it',
-          role: 'MANAGER',
-          level: 8,
-          avatar: '📊',
-          isActive: true,
-          lastLogin: new Date(Date.now() - 30 * 60 * 1000),
-          createdAt: new Date('2024-02-01'),
-          company: 'La Brigata'
-        },
-        {
-          id: '4',
-          name: 'Luca Cassiere',
-          email: 'cassiere@brigata.it',
-          role: 'CASSIERE',
-          level: 6,
-          avatar: '💰',
-          isActive: true,
-          lastLogin: new Date(Date.now() - 15 * 60 * 1000),
-          createdAt: new Date('2024-02-15'),
-          company: 'La Brigata'
-        },
-        {
-          id: '5',
-          name: 'Sofia Dipendente',
-          email: 'dipendente@brigata.it',
-          role: 'DIPENDENTE',
-          level: 5,
-          avatar: '👤',
-          isActive: false,
-          lastLogin: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          createdAt: new Date('2024-03-01'),
-          company: 'La Brigata'
-        }
-      ]
+      // Fetch utenti reali dal database
+      const response = await fetch('/api/admin/users')
       
-      setUsers(mockUsers)
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success && data.users) {
+          // Mappa date da string a Date
+          const usersWithDates = data.users.map((user: any) => ({
+            ...user,
+            lastLogin: new Date(user.lastLogin),
+            createdAt: new Date(user.createdAt)
+          }))
+          setUsers(usersWithDates)
+        } else {
+          setUsers([])
+        }
+      } else {
+        console.error('Errore nel caricamento utenti:', response.statusText)
+        setUsers([])
+      }
     } catch (error) {
       console.error('Errore nel caricamento utenti:', error)
       notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nel caricamento utenti')
@@ -112,30 +69,55 @@ export default function AdminUsers() {
       const user = users.find(u => u.id === userId)
       if (!user) return
 
-      switch (action) {
-        case 'activate':
-          setUsers(prev => prev.map(u => 
-            u.id === userId ? { ...u, isActive: true } : u
-          ))
-          notifyCustom('SUCCESS', 'PERSONNEL', 'Utente Attivato', `Utente ${user.name} attivato con successo`)
-          logReadAction('user_activated', userId)
-          break
-        case 'deactivate':
-          setUsers(prev => prev.map(u => 
-            u.id === userId ? { ...u, isActive: false } : u
-          ))
-          notifyCustom('WARNING', 'PERSONNEL', 'Utente Disattivato', `Utente ${user.name} disattivato`)
-          logReadAction('user_deactivated', userId)
-          break
-        case 'delete':
-          if (confirm(`Sei sicuro di voler eliminare l'utente ${user.name}?`)) {
-            setUsers(prev => prev.filter(u => u.id !== userId))
-            notifyCustom('SUCCESS', 'PERSONNEL', 'Utente Eliminato', `Utente ${user.name} eliminato con successo`)
-            logReadAction('user_deleted', userId)
+      // Conferma per delete
+      if (action === 'delete') {
+        if (!confirm(`Sei sicuro di voler eliminare l'utente ${user.name}?`)) {
+          return
+        }
+      }
+
+      // Chiama API
+      const response = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+          // Aggiorna stato locale
+          switch (action) {
+            case 'activate':
+              setUsers(prev => prev.map(u => 
+                u.id === userId ? { ...u, isActive: true } : u
+              ))
+              notifyCustom('SUCCESS', 'PERSONNEL', 'Utente Attivato', `Utente ${user.name} attivato con successo`)
+              logReadAction('user_activated', userId)
+              break
+            case 'deactivate':
+              setUsers(prev => prev.map(u => 
+                u.id === userId ? { ...u, isActive: false } : u
+              ))
+              notifyCustom('WARNING', 'PERSONNEL', 'Utente Disattivato', `Utente ${user.name} disattivato`)
+              logReadAction('user_deactivated', userId)
+              break
+            case 'delete':
+              // Rimuovi dalla lista (l'API fa soft delete)
+              setUsers(prev => prev.filter(u => u.id !== userId))
+              notifyCustom('SUCCESS', 'PERSONNEL', 'Utente Eliminato', `Utente ${user.name} eliminato con successo`)
+              logReadAction('user_deleted', userId)
+              break
           }
-          break
+        } else {
+          notifyCustom('ERROR', 'SYSTEM', 'Errore', data.error || 'Operazione fallita')
+        }
+      } else {
+        notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nella chiamata API')
       }
     } catch (error) {
+      console.error('Errore handleUserAction:', error)
       notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nell\'operazione')
     }
   }
