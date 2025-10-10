@@ -5,6 +5,16 @@ import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCompanyData } from '@/hooks/useCompanyData'
 
+interface DayHours {
+  open: string
+  close: string
+  isClosed: boolean
+}
+
+interface OpeningHours {
+  [key: string]: DayHours
+}
+
 interface RestaurantRoom {
   id: string
   name: string
@@ -12,10 +22,7 @@ interface RestaurantRoom {
   tables: number
   icon: string
   isActive: boolean
-}
-
-interface OpeningHours {
-  [key: string]: { open: string; close: string; isClosed: boolean }
+  openingHours: OpeningHours
 }
 
 const DAYS_OF_WEEK = [
@@ -61,7 +68,12 @@ export default function CompanyPage() {
   
   // Rooms & Hours
   const [rooms, setRooms] = useState<RestaurantRoom[]>([])
-  const [openingHours, setOpeningHours] = useState<OpeningHours>({
+  const [showAddRoom, setShowAddRoom] = useState(false)
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
+  const [newRoom, setNewRoom] = useState({ name: '', capacity: 0, tables: 0, icon: '🍽️' })
+  
+  // Orari predefiniti per nuove sale
+  const getDefaultHours = (): OpeningHours => ({
     monday: { open: '12:00', close: '23:00', isClosed: false },
     tuesday: { open: '12:00', close: '23:00', isClosed: false },
     wednesday: { open: '12:00', close: '23:00', isClosed: false },
@@ -70,9 +82,6 @@ export default function CompanyPage() {
     saturday: { open: '12:00', close: '00:00', isClosed: false },
     sunday: { open: '12:00', close: '22:00', isClosed: false }
   })
-  
-  const [showAddRoom, setShowAddRoom] = useState(false)
-  const [newRoom, setNewRoom] = useState({ name: '', capacity: 0, tables: 0, icon: '🍽️' })
 
   useEffect(() => {
     if (status === 'loading') return
@@ -201,7 +210,8 @@ export default function CompanyPage() {
     const room: RestaurantRoom = {
       id: Date.now().toString(),
       ...newRoom,
-      isActive: true
+      isActive: true,
+      openingHours: getDefaultHours()
     }
     
     const updatedRooms = [...rooms, room]
@@ -232,14 +242,40 @@ export default function CompanyPage() {
     localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
   }
 
-  const handleSaveHours = () => {
-    setIsSaving(true)
-    localStorage.setItem('restaurant_hours', JSON.stringify(openingHours))
-    setMessage('✅ Orari salvati con successo!')
-    setTimeout(() => {
-      setMessage('')
-      setIsSaving(false)
-    }, 2000)
+  const handleUpdateRoomHours = (roomId: string, day: string, field: 'open' | 'close' | 'isClosed', value: any) => {
+    const updatedRooms = rooms.map(room => {
+      if (room.id === roomId) {
+        return {
+          ...room,
+          openingHours: {
+            ...room.openingHours,
+            [day]: field === 'isClosed' 
+              ? { ...room.openingHours[day], isClosed: value }
+              : { ...room.openingHours[day], [field]: value }
+          }
+        }
+      }
+      return room
+    })
+    setRooms(updatedRooms)
+    localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
+    setMessage('✅ Orari aggiornati')
+    setTimeout(() => setMessage(''), 2000)
+  }
+
+  const handleCopyHoursToAll = (sourceRoomId: string) => {
+    const sourceRoom = rooms.find(r => r.id === sourceRoomId)
+    if (!sourceRoom) return
+
+    const updatedRooms = rooms.map(room => ({
+      ...room,
+      openingHours: { ...sourceRoom.openingHours }
+    }))
+    
+    setRooms(updatedRooms)
+    localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
+    setMessage('✅ Orari copiati in tutte le sale')
+    setTimeout(() => setMessage(''), 2000)
   }
 
   const totalCapacity = rooms.filter(r => r.isActive).reduce((sum, r) => sum + r.capacity, 0)
@@ -653,64 +689,79 @@ export default function CompanyPage() {
                   </div>
                 </div>
 
-                {/* Orari Apertura */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">🕐 Orari di Apertura</h4>
-                  <div className="space-y-3">
-                    {DAYS_OF_WEEK.map(day => (
-                      <div key={day.id} className="flex items-center gap-4 bg-gray-50 rounded-lg p-3">
-                        <div className="w-32 font-medium text-gray-900">{day.label}</div>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={!openingHours[day.id].isClosed}
-                            onChange={(e) => setOpeningHours(prev => ({
-                              ...prev,
-                              [day.id]: { ...prev[day.id], isClosed: !e.target.checked }
-                            }))}
-                            className="w-4 h-4 text-orange-600 rounded"
-                          />
-                          <span className="text-sm text-gray-600">Aperto</span>
-                        </label>
-                        
-                        {!openingHours[day.id].isClosed && (
-                          <>
-                            <input
-                              type="time"
-                              value={openingHours[day.id].open}
-                              onChange={(e) => setOpeningHours(prev => ({
-                                ...prev,
-                                [day.id]: { ...prev[day.id], open: e.target.value }
-                              }))}
-                              className="px-3 py-1 border border-gray-300 rounded-lg"
-                            />
-                            <span className="text-gray-500">-</span>
-                            <input
-                              type="time"
-                              value={openingHours[day.id].close}
-                              onChange={(e) => setOpeningHours(prev => ({
-                                ...prev,
-                                [day.id]: { ...prev[day.id], close: e.target.value }
-                              }))}
-                              className="px-3 py-1 border border-gray-300 rounded-lg"
-                            />
-                          </>
-                        )}
-                        
-                        {openingHours[day.id].isClosed && (
-                          <span className="text-red-600 font-medium">Chiuso</span>
-                        )}
+                {/* Orari Apertura per Sala */}
+                {rooms.length > 0 && (
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">🕐 Orari di Apertura per Sala</h4>
+                    <p className="text-sm text-gray-600 mb-4">
+                      💡 Ogni sala può avere orari di apertura indipendenti
+                    </p>
+                    <div className="space-y-6">
+                      {rooms.filter(r => r.isActive).map(room => (
+                        <div key={room.id} className="border-2 border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-3xl">{room.icon}</span>
+                              <h5 className="text-lg font-semibold text-gray-900">{room.name}</h5>
+                            </div>
+                            {rooms.filter(r => r.isActive).length > 1 && (
+                              <button
+                                onClick={() => handleCopyHoursToAll(room.id)}
+                                className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium"
+                                title="Copia questi orari in tutte le altre sale"
+                              >
+                                📋 Copia in tutte
+                              </button>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {DAYS_OF_WEEK.map(day => (
+                              <div key={day.id} className="flex items-center gap-3 bg-gray-50 rounded-lg p-2">
+                                <div className="w-28 font-medium text-gray-900 text-sm">{day.label}</div>
+                                <label className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={!room.openingHours[day.id].isClosed}
+                                    onChange={(e) => handleUpdateRoomHours(room.id, day.id, 'isClosed', !e.target.checked)}
+                                    className="w-4 h-4 text-orange-600 rounded"
+                                  />
+                                  <span className="text-xs text-gray-600">Aperto</span>
+                                </label>
+                                
+                                {!room.openingHours[day.id].isClosed ? (
+                                  <>
+                                    <input
+                                      type="time"
+                                      value={room.openingHours[day.id].open}
+                                      onChange={(e) => handleUpdateRoomHours(room.id, day.id, 'open', e.target.value)}
+                                      className="px-2 py-1 border border-gray-300 rounded text-sm"
+                                    />
+                                    <span className="text-gray-500 text-sm">-</span>
+                                    <input
+                                      type="time"
+                                      value={room.openingHours[day.id].close}
+                                      onChange={(e) => handleUpdateRoomHours(room.id, day.id, 'close', e.target.value)}
+                                      className="px-2 py-1 border border-gray-300 rounded text-sm"
+                                    />
+                                  </>
+                                ) : (
+                                  <span className="text-red-600 font-medium text-sm">Chiuso</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {rooms.filter(r => r.isActive).length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>Nessuna sala attiva. Aggiungi una sala per configurare gli orari.</p>
                       </div>
-                    ))}
+                    )}
                   </div>
-                  <button
-                    onClick={handleSaveHours}
-                    disabled={isSaving}
-                    className="mt-4 w-full py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 disabled:opacity-50"
-                  >
-                    {isSaving ? 'Salvataggio...' : 'Salva Orari'}
-                  </button>
-                </div>
+                )}
               </div>
             )}
 
