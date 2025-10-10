@@ -2,20 +2,36 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useAudit } from '@/hooks/useAudit'
 
 export default function AdminOverview() {
   const { data: session } = useSession()
   const router = useRouter()
-  const { getStats } = useAudit()
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const data = await getStats()
-        setStats(data)
+        // Fetch dati reali dal database
+        const response = await fetch('/api/admin/stats')
+        const data = await response.json()
+        
+        if (data.success) {
+          // Mappa dati per il componente
+          setStats({
+            totalUsers: data.stats.users.total,
+            activeUsers: data.stats.users.active,
+            activeCompanies: data.stats.companies.active,
+            totalCompanies: data.stats.companies.total,
+            pendingCandidates: data.stats.candidates.pending,
+            totalRestaurants: data.stats.restaurants.total,
+            totalLogs: 0, // TODO: implementare log tracking
+            recentCompanies: data.recent.companies,
+            recentUsers: data.recent.users,
+            companyGrowth: data.stats.companies.growth,
+            userGrowth: data.stats.users.growth
+          })
+        }
       } catch (error) {
         console.error('Errore nel caricamento statistiche:', error)
       } finally {
