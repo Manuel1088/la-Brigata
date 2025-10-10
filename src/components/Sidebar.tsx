@@ -100,23 +100,35 @@ export default function Sidebar() {
           color: '#FDCB6E' 
         },
         { 
-          icon: '📅', 
+          icon: '🔄', 
           label: 'I Turni', 
           path: '/shifts', 
           color: '#74B9FF' 
         },
         { 
-          icon: '👥', 
-          label: 'Il Team', 
-          path: '/team', 
-          color: '#FDCB6E',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+          icon: '🏖️', 
+          label: 'Ferie e Permessi', 
+          path: '/leaves/new', 
+          color: '#00B894' 
         },
         { 
           icon: '👤', 
           label: 'Il Profilo', 
           path: '/profile', 
           color: '#2D3436' 
+        }
+      ]
+    },
+    // TEAM - Manager e superiori
+    {
+      title: 'TEAM',
+      items: [
+        { 
+          icon: '👥', 
+          label: 'Il Team', 
+          path: '/team', 
+          color: '#FDCB6E',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         },
         {
           icon: '✅', 
@@ -126,14 +138,15 @@ export default function Sidebar() {
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE],
           badge: pendingApprovals > 0 ? pendingApprovals : undefined
         },
-        
         { 
-          icon: '🔔', 
-          label: 'Notifiche', 
-          path: '/notifications', 
-          color: '#74B9FF' 
+          icon: '➕', 
+          label: 'Aggiungi Dipendente', 
+          path: '/employees/new', 
+          color: '#74B9FF',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         }
-      ]
+      ],
+      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
     },
     // GESTIONE - Manager e superiori
     {
@@ -156,13 +169,7 @@ export default function Sidebar() {
           label: 'Analytics', 
           path: '/analytics',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
-        },
-        { 
-          icon: '📅', 
-          label: 'Calendario', 
-          path: '/calendar',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
-        },
+        }
       ],
       roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
     },
@@ -188,6 +195,12 @@ export default function Sidebar() {
           icon: '⚙️', 
           label: 'Impostazioni', 
           path: '/settings'
+        },
+        { 
+          icon: '🔔', 
+          label: 'Notifiche', 
+          path: '/notifications', 
+          color: '#74B9FF' 
         },
         { 
           icon: '💳', 
