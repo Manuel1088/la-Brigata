@@ -260,20 +260,20 @@ export default function Sidebar() {
     >
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 pt-6 space-y-6">
+      <nav className="flex-1 p-4 pt-6 space-y-4">
         {filteredSections.map((section, sectionIndex) => (
           <div key={sectionIndex}>
-            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
               {section.title}
             </h3>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {section.items.map((item, itemIndex) => {
                 const isActive = pathname === item.path
                 return (
                   <li key={itemIndex}>
                     <button
                       onClick={() => router.push(item.path)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                      className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${
                         isActive 
                           ? 'bg-orange-500 text-white' 
                           : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
