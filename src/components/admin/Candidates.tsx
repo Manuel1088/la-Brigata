@@ -32,63 +32,22 @@ export default function AdminCandidates() {
 
   const loadCandidates = async () => {
     try {
-      // Mock data - in produzione verrà dal database
-      const mockCandidates: Candidate[] = [
-        {
-          id: '1',
-          name: 'Giuseppe Rossi',
-          email: 'giuseppe.rossi@email.com',
-          phone: '+39 333 123 4567',
-          position: 'Chef de Partie',
-          experience: '3 anni',
-          skills: ['Cucina Italiana', 'Grill', 'Pastry'],
-          status: 'pending',
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          notes: 'Esperienza in ristoranti stellati',
-          resumeUrl: 'resume_giuseppe.pdf'
-        },
-        {
-          id: '2',
-          name: 'Maria Bianchi',
-          email: 'maria.bianchi@email.com',
-          phone: '+39 333 234 5678',
-          position: 'Responsabile Sala',
-          experience: '5 anni',
-          skills: ['Gestione Sala', 'Customer Service', 'Wine Knowledge'],
-          status: 'pending',
-          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-          notes: 'Ottime referenze dal precedente datore'
-        },
-        {
-          id: '3',
-          name: 'Luca Verdi',
-          email: 'luca.verdi@email.com',
-          phone: '+39 333 345 6789',
-          position: 'Dipendente Sala',
-          experience: '1 anno',
-          skills: ['Servizio', 'Lavastoviglie'],
-          status: 'approved',
-          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          notes: 'Giovane ma motivato'
-        },
-        {
-          id: '4',
-          name: 'Anna Neri',
-          email: 'anna.neri@email.com',
-          phone: '+39 333 456 7890',
-          position: 'Cassiere',
-          experience: '2 anni',
-          skills: ['Cassa', 'Gestione Pagamenti'],
-          status: 'rejected',
-          createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-          notes: 'Non ha esperienza in ristorazione'
-        }
-      ]
+      // TODO: Implementare API per candidati reali (CV esterni)
+      // Per ora mostra lista vuota fino a quando non arrivano CV reali
+      const response = await fetch('/api/candidates')
       
-      setCandidates(mockCandidates)
+      if (response.ok) {
+        const data = await response.json()
+        setCandidates(data.candidates || [])
+      } else {
+        // Se API non esiste ancora, mostra array vuoto
+        setCandidates([])
+      }
     } catch (error) {
       console.error('Errore nel caricamento candidati:', error)
       notifyCustom('ERROR', 'SYSTEM', 'Errore', 'Errore nel caricamento candidati')
+      // In caso di errore, mostra array vuoto (nessun candidato)
+      setCandidates([])
     } finally {
       setLoading(false)
     }
@@ -296,10 +255,24 @@ export default function AdminCandidates() {
       {/* Lista Candidati */}
       <div className="space-y-4">
         {filteredCandidates.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-2">📝</div>
-            <p className="text-gray-500">Nessun candidato trovato</p>
-            <p className="text-sm text-gray-400 mt-1">Modifica i filtri per vedere più risultati</p>
+          <div className="text-center py-12 bg-white rounded-lg shadow">
+            <div className="text-6xl mb-4">📭</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              {candidates.length === 0 ? 'Nessun CV ricevuto' : 'Nessun candidato trovato'}
+            </h3>
+            <p className="text-gray-500 mb-4">
+              {candidates.length === 0 
+                ? 'Non sono ancora arrivati curriculum vitae da candidati esterni'
+                : 'Modifica i filtri per vedere più risultati'}
+            </p>
+            {candidates.length === 0 && (
+              <div className="mt-6 text-sm text-gray-400">
+                <p>💡 I candidati appariranno qui quando:</p>
+                <p className="mt-2">• Riceverai CV tramite form di candidatura</p>
+                <p>• Importerai CV da altre fonti</p>
+                <p>• Aggiungerai manualmente candidati</p>
+              </div>
+            )}
           </div>
         ) : (
           filteredCandidates.map(candidate => (

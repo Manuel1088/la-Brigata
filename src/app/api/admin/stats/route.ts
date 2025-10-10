@@ -47,10 +47,9 @@ export async function GET(req: NextRequest) {
         where: { isActive: true }
       }),
       
-      // Totale candidati (Employment con status PENDING)
-      prisma.employment.count({
-        where: { status: 'PENDING' }
-      }),
+      // Totale candidati (CV esterni - TODO: implementare tabella Candidates)
+      // Per ora: 0 finché non arrivano CV reali
+      Promise.resolve(0),
       
       // Ultime 5 aziende create
       prisma.company.findMany({
