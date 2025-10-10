@@ -210,18 +210,18 @@ export default function Sidebar() {
         }
       ]
     },
-    // AMMINISTRAZIONE - Solo Proprietario
+    // ADMIN - Solo team La Brigada (gestione piattaforma)
     {
-      title: 'SUPER ADMIN',
+      title: 'ADMIN',
       items: [
         {
           icon: '🛡️',
-          label: 'Super Admin Panel',
+          label: 'Admin Panel',
           path: '/admin',
-          roles: [UserRole.ADMIN]  // 🛡️ SOLO ADMIN
+          roles: [UserRole.ADMIN]
         }
       ],
-      roles: [UserRole.ADMIN]  // 🛡️ SOLO ADMIN
+      roles: [UserRole.ADMIN]
     }
   ]
 
