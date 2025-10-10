@@ -303,7 +303,7 @@ export default function DashboardPage() {
                 onClick={suggestion.action}
                 className="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <span className="mr-3">{suggestion.icon}</span>
+                <span className="text-xl mr-3">{suggestion.icon}</span>
                 <span className="text-gray-700">{suggestion.text}</span>
               </button>
             ))}

@@ -123,7 +123,7 @@ export default function SettingsPage() {
                   `}
                   aria-current={activeTab === tab.id ? 'page' : undefined}
                 >
-                  <span className="mr-2">{tab.icon}</span>
+                  <span className="text-xl mr-2">{tab.icon}</span>
                   {tab.label}
                 </button>
               ))}

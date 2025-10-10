@@ -114,7 +114,7 @@ export default function NotificationsPage() {
                   `}
                   aria-current={filter === tab.id ? 'page' : undefined}
                 >
-                  <span className="mr-2">{tab.icon}</span>
+                  <span className="text-xl mr-2">{tab.icon}</span>
                   {tab.label}
                 </button>
               ))}

@@ -235,7 +235,7 @@ export default function ApprovalsPage() {
                   `}
                   aria-current={activeTab === tab.id ? 'page' : undefined}
                 >
-                  <span className="mr-2">{tab.icon}</span>
+                  <span className="text-xl mr-2">{tab.icon}</span>
                   {tab.label}
                   {tab.badge > 0 && (
                     <span className="ml-2 bg-red-100 text-red-600 text-xs font-medium px-2 py-1 rounded-full">
