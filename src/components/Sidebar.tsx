@@ -103,8 +103,7 @@ export default function Sidebar() {
           icon: '📅', 
           label: 'Time Management', 
           path: '/time-management', 
-          color: '#74B9FF',
-          description: 'Turni, Ferie, Permessi, Scambi'
+          color: '#74B9FF'
         },
         { 
           icon: '👤', 
