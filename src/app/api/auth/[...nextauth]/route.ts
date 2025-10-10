@@ -9,7 +9,7 @@ const prisma = new PrismaClient()
 
 // Configurazione ruoli e livelli gerarchici
 const roleConfig = {
-  ADMIN: { level: 11, name: 'Super Admin', avatar: '🛡️' },        // Livello superiore per ADMIN
+  ADMIN: { level: 11, name: 'Amministratore', avatar: '🛡️' },        // Team La Brigata (gestione piattaforma)
   PROPRIETARIO: { level: 10, name: 'Proprietario', avatar: '👑' },
   DIRETTORE: { level: 9, name: 'Direttore', avatar: '👔' },
   MANAGER: { level: 8, name: 'Manager', avatar: '📊' },
@@ -28,9 +28,9 @@ const demoAccounts = {
     user: { 
       id: '1', 
       email: 'admin@brigata.it', 
-      name: 'Super Admin', 
+      name: 'Amministratore', 
       role: 'ADMIN',
-      level: 11,  // Livello superiore
+      level: 11,  // Team La Brigata
       avatar: '🛡️'
     } 
   },
