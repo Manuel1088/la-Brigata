@@ -22,7 +22,7 @@ export default function TipsPage() {
   }, [session, status, router])
 
   const tabs = [
-    { id: 'overview', label: 'Panoramica', icon: '📊', roles: ['all'] },
+    { id: 'overview', label: 'Panoramica', icon: '👁️', roles: ['all'] },
     { id: 'insert', label: 'Inserisci', icon: '➕', roles: ['manager'] },
     { id: 'daily', label: 'Giornaliere', icon: '📅', roles: ['all'] },
     { id: 'history', label: 'Storico', icon: '📜', roles: ['all'] },
