@@ -53,14 +53,6 @@ export interface DashboardData {
       name: string
     }
   }>
-  companyEmployees: Array<{
-    id: string
-    name: string
-    email: string
-    role: string
-    avatar?: string
-    department?: string
-  }>
   stats: {
     totalEmployees: number
     pendingRequests: number
@@ -100,7 +92,6 @@ export function useDashboardData() {
     restaurant: data?.restaurant || null,
     activeEmployments: data?.activeEmployments || [],
     pendingEmployments: data?.pendingEmployments || [],
-    companyEmployees: data?.companyEmployees || [],
     stats: data?.stats || {
       totalEmployees: 0,
       pendingRequests: 0,
@@ -125,13 +116,13 @@ export function useDashboardData() {
  * const { 
  *   user, 
  *   company, 
- *   stats, 
+ *   stats, // ✅ stats.totalEmployees contiene il COUNT, non array!
  *   pendingEmployments,
- *   companyEmployees,
  *   isLoading,
  *   refresh 
  * } = useDashboardData()
  * 
+ * // stats.totalEmployees è un numero (count DB ottimizzato)
  * // Ricarica manualmente dopo un'azione:
  * await approveEmployment(id)
  * refresh()

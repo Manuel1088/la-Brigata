@@ -5,6 +5,11 @@ import { prisma } from '@/lib/db'
 
 // ✅ BATCH API: UN'UNICA CHIAMATA INVECE DI 4
 // Da ~1330ms (4 API) a ~400ms (1 API ottimizzata con Promise.all)
+
+// ✅ Next.js 15 Route Segment Config - HTTP Caching
+export const revalidate = 120 // Cache 2 minuti (ISR)
+export const dynamic = 'force-dynamic' // Sempre ricalcola per dati personalizzati
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -22,7 +27,7 @@ export async function GET(request: NextRequest) {
     const companyId = (session.user as any)?.companyId
 
     // ✅ PARALLEL QUERIES - Tutte eseguite contemporaneamente!
-    const [userData, pendingEmployments, companyEmployees, activeEmployments] = await Promise.all([
+    const [userData, pendingEmployments, employeesCount, activeEmployments] = await Promise.all([
       // Query 1: User + company + restaurant principale
       prisma.user.findUnique({
         where: { id: userId },
@@ -85,25 +90,14 @@ export async function GET(request: NextRequest) {
         }
       }) : Promise.resolve([]),
 
-      // Query 3: Company employees (solo se ha companyId)
-      companyId ? prisma.user.findMany({
+      // Query 3: Count employees (OTTIMIZZATO - solo count invece di fetch completo!)
+      companyId ? prisma.user.count({
         where: {
           companyId: companyId,
-          // isActive: true, // Se hai questo campo
+          // ✅ Filter solo utenti attivi se hai il campo
+          // isActive: true,
         },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          avatar: true,
-          department: true,
-        },
-        take: 100, // Limit per performance
-        orderBy: {
-          name: 'asc'
-        }
-      }) : Promise.resolve([]),
+      }) : Promise.resolve(0),
 
       // Query 4: Active employments del user
       prisma.employment.findMany({
@@ -136,7 +130,7 @@ export async function GET(request: NextRequest) {
 
     // ✅ Calcola statistiche
     const stats = {
-      totalEmployees: companyEmployees.length,
+      totalEmployees: employeesCount, // ✅ Usa count invece di array.length
       pendingRequests: pendingEmployments.length,
       activeContracts: activeEmployments.length,
       hasCompany: !!userData.company,
@@ -144,23 +138,30 @@ export async function GET(request: NextRequest) {
     }
 
     // ✅ Return tutto insieme in un'unica response
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: userData.id,
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        avatar: userData.avatar,
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          avatar: userData.avatar,
+        },
+        company: userData.company,
+        restaurant: userData.restaurant,
+        activeEmployments: activeEmployments,
+        pendingEmployments: pendingEmployments,
+        stats: stats,
+        timestamp: new Date().toISOString(),
       },
-      company: userData.company,
-      restaurant: userData.restaurant,
-      activeEmployments: activeEmployments,
-      pendingEmployments: pendingEmployments,
-      companyEmployees: companyEmployees,
-      stats: stats,
-      timestamp: new Date().toISOString(),
-    })
+      {
+        // ✅ HTTP Cache headers
+        headers: {
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=30',
+        }
+      }
+    )
 
   } catch (error) {
     console.error('Dashboard batch API error:', error)

@@ -41,9 +41,8 @@ export default function DashboardPage() {
   const { 
     company, 
     restaurant,
-    stats, 
+    stats, // ✅ stats.totalEmployees è già un COUNT (numero)
     pendingEmployments,
-    companyEmployees,
     activeEmployments,
     isLoading: isLoadingDashboard 
   } = useDashboardData()
