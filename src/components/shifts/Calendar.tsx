@@ -199,13 +199,38 @@ export default function ShiftsCalendar() {
     const diff = start.getDate() - day + (day === 0 ? -6 : 1)
     start.setDate(diff)
     
+    // Calcola numero giorni in base a viewMode
+    let numDays = 7
+    if (viewMode === 'twoWeeks') numDays = 14
+    if (viewMode === 'month') {
+      // Mese completo
+      const year = start.getFullYear()
+      const month = start.getMonth()
+      numDays = new Date(year, month + 1, 0).getDate()
+      // Inizia dal primo del mese
+      start.setDate(1)
+    }
+    
     const dates = []
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < numDays; i++) {
       const d = new Date(start)
       d.setDate(start.getDate() + i)
       dates.push(d)
     }
     return dates
+  }
+  
+  // Formato data in base a viewMode
+  const getDateRangeLabel = (dates: Date[]) => {
+    if (viewMode === 'month') {
+      // Mensile: solo "Ottobre 2025"
+      return dates[0].toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+    } else {
+      // Settimana o 2 settimane: "13 - 19 Ott 2025"
+      const start = dates[0]
+      const end = dates[dates.length - 1]
+      return `${start.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    }
   }
 
   const getDayName = (date: Date) => {
@@ -384,7 +409,7 @@ export default function ShiftsCalendar() {
           
           {/* Data Centro */}
           <span className="text-lg font-medium">
-            {weekDates[0].toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} - {weekDates[6].toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {getDateRangeLabel(weekDates)}
           </span>
           
           {/* Pulsanti Vista Destra */}
