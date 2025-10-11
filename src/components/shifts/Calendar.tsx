@@ -391,33 +391,36 @@ export default function ShiftsCalendar() {
           <div className="flex gap-1">
             <button
               onClick={() => setViewMode('week')}
-              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
+              className={`px-3 py-2 rounded-lg font-medium transition ${
                 viewMode === 'week'
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
+              title="Settimana"
             >
-              Settimana
+              S
             </button>
             <button
               onClick={() => setViewMode('twoWeeks')}
-              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
+              className={`px-3 py-2 rounded-lg font-medium transition ${
                 viewMode === 'twoWeeks'
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
+              title="2 Settimane"
             >
-              2 Settimane
+              2S
             </button>
             <button
               onClick={() => setViewMode('month')}
-              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
+              className={`px-3 py-2 rounded-lg font-medium transition ${
                 viewMode === 'month'
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
+              title="Mensile"
             >
-              Mensile
+              M
             </button>
           </div>
         </div>
