@@ -136,6 +136,13 @@ export default function Sidebar() {
           color: '#FDCB6E',
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         },
+        { 
+          icon: '📅', 
+          label: 'Turni Team', 
+          path: '/team/turni', 
+          color: '#74B9FF',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+        },
         {
           icon: '✅', 
           label: 'Approvazioni', 
