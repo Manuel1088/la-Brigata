@@ -45,15 +45,15 @@ export default function ShiftsPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
-          {/* Info Box */}
-          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          {/* Calendario Component */}
+          <ShiftsCalendar />
+          
+          {/* Info Box Legenda */}
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-700">
               🔵 Turno Lavorativo | ⚪ Riposo | 🟢 Ferie | 🟣 Evento Aziendale
             </p>
           </div>
-
-          {/* Calendario Component */}
-          <ShiftsCalendar />
         </div>
       </main>
     </div>
