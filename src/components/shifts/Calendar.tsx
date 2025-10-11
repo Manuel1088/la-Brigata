@@ -22,6 +22,7 @@ export default function ShiftsCalendar() {
   const router = useRouter()
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
+  const [viewMode, setViewMode] = useState<'week' | '2weeks' | 'month'>('week')
   const [isGenerating, setIsGenerating] = useState(false)
   const { generateSchedule } = useAutoScheduler()
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
@@ -357,71 +358,108 @@ export default function ShiftsCalendar() {
     <div className="space-y-6">
       {/* Header con controlli */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentWeek(new Date(currentWeek.getTime() - 7 * 24 * 60 * 60 * 1000))}
-                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-              >
-                ←
-              </button>
-              <span className="text-lg font-medium">
-                {weekDates[0].toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} - {weekDates[6].toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </span>
-              <button
-                onClick={() => setCurrentWeek(new Date(currentWeek.getTime() + 7 * 24 * 60 * 60 * 1000))}
-                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-              >
-                →
-              </button>
-            </div>
+        {/* Prima riga: Reparti (sinistra) - Data Centro (centro) - Vista (destra) */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          {/* Sinistra: Pulsanti Reparto */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelectedDepartment('all')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                selectedDepartment === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              👥 Tutti
+            </button>
+            <button
+              onClick={() => setSelectedDepartment('cucina')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                selectedDepartment === 'cucina'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🍳 Cucina
+            </button>
+            <button
+              onClick={() => setSelectedDepartment('sala')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                selectedDepartment === 'sala'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🍽️ Sala
+            </button>
+            <button
+              onClick={() => setSelectedDepartment('bar')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                selectedDepartment === 'bar'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🍹 Bar
+            </button>
           </div>
           
-          <div className="flex items-center gap-4">
-            {/* Pulsanti Reparto */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedDepartment('all')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  selectedDepartment === 'all'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                👥 Tutti
-              </button>
-              <button
-                onClick={() => setSelectedDepartment('cucina')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  selectedDepartment === 'cucina'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                🍳 Cucina
-              </button>
-              <button
-                onClick={() => setSelectedDepartment('sala')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  selectedDepartment === 'sala'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                🍽️ Sala
-              </button>
-              <button
-                onClick={() => setSelectedDepartment('bar')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  selectedDepartment === 'bar'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                🍹 Bar
-              </button>
-            </div>
+          {/* Centro: Navigazione Data */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentWeek(new Date(currentWeek.getTime() - 7 * 24 * 60 * 60 * 1000))}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            >
+              ←
+            </button>
+            <span className="text-lg font-medium min-w-[200px] text-center">
+              {weekDates[0].toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} - {weekDates[6].toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+            <button
+              onClick={() => setCurrentWeek(new Date(currentWeek.getTime() + 7 * 24 * 60 * 60 * 1000))}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            >
+              →
+            </button>
+          </div>
+          
+          {/* Destra: Selettore Vista */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                viewMode === 'week'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              📅 Settimana
+            </button>
+            <button
+              onClick={() => setViewMode('2weeks')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                viewMode === '2weeks'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              📆 2 Settimane
+            </button>
+            <button
+              onClick={() => setViewMode('month')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                viewMode === 'month'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              📊 Mese
+            </button>
+          </div>
+        </div>
+        
+        {/* Seconda riga: Genera Automatico */}
+        <div className="flex items-center gap-4">
             
             {canCreateShift() && (
               <button
