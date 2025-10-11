@@ -13,6 +13,7 @@ interface MenuItem {
   color?: string
   badge?: number
   roles?: UserRole[]
+  excludeRoles?: UserRole[]
 }
 
 interface MenuSection {
@@ -109,7 +110,9 @@ export default function Sidebar() {
           icon: '📅', 
           label: 'I Miei Turni', 
           path: '/shifts', 
-          color: '#74B9FF' 
+          color: '#74B9FF',
+          // Solo per chi lavora fisicamente (esclusi ADMIN e PROPRIETARIO non lavoratore)
+          excludeRoles: [UserRole.ADMIN, UserRole.PROPRIETARIO]
         },
         { 
           icon: '🏖️', 
@@ -243,7 +246,13 @@ export default function Sidebar() {
     .filter(section => !section.roles || section.roles.includes(userRole as UserRole))
     .map(section => ({
       ...section,
-      items: section.items.filter(item => !item.roles || item.roles.includes(userRole as UserRole))
+      items: section.items.filter(item => {
+        // Verifica se il ruolo è incluso (se specificato)
+        const roleMatch = !item.roles || item.roles.includes(userRole as UserRole)
+        // Verifica se il ruolo NON è escluso (se specificato)
+        const notExcluded = !item.excludeRoles || !item.excludeRoles.includes(userRole as UserRole)
+        return roleMatch && notExcluded
+      })
     }))
 
 
