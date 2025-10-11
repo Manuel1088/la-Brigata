@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const data = await request.json()
-    const { id, name, email, phone, role, hourlyRate, contractType, startDate, notes, skills } = data
+    const { id, name, email, phone, role, department, hourlyRate, contractType, startDate, notes, skills } = data
 
     if (!id) {
       return NextResponse.json({ error: 'ID dipendente richiesto' }, { status: 400 })
@@ -84,6 +84,7 @@ export async function PUT(request: NextRequest) {
           ...(email && { email }),
           ...(phone && { phone }),
           ...(role && { role }),
+          ...(department && { department }),
           ...(hourlyRate !== undefined && { hourlyRate: parseFloat(hourlyRate) }),
           ...(contractType && { contractType }),
           ...(startDate && { startDate: new Date(startDate) }),

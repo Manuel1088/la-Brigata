@@ -13,7 +13,9 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: ''
+    phone: '',
+    role: '',
+    department: ''
   })
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -46,7 +48,9 @@ export default function ProfilePage() {
     setFormData({
       name: session.user?.name || '',
       email: session.user?.email || '',
-      phone: (session.user as any)?.phone || ''
+      phone: (session.user as any)?.phone || '',
+      role: (session.user as any)?.role || '',
+      department: (session.user as any)?.department || ''
     })
   }, [session, status, router])
 
@@ -64,7 +68,9 @@ export default function ProfilePage() {
           id: session.user.id,
           name: formData.name,
           email: formData.email,
-          phone: formData.phone
+          phone: formData.phone,
+          role: formData.role,
+          department: formData.department
         })
       })
 
@@ -281,6 +287,53 @@ export default function ProfilePage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center"
                       placeholder="Telefono"
                     />
+                    
+                    {/* Tipo Proprietario - Solo per PROPRIETARIO */}
+                    {(userRole === 'PROPRIETARIO' || userRole === 'PROPRIETARIO_OPERATIVO') && (
+                      <div className="space-y-3 mt-4 border-t pt-4">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Tipo di Proprietario
+                        </label>
+                        <select
+                          value={formData.role || userRole}
+                          onChange={(e) => setFormData({...formData, role: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white"
+                        >
+                          <option value="PROPRIETARIO">Proprietario (non lavoratore)</option>
+                          <option value="PROPRIETARIO_OPERATIVO">Proprietario Operativo (lavoratore)</option>
+                        </select>
+                        
+                        {/* Reparto - Solo se PROPRIETARIO_OPERATIVO */}
+                        {(formData.role === 'PROPRIETARIO_OPERATIVO' || userRole === 'PROPRIETARIO_OPERATIVO') && (
+                          <>
+                            <label className="block text-sm font-medium text-gray-700 mt-3">
+                              Reparto di Lavoro
+                            </label>
+                            <select
+                              value={formData.department}
+                              onChange={(e) => setFormData({...formData, department: e.target.value})}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white"
+                            >
+                              <option value="">Seleziona reparto...</option>
+                              <option value="cucina">🍳 Cucina</option>
+                              <option value="sala">🍽️ Sala</option>
+                              <option value="bar">🍹 Bar</option>
+                              <option value="direzione">👔 Direzione</option>
+                            </select>
+                          </>
+                        )}
+                        
+                        <div className="text-xs text-gray-500 mt-2 p-3 bg-blue-50 rounded">
+                          💡 <strong>Cambiando in Proprietario Operativo:</strong>
+                          <ul className="mt-1 ml-4 list-disc">
+                            <li>Avrai turni lavorativi</li>
+                            <li>Riceverai mance</li>
+                            <li>Avrai buste paga</li>
+                            <li>Potrai richiedere ferie</li>
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -292,8 +345,19 @@ export default function ProfilePage() {
                 
                 <div className="mt-4">
                   <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    {userRole}
+                    {userRole === 'PROPRIETARIO' ? 'Proprietario' :
+                     userRole === 'PROPRIETARIO_OPERATIVO' ? 'Proprietario Operativo' :
+                     userRole}
                   </span>
+                  {formData.department && userRole === 'PROPRIETARIO_OPERATIVO' && (
+                    <span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                      {formData.department === 'cucina' ? '🍳 Cucina' :
+                       formData.department === 'sala' ? '🍽️ Sala' :
+                       formData.department === 'bar' ? '🍹 Bar' :
+                       formData.department === 'direzione' ? '👔 Direzione' :
+                       formData.department}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
