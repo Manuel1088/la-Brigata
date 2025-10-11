@@ -57,13 +57,6 @@ export default function TeamTurniPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
-          {/* Info Manager */}
-          <div className="mb-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-            <p className="text-sm text-purple-700">
-              👨‍💼 <strong>Vista Manager:</strong> Gestisci turni di tutti i dipendenti, filtra per reparto, genera automaticamente, rispetta CCNL
-            </p>
-          </div>
-
           {/* Calendario Team Completo */}
           <ShiftsCalendar />
           
