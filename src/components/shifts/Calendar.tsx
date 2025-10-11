@@ -359,7 +359,6 @@ export default function ShiftsCalendar() {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold text-gray-900">📅 Calendario Turni</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentWeek(new Date(currentWeek.getTime() - 7 * 24 * 60 * 60 * 1000))}
@@ -380,17 +379,49 @@ export default function ShiftsCalendar() {
           </div>
           
           <div className="flex items-center gap-4">
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {departments.map(dept => (
-                <option key={dept} value={dept}>
-                  {dept === 'all' ? 'Tutti i reparti' : dept.charAt(0).toUpperCase() + dept.slice(1)}
-                </option>
-              ))}
-            </select>
+            {/* Pulsanti Reparto */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedDepartment('all')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  selectedDepartment === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                👥 Tutti
+              </button>
+              <button
+                onClick={() => setSelectedDepartment('cucina')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  selectedDepartment === 'cucina'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                🍳 Cucina
+              </button>
+              <button
+                onClick={() => setSelectedDepartment('sala')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  selectedDepartment === 'sala'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                🍽️ Sala
+              </button>
+              <button
+                onClick={() => setSelectedDepartment('bar')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  selectedDepartment === 'bar'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                🍹 Bar
+              </button>
+            </div>
             
             {canCreateShift() && (
               <button
