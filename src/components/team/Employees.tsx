@@ -85,7 +85,16 @@ export default function TeamEmployees() {
     }
   ]
 
-  const employees = employeesData || employeesDefault
+  // Filtra dipendenti REALI (escludi PROPRIETARIO non lavoratore e ADMIN)
+  const actualEmployees = useMemo(() => {
+    return (employeesData || employeesDefault).filter(emp => {
+      const role = emp.role || ''
+      // Escludi PROPRIETARIO (non lavoratore) e ADMIN (non sono dipendenti)
+      return role !== 'PROPRIETARIO' && role !== 'ADMIN'
+    })
+  }, [employeesData, employeesDefault])
+
+  const employees = actualEmployees
 
   // Filtra e ordina dipendenti
   const filteredEmployees = useMemo(() => {

@@ -99,15 +99,20 @@ export default function ShiftsCalendar() {
   // ✅ Carica dipendenti OPERATIVI (esclusi proprietari non lavoratori)
   useEffect(() => {
     if (employeesData) {
-      // Filtra solo dipendenti operativi e proprietari lavoratori
+      // Filtra solo dipendenti REALI (escludi PROPRIETARIO non lavoratore e ADMIN)
       const operativeEmployees = employeesData.filter((e: any) => {
         const role = e.role || ''
-        // Escludi proprietari non lavoratori e direttori non operativi
+        // Escludi SOLO:
+        // - PROPRIETARIO (non lavoratore, solo gestione)
+        // - ADMIN (team La Brigata, non dipendente dell'azienda)
         return ![
-          'PROPRIETARIO', // Proprietario NON lavoratore
-          'DIRETTORE_GENERALE' // Direttore generale (ruolo amministrativo)
+          'PROPRIETARIO',  // Proprietario NON lavoratore
+          'ADMIN'          // Team La Brigata
         ].includes(role)
-        // INCLUDE: PROPRIETARIO_OPERATIVO e tutti gli altri ruoli operativi
+        // INCLUDE:
+        // - PROPRIETARIO_OPERATIVO (lavora)
+        // - DIRETTORE_GENERALE (dipendente della proprietà)
+        // - Tutti gli altri ruoli operativi
       })
       
       setEmployees(operativeEmployees.map((e: any) => ({

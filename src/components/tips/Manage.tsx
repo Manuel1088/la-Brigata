@@ -22,14 +22,20 @@ interface Employee {
 export default function TipsManage() {
   const { data: session } = useSession()
   
-  // Dipendenti via SWR
+  // Dipendenti via SWR - FILTRA dipendenti REALI
   const { employees: employeesData, isLoading } = useEmployeeContext()
   const employees = useMemo(() => 
-    (employeesData || []).map((e: any) => ({
-      name: e.name,
-      role: e.role,
-      department: (e.department || 'sala') as DepartmentKey
-    })),
+    (employeesData || [])
+      .filter((e: any) => {
+        const role = e.role || ''
+        // Escludi PROPRIETARIO (non lavoratore) e ADMIN (non dipendenti)
+        return role !== 'PROPRIETARIO' && role !== 'ADMIN'
+      })
+      .map((e: any) => ({
+        name: e.name,
+        role: e.role,
+        department: (e.department || 'sala') as DepartmentKey
+      })),
     [employeesData]
   )
 
