@@ -380,58 +380,58 @@ export default function ShiftsCalendar() {
         <div className="flex items-center justify-between gap-4">
           {/* Pulsanti Reparto */}
           <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedDepartment('all')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  selectedDepartment === 'all'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                👥 Tutti
-              </button>
-              <button
-                onClick={() => setSelectedDepartment('cucina')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  selectedDepartment === 'cucina'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                🍳 Cucina
-              </button>
-              <button
-                onClick={() => setSelectedDepartment('sala')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  selectedDepartment === 'sala'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                🍽️ Sala
-              </button>
-              <button
-                onClick={() => setSelectedDepartment('bar')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  selectedDepartment === 'bar'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                🍹 Bar
-              </button>
-            </div>
-            
-            {canCreateShift() && (
-              <button
-                onClick={handleGenerateSchedule}
-                disabled={isGenerating}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {isGenerating ? 'Generando...' : '🤖 Genera Automatico'}
-              </button>
-            )}
+            <button
+              onClick={() => setSelectedDepartment('all')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                selectedDepartment === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              👥 Tutti
+            </button>
+            <button
+              onClick={() => setSelectedDepartment('cucina')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                selectedDepartment === 'cucina'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🍳 Cucina
+            </button>
+            <button
+              onClick={() => setSelectedDepartment('sala')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                selectedDepartment === 'sala'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🍽️ Sala
+            </button>
+            <button
+              onClick={() => setSelectedDepartment('bar')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                selectedDepartment === 'bar'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🍹 Bar
+            </button>
           </div>
+          
+          {/* Azioni */}
+          {canCreateShift() && (
+            <button
+              onClick={handleGenerateSchedule}
+              disabled={isGenerating}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              {isGenerating ? 'Generando...' : '🤖 Genera Automatico'}
+            </button>
+          )}
         </div>
       </div>
 
