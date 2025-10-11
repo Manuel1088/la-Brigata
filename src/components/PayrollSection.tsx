@@ -247,46 +247,43 @@ export default function PayrollSection() {
   return (
     <PermissionGuard permission="payroll_view">
       <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">💰 Buste Paga</h3>
-              <p className="text-sm text-gray-600 mt-1">Analisi AI e gestione documenti payroll</p>
-            </div>
-            
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setSelectedTab('scan')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
-                  selectedTab === 'scan' 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                🤖 Scansione
-              </button>
-              <button
-                onClick={() => setSelectedTab('history')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
-                  selectedTab === 'history' 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                📊 Storico
-              </button>
-              <button
-                onClick={() => setSelectedTab('documents')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
-                  selectedTab === 'documents' 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                📁 Documenti
-              </button>
-            </div>
-          </div>
+        {/* Tabs Navigation */}
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setSelectedTab('scan')}
+              className={`flex-1 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${
+                selectedTab === 'scan'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span className="text-xl mr-2">🤖</span>
+              Scansione
+            </button>
+            <button
+              onClick={() => setSelectedTab('history')}
+              className={`flex-1 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${
+                selectedTab === 'history'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span className="text-xl mr-2">📊</span>
+              Storico
+            </button>
+            <button
+              onClick={() => setSelectedTab('documents')}
+              className={`flex-1 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${
+                selectedTab === 'documents'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span className="text-xl mr-2">📁</span>
+              Documenti
+            </button>
+          </nav>
         </div>
 
         <div className="p-6">
