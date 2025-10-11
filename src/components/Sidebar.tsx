@@ -140,6 +140,13 @@ export default function Sidebar() {
           roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
         },
         { 
+          icon: '💰', 
+          label: 'Mance Team', 
+          path: '/team/mance', 
+          color: '#FDCB6E',
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+        },
+        { 
           icon: '📅', 
           label: 'Turni Team', 
           path: '/team/turni', 

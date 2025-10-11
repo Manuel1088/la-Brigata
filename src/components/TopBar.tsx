@@ -81,6 +81,7 @@ export default function TopBar() {
         'shifts': 'Turni',
         'leaves': 'Ferie e Permessi',
         'team': 'Team',
+        'mance': 'Mance Team',
         'turni': 'Turni Team',
         'approvals': 'Approvazioni',
         'operations': 'Prenotazioni',

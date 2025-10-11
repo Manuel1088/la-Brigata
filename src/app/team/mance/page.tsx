@@ -2,27 +2,32 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import TipsOverview from '@/components/tips/Overview'
-import TipsDaily from '@/components/tips/Daily'
-import TipsHistory from '@/components/tips/History'
+import { usePermissions } from '@/hooks/usePermissions'
+import TipsInsert from '@/components/tips/Insert'
+import TipsManage from '@/components/tips/Manage'
 
-export default function TipsPage() {
+export default function TeamMancePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('insert')
   const { canManageEmployees } = usePermissions()
 
-  // Redirect se non autenticato
   useEffect(() => {
     if (status === 'loading') return
-    if (!session) router.push('/login')
-  }, [session, status, router])
+    if (!session) {
+      router.push('/login')
+      return
+    }
+    // Solo manager possono accedere
+    if (!canManageEmployees()) {
+      router.push('/dashboard')
+      return
+    }
+  }, [session, status, router, canManageEmployees])
 
-  // Solo tab personali per dipendenti
   const tabs = [
-    { id: 'overview', label: 'Panoramica', icon: '👁️' },
-    { id: 'daily', label: 'Giornaliere', icon: '📅' },
-    { id: 'history', label: 'Storico', icon: '📜' }
+    { id: 'insert', label: 'Inserisci Mance', icon: '➕' },
+    { id: 'manage', label: 'Gestione & Divisione', icon: '⚙️' }
   ]
 
   if (status === 'loading') {
@@ -33,25 +38,25 @@ export default function TipsPage() {
     )
   }
 
-  if (!session) return null
+  if (!session || !canManageEmployees()) return null
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-start">
-            <div className="flex items-start space-x-4">
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
-              >
-                ←
-              </button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">💰 Le Mie Mance</h1>
-                <p className="text-gray-600 mt-2">Gestisci e monitora le tue mance</p>
-              </div>
+          <div className="flex items-start space-x-4">
+            <button
+              onClick={() => router.push('/team')}
+              className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
+            >
+              ←
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">💰 Mance Team</h1>
+              <p className="text-gray-600 mt-2">
+                Gestisci mance giornaliere, parciali 15 giorni e divisione punti
+              </p>
             </div>
           </div>
         </div>
@@ -84,11 +89,10 @@ export default function TipsPage() {
               </nav>
             </div>
 
-            {/* Tab Content - Solo tab personali */}
+            {/* Tab Content - Solo tab manager */}
             <div className="p-6">
-              {activeTab === 'overview' && <TipsOverview />}
-              {activeTab === 'daily' && <TipsDaily />}
-              {activeTab === 'history' && <TipsHistory />}
+              {activeTab === 'insert' && <TipsInsert />}
+              {activeTab === 'manage' && <TipsManage />}
             </div>
           </div>
         </div>
@@ -96,3 +100,4 @@ export default function TipsPage() {
     </div>
   )
 }
+
