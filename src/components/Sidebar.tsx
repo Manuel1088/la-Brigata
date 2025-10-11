@@ -98,33 +98,40 @@ export default function Sidebar() {
           icon: '💰', 
           label: 'Le Mance', 
           path: '/tips', 
-          color: '#FDCB6E' 
+          color: '#FDCB6E',
+          // Solo dipendenti che lavorano (esclusi ADMIN e PROPRIETARIO)
+          excludeRoles: [UserRole.ADMIN, UserRole.PROPRIETARIO]
         },
         { 
           icon: '📄', 
           label: 'Buste Paga', 
           path: '/buste-paga', 
-          color: '#00B894' 
+          color: '#00B894',
+          // Solo dipendenti con stipendio (esclusi ADMIN e PROPRIETARIO)
+          excludeRoles: [UserRole.ADMIN, UserRole.PROPRIETARIO]
         },
         { 
           icon: '📅', 
           label: 'I Miei Turni', 
           path: '/shifts', 
           color: '#74B9FF',
-          // Solo per chi lavora fisicamente (esclusi ADMIN e PROPRIETARIO non lavoratore)
+          // Solo per chi lavora fisicamente (esclusi ADMIN e PROPRIETARIO)
           excludeRoles: [UserRole.ADMIN, UserRole.PROPRIETARIO]
         },
         { 
           icon: '🏖️', 
           label: 'Ferie e Permessi', 
           path: '/leaves', 
-          color: '#00B894' 
+          color: '#00B894',
+          // Solo dipendenti che lavorano (esclusi ADMIN e PROPRIETARIO)
+          excludeRoles: [UserRole.ADMIN, UserRole.PROPRIETARIO]
         },
         { 
           icon: '👤', 
           label: 'Il Profilo', 
           path: '/profile', 
-          color: '#2D3436' 
+          color: '#2D3436'
+          // Tutti hanno profilo (nessuna esclusione)
         }
       ]
     },
