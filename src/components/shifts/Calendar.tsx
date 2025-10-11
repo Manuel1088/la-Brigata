@@ -22,6 +22,7 @@ export default function ShiftsCalendar() {
   const router = useRouter()
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [selectedDepartment, setSelectedDepartment] = useState<string>('direzione')
+  const [viewMode, setViewMode] = useState<'week' | 'twoWeeks' | 'month'>('week')
   const [isGenerating, setIsGenerating] = useState(false)
   const { generateSchedule } = useAutoScheduler()
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
@@ -363,23 +364,62 @@ export default function ShiftsCalendar() {
     <div className="space-y-6">
       {/* Header con controlli */}
       <div className="bg-white rounded-lg shadow p-6">
-        {/* Navigazione Data Centrata */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <button
-            onClick={() => setCurrentWeek(new Date(currentWeek.getTime() - 7 * 24 * 60 * 60 * 1000))}
-            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-          >
-            ←
-          </button>
-          <span className="text-lg font-medium min-w-[250px] text-center">
+        {/* Navigazione Data + Pulsanti Vista */}
+        <div className="flex items-center justify-between mb-6">
+          {/* Frecce Sinistra */}
+          <div className="flex gap-1">
+            <button
+              onClick={() => setCurrentWeek(new Date(currentWeek.getTime() - 7 * 24 * 60 * 60 * 1000))}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            >
+              ←
+            </button>
+            <button
+              onClick={() => setCurrentWeek(new Date(currentWeek.getTime() + 7 * 24 * 60 * 60 * 1000))}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            >
+              →
+            </button>
+          </div>
+          
+          {/* Data Centro */}
+          <span className="text-lg font-medium">
             {weekDates[0].toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} - {weekDates[6].toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
-          <button
-            onClick={() => setCurrentWeek(new Date(currentWeek.getTime() + 7 * 24 * 60 * 60 * 1000))}
-            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-          >
-            →
-          </button>
+          
+          {/* Pulsanti Vista Destra */}
+          <div className="flex gap-1">
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
+                viewMode === 'week'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Settimana
+            </button>
+            <button
+              onClick={() => setViewMode('twoWeeks')}
+              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
+                viewMode === 'twoWeeks'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              2 Settimane
+            </button>
+            <button
+              onClick={() => setViewMode('month')}
+              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
+                viewMode === 'month'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Mensile
+            </button>
+          </div>
         </div>
         
         {/* Pulsanti Reparto e Azioni */}
