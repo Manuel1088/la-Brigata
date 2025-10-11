@@ -204,34 +204,71 @@ export default function DashboardPage() {
 
   // Dashboard actions based on role
   const dashboardActions: DashboardAction[] = [
-    { 
-      id: 'tips', 
-      icon: '💰', 
-      label: 'Le Mie Mance', 
-      path: '/tips', 
-      color: COLORS.yellow 
+    {
+      id: 'tips',
+      icon: '💰',
+      label: 'Le Mie Mance',
+      path: '/tips',
+      color: COLORS.yellow,
+      // Nascondi per Proprietario/Admin per coerenza con sidebar
+      roles: [
+        UserRole.DIPENDENTE,
+        UserRole.CASSIERE,
+        UserRole.HEAD_CHEF,
+        UserRole.HEAD_BARMAN,
+        UserRole.HEAD_SOMMELIER,
+        UserRole.DIPENDENTE_SALA,
+        UserRole.DIPENDENTE_BAR,
+        UserRole.CAMERIERE,
+        UserRole.CAMERIERE_SENIOR,
+        UserRole.CUOCO_QUALIFICATO,
+        UserRole.CHEF,
+        UserRole.CAPO_PARTITA,
+        UserRole.SOUS_CHEF,
+        UserRole.RUNNER,
+        UserRole.LAVAPIATTI
+      ]
     },
-    { 
-      id: 'shifts', 
-      icon: '📅', 
-      label: 'I Miei Turni', 
-      path: '/shifts', 
-      color: COLORS.lightBlue 
+    {
+      id: 'shifts',
+      icon: '📅',
+      label: 'I Miei Turni',
+      path: '/shifts',
+      color: COLORS.lightBlue,
+      // Nascondi per Proprietario/Admin per coerenza con sidebar
+      roles: [
+        UserRole.DIPENDENTE,
+        UserRole.CASSIERE,
+        UserRole.HEAD_CHEF,
+        UserRole.HEAD_BARMAN,
+        UserRole.HEAD_SOMMELIER,
+        UserRole.DIPENDENTE_SALA,
+        UserRole.DIPENDENTE_BAR,
+        UserRole.CAMERIERE,
+        UserRole.CAMERIERE_SENIOR,
+        UserRole.CUOCO_QUALIFICATO,
+        UserRole.CHEF,
+        UserRole.CAPO_PARTITA,
+        UserRole.SOUS_CHEF,
+        UserRole.RUNNER,
+        UserRole.LAVAPIATTI
+      ]
     },
-    { 
-      id: 'employees', 
-      icon: '👥', 
-      label: 'Il Mio Team', 
-      path: '/team', 
+    {
+      id: 'employees',
+      icon: '👥',
+      label: 'Il Mio Team',
+      path: '/team',
       color: COLORS.orange,
       roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
     },
-    { 
-      id: 'profile', 
-      icon: '📊', 
-      label: 'I Miei Dati', 
-      path: '/me', 
-      color: COLORS.darkBlue 
+    {
+      id: 'profile',
+      icon: '📊',
+      label: 'I Miei Dati',
+      path: '/me',
+      color: COLORS.darkBlue,
+      // Mostra a tutti gli utenti
     }
   ]
 
@@ -347,8 +384,8 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Live Tips (only if in shift) */}
-          {isInShift() && (
+          {/* Live Tips (only if in shift) - non mostrare per Proprietario/Admin */}
+          {isInShift() && userRole !== UserRole.PROPRIETARIO && userRole !== UserRole.ADMIN && (
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border-2 border-green-200">
               <div className="flex items-center justify-between mb-3">
                 <div>

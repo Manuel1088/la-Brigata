@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import OperationsBookings from '@/components/operations/Bookings'
 import OperationsCustomers from '@/components/operations/Customers'
+import WalkinsReport from '@/components/operations/Walkins'
 
 export default function OperationsPage() {
   const { data: session, status } = useSession()
@@ -18,7 +19,8 @@ export default function OperationsPage() {
 
   const tabs = [
     { id: 'bookings', label: 'Prenotazioni', icon: '📅' },
-    { id: 'customers', label: 'Clienti', icon: '👥' }
+    { id: 'customers', label: 'Clienti', icon: '👥' },
+    { id: 'walkins', label: 'Passanti', icon: '🚶' }
   ]
 
   if (status === 'loading') {
@@ -84,6 +86,7 @@ export default function OperationsPage() {
             <div className="p-6">
               {activeTab === 'bookings' && <OperationsBookings />}
               {activeTab === 'customers' && <OperationsCustomers />}
+              {activeTab === 'walkins' && <WalkinsReport />}
             </div>
           </div>
         </div>

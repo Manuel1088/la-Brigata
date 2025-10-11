@@ -126,7 +126,7 @@ export default function TopBar() {
               <div className="hidden sm:block">
                 <span className="font-bold text-lg text-gray-900">La Brigata</span>
                 <p className="text-xs text-gray-600 leading-none">
-                  {userRole === UserRole.PROPRIETARIO ? 'Owner' :
+                  {userRole === UserRole.PROPRIETARIO ? 'Proprietario' :
                    userRole === UserRole.MANAGER ? 'Manager' :
                    userRole === UserRole.DIRETTORE ? 'Direttore' : 'Team'}
                 </p>

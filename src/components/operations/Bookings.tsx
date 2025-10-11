@@ -39,6 +39,16 @@ interface TableItem {
   h: number
 }
 
+interface WalkinEntry {
+  id: string
+  date: string
+  time: string
+  tableNumber: number | null
+  covers: number
+  areaId: string
+  createdAt: string
+}
+
 export default function OperationsBookings() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -61,6 +71,14 @@ export default function OperationsBookings() {
   const [draggedTable, setDraggedTable] = useState<TableItem | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const floorPlanRef = useRef<HTMLDivElement>(null)
+  const lunchRef = useRef<HTMLDivElement>(null)
+  const dinnerFirstRef = useRef<HTMLDivElement>(null)
+  const dinnerSecondRef = useRef<HTMLDivElement>(null)
+
+  // Passanti state
+  const [walkins, setWalkins] = useState<WalkinEntry[]>([])
+  const [walkinTable] = useState<number>(1) // Tavolo fisso 1
+  const [walkinCovers, setWalkinCovers] = useState<number>(2)
 
   // Form per nuova prenotazione
   const [bookingForm, setBookingForm] = useState({
@@ -113,6 +131,18 @@ export default function OperationsBookings() {
       }
     }
     loadBookings()
+  }, [selectedDate, selectedArea])
+
+  // Carica passanti
+  useEffect(() => {
+    try {
+      const key = `walkins_v1::${selectedDate}::${selectedArea}`
+      const raw = localStorage.getItem(key)
+      const data = raw ? JSON.parse(raw) : []
+      setWalkins(data)
+    } catch {
+      setWalkins([])
+    }
   }, [selectedDate, selectedArea])
 
   // Carica tavoli
@@ -249,6 +279,40 @@ export default function OperationsBookings() {
     }
   }
 
+  // Navigazione tra giorni con frecce
+  const goToPrevDay = () => {
+    const d = new Date(selectedDate)
+    d.setDate(d.getDate() - 1)
+    setSelectedDate(d.toISOString().split('T')[0])
+  }
+
+  const goToNextDay = () => {
+    const d = new Date(selectedDate)
+    d.setDate(d.getDate() + 1)
+    setSelectedDate(d.toISOString().split('T')[0])
+  }
+
+  const selectedDateLabel = useMemo(() => {
+    try {
+      return new Date(selectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+    } catch {
+      return selectedDate
+    }
+  }, [selectedDate])
+
+  // Raggruppamento per fasce orarie
+  const lunchBookings = useMemo(() => {
+    return bookings.filter(b => b.time >= '12:00' && b.time < '16:00')
+  }, [bookings])
+
+  const dinnerFirstBookings = useMemo(() => {
+    return bookings.filter(b => b.time >= '19:00' && b.time < '21:00')
+  }, [bookings])
+
+  const dinnerSecondBookings = useMemo(() => {
+    return bookings.filter(b => b.time >= '21:00')
+  }, [bookings])
+
   return (
     <PermissionGuard permission="bookings_view">
       <div className="space-y-6">
@@ -303,37 +367,146 @@ export default function OperationsBookings() {
           </div>
         )}
 
-        {/* Filtri data e ora */}
+        {/* Filtri su due righe: riga 1 frecce + data, riga 2 fasce 12:00 / 19:00 / 21:00 */}
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Data</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ora</label>
-              <input
-                type="time"
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex items-end">
+          {/* Riga 1: frecce + data */}
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <button
+              onClick={goToPrevDay}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              aria-label="Giorno precedente"
+              title="Giorno precedente"
+            >
+              ←
+            </button>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={goToNextDay}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              aria-label="Giorno successivo"
+              title="Giorno successivo"
+            >
+              →
+            </button>
+          </div>
+          {/* Riga 2: fasce */}
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => { setSelectedTime('12:00'); try { lunchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) } catch {} }}
+              className={`px-4 py-2 rounded-lg transition border ${selectedTime === '12:00' ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+            >
+              12:00
+            </button>
+            <button
+              onClick={() => { setSelectedTime('19:00'); try { dinnerFirstRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) } catch {} }}
+              className={`px-4 py-2 rounded-lg transition border ${selectedTime === '19:00' ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+            >
+              19:00
+            </button>
+            <button
+              onClick={() => { setSelectedTime('21:00'); try { dinnerSecondRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) } catch {} }}
+              className={`px-4 py-2 rounded-lg transition border ${selectedTime === '21:00' ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+            >
+              21:00
+            </button>
+          </div>
+        </div>
+
+        {/* Registrazione Passanti */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 text-center">🚶 Passanti</h3>
+          </div>
+          <div className="p-6">
+            {/* Controlli su un'unica riga sotto il titolo */}
+            <div className="flex items-end gap-3 flex-wrap justify-between">
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Tavolo</label>
+                <div className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-800">1</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Coperti</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={walkinCovers}
+                  onChange={(e) => setWalkinCovers(parseInt(e.target.value || '0', 10) || 1)}
+                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
               <button
                 onClick={() => {
-                  const today = new Date().toISOString().split('T')[0]
-                  setSelectedDate(today)
+                  const now = new Date()
+                  const hour = now.getHours()
+                  let bucketTime = '19:00'
+                  if (hour >= 21) bucketTime = '21:00'
+                  else if (hour >= 19) bucketTime = '19:00'
+                  else if (hour >= 12 && hour <= 15) bucketTime = '12:00'
+                  const entry: WalkinEntry = {
+                    id: crypto.randomUUID(),
+                    date: selectedDate,
+                    time: bucketTime,
+                    tableNumber: 1,
+                    covers: walkinCovers,
+                    areaId: selectedArea,
+                    createdAt: new Date().toISOString()
+                  }
+                  const key = `walkins_v1::${selectedDate}::${selectedArea}`
+                  const next = [...walkins, entry]
+                  try { localStorage.setItem(key, JSON.stringify(next)) } catch {}
+                  setWalkins(next)
+                  setMessage('✅ Passanti registrati')
+                  setTimeout(() => setMessage(''), 2000)
                 }}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
               >
-                Oggi
+                ➕ Aggiungi Passanti
               </button>
+              <div className="text-right ml-auto">
+                <div className="text-xs text-gray-600">Totale oggi</div>
+                <div className="text-xl font-bold text-gray-900">
+                  {walkins.reduce((sum, w) => sum + (w.covers || 0), 0)}
+                </div>
+              </div>
+            </div>
+
+            {/* Lista passanti registrati oggi */}
+            <div className="mt-6">
+              {walkins.length === 0 ? (
+                <div className="text-sm text-gray-500">Nessun passante registrato per questa data</div>
+              ) : (
+                <div className="space-y-2">
+                  {walkins
+                    .sort((a,b) => a.time.localeCompare(b.time))
+                    .map(w => (
+                    <div key={w.id} className="flex items-center justify-between border rounded-lg p-3">
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-gray-600">{formatTime(w.time)}</span>
+                        <span className="font-medium text-gray-900">{w.covers} copert{w.covers === 1 ? 'o' : 'i'}</span>
+                        <span className="text-gray-600">{w.tableNumber ? `Tavolo ${w.tableNumber}` : 'Tavolo non specificato'}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const key = `walkins_v1::${selectedDate}::${selectedArea}`
+                          const next = walkins.filter(x => x.id !== w.id)
+                          try { localStorage.setItem(key, JSON.stringify(next)) } catch {}
+                          setWalkins(next)
+                        }}
+                        className="px-2 py-1 text-red-600 hover:bg-red-50 rounded transition text-sm"
+                      >
+                        ❌
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

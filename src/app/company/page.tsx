@@ -25,6 +25,19 @@ interface RestaurantRoom {
   openingHours: OpeningHours
 }
 
+type OutletType = 'RISTORANTE' | 'COLAZIONI' | 'BAR' | 'SKYBAR' | 'ALTRO'
+
+interface Outlet {
+  id: string
+  name: string
+  type: OutletType
+  icon: string
+  isActive: boolean
+  address?: string
+  openingHours: OpeningHours
+  rooms: RestaurantRoom[]
+}
+
 const DAYS_OF_WEEK = [
   { id: 'monday', label: 'Lunedì' },
   { id: 'tuesday', label: 'Martedì' },
@@ -43,7 +56,7 @@ export default function CompanyPage() {
   const { canManageCompany } = usePermissions()
   const { company: companyData, restaurant: restaurantData, isLoading } = useCompanyData(session?.user?.id)
   
-  const [activeTab, setActiveTab] = useState<'info' | 'restaurants' | 'rooms' | 'stats'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'outlets' | 'rooms' | 'stats'>('info')
   const [isEditingCompany, setIsEditingCompany] = useState(false)
   const [isEditingRestaurant, setIsEditingRestaurant] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -71,6 +84,13 @@ export default function CompanyPage() {
   const [showAddRoom, setShowAddRoom] = useState(false)
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
   const [newRoom, setNewRoom] = useState({ name: '', capacity: 0, tables: 0, icon: '🍽️' })
+
+  // Outlets (Punti Ristoro)
+  const [outlets, setOutlets] = useState<Outlet[]>([])
+  const [selectedOutletId, setSelectedOutletId] = useState<string>('')
+  const [showAddOutlet, setShowAddOutlet] = useState(false)
+  const [newOutlet, setNewOutlet] = useState<{ name: string, type: OutletType, icon: string }>({ name: '', type: 'RISTORANTE', icon: '🍽️' })
+  const [addRoomTarget, setAddRoomTarget] = useState<'outlet' | 'standalone'>('outlet')
   
   // Orari predefiniti per nuove sale
   const getDefaultHours = (): OpeningHours => ({
@@ -125,22 +145,66 @@ export default function CompanyPage() {
     try {
       const savedRooms = localStorage.getItem('restaurant_rooms')
       if (savedRooms) {
-        setRooms(JSON.parse(savedRooms))
+        const parsed = JSON.parse(savedRooms)
+        const normalized = (parsed || []).map((r: any) => {
+          const defaultHours = getDefaultHours()
+          const existing: any = r?.openingHours || {}
+          // Merge per garantire tutte le chiavi giorno
+          const merged: any = { ...defaultHours, ...existing }
+          return { ...r, openingHours: merged }
+        })
+        setRooms(normalized)
       } else {
         setRooms([
-          { id: '1', name: 'Sala Principale', capacity: 60, tables: 15, icon: '🍽️', isActive: true },
-          { id: '2', name: 'Dehors', capacity: 30, tables: 8, icon: '🌿', isActive: true }
+          { id: '1', name: 'Sala Principale', capacity: 60, tables: 15, icon: '🍽️', isActive: true, openingHours: getDefaultHours() },
+          { id: '2', name: 'Dehors', capacity: 30, tables: 8, icon: '🌿', isActive: true, openingHours: getDefaultHours() }
         ])
-      }
-
-      const savedHours = localStorage.getItem('restaurant_hours')
-      if (savedHours) {
-        setOpeningHours(JSON.parse(savedHours))
       }
     } catch (error) {
       console.error('Error loading data:', error)
     }
   }, [])
+
+  // Punti Ristoro (Outlets): carica/migra da localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('company_outlets')
+      if (raw) {
+        const parsed: Outlet[] = JSON.parse(raw) || []
+        const normalized = parsed.map(o => ({
+          ...o,
+          openingHours: { ...getDefaultHours(), ...(o.openingHours || {}) },
+          rooms: (o.rooms || []).map(r => ({
+            ...r,
+            openingHours: { ...getDefaultHours(), ...(r.openingHours || {}) }
+          }))
+        }))
+        setOutlets(normalized)
+        if (!selectedOutletId && normalized.length > 0) setSelectedOutletId(normalized[0].id)
+      } else {
+        // Migrazione semplice: crea un outlet di default con le sale esistenti
+        const defaultOutlet: Outlet = {
+          id: 'outlet_default',
+          name: 'Punto Ristoro',
+          type: 'RISTORANTE',
+          icon: '🍽️',
+          isActive: true,
+          openingHours: getDefaultHours(),
+          rooms: rooms && rooms.length > 0 ? rooms : [
+            { id: '1', name: 'Sala Principale', capacity: 60, tables: 15, icon: '🍽️', isActive: true, openingHours: getDefaultHours() }
+          ]
+        }
+        setOutlets([defaultOutlet])
+        setSelectedOutletId(defaultOutlet.id)
+        try { localStorage.setItem('company_outlets', JSON.stringify([defaultOutlet])) } catch {}
+      }
+    } catch {}
+  }, [rooms, selectedOutletId])
+
+  const persistOutlets = (next: Outlet[]) => {
+    setOutlets(next)
+    try { localStorage.setItem('company_outlets', JSON.stringify(next)) } catch {}
+  }
 
   const handleSaveCompany = async () => {
     if (!companyData?.id) return
@@ -213,10 +277,15 @@ export default function CompanyPage() {
       isActive: true,
       openingHours: getDefaultHours()
     }
-    
-    const updatedRooms = [...rooms, room]
-    setRooms(updatedRooms)
-    localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
+    // Destinazione: outlet selezionato oppure standalone
+    if (addRoomTarget === 'outlet' && selectedOutletId) {
+      const updated = outlets.map(o => o.id === selectedOutletId ? { ...o, rooms: [...(o.rooms || []), room] } : o)
+      persistOutlets(updated)
+    } else {
+      const updatedRooms = [...rooms, room]
+      setRooms(updatedRooms)
+      localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
+    }
     
     setNewRoom({ name: '', capacity: 0, tables: 0, icon: '🍽️' })
     setShowAddRoom(false)
@@ -227,31 +296,42 @@ export default function CompanyPage() {
   const handleRemoveRoom = (roomId: string) => {
     if (!confirm('Sei sicuro di voler eliminare questa sala?')) return
     
-    const updatedRooms = rooms.filter(r => r.id !== roomId)
-    setRooms(updatedRooms)
-    localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
+    if (selectedOutletId) {
+      const updated = outlets.map(o => o.id === selectedOutletId ? { ...o, rooms: o.rooms.filter(r => r.id !== roomId) } : o)
+      persistOutlets(updated)
+    } else {
+      const updatedRooms = rooms.filter(r => r.id !== roomId)
+      setRooms(updatedRooms)
+      localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
+    }
     setMessage('✅ Sala eliminata')
     setTimeout(() => setMessage(''), 3000)
   }
 
   const handleToggleRoom = (roomId: string) => {
-    const updatedRooms = rooms.map(r => 
-      r.id === roomId ? { ...r, isActive: !r.isActive } : r
-    )
-    setRooms(updatedRooms)
-    localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
+    if (selectedOutletId) {
+      const updated = outlets.map(o => o.id === selectedOutletId ? { ...o, rooms: o.rooms.map(r => r.id === roomId ? { ...r, isActive: !r.isActive } : r) } : o)
+      persistOutlets(updated)
+    } else {
+      const updatedRooms = rooms.map(r => r.id === roomId ? { ...r, isActive: !r.isActive } : r)
+      setRooms(updatedRooms)
+      localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
+    }
   }
 
   const handleUpdateRoomHours = (roomId: string, day: string, field: 'open' | 'close' | 'isClosed', value: any) => {
     const updatedRooms = rooms.map(room => {
       if (room.id === roomId) {
+        const defaultHours = getDefaultHours()
+        const existingOpening = room.openingHours || defaultHours
+        const existingDay = existingOpening[day] || { open: '12:00', close: '23:00', isClosed: false }
         return {
           ...room,
           openingHours: {
-            ...room.openingHours,
+            ...existingOpening,
             [day]: field === 'isClosed' 
-              ? { ...room.openingHours[day], isClosed: value }
-              : { ...room.openingHours[day], [field]: value }
+              ? { ...existingDay, isClosed: value }
+              : { ...existingDay, [field]: value }
           }
         }
       }
@@ -260,6 +340,27 @@ export default function CompanyPage() {
     setRooms(updatedRooms)
     localStorage.setItem('restaurant_rooms', JSON.stringify(updatedRooms))
     setMessage('✅ Orari aggiornati')
+    setTimeout(() => setMessage(''), 2000)
+  }
+
+  const handleUpdateOutletHours = (outletId: string, day: string, field: 'open' | 'close' | 'isClosed', value: any) => {
+    const updated = outlets.map(o => {
+      if (o.id !== outletId) return o
+      const defaultHours = getDefaultHours()
+      const existingOpening = o.openingHours || defaultHours
+      const existingDay = existingOpening[day] || { open: '12:00', close: '23:00', isClosed: false }
+      return {
+        ...o,
+        openingHours: {
+          ...existingOpening,
+          [day]: field === 'isClosed'
+            ? { ...existingDay, isClosed: value }
+            : { ...existingDay, [field]: value }
+        }
+      }
+    })
+    persistOutlets(updated)
+    setMessage('✅ Orari punto ristoro aggiornati')
     setTimeout(() => setMessage(''), 2000)
   }
 
@@ -296,7 +397,7 @@ export default function CompanyPage() {
 
   const tabs = [
     { id: 'info', label: 'Informazioni', icon: '📋' },
-    { id: 'restaurants', label: 'Ristoranti', icon: '🍽️' },
+    { id: 'outlets', label: 'Punti Ristoro', icon: '🍽️' },
     { id: 'rooms', label: 'Sale & Orari', icon: '🏛️' },
     { id: 'stats', label: 'Statistiche', icon: '📊' }
   ]
@@ -499,117 +600,197 @@ export default function CompanyPage() {
               </div>
             )}
 
-            {/* Tab: Ristoranti */}
-            {activeTab === 'restaurants' && (
+            {/* Tab: Punti Ristoro */}
+            {activeTab === 'outlets' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-semibold text-gray-900">🍽️ I Miei Ristoranti</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">🍽️ Punti Ristoro</h3>
                   <button
+                    onClick={() => setShowAddOutlet(true)}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                   >
-                    ➕ Aggiungi Ristorante
+                    ➕ Aggiungi Punto Ristoro
                   </button>
                 </div>
 
-                {/* Current Restaurant */}
-                {restaurantData && (
-                  <div className="bg-white border-2 border-orange-200 rounded-lg p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="text-4xl">🍽️</div>
-                        <div>
-                          <h4 className="text-xl font-semibold text-gray-900">{restaurantData.name}</h4>
-                          <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                            Ristorante Principale
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {isEditingRestaurant ? (
-                          <>
-                            <button
-                              onClick={() => setIsEditingRestaurant(false)}
-                              className="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                            >
-                              Annulla
-                            </button>
-                            <button
-                              onClick={handleSaveRestaurant}
-                              disabled={isSaving}
-                              className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                            >
-                              {isSaving ? 'Salvataggio...' : 'Salva'}
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => setIsEditingRestaurant(true)}
-                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                          >
-                            Modifica
-                          </button>
-                        )}
-                      </div>
+                {/* Selettore Outlet */}
+                {outlets.length > 0 && (
+                  <div className="bg-white border-2 border-orange-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🍽️</span>
+                      <select
+                        value={selectedOutletId}
+                        onChange={(e) => setSelectedOutletId(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg"
+                      >
+                        {outlets.map(o => (
+                          <option key={o.id} value={o.id}>{o.name} • {o.type}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Editor orari PUNTO RISTORO + elenco sale con override */}
+                {selectedOutletId && (
+                  <div className="space-y-6">
+                    {/* Orari Punto Ristoro (unificati Lun-Dom) */}
+                    <div className="border-2 border-blue-200 rounded-lg p-4">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3">🕐 Orari Punto Ristoro (Lun-Dom)</h4>
+                      {(() => {
+                        const o = outlets.find(o => o.id === selectedOutletId)!
+                        const openObj = o.openingHours || getDefaultHours()
+                        const d = openObj['monday'] || { open: '12:00', close: '23:00', isClosed: false }
+                        return (
+                          <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-2">
+                            <div className="w-28 font-medium text-gray-900 text-sm">Tutti i giorni</div>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={!d.isClosed}
+                                onChange={(e) => {
+                                  const v = !e.target.checked
+                                  DAYS_OF_WEEK.forEach(day => handleUpdateOutletHours(selectedOutletId, day.id, 'isClosed', v))
+                                }}
+                                className="w-4 h-4 text-orange-600 rounded"
+                              />
+                              <span className="text-xs text-gray-600">Aperto</span>
+                            </label>
+                            {!d.isClosed ? (
+                              <>
+                                <input
+                                  type="time"
+                                  value={d.open}
+                                  onChange={(e) => DAYS_OF_WEEK.forEach(day => handleUpdateOutletHours(selectedOutletId, day.id, 'open', e.target.value))}
+                                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                                />
+                                <span className="text-gray-500 text-sm">-</span>
+                                <input
+                                  type="time"
+                                  value={d.close}
+                                  onChange={(e) => DAYS_OF_WEEK.forEach(day => handleUpdateOutletHours(selectedOutletId, day.id, 'close', e.target.value))}
+                                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                                />
+                              </>
+                            ) : (
+                              <span className="text-red-600 font-medium text-sm">Chiuso</span>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-sm text-gray-600">Nome:</span>
-                        {isEditingRestaurant ? (
-                          <input
-                            type="text"
-                            value={restaurantForm.name}
-                            onChange={(e) => setRestaurantForm({...restaurantForm, name: e.target.value})}
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                          />
-                        ) : (
-                          <p className="font-medium text-gray-900">{restaurantForm.name}</p>
-                        )}
+                    {/* Sale dell'outlet selezionato */}
+                    <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-lg font-semibold text-gray-900">🏛️ Sale</h4>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={addRoomTarget}
+                          onChange={(e) => setAddRoomTarget(e.target.value as any)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          title="Dove aggiungere la sala"
+                        >
+                          <option value="outlet">Nel punto ristoro selezionato</option>
+                          <option value="standalone">Indipendente (non legata a punto ristoro)</option>
+                        </select>
+                        <button
+                          onClick={() => setShowAddRoom(true)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                          ➕ Aggiungi Sala
+                        </button>
                       </div>
-                      <div>
-                        <span className="text-sm text-gray-600">Indirizzo:</span>
-                        {isEditingRestaurant ? (
-                          <input
-                            type="text"
-                            value={restaurantForm.address}
-                            onChange={(e) => setRestaurantForm({...restaurantForm, address: e.target.value})}
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                            placeholder="Via, Città"
-                          />
-                        ) : (
-                          <p className="font-medium text-gray-900">{restaurantForm.address || 'Non specificato'}</p>
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-600">Telefono:</span>
-                        {isEditingRestaurant ? (
-                          <input
-                            type="tel"
-                            value={restaurantForm.phone}
-                            onChange={(e) => setRestaurantForm({...restaurantForm, phone: e.target.value})}
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                          />
-                        ) : (
-                          <p className="font-medium text-gray-900">{restaurantForm.phone || 'Non specificato'}</p>
-                        )}
+                    </div>
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {(outlets.find(o => o.id === selectedOutletId)?.rooms || []).map(room => (
+                          <div key={room.id} className={`border-2 rounded-lg p-4 ${room.isActive ? 'border-green-200 bg-white' : 'border-gray-200 bg-gray-50'}`}>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="text-4xl">{room.icon}</div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleToggleRoom(room.id)}
+                                  className={`px-2 py-1 rounded text-xs font-medium ${room.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                                >
+                                  {room.isActive ? '✓' : '✗'}
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveRoom(room.id)}
+                                  className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium hover:bg-red-200"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                            <h5 className="font-semibold text-gray-900 mb-2">{room.name}</h5>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <div className="flex justify-between">
+                                <span>Capacità:</span>
+                                <span className="font-medium">{room.capacity} posti</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Tavoli:</span>
+                                <span className="font-medium">{room.tables}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Placeholder future locations */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <div className="text-4xl mb-3">➕</div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                    Espandi la Tua Catena
-                  </h4>
-                  <p className="text-gray-600 mb-4">
-                    Aggiungi nuove location per gestire più ristoranti
-                  </p>
-                  <button className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition">
-                    Aggiungi Ristorante
-                  </button>
-                </div>
+                {/* Sale indipendenti (non collegate ad alcun punto ristoro) */}
+                {rooms.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-lg font-semibold text-gray-900">🏛️ Sale indipendenti</h4>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { setAddRoomTarget('standalone'); setShowAddRoom(true) }}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                          ➕ Aggiungi Sala Indipendente
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {rooms.map(room => (
+                        <div key={room.id} className={`border-2 rounded-lg p-4 ${room.isActive ? 'border-green-200 bg-white' : 'border-gray-200 bg-gray-50'}`}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="text-4xl">{room.icon}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Indipendente</span>
+                              <button
+                                onClick={() => handleToggleRoom(room.id)}
+                                className={`px-2 py-1 rounded text-xs font-medium ${room.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                              >
+                                {room.isActive ? '✓' : '✗'}
+                              </button>
+                              <button
+                                onClick={() => handleRemoveRoom(room.id)}
+                                className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium hover:bg-red-200"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                          <h5 className="font-semibold text-gray-900 mb-2">{room.name}</h5>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Capacità:</span>
+                              <span className="font-medium">{room.capacity} posti</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Tavoli:</span>
+                              <span className="font-medium">{room.tables}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -722,25 +903,25 @@ export default function CompanyPage() {
                                 <label className="flex items-center gap-2">
                                   <input
                                     type="checkbox"
-                                    checked={!room.openingHours[day.id].isClosed}
+                                    checked={!(room.openingHours && room.openingHours[day.id] ? room.openingHours[day.id].isClosed : false)}
                                     onChange={(e) => handleUpdateRoomHours(room.id, day.id, 'isClosed', !e.target.checked)}
                                     className="w-4 h-4 text-orange-600 rounded"
                                   />
                                   <span className="text-xs text-gray-600">Aperto</span>
                                 </label>
                                 
-                                {!room.openingHours[day.id].isClosed ? (
+                                {!(room.openingHours && room.openingHours[day.id] ? room.openingHours[day.id].isClosed : false) ? (
                                   <>
                                     <input
                                       type="time"
-                                      value={room.openingHours[day.id].open}
+                                      value={(room.openingHours && room.openingHours[day.id] ? room.openingHours[day.id].open : '12:00')}
                                       onChange={(e) => handleUpdateRoomHours(room.id, day.id, 'open', e.target.value)}
                                       className="px-2 py-1 border border-gray-300 rounded text-sm"
                                     />
                                     <span className="text-gray-500 text-sm">-</span>
                                     <input
                                       type="time"
-                                      value={room.openingHours[day.id].close}
+                                      value={(room.openingHours && room.openingHours[day.id] ? room.openingHours[day.id].close : '23:00')}
                                       onChange={(e) => handleUpdateRoomHours(room.id, day.id, 'close', e.target.value)}
                                       className="px-2 py-1 border border-gray-300 rounded text-sm"
                                     />
