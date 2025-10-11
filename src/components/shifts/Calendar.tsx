@@ -21,7 +21,7 @@ export default function ShiftsCalendar() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [currentWeek, setCurrentWeek] = useState(new Date())
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('direzione')
   const [isGenerating, setIsGenerating] = useState(false)
   const { generateSchedule } = useAutoScheduler()
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
@@ -346,12 +346,18 @@ export default function ShiftsCalendar() {
 
   // ✅ Filtri dipendenti
   const filteredEmployees = useMemo(() => {
-    if (selectedDepartment === 'all') return employees
+    if (selectedDepartment === 'direzione') {
+      // Dirigenti: chi ha department 'direzione' o ruoli dirigenziali
+      return employees.filter(emp => 
+        emp.department === 'direzione' || 
+        ['PROPRIETARIO_OPERATIVO', 'DIRETTORE_GENERALE', 'MANAGER'].includes(emp.role)
+      )
+    }
     return employees.filter(emp => emp.department === selectedDepartment)
   }, [employees, selectedDepartment])
 
   const weekDates = getWeekDates(currentWeek)
-  const departments = ['all', 'cucina', 'sala', 'bar']
+  const departments = ['direzione', 'cucina', 'sala', 'bar']
 
   return (
     <div className="space-y-6">
@@ -381,14 +387,14 @@ export default function ShiftsCalendar() {
           {/* Pulsanti Reparto */}
           <div className="flex gap-2">
             <button
-              onClick={() => setSelectedDepartment('all')}
+              onClick={() => setSelectedDepartment('direzione')}
               className={`px-4 py-2 rounded-lg font-medium transition ${
-                selectedDepartment === 'all'
+                selectedDepartment === 'direzione'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              👥 Tutti
+              👔 Dirigenti
             </button>
             <button
               onClick={() => setSelectedDepartment('cucina')}
