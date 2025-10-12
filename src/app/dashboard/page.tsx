@@ -265,7 +265,7 @@ export default function DashboardPage() {
     {
       id: 'profile',
       icon: '📊',
-      label: 'I Miei Dati',
+      label: 'Profilo',
       path: '/me',
       color: COLORS.darkBlue,
       // Mostra a tutti gli utenti

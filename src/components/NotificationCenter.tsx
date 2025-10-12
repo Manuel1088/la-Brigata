@@ -20,12 +20,14 @@ interface NotificationCenterProps {
   isOpen: boolean
   onClose: () => void
   userId?: string
+  userRole?: string
+  department?: string
 }
 
-export function NotificationCenter({ isOpen, onClose, userId }: NotificationCenterProps) {
+export function NotificationCenter({ isOpen, onClose, userId, userRole, department }: NotificationCenterProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [filter, setFilter] = useState<'all' | 'unread' | 'urgent' | NotificationCategory>('all')
-  const [stats, setStats] = useState(getNotificationStats(userId))
+  const [stats, setStats] = useState({ total: 0, unread: 0, urgent: 0, byType: {} as Record<NotificationType, number>, byCategory: {} as Record<NotificationCategory, number> })
   const [soundEnabled, setSoundEnabled] = useState(true)
 
   useEffect(() => {
@@ -40,27 +42,64 @@ export function NotificationCenter({ isOpen, onClose, userId }: NotificationCent
 
   // Rimuovo la logica del click outside dato che non c'è più l'overlay
 
+  const computeStats = (list: Notification[]) => {
+    const s = {
+      total: list.length,
+      unread: list.filter(n => !n.isRead).length,
+      urgent: list.filter(n => n.isUrgent && !n.isRead).length,
+      byType: {} as Record<NotificationType, number>,
+      byCategory: {} as Record<NotificationCategory, number>
+    }
+    ;(['INFO','SUCCESS','WARNING','ERROR','URGENT'] as NotificationType[]).forEach(t => { s.byType[t] = list.filter(n => n.type === t).length })
+    ;(['PERSONNEL','LEAVES','TIPS','SHIFTS','SYSTEM','ALERT','MESSAGES'] as NotificationCategory[]).forEach(c => { s.byCategory[c] = list.filter(n => n.category === c).length })
+    return s
+  }
+
   const loadNotifications = () => {
     const allNotifications = getNotifications(userId)
-    setNotifications(allNotifications)
-    setStats(getNotificationStats(userId))
+    // Ruolo/reparto: filtro semplice
+    const dept = (department || '').toLowerCase()
+    const role = (userRole || '').toUpperCase()
+    const filteredByRole = allNotifications.filter(n => {
+      // Se la notifica è indirizzata a un utente specifico, mostra solo a lui
+      if (n.userId && userId && n.userId !== userId) return false
+      // Proprietario/Manager/Direttore vedono tutto; se c'è reparto, filtra SHIFTS per reparto
+      if (['PROPRIETARIO','MANAGER','DIRETTORE','ADMIN'].includes(role)) {
+        if (n.category === 'SHIFTS' && n.metadata?.department) {
+          return String(n.metadata.department).toLowerCase() === dept
+        }
+        return true
+      }
+      // Dipendenti: categorie ridotte e per reparto
+      const allowedCategories: NotificationCategory[] = ['LEAVES','SHIFTS','TIPS','MESSAGES']
+      if (!allowedCategories.includes(n.category)) return false
+      if (n.metadata?.department) {
+        return String(n.metadata.department).toLowerCase() === dept
+      }
+      return true
+    })
+    setNotifications(filteredByRole)
+    setStats(computeStats(filteredByRole))
   }
 
   const handleMarkAsRead = (notificationId: string) => {
     markAsRead(notificationId)
     loadNotifications()
+    try { window.dispatchEvent(new CustomEvent('notifications_updated')) } catch {}
   }
 
   const handleMarkAllAsRead = () => {
     const count = markAllAsRead(userId)
     if (count > 0) {
       loadNotifications()
+      try { window.dispatchEvent(new CustomEvent('notifications_updated')) } catch {}
     }
   }
 
   const handleDismiss = (notificationId: string) => {
     dismissNotification(notificationId)
     loadNotifications()
+    try { window.dispatchEvent(new CustomEvent('notifications_updated')) } catch {}
   }
 
   const handleAction = (notification: Notification, action: string) => {
@@ -172,162 +211,73 @@ export function NotificationCenter({ isOpen, onClose, userId }: NotificationCent
               Urgenti ({stats.urgent})
             </button>
           </div>
-          
-          {/* Filtri per categoria */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {Object.entries(NOTIFICATION_CATEGORIES).map(([key, category]) => (
-              <button
-                key={key}
-                onClick={() => setFilter(key as NotificationCategory)}
-                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  filter === key
-                    ? 'bg-purple-100 text-purple-800 border border-purple-300'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {category.icon} {category.name} ({stats.byCategory[key as NotificationCategory]})
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Azioni rapide */}
-        {stats.unread > 0 && (
-          <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
-            <button
-              onClick={handleMarkAllAsRead}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-            >
-              ✅ Segna tutte come lette
-            </button>
-          </div>
-        )}
-
         {/* Lista notifiche */}
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {filteredNotifications.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-4">🔔</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {filter === 'unread' ? 'Nessuna notifica non letta' :
-                 filter === 'urgent' ? 'Nessuna notifica urgente' :
-                 'Nessuna notifica'}
-              </h3>
-              <p className="text-gray-500">
-                {filter === 'unread' ? 'Tutte le notifiche sono state lette' :
-                 filter === 'urgent' ? 'Non ci sono notifiche urgenti' :
-                 'Non ci sono notifiche in questa categoria'}
-              </p>
-            </div>
+            <p className="text-center text-gray-500 py-8">
+              Nessuna notifica trovata.
+            </p>
           ) : (
-            <div className="divide-y divide-gray-200">
-              {filteredNotifications.map((notification) => {
-                const typeConfig = NOTIFICATION_TYPES[notification.type]
-                const categoryConfig = NOTIFICATION_CATEGORIES[notification.category]
-                
-                return (
-                  <div
-                    key={notification.id}
-                    className={`p-4 hover:bg-gray-50 transition-colors ${
-                      !notification.isRead ? 'bg-blue-50/30' : ''
-                    } ${notification.isUrgent ? 'border-l-4 border-red-500' : ''}`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                        notification.isUrgent ? 'animate-pulse' : ''
-                      }`}>
-                        <span className="text-lg">{typeConfig.icon}</span>
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <h4 className={`text-sm font-medium ${
-                              !notification.isRead ? 'text-gray-900' : 'text-gray-700'
-                            }`}>
-                              {notification.title}
-                            </h4>
-                            {!notification.isRead && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            )}
-                            {notification.isUrgent && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                🚨 Urgente
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-500">
-                              {formatTimestamp(notification.timestamp)}
-                            </span>
-                            <button
-                              onClick={() => handleDismiss(notification.id)}
-                              className="text-gray-400 hover:text-gray-600"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                        
-                        <p className="text-sm text-gray-600 mt-1">
-                          {notification.message}
-                        </p>
-                        
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-500">
-                              {categoryConfig.icon} {categoryConfig.name}
-                            </span>
-                          </div>
-                          
-                          {!notification.isRead && (
-                            <button
-                              onClick={() => handleMarkAsRead(notification.id)}
-                              className="text-xs text-blue-600 hover:text-blue-800"
-                            >
-                              Segna come letta
-                            </button>
-                          )}
-                        </div>
-                        
-                        {/* Azioni */}
-                        {notification.actions && notification.actions.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {notification.actions.map((action, index) => (
-                              <button
-                                key={index}
-                                onClick={() => handleAction(notification, action.action)}
-                                className={`px-3 py-1 rounded text-xs font-medium ${
-                                  action.variant === 'primary' ? 'bg-blue-600 text-white hover:bg-blue-700' :
-                                  action.variant === 'danger' ? 'bg-red-600 text-white hover:bg-red-700' :
-                                  'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                              >
-                                {action.icon && <span className="mr-1">{action.icon}</span>}
-                                {action.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+            <ul className="space-y-4">
+              {filteredNotifications.map(notification => (
+                <li
+                  key={notification.id}
+                  className="bg-gray-50 p-4 rounded-lg shadow-sm flex items-start justify-between"
+                >
+                  <div className="flex-1 mr-4">
+                    <h3 className="text-sm font-medium text-gray-900">
+                      {notification.title}
+                    </h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {notification.message}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatTimestamp(notification.timestamp)}
+                    </p>
                   </div>
-                )
-              })}
-            </div>
+                  <div className="flex items-center space-x-2">
+                    {notification.isUrgent && (
+                      <span className="text-red-500 text-xs font-semibold">URGENTE</span>
+                    )}
+                    {!notification.isRead && (
+                      <button
+                        onClick={() => handleMarkAsRead(notification.id)}
+                        className="p-1 text-blue-500 hover:text-blue-700 rounded-full"
+                        title="Marca come letta"
+                      >
+                        ✅
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDismiss(notification.id)}
+                      className="p-1 text-gray-400 hover:text-gray-600 rounded-full"
+                      title="Dismiss"
+                    >
+                      ✗
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-          <div className="text-center">
+        <div className="px-6 py-4 border-t border-gray-200">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={handleMarkAllAsRead}
+              className="text-sm text-gray-700 hover:text-gray-900"
+            >
+              Marcare tutte come lette
+            </button>
             <p className="text-xs text-gray-500">
-              Ultimo aggiornamento: {new Date().toLocaleTimeString('it-IT')}
+              {stats.total} notifiche totali
             </p>
           </div>
         </div>
     </div>
   )
 }
-
-export default NotificationCenter

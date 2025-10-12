@@ -8,6 +8,7 @@ import { UserRole } from '@/types/roles'
 import { PendingEmploymentsBadge } from './PendingEmploymentsBadge'
 import { RestaurantSelector } from './RestaurantSelector'
 import { NotificationCenter } from './NotificationCenter'
+import { getNotifications, type NotificationCategory } from '@/lib/notifications'
 
 export default function TopBar() {
   const { data: session, status } = useSession()
@@ -17,52 +18,44 @@ export default function TopBar() {
   const [pendingNotifications, setPendingNotifications] = useState(0)
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false)
 
-  // Calculate pending notifications
+  // Calculate pending notifications (filtered by role and department)
   useEffect(() => {
     const calculatePendingNotifications = () => {
-      let count = 0
-      
       try {
-        // Conteggio richieste ferie
-        const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]')
-        count += leaveRequests.filter((req: any) => req.status === 'PENDING').length
-        
-        // Conteggio richieste swap turni
-        const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]')
-        count += swapRequests.filter((req: any) => req.status === 'PENDING').length
-        
-        // Conteggio richieste dipendenti
-        const employeeRequests = JSON.parse(localStorage.getItem('employee_requests') || '[]')
-        count += employeeRequests.filter((req: any) => req.status === 'PENDING').length
-        
-        // Conteggio richieste payroll
-        const payrollRequests = JSON.parse(localStorage.getItem('payroll_requests') || '[]')
-        count += payrollRequests.filter((req: any) => req.status === 'PENDING').length
+        const uid = (session?.user as any)?.id
+        const dept = String((session?.user as any)?.department || '').toLowerCase()
+        const role = String(userRole || '').toUpperCase()
+        const all = getNotifications(uid)
+        const filtered = all.filter(n => {
+          if (n.userId && uid && n.userId !== uid) return false
+          if (['PROPRIETARIO','MANAGER','DIRETTORE','ADMIN'].includes(role)) {
+            if (n.category === 'SHIFTS' && n.metadata?.department) {
+              return String(n.metadata.department).toLowerCase() === dept
+            }
+            return true
+          }
+          const allowed: NotificationCategory[] = ['LEAVES','SHIFTS','TIPS','MESSAGES'] as any
+          if (!(allowed as any).includes(n.category)) return false
+          if (n.metadata?.department) {
+            return String(n.metadata.department).toLowerCase() === dept
+          }
+          return true
+        })
+        const unread = filtered.filter(n => !n.isRead).length
+        setPendingNotifications(unread)
       } catch (error) {
-        console.error('Errore nel calcolo notifiche:', error)
+        setPendingNotifications(0)
       }
-      
-      setPendingNotifications(count)
     }
-    
+
     calculatePendingNotifications()
-    
-    // Listener per aggiornamenti
+
     const handleUpdate = () => calculatePendingNotifications()
-    window.addEventListener('approvals_updated', handleUpdate)
-    window.addEventListener('leave_system_updated', handleUpdate)
-    window.addEventListener('shift_swaps_updated', handleUpdate)
-    window.addEventListener('employee_requests_updated', handleUpdate)
-    window.addEventListener('payroll_requests_updated', handleUpdate)
-    
+    window.addEventListener('notifications_updated', handleUpdate)
     return () => {
-      window.removeEventListener('approvals_updated', handleUpdate)
-      window.removeEventListener('leave_system_updated', handleUpdate)
-      window.removeEventListener('shift_swaps_updated', handleUpdate)
-      window.removeEventListener('employee_requests_updated', handleUpdate)
-      window.removeEventListener('payroll_requests_updated', handleUpdate)
+      window.removeEventListener('notifications_updated', handleUpdate)
     }
-  }, [])
+  }, [session?.user, userRole])
 
   // Don't show topbar on login/register pages
   if (pathname === '/login' || pathname === '/register' || !session) {
@@ -125,33 +118,10 @@ export default function TopBar() {
               <span className="text-2xl">🍽️</span>
               <div className="hidden sm:block">
                 <span className="font-bold text-lg text-gray-900">La Brigata</span>
-                <p className="text-xs text-gray-600 leading-none">
-                  {userRole === UserRole.PROPRIETARIO ? 'Proprietario' :
-                   userRole === UserRole.MANAGER ? 'Manager' :
-                   userRole === UserRole.DIRETTORE ? 'Direttore' : 'Team'}
-                </p>
               </div>
             </button>
             
-            {/* Breadcrumb */}
-            <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
-              <span className="text-gray-400">📍</span>
-              {getBreadcrumbs().map((crumb, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  {index > 0 && <span className="text-gray-400">/</span>}
-                  <button
-                    onClick={() => router.push(crumb.path)}
-                    className={`hover:text-gray-900 transition-colors ${
-                      index === getBreadcrumbs().length - 1 
-                        ? 'text-gray-900 font-medium' 
-                        : 'text-gray-600'
-                    }`}
-                  >
-                    {crumb.label}
-                  </button>
-                </div>
-              ))}
-            </div>
+            {/* Breadcrumb rimosso */}
           </div>
 
           {/* Right Section - Restaurant Selector, Pending Employments, Notifications, Help, User */}
@@ -257,6 +227,8 @@ export default function TopBar() {
               isOpen={isNotificationCenterOpen}
               onClose={() => setIsNotificationCenterOpen(false)}
               userId={(session?.user as any)?.id}
+              userRole={userRole as any}
+              department={(session?.user as any)?.department}
             />
           </div>
         </>

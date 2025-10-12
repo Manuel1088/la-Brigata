@@ -7,6 +7,7 @@ import { useNotifications } from '@/hooks/useNotifications'
 import ApprovalsSwaps from '@/components/approvals/Swaps'
 import ApprovalsEmployees from '@/components/approvals/Employees'
 import ApprovalsPayroll from '@/components/approvals/Payroll'
+import ApprovalsLeaves from '@/components/approvals/Leaves'
 
 export interface ApprovalItem {
   id: string
@@ -94,6 +95,14 @@ export default function ApprovalsPage() {
   }, [canManageEmployees, canManagePayroll, canManageShifts])
 
   const tabs = [
+    { 
+      id: 'leaves', 
+      label: 'Ferie/Permessi', 
+      icon: '🏖️', 
+      component: ApprovalsLeaves,
+      permission: canManageEmployees(),
+      badge: 0
+    },
     { 
       id: 'swaps', 
       label: 'Cambi Turno', 

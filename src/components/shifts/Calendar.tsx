@@ -86,15 +86,22 @@ export default function ShiftsCalendar() {
       { id: 'spezzato_bar', name: '⚡ Spezzato Bar', time: '07:00-11:00 / 17:00-01:00', description: 'Colazioni e sera' },
       { id: 'riposo', name: '😴 Riposo', time: 'RIPOSO', description: 'Giorno di riposo programmato' },
       { id: 'personalizzato', name: '⚙️ Personalizzato', time: 'custom', description: 'Inserisci orario manualmente' }
+    ],
+    accoglienza: [
+      { id: 'apertura_accoglienza', name: '🛎️ Apertura Accoglienza', time: '10:00-16:00', description: 'Accoglienza e cassa' },
+      { id: 'serale_accoglienza', name: '🌙 Serale Accoglienza', time: '18:00-24:00', description: 'Serale con gestione ingressi' },
+      { id: 'riposo', name: '😴 Riposo', time: 'RIPOSO', description: 'Giorno di riposo programmato' },
+      { id: 'personalizzato', name: '⚙️ Personalizzato', time: 'custom', description: 'Inserisci orario manualmente' }
     ]
   }), [])
 
   // ✅ Configurazione riposi memoizzata
   type DeptConfig = { mode: 'fixed' | 'rotating'; weeklyRestDays: 1 | 2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }
-  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'beverage', DeptConfig>>({
+  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'beverage'|'accoglienza', DeptConfig>>({
     cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
     sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
-    beverage: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' }
+    beverage: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
+    accoglienza: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' }
   })
 
   // ✅ Carica dipendenti OPERATIVI (esclusi proprietari non lavoratori)
@@ -384,7 +391,7 @@ export default function ShiftsCalendar() {
   }, [employees, selectedDepartment])
 
   const weekDates = getWeekDates(currentWeek)
-  const departments = ['direzione', 'cucina', 'sala', 'beverage']
+  const departments = ['direzione', 'cucina', 'sala', 'beverage', 'accoglienza']
 
   return (
     <div className="space-y-6">
@@ -495,6 +502,16 @@ export default function ShiftsCalendar() {
             >
               🍷 Beverage
             </button>
+            <button
+              onClick={() => setSelectedDepartment('accoglienza')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                selectedDepartment === 'accoglienza'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🛎️ Accoglienza
+            </button>
           </div>
           
           {/* Azioni */}
@@ -569,6 +586,16 @@ export default function ShiftsCalendar() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Legenda turni per reparto selezionato */}
+      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="text-sm font-semibold text-blue-900 mb-1">Turni disponibili — {selectedDepartment === 'direzione' ? 'Direzione' : selectedDepartment.charAt(0).toUpperCase() + selectedDepartment.slice(1)}</div>
+        <ul className="list-disc list-inside text-sm text-blue-800">
+          {(departmentShifts as any)[selectedDepartment]?.filter((s: any) => s.time !== 'RIPOSO' && s.time !== 'custom').map((s: any) => (
+            <li key={s.id}>{s.name} — {s.time}</li>
+          )) || null}
+        </ul>
       </div>
 
       {/* Modal selezione turno */}

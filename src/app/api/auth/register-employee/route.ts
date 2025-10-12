@@ -224,44 +224,22 @@ export async function POST(request: NextRequest) {
         
         employmentId = employment.id
         
-        // 🔔 Crea notifica per proprietario/manager dell'azienda
+        // 🔔 Crea notifica per approvazione (owner/manager)
         try {
           createNotification({
             type: 'URGENT',
             category: 'PERSONNEL',
-            title: '👥 Nuova Richiesta Dipendente',
-            message: `${user.name} ha richiesto di lavorare per ${foundCompany.name}. Ruolo: ${role || 'DIPENDENTE'}, Reparto: ${department || 'Non specificato'}`,
+            title: '👥 Nuovo dipendente in attesa',
+            message: `${user.name} richiede approvazione per ${foundCompany.name} (${department || '—'})`,
             isUrgent: true,
-            userId: foundCompany.ownerId, // Notifica al proprietario se presente
             actions: [
-              {
-                label: 'Visualizza Richieste',
-                action: '/team/requests',
-                variant: 'primary',
-                icon: '👁️'
-              },
-              {
-                label: 'Approva Subito',
-                action: `/api/employments/${employment.id}/approve`,
-                variant: 'primary',
-                icon: '✅'
-              }
+              { label: 'Visualizza Richieste', action: '/approvals', variant: 'primary', icon: '👁️' },
+              { label: 'Vai al Team', action: '/team/requests', variant: 'secondary', icon: '✅' }
             ],
-            metadata: {
-              employmentId: employment.id,
-              userId: user.id,
-              userName: user.name,
-              companyId: foundCompany.id,
-              companyName: foundCompany.name
-            }
+            metadata: { employmentId: employment.id, userId: user.id, companyId: foundCompany.id }
           })
-          
-          console.log(`✅ Employment PENDING creato per ${user.name} - ID: ${employment.id}`)
-          console.log(`🔔 Notifica inviata al proprietario dell'azienda`)
-          
         } catch (notifError) {
           console.error('Errore creazione notifica:', notifError)
-          // Non bloccare se la notifica fallisce
         }
         
       } catch (employmentError) {

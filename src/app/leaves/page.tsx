@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
+import { LEAVE_TYPES } from '@/lib/leaveSystem'
 
 // Stati richiesta ferie
 export enum LeaveStatus {
@@ -19,7 +20,12 @@ export default function LeavesPage() {
   const { canManageEmployees } = usePermissions()
   
   const isManager = canManageEmployees()
-  const [activeView, setActiveView] = useState(isManager ? 'approve' : 'my-requests')
+  const [activeView, setActiveView] = useState('my-requests')
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [form, setForm] = useState<{ type: string; startDate: string; endDate: string; reason: string }>({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
+  const userId = (session?.user as any)?.id
+  const department = (session?.user as any)?.department || ''
+  const [myRequests, setMyRequests] = useState<any[]>([])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -66,28 +72,11 @@ export default function LeavesPage() {
 
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         
-        {/* Toggle Vista (solo Manager) */}
+        {/* Link approvazioni (solo Manager/Owner) */}
         {isManager && (
-          <div className="flex gap-2 mb-6 bg-white rounded-lg shadow p-1">
-            <button
-              onClick={() => setActiveView('approve')}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
-                activeView === 'approve'
-                  ? 'bg-orange-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              ✅ Da Approvare
-            </button>
-            <button
-              onClick={() => setActiveView('my-requests')}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
-                activeView === 'my-requests'
-                  ? 'bg-orange-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              📋 Le Mie Ferie
+          <div className="mb-4">
+            <button onClick={() => router.push('/approvals')} className="text-sm text-orange-600 font-semibold hover:underline">
+              Vai a Approvazioni →
             </button>
           </div>
         )}
@@ -112,184 +101,171 @@ export default function LeavesPage() {
             </div>
 
             {/* Nuova Richiesta */}
-            <button className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold shadow">
-              ➕ Nuova Richiesta Ferie
+            <button
+              onClick={() => setIsFormOpen(true)}
+              className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold shadow"
+            >
+              ➕ Nuova Richiesta
             </button>
+
+            {isFormOpen && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Nuova Richiesta</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Tipo</label>
+                    <select
+                      value={form.type}
+                      onChange={(e) => setForm({ ...form, type: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="VACATION">Ferie</option>
+                      <option value="ROL">ROL</option>
+                      <option value="PAID_LEAVE">Permesso Retribuito</option>
+                      <option value="UNPAID_LEAVE">Permesso Non Retribuito</option>
+                      <option value="SICK_LEAVE">Malattia</option>
+                      <option value="PARENTAL_LEAVE">Congedo Parentale</option>
+                      <option value="STUDY_LEAVE">Permesso Studio</option>
+                      <option value="UNION_LEAVE">Permesso Sindacale</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Dal</label>
+                    <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Al</label>
+                    <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="block text-sm text-gray-700 mb-1">Motivo (opzionale)</label>
+                  <input type="text" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Es. Vacanza famiglia" />
+                </div>
+                <div className="flex gap-2 justify-end mt-4">
+                  <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Annulla</button>
+                  <button
+                    onClick={() => {
+                      if (!form.startDate || !form.endDate) { alert('Seleziona date'); return }
+                      const list = JSON.parse(localStorage.getItem('leave_requests') || '[]')
+                      const newReq = {
+                        id: crypto.randomUUID(), userId, department, type: form.type, startDate: form.startDate, endDate: form.endDate, reason: form.reason,
+                        status: 'PENDING', createdAt: new Date().toISOString()
+                      }
+                      list.push(newReq)
+                      localStorage.setItem('leave_requests', JSON.stringify(list))
+                      window.dispatchEvent(new CustomEvent('leave_system_updated'))
+                      setIsFormOpen(false)
+                      // ricarica lista
+                      try { setMyRequests(list.filter((r: any) => r.userId === userId)) } catch {}
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    Invia
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Le Tue Richieste */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 Le Tue Richieste</h3>
               
-              <div className="space-y-4">
-                {/* Richiesta Modificata dal Manager */}
-                <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full font-medium">
-                      ⚠️ MODIFICATA DAL MANAGER
-                    </span>
-                    <span className="text-xs text-gray-500">5 Ottobre 2025</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 my-4">
-                    <div>
-                      <span className="text-sm text-gray-600">Date richieste:</span>
-                      <div className="font-medium line-through text-gray-500">10-15 Dicembre</div>
-                    </div>
-                    <div>
-                      <span className="text-sm text-green-600">Proposte dal manager:</span>
-                      <div className="font-bold text-green-700">12-17 Dicembre</div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-sm text-gray-700 mb-4 p-3 bg-white rounded">
-                    <strong>Motivazione:</strong> "Abbiamo già 2 persone in ferie dal 10-12. Le date 12-17 vanno meglio."
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <button className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
-                      ✅ Accetto
-                    </button>
-                    <button className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
-                      ❌ Rifiuto
-                    </button>
-                    <button className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-                      ✏️ Altre Date
-                    </button>
-                  </div>
-                </div>
-
-                {/* Richiesta Pending */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded-full font-medium">
-                        ⏳ IN ATTESA
+              {/* Lista dinamica */}
+              {(() => {
+                try {
+                  const all = JSON.parse(localStorage.getItem('leave_requests') || '[]')
+                  const mine = all.filter((r: any) => r.userId === userId)
+                  if (myRequests.length !== mine.length) setMyRequests(mine)
+                } catch {}
+                if (!myRequests || myRequests.length === 0) {
+                  return (<div className="text-sm text-gray-500">Nessuna richiesta inviata.</div>)
+                }
+                return myRequests.slice().reverse().map((req) => (
+                  <div key={req.id} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="text-sm text-gray-600">{req.type}</div>
+                        <div className="font-semibold">{new Date(req.startDate).toLocaleDateString('it-IT')} - {new Date(req.endDate).toLocaleDateString('it-IT')}</div>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${req.status === 'PENDING' ? 'bg-blue-100 text-blue-800' : req.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {req.status}
                       </span>
-                      <div className="mt-2 font-semibold">5-10 Gennaio 2026</div>
-                      <div className="text-sm text-gray-600">5 giorni • Richiesta del 8 Ottobre</div>
-                    </div>
-                    <button className="text-red-600 hover:text-red-800 text-sm font-medium">
-                      🗑️ Annulla
-                    </button>
-                  </div>
-                </div>
-
-                {/* Richiesta Approvata */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full font-medium">
-                        ✅ APPROVATA
-                      </span>
-                      <div className="mt-2 font-semibold">20-25 Agosto 2025</div>
-                      <div className="text-sm text-gray-600">5 giorni • Approvata da Marco Rossi il 1 Agosto</div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* VISTA MANAGER: Da Approvare */}
-        {activeView === 'approve' && isManager && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">✅ Richieste da Approvare</h3>
-            
-            <div className="space-y-4">
-              {/* Richiesta Nuova */}
-              <div className="bg-white border-2 border-orange-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="text-3xl">👤</div>
-                    <div>
-                      <div className="font-semibold text-gray-900">Mario Bianchi</div>
-                      <div className="text-sm text-gray-600">Chef de Partie • Cucina</div>
-                    </div>
-                  </div>
-                  <span className="text-xs bg-orange-100 text-orange-800 px-3 py-1 rounded-full font-medium">
-                    ⏳ DA APPROVARE
+                ))
+              })()}
+              {/* Richiesta Modificata dal Manager */}
+              {/* Esempi statici mantenuti per UI */}
+              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 hidden">
+                <div className="flex justify-between items-start mb-3">
+                  <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full font-medium">
+                    ⚠️ MODIFICATA DAL MANAGER
                   </span>
+                  <span className="text-xs text-gray-500">5 Ottobre 2025</span>
                 </div>
                 
-                <div className="mb-4 p-3 bg-gray-50 rounded">
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Date:</span>
-                      <div className="font-semibold">10-15 Dicembre</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Giorni:</span>
-                      <div className="font-semibold">5 giorni</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Saldo dopo:</span>
-                      <div className="font-semibold">21/26</div>
-                    </div>
+                <div className="grid grid-cols-2 gap-4 my-4">
+                  <div>
+                    <span className="text-sm text-gray-600">Date richieste:</span>
+                    <div className="font-medium line-through text-gray-500">10-15 Dicembre</div>
                   </div>
-                  <div className="mt-2 text-sm text-gray-600">
-                    <strong>Nota:</strong> "Vacanza famiglia"
+                  <div>
+                    <span className="text-sm text-green-600">Proposte dal manager:</span>
+                    <div className="font-bold text-green-700">12-17 Dicembre</div>
                   </div>
                 </div>
-
+                
+                <div className="text-sm text-gray-700 mb-4 p-3 bg-white rounded">
+                  <strong>Motivazione:</strong> "Abbiamo già 2 persone in ferie dal 10-12. Le date 12-17 vanno meglio."
+                </div>
+                
                 <div className="flex gap-2">
                   <button className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
-                    ✅ Approva
+                    ✅ Accetto
                   </button>
                   <button className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
-                    ❌ Rifiuta
+                    ❌ Rifiuto
                   </button>
                   <button className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-                    ✏️ Modifica Date
+                    ✏️ Altre Date
                   </button>
                 </div>
               </div>
 
-              {/* Richiesta Rimodificata */}
-              <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="text-3xl">👤</div>
-                    <div>
-                      <div className="font-semibold text-gray-900">Anna Verdi</div>
-                      <div className="text-sm text-gray-600">Cameriera • Sala</div>
-                    </div>
+              {/* Richiesta Pending */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 hidden">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded-full font-medium">
+                      ⏳ IN ATTESA
+                    </span>
+                    <div className="mt-2 font-semibold">5-10 Gennaio 2026</div>
+                    <div className="text-sm text-gray-600">5 giorni • Richiesta del 8 Ottobre</div>
                   </div>
-                  <span className="text-xs bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-medium">
-                    🔄 CONTROPROPOSTA
-                  </span>
+                  <button className="text-red-600 hover:text-red-800 text-sm font-medium">
+                    🗑️ Annulla
+                  </button>
                 </div>
-                
-                <div className="mb-3 p-3 bg-white rounded">
-                  <div className="text-xs text-gray-500 mb-2">Cronologia:</div>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-blue-600">1.</span>
-                      <span>Anna richiede: 1-5 Novembre</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-orange-600">2.</span>
-                      <span>Tu modifichi in: 3-7 Novembre</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-purple-600">3.</span>
-                      <span className="font-semibold">Anna contropropone: 2-6 Novembre</span>
-                    </div>
-                  </div>
-                </div>
+              </div>
 
-                <div className="flex gap-2">
-                  <button className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
-                    ✅ Approva Nuove Date
-                  </button>
-                  <button className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
-                    ❌ Rifiuta
-                  </button>
+              {/* Richiesta Approvata */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 hidden">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full font-medium">
+                      ✅ APPROVATA
+                    </span>
+                    <div className="mt-2 font-semibold">20-25 Agosto 2025</div>
+                    <div className="text-sm text-gray-600">5 giorni • Approvata da Marco Rossi il 1 Agosto</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* Vista approvazioni rimossa: usare pagina /approvals */}
       </main>
     </div>
   )
