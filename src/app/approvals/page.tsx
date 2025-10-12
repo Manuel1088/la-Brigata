@@ -29,14 +29,101 @@ export default function ApprovalsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState('swaps')
+  const [activeTab, setActiveTab] = useState('leaves')
   const [pendingCount, setPendingCount] = useState(0)
+  const [counts, setCounts] = useState<{ swaps: number; employees: number; payroll: number; leaves: number }>({ swaps: 0, employees: 0, payroll: 0, leaves: 0 })
   const { 
     canManageEmployees, 
     canManagePayroll,
     canManageShifts 
   } = usePermissions()
   const { notifyCustom } = useNotifications()
+
+  // Stabilizza i permessi come boolean per evitare effetti che si ripetono ad ogni render
+  const canEmployees = canManageEmployees()
+  const canPayroll = canManagePayroll()
+  const canShifts = canManageShifts()
+
+  // Data corrente per evidenziazioni
+  const today = new Date()
+
+  // Calendario mese corrente con indicatori di stato (pending/approved) per ferie/permessi e cambi turno
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
+  const [dayStatuses, setDayStatuses] = useState<Record<string, 'pending' | 'approved' | null>>({})
+
+  const formatISO = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${dd}`
+  }
+
+  const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate()
+  const getMondayIndex = (d: Date) => {
+    const jsDay = d.getDay() // 0=Sun..6=Sat
+    return (jsDay + 6) % 7 // 0=Mon..6=Sun
+  }
+
+  useEffect(() => {
+    try {
+      const year = currentMonth.getFullYear()
+      const month = currentMonth.getMonth()
+      const totalDays = daysInMonth(year, month)
+      const statuses: Record<string, 'pending' | 'approved' | null> = {}
+
+      // Prepara set per velocità
+      const markPending = (iso: string) => {
+        statuses[iso] = 'pending'
+      }
+      const markApproved = (iso: string) => {
+        if (!statuses[iso]) statuses[iso] = 'approved'
+      }
+
+      // Inizializza tutti i giorni del mese a null
+      for (let day = 1; day <= totalDays; day++) {
+        const d = new Date(year, month, day)
+        statuses[formatISO(d)] = null
+      }
+
+      // Integra Ferie/Permessi
+      if (canEmployees) {
+        const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]') as Array<any>
+        for (const req of leaveRequests) {
+          const start = new Date(req.startDate)
+          const end = new Date(req.endDate)
+          // Itera sui giorni del range che cadono nel mese corrente
+          for (let day = 1; day <= totalDays; day++) {
+            const d = new Date(year, month, day)
+            if (d >= new Date(start.getFullYear(), start.getMonth(), start.getDate()) && d <= new Date(end.getFullYear(), end.getMonth(), end.getDate())) {
+              const key = formatISO(d)
+              if (req.status === 'PENDING') markPending(key)
+              else if (req.status === 'APPROVED') markApproved(key)
+            }
+          }
+        }
+      }
+
+      // Integra Cambi Turno
+      if (canShifts) {
+        const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]') as Array<any>
+        for (const req of swapRequests) {
+          const d = new Date(req.dateISO)
+          if (d.getFullYear() === year && d.getMonth() === month) {
+            const key = formatISO(d)
+            if (req.status === 'PENDING') markPending(key)
+            else if (req.status === 'APPROVED') markApproved(key)
+          }
+        }
+      }
+
+      setDayStatuses(statuses)
+    } catch (e) {
+      setDayStatuses({})
+    }
+  }, [currentMonth, canEmployees, canShifts])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -46,39 +133,51 @@ export default function ApprovalsPage() {
   // Gestisci query param ?tab=payroll
   useEffect(() => {
     const tabParam = searchParams.get('tab')
-    if (tabParam && ['swaps', 'employees', 'payroll'].includes(tabParam)) {
+    if (tabParam && ['leaves', 'swaps', 'employees', 'payroll'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [searchParams])
 
-  // Calcola conteggio approvazioni in sospeso (ESCLUSE FERIE - ora in Time Management)
+  // Calcola conteggio approvazioni in sospeso
   useEffect(() => {
     const calculatePendingCount = () => {
       let count = 0
+      let swaps = 0, employees = 0, payroll = 0, leaves = 0
       
       try {
         // Conteggio richieste swap turni
-        if (canManageShifts()) {
+        if (canShifts) {
           const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]')
-          count += swapRequests.filter((req: any) => req.status === 'PENDING').length
+          swaps = swapRequests.filter((req: any) => req.status === 'PENDING').length
+          count += swaps
         }
         
         // Conteggio richieste dipendenti
-        if (canManageEmployees()) {
+        if (canEmployees) {
           const employeeRequests = JSON.parse(localStorage.getItem('employee_requests') || '[]')
-          count += employeeRequests.filter((req: any) => req.status === 'pending').length
+          employees = employeeRequests.filter((req: any) => req.status === 'pending').length
+          count += employees
         }
         
         // Conteggio richieste payroll
-        if (canManagePayroll()) {
+        if (canPayroll) {
           const payrollRequests = JSON.parse(localStorage.getItem('payroll_requests') || '[]')
-          count += payrollRequests.filter((req: any) => req.status === 'pending').length
+          payroll = payrollRequests.filter((req: any) => req.status === 'pending').length
+          count += payroll
+        }
+
+        // Conteggio richieste ferie/permessi
+        if (canEmployees) {
+          const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]')
+          leaves = leaveRequests.filter((req: any) => req.status === 'PENDING').length
+          count += leaves
         }
       } catch (error) {
         console.error('Errore nel calcolo approvazioni:', error)
       }
       
       setPendingCount(count)
+      setCounts({ swaps, employees, payroll, leaves })
     }
     
     calculatePendingCount()
@@ -87,12 +186,14 @@ export default function ApprovalsPage() {
     const handleUpdate = () => calculatePendingCount()
     window.addEventListener('approvals_updated', handleUpdate)
     window.addEventListener('shift_swaps_updated', handleUpdate)
+    window.addEventListener('leave_system_updated', handleUpdate)
     
     return () => {
       window.removeEventListener('approvals_updated', handleUpdate)
       window.removeEventListener('shift_swaps_updated', handleUpdate)
+      window.removeEventListener('leave_system_updated', handleUpdate)
     }
-  }, [canManageEmployees, canManagePayroll, canManageShifts])
+  }, [canEmployees, canPayroll, canShifts])
 
   const tabs = [
     { 
@@ -100,7 +201,7 @@ export default function ApprovalsPage() {
       label: 'Ferie/Permessi', 
       icon: '🏖️', 
       component: ApprovalsLeaves,
-      permission: canManageEmployees(),
+      permission: canEmployees,
       badge: 0
     },
     { 
@@ -108,7 +209,7 @@ export default function ApprovalsPage() {
       label: 'Cambi Turno', 
       icon: '🔄', 
       component: ApprovalsSwaps,
-      permission: canManageShifts(),
+      permission: canShifts,
       badge: 0 // Sarà calcolato dinamicamente
     },
     { 
@@ -116,7 +217,7 @@ export default function ApprovalsPage() {
       label: 'Dipendenti', 
       icon: '👥', 
       component: ApprovalsEmployees,
-      permission: canManageEmployees(),
+      permission: canEmployees,
       badge: 0 // Sarà calcolato dinamicamente
     },
     { 
@@ -124,7 +225,7 @@ export default function ApprovalsPage() {
       label: 'Payroll', 
       icon: '💰', 
       component: ApprovalsPayroll,
-      permission: canManagePayroll(),
+      permission: canPayroll,
       badge: 0 // Sarà calcolato dinamicamente
     }
   ]
@@ -142,19 +243,19 @@ export default function ApprovalsPage() {
       // Implementa azioni bulk
       switch (action) {
         case 'approve_all':
-          notifyCustom('✅ Tutte le richieste sono state approvate', 'success')
+          notifyCustom('SUCCESS', 'SYSTEM', 'Approvazioni', 'Tutte le richieste sono state approvate')
           break
         case 'reject_all':
-          notifyCustom('❌ Tutte le richieste sono state rifiutate', 'warning')
+          notifyCustom('WARNING', 'SYSTEM', 'Approvazioni', 'Tutte le richieste sono state rifiutate')
           break
         default:
-          notifyCustom(`Azione ${action} completata`, 'info')
+          notifyCustom('INFO', 'SYSTEM', 'Azione completata', `Azione ${action} completata`)
       }
       
       // Aggiorna conteggio
       window.dispatchEvent(new CustomEvent('approvals_updated'))
     } catch (error) {
-      notifyCustom('Errore nell\'esecuzione dell\'azione', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Approvazioni', 'Errore nell\'esecuzione dell\'azione')
     }
   }
 
@@ -220,10 +321,76 @@ export default function ApprovalsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {/* Calendario mese corrente */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                className="px-2 py-1 text-gray-600 hover:text-gray-900"
+              >
+                ←
+              </button>
+              <div className={`font-semibold ${currentMonth.getMonth() === today.getMonth() && currentMonth.getFullYear() === today.getFullYear() ? 'text-red-700' : 'text-gray-900'}`}>
+                {currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+              </div>
+              <button
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                className="px-2 py-1 text-gray-600 hover:text-gray-900"
+              >
+                →
+              </button>
+            </div>
+
+            {/* Intestazione giorni */}
+            <div className="grid grid-cols-7 text-xs text-gray-500 mb-2 px-1">
+              {['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].map(d => (
+                <div key={d} className="text-center">{d}</div>
+              ))}
+            </div>
+
+            {/* Griglia giorni */}
+            <div className="grid grid-cols-7 gap-1">
+              {(() => {
+                const year = currentMonth.getFullYear()
+                const month = currentMonth.getMonth()
+                const total = new Date(year, month + 1, 0).getDate()
+                const firstDay = new Date(year, month, 1)
+                const leading = getMondayIndex(firstDay) // numero di celle vuote prima del 1°
+                const cells: any[] = []
+                for (let i = 0; i < leading; i++) {
+                  cells.push(<div key={`lead_${i}`} className="h-12" />)
+                }
+                for (let day = 1; day <= total; day++) {
+                  const d = new Date(year, month, day)
+                  const key = formatISO(d)
+                  const status = dayStatuses[key]
+                  const dotClass = status === 'approved' ? 'bg-green-500' : status === 'pending' ? 'bg-yellow-500' : 'bg-transparent'
+                  const isToday = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate()
+                  cells.push(
+                    <div key={key} className="h-12 flex flex-col items-center justify-center">
+                      <div className={`text-sm ${isToday ? 'text-red-700 font-semibold' : 'text-gray-700'}`}>{day}</div>
+                      <div className={`w-2 h-2 rounded-full mt-1 ${dotClass}`}></div>
+                    </div>
+                  )
+                }
+                return cells
+              })()}
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-4 mt-3 text-xs text-gray-600">
+              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Approvato</div>
+              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500 inline-block"></span> In attesa</div>
+            </div>
+          </div>
+        </div>
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
-              {visibleTabs.map((tab) => (
+              {visibleTabs.map((tab) => {
+                const badge = tab.id === 'swaps' ? counts.swaps : tab.id === 'employees' ? counts.employees : tab.id === 'payroll' ? counts.payroll : tab.id === 'leaves' ? counts.leaves : 0
+                return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -237,13 +404,13 @@ export default function ApprovalsPage() {
                 >
                   <span className="text-xl mr-2">{tab.icon}</span>
                   {tab.label}
-                  {tab.badge > 0 && (
+                  {badge > 0 && (
                     <span className="ml-2 bg-red-100 text-red-600 text-xs font-medium px-2 py-1 rounded-full">
-                      {tab.badge}
+                      {badge}
                     </span>
                   )}
                 </button>
-              ))}
+              )})}
             </nav>
           </div>
           

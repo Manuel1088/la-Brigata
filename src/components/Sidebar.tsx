@@ -282,7 +282,7 @@ export default function Sidebar() {
 
   return (
     <div 
-      className={`bg-gray-50 text-gray-900 h-full flex flex-col border-r border-gray-200`}
+      className={`bg-white text-gray-900 h-full flex flex-col border-r border-gray-200`}
       style={{ width: '250px' }}  // 🎯 Larghezza custom 250px
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

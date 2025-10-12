@@ -31,10 +31,10 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
   const { notifyCustom } = useNotifications()
   const { logReadAction } = useAudit()
   const [swapRequests, setSwapRequests] = useState<SwapRequest[]>([])
-  const [filterStatus, setFilterStatus] = useState<string>('PENDING')
+  const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterDepartment, setFilterDepartment] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'createdAt' | 'dateISO' | 'requesterName'>('createdAt')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
     loadSwapRequests()
@@ -84,11 +84,11 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
       })
       
       saveSwapRequests(updatedRequests)
-      notifyCustom('✅ Cambio turno approvato', 'success')
+      notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', 'Cambio turno approvato')
       onUpdate()
       logReadAction('shift_swap_approved', { requestId })
     } catch (error) {
-      notifyCustom('Errore nell\'approvazione del cambio turno', 'error')
+      notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', 'Errore nell\'approvazione del cambio turno')
     }
   }
 
@@ -111,11 +111,11 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
       })
       
       saveSwapRequests(updatedRequests)
-      notifyCustom('❌ Cambio turno rifiutato', 'warning')
+      notifyCustom('WARNING', 'SHIFTS', 'Cambio turno', 'Cambio turno rifiutato')
       onUpdate()
       logReadAction('shift_swap_rejected', { requestId, reason })
     } catch (error) {
-      notifyCustom('Errore nel rifiuto del cambio turno', 'error')
+      notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', 'Errore nel rifiuto del cambio turno')
     }
   }
 
@@ -134,11 +134,11 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
       })
       
       saveSwapRequests(updatedRequests)
-      notifyCustom(`✅ ${requestIds.length} cambi turno approvati`, 'success')
+      notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', `${requestIds.length} cambi turno approvati`)
       onUpdate()
       logReadAction('shift_swaps_bulk_approved', { count: requestIds.length })
     } catch (error) {
-      notifyCustom('Errore nell\'approvazione multipla', 'error')
+      notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', 'Errore nell\'approvazione multipla')
     }
   }
 
@@ -235,19 +235,31 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
     <div className="space-y-6">
       {/* Statistiche */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 rounded-lg p-4 text-center">
+        <div
+          className={`bg-blue-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='all' ? 'ring-2 ring-blue-300 shadow' : 'border border-blue-200'}`}
+          onClick={() => setFilterStatus('all')}
+        >
           <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
           <div className="text-sm text-blue-700">Totali</div>
         </div>
-        <div className="bg-yellow-50 rounded-lg p-4 text-center">
+        <div
+          className={`bg-yellow-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='PENDING' ? 'ring-2 ring-yellow-300 shadow' : 'border border-yellow-200'}`}
+          onClick={() => setFilterStatus('PENDING')}
+        >
           <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
           <div className="text-sm text-yellow-700">In Attesa</div>
         </div>
-        <div className="bg-green-50 rounded-lg p-4 text-center">
+        <div
+          className={`bg-green-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='APPROVED' ? 'ring-2 ring-green-300 shadow' : 'border border-green-200'}`}
+          onClick={() => setFilterStatus('APPROVED')}
+        >
           <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
           <div className="text-sm text-green-700">Approvati</div>
         </div>
-        <div className="bg-red-50 rounded-lg p-4 text-center">
+        <div
+          className={`bg-red-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='REJECTED' ? 'ring-2 ring-red-300 shadow' : 'border border-red-200'}`}
+          onClick={() => setFilterStatus('REJECTED')}
+        >
           <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
           <div className="text-sm text-red-700">Rifiutati</div>
         </div>
@@ -273,60 +285,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
         </div>
       )}
 
-      {/* Filtri */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Stato</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tutti</option>
-              <option value="PENDING">In Attesa</option>
-              <option value="APPROVED">Approvati</option>
-              <option value="REJECTED">Rifiutati</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Reparto</label>
-            <select
-              value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tutti</option>
-              <option value="cucina">Cucina</option>
-              <option value="sala">Sala</option>
-              <option value="bar">Bar</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Ordina per</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="createdAt">Data richiesta</option>
-              <option value="dateISO">Data turno</option>
-              <option value="requesterName">Richiedente</option>
-            </select>
-          </div>
-          
-          <div className="flex items-center">
-            <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
-            >
-              {sortOrder === 'asc' ? '⬆️' : '⬇️'}
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Filtri rimossi su richiesta */}
 
       {/* Lista Richieste */}
       <div className="space-y-4">

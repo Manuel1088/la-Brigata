@@ -35,11 +35,11 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
   const { notifyCustom } = useNotifications()
   const { logReadAction } = useAudit()
   const [requests, setRequests] = useState<EmployeeRequest[]>([])
-  const [filterStatus, setFilterStatus] = useState<string>('PENDING')
+  const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [filterDepartment, setFilterDepartment] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'createdAt' | 'employeeName' | 'type'>('createdAt')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
     loadRequests()
@@ -47,85 +47,52 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
     // Listener per aggiornamenti
     const handleUpdate = () => loadRequests()
     window.addEventListener('employee_requests_updated', handleUpdate)
+    window.addEventListener('approvals_updated', handleUpdate)
     
     return () => {
       window.removeEventListener('employee_requests_updated', handleUpdate)
+      window.removeEventListener('approvals_updated', handleUpdate)
     }
   }, [])
 
-  const loadRequests = () => {
+  const loadRequests = async () => {
+    try {
+      // 1) Prova a caricare da API employments (fonte ufficiale usata in TopBar)
+      const res = await fetch('/api/employments')
+      if (res.ok) {
+        const json = await res.json()
+        const emps = (json.employments || json.data || []) as any[]
+        // Mappa in formato EmployeeRequest per UI uniforme
+        const mapped: EmployeeRequest[] = emps.map((e: any) => ({
+          id: e.id,
+          type: 'new_employee',
+          employeeName: e.user?.name || e.userId,
+          employeeId: e.user?.id || e.userId,
+          department: (e.department || '').toLowerCase(),
+          newRole: e.role,
+          reason: e.status === 'PENDING' ? 'Nuova richiesta di assunzione' : 'Aggiornamento employment',
+          requestedBy: e.user?.email || 'Sistema',
+          status: (e.status || 'PENDING'),
+          createdAt: e.createdAt || new Date().toISOString(),
+          metadata: { source: 'api_employments', restaurantId: e.restaurantId }
+        }))
+        setRequests(mapped)
+        return
+      }
+    } catch (error) {
+      // fallback a localStorage se API non disponibile
+    }
+    
     try {
       const raw = localStorage.getItem('employee_requests')
       if (raw) {
         setRequests(JSON.parse(raw))
       } else {
-        // Dati di esempio per demo
-        const mockRequests: EmployeeRequest[] = [
-          {
-            id: 'emp_req_1',
-            type: 'new_employee',
-            employeeName: 'Mario Rossi',
-            employeeId: 'emp_123',
-            department: 'cucina',
-            newRole: 'CHEF_DE_PARTIE',
-            newSalary: 18.00,
-            reason: 'Nuovo dipendente assunto come Chef de Partie',
-            requestedBy: 'Giuseppe Verdi',
-            status: 'PENDING',
-            createdAt: new Date().toISOString(),
-            metadata: {
-              skills: ['Cucina Italiana', 'Grill'],
-              experience: '3 anni',
-              contractType: 'full-time'
-            }
-          },
-          {
-            id: 'emp_req_2',
-            type: 'salary_change',
-            employeeName: 'Anna Bianchi',
-            employeeId: 'emp_456',
-            department: 'sala',
-            currentRole: 'DIPENDENTE_SALA',
-            newRole: 'DIPENDENTE_SALA',
-            currentSalary: 12.00,
-            newSalary: 14.00,
-            reason: 'Aumento stipendio per performance eccellenti',
-            requestedBy: 'Marco Neri',
-            status: 'PENDING',
-            createdAt: new Date(Date.now() - 86400000).toISOString(),
-            metadata: {
-              performanceScore: 9.5,
-              monthsWorked: 24,
-              lastReview: '2024-01-15'
-            }
-          },
-          {
-            id: 'emp_req_3',
-            type: 'role_change',
-            employeeName: 'Luigi Verde',
-            employeeId: 'emp_789',
-            department: 'bar',
-            currentRole: 'DIPENDENTE_BAR',
-            newRole: 'RESPONSABILE_BAR',
-            currentSalary: 13.00,
-            newSalary: 16.00,
-            reason: 'Promozione a Responsabile Bar',
-            requestedBy: 'Sofia Blu',
-            status: 'PENDING',
-            createdAt: new Date(Date.now() - 172800000).toISOString(),
-            metadata: {
-              certifications: ['Bartender License'],
-              leadership: true,
-              teamSize: 3
-            }
-          }
-        ]
-        
-        setRequests(mockRequests)
-        localStorage.setItem('employee_requests', JSON.stringify(mockRequests))
+        setRequests([])
       }
     } catch (error) {
       console.error('Errore nel caricamento richieste dipendenti:', error)
+      setRequests([])
     }
   }
 
@@ -141,24 +108,18 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
 
   const handleApprove = async (requestId: string) => {
     try {
-      const updatedRequests = requests.map(req => {
-        if (req.id === requestId) {
-          return {
-            ...req,
-            status: 'APPROVED' as const,
-            approvedBy: session?.user?.id || '',
-            approvedAt: new Date().toISOString()
-          }
-        }
-        return req
+      // Prova a confermare via API employments
+      await fetch('/api/employments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: requestId, status: 'APPROVED', reviewedBy: session?.user?.id })
       })
-      
-      saveRequests(updatedRequests)
-      notifyCustom('✅ Richiesta dipendente approvata', 'success')
+      await loadRequests()
+      notifyCustom('SUCCESS', 'PERSONNEL', 'Richiesta dipendente', 'Richiesta dipendente approvata')
       onUpdate()
       logReadAction('employee_request_approved', { requestId })
     } catch (error) {
-      notifyCustom('Errore nell\'approvazione della richiesta', 'error')
+      notifyCustom('ERROR', 'PERSONNEL', 'Richiesta dipendente', 'Errore nell\'approvazione della richiesta')
     }
   }
 
@@ -167,25 +128,17 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
     if (!reason) return
     
     try {
-      const updatedRequests = requests.map(req => {
-        if (req.id === requestId) {
-          return {
-            ...req,
-            status: 'REJECTED' as const,
-            rejectedBy: session?.user?.id || '',
-            rejectedAt: new Date().toISOString(),
-            rejectionReason: reason
-          }
-        }
-        return req
+      await fetch('/api/employments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: requestId, status: 'REJECTED', reviewedBy: session?.user?.id })
       })
-      
-      saveRequests(updatedRequests)
-      notifyCustom('❌ Richiesta dipendente rifiutata', 'warning')
+      await loadRequests()
+      notifyCustom('WARNING', 'PERSONNEL', 'Richiesta dipendente', 'Richiesta dipendente rifiutata')
       onUpdate()
       logReadAction('employee_request_rejected', { requestId, reason })
     } catch (error) {
-      notifyCustom('Errore nel rifiuto della richiesta', 'error')
+      notifyCustom('ERROR', 'PERSONNEL', 'Richiesta dipendente', 'Errore nel rifiuto della richiesta')
     }
   }
 
@@ -293,85 +246,37 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
     <div className="space-y-6">
       {/* Statistiche */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 rounded-lg p-4 text-center">
+        <div
+          className={`bg-blue-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='all' ? 'ring-2 ring-blue-300 shadow' : 'border border-blue-200'}`}
+          onClick={() => setFilterStatus('all')}
+        >
           <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
           <div className="text-sm text-blue-700">Totali</div>
         </div>
-        <div className="bg-yellow-50 rounded-lg p-4 text-center">
+        <div
+          className={`bg-yellow-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='PENDING' ? 'ring-2 ring-yellow-300 shadow' : 'border border-yellow-200'}`}
+          onClick={() => setFilterStatus('PENDING')}
+        >
           <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
           <div className="text-sm text-yellow-700">In Attesa</div>
         </div>
-        <div className="bg-green-50 rounded-lg p-4 text-center">
+        <div
+          className={`bg-green-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='APPROVED' ? 'ring-2 ring-green-300 shadow' : 'border border-green-200'}`}
+          onClick={() => setFilterStatus('APPROVED')}
+        >
           <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
           <div className="text-sm text-green-700">Approvate</div>
         </div>
-        <div className="bg-red-50 rounded-lg p-4 text-center">
+        <div
+          className={`bg-red-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='REJECTED' ? 'ring-2 ring-red-300 shadow' : 'border border-red-200'}`}
+          onClick={() => setFilterStatus('REJECTED')}
+        >
           <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
           <div className="text-sm text-red-700">Rifiutate</div>
         </div>
       </div>
 
-      {/* Filtri */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Stato</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tutti</option>
-              <option value="PENDING">In Attesa</option>
-              <option value="APPROVED">Approvate</option>
-              <option value="REJECTED">Rifiutate</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tutti</option>
-              <option value="new_employee">Nuovo Dipendente</option>
-              <option value="role_change">Cambio Ruolo</option>
-              <option value="salary_change">Cambio Stipendio</option>
-              <option value="termination">Licenziamento</option>
-              <option value="activation">Attivazione</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Reparto</label>
-            <select
-              value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tutti</option>
-              <option value="cucina">Cucina</option>
-              <option value="sala">Sala</option>
-              <option value="bar">Bar</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Ordina per</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="createdAt">Data richiesta</option>
-              <option value="employeeName">Dipendente</option>
-              <option value="type">Tipo</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      {/* Filtri rimossi su richiesta; filtraggio gestito dai 4 riquadri */}
 
       {/* Lista Richieste */}
       <div className="space-y-4">

@@ -27,6 +27,23 @@ export default function LeavesPage() {
   const department = (session?.user as any)?.department || ''
   const [myRequests, setMyRequests] = useState<any[]>([])
 
+  // Load personal requests safely (no state updates during render)
+  useEffect(() => {
+    const loadMine = () => {
+      try {
+        const all = JSON.parse(localStorage.getItem('leave_requests') || '[]')
+        const mine = all.filter((r: any) => r.userId === userId)
+        setMyRequests(mine)
+      } catch {
+        setMyRequests([])
+      }
+    }
+    if (userId) loadMine()
+    const onUpdate = () => loadMine()
+    window.addEventListener('leave_system_updated', onUpdate)
+    return () => window.removeEventListener('leave_system_updated', onUpdate)
+  }, [userId])
+
   useEffect(() => {
     if (status === 'loading') return
     if (!session) router.push('/login')
@@ -157,7 +174,7 @@ export default function LeavesPage() {
                       window.dispatchEvent(new CustomEvent('leave_system_updated'))
                       setIsFormOpen(false)
                       // ricarica lista
-                      try { setMyRequests(list.filter((r: any) => r.userId === userId)) } catch {}
+                      // try { setMyRequests(list.filter((r: any) => r.userId === userId)) } catch {} // This line is removed as per the new_code
                     }}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                   >
@@ -171,30 +188,24 @@ export default function LeavesPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 Le Tue Richieste</h3>
               
-              {/* Lista dinamica */}
-              {(() => {
-                try {
-                  const all = JSON.parse(localStorage.getItem('leave_requests') || '[]')
-                  const mine = all.filter((r: any) => r.userId === userId)
-                  if (myRequests.length !== mine.length) setMyRequests(mine)
-                } catch {}
-                if (!myRequests || myRequests.length === 0) {
-                  return (<div className="text-sm text-gray-500">Nessuna richiesta inviata.</div>)
-                }
-                return myRequests.slice().reverse().map((req) => (
-                  <div key={req.id} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="text-sm text-gray-600">{req.type}</div>
-                        <div className="font-semibold">{new Date(req.startDate).toLocaleDateString('it-IT')} - {new Date(req.endDate).toLocaleDateString('it-IT')}</div>
+              <div className="space-y-4">
+                {(!myRequests || myRequests.length === 0) ? (
+                  <div className="text-sm text-gray-500">Nessuna richiesta inviata.</div>
+                ) : (
+                  myRequests.slice().reverse().map((req) => (
+                    <div key={req.id} className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm text-gray-600">{req.type}</div>
+                          <div className="font-semibold">{new Date(req.startDate).toLocaleDateString('it-IT')} - {new Date(req.endDate).toLocaleDateString('it-IT')}</div>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full ${req.status === 'PENDING' ? 'bg-blue-100 text-blue-800' : req.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {req.status}
+                        </span>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${req.status === 'PENDING' ? 'bg-blue-100 text-blue-800' : req.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {req.status}
-                      </span>
                     </div>
-                  </div>
-                ))
-              })()}
+                  ))
+                )}
               {/* Richiesta Modificata dal Manager */}
               {/* Esempi statici mantenuti per UI */}
               <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 hidden">
@@ -262,6 +273,7 @@ export default function LeavesPage() {
                 </div>
               </div>
             </div>
+          </div>
           </div>
         )}
 
