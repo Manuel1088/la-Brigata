@@ -63,7 +63,9 @@ export default function ShiftsPage() {
   const getWeekDays = () => {
     const week = []
     const start = new Date(currentWeek)
-    start.setDate(start.getDate() - start.getDay() + 1) // Lunedì
+    const dow = start.getDay() // 0=Dom, 1=Lun, ... 6=Sab
+    const delta = dow === 0 ? -6 : (1 - dow) // Se Domenica, vai al lunedì precedente
+    start.setDate(start.getDate() + delta)
     
     for (let i = 0; i < 7; i++) {
       const day = new Date(start)
@@ -96,6 +98,42 @@ export default function ShiftsPage() {
 
   const weekDays = getWeekDays()
   const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+  const formatShort = (d: Date) => d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+  const weekRangeLabel = `${formatShort(weekDays[0])} - ${formatShort(weekDays[6])}`
+  const today = new Date()
+  const startOfWeek = new Date(weekDays[0]); startOfWeek.setHours(0,0,0,0)
+  const endOfWeek = new Date(weekDays[6]); endOfWeek.setHours(23,59,59,999)
+  const todayOnly = new Date(today); todayOnly.setHours(0,0,0,0)
+  const isCurrentWeek = todayOnly >= startOfWeek && todayOnly <= endOfWeek
+
+  // Turni disponibili per reparto (catalogo sintetico)
+  const deptShiftCatalog: Record<string, Array<{ name: string; time: string }>> = {
+    cucina: [
+      { name: 'Prep Mattino', time: '06:00-14:00' },
+      { name: 'Servizio Giorno', time: '08:00-16:00' },
+      { name: 'Servizio Sera', time: '15:00-23:00' },
+      { name: 'Spezzato Chef', time: '09:00-15:00 / 18:00-24:00' }
+    ],
+    sala: [
+      { name: 'Apertura', time: '07:00-15:00' },
+      { name: 'Pranzo', time: '11:00-16:00' },
+      { name: 'Cena', time: '17:00-01:00' },
+      { name: 'Spezzato Sala', time: '11:00-15:00 / 19:00-23:00' }
+    ],
+    beverage: [
+      { name: 'Apertura Bar', time: '07:00-15:00' },
+      { name: 'Aperitivo', time: '17:00-21:00' },
+      { name: 'Dopocena', time: '20:00-02:00' },
+      { name: 'Spezzato Bar', time: '07:00-11:00 / 17:00-01:00' }
+    ],
+    accoglienza: [
+      { name: 'Apertura Accoglienza', time: '10:00-16:00' },
+      { name: 'Serale Accoglienza', time: '18:00-24:00' }
+    ]
+  }
+  const sessionDeptRaw = (session?.user as any)?.department || 'sala'
+  const userDepartment = sessionDeptRaw === 'bar' ? 'beverage' : sessionDeptRaw
+  const deptShifts = deptShiftCatalog[userDepartment] || deptShiftCatalog['sala']
 
   if (status === 'loading') {
     return (
@@ -132,27 +170,35 @@ export default function ShiftsPage() {
           
           {/* Navigation Settimana */}
           <div className="bg-white rounded-lg shadow p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={goToPreviousWeek}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
-              >
-                ← Settimana Precedente
-              </button>
-              
-              <button
-                onClick={goToToday}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-              >
-                📅 Questa Settimana
-              </button>
-              
-              <button
-                onClick={goToNextWeek}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
-              >
-                Settimana Successiva →
-              </button>
+            <div className="relative flex items-center">
+              <div className="flex items-center justify-start gap-2">
+                <button
+                  onClick={goToPreviousWeek}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                  title="Settimana precedente"
+                >
+                  ←
+                </button>
+                <button
+                  onClick={goToNextWeek}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                  title="Settimana successiva"
+                >
+                  →
+                </button>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className={`text-sm font-semibold ${isCurrentWeek ? 'text-red-600' : 'text-gray-700'}`}>{weekRangeLabel}</span>
+              </div>
+              <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                <button
+                  onClick={goToToday}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  title="Torna alla settimana corrente"
+                >
+                  Oggi
+                </button>
+              </div>
             </div>
           </div>
 
@@ -240,6 +286,14 @@ export default function ShiftsPage() {
             <p className="text-sm text-blue-700">
               🔵 Turno Lavorativo | ⚪ Riposo | 🟢 Ferie | 🟣 Evento Aziendale
             </p>
+            <div className="mt-3 text-sm">
+              <div className="font-semibold text-blue-900 mb-1">Turni disponibili nel tuo reparto</div>
+              <ul className="list-disc list-inside text-blue-800">
+                {deptShifts.map((s, idx) => (
+                  <li key={idx}>{s.name} — {s.time}</li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </main>
