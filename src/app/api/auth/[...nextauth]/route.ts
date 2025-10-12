@@ -56,7 +56,7 @@ export const authOptions: AuthOptions = {
         const email = credentials.email.toLowerCase()
         // 1) Login utenti registrati in DB (Prisma)
         try {
-          const dbUser = await prisma.user.findUnique({ where: { email } })
+          const dbUser = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } })
           if (dbUser && dbUser.password) {
             const ok = await compare(credentials.password, dbUser.password)
             if (ok) {

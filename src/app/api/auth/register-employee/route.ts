@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
       email,
       phone,
       password,
+      position,
+      level,
       department,
       role,
       companyFiscalCode,
@@ -24,6 +26,8 @@ export async function POST(request: NextRequest) {
       email: string
       phone?: string
       password: string
+      position?: string
+      level?: string
       department: string
       role?: string
       companyFiscalCode?: string
@@ -32,8 +36,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verifica se email già esiste
+    const normalizedEmail = email.toLowerCase()
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     })
     
     if (existingUser) {
@@ -143,15 +148,55 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Mappa mansione -> ruolo interno UI
+    const mapPositionToRole = (pos?: string): any => {
+      if (!pos) return role || 'DIPENDENTE'
+      const p = pos.toLowerCase()
+      if (p.includes('dirett')) return 'MANAGER'
+      if (p.includes('restaurant manager')) return 'MANAGER'
+      if (p.includes('maître') || p.includes('maitre')) return 'RESPONSABILE_SALA'
+      if (p.includes('chef de rang')) return 'DIPENDENTE_SALA'
+      if (p.includes('cameriere')) return 'DIPENDENTE_SALA'
+      if (p.includes('sous chef')) return 'SOUS_CHEF'
+      if (p.includes('chef de partie')) return 'CHEF_DE_PARTIE'
+      if (p.includes('chef')) return 'CHEF'
+      if (p.includes('cuoco')) return 'CAPO_PARTITA'
+      if (p.includes('head barman')) return 'HEAD_BARMAN'
+      if (p.includes('barman')) return 'DIPENDENTE_BAR'
+      if (p.includes('barista')) return 'DIPENDENTE_BAR'
+      if (p.includes('head sommelier')) return 'HEAD_SOMMELIER'
+      if (p.includes('sommelier')) return 'SOMMELIER'
+      if (p.includes('cassier')) return 'CASSIERE'
+      if (p.includes('hostes') || p.includes('hostess') || p.includes('host')) return 'CASSIERE'
+      if (p.includes('lavapiatti')) return 'LAVAPIATTI'
+      return role || 'DIPENDENTE'
+    }
+
+    // Mappa livello stringa -> numero gerarchico
+    const parseHierarchyLevel = (lvl?: string): number => {
+      if (!lvl) return 5
+      const v = ('' + lvl).toUpperCase()
+      if (v === 'QA' || v === 'A1') return 1
+      if (v === 'QB' || v === 'B2') return 2
+      const n = parseInt(v)
+      if (!isNaN(n)) return n
+      if (v === '6S') return 6
+      return 5
+    }
+
+    const mappedRole = mapPositionToRole(position)
+    const hierarchyLevel = parseHierarchyLevel(level)
+
     // Crea utente
     const user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         name,
         password: hashedPassword,
-        role: (role || 'DIPENDENTE') as any,
+        role: (mappedRole || role || 'DIPENDENTE') as any,
         userType: 'EMPLOYEE',
-        hierarchyLevel: 5,
+        hierarchyLevel,
+        position: position || null,
         department,
         phone,
         companyId,
@@ -171,7 +216,7 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             restaurantId: restaurantId,
             status: 'PENDING', // ⏳ Richiede approvazione
-            role: (role || 'DIPENDENTE') as any,
+            role: (mappedRole || role || 'DIPENDENTE') as any,
             department: department || null,
             requestedAt: new Date()
           }

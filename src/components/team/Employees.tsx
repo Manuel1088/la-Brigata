@@ -94,7 +94,8 @@ export default function TeamEmployees() {
     })
   }, [employeesData, employeesDefault])
 
-  const employees = actualEmployees
+  const normalizeDept = (d?: string) => (d === 'bar' ? 'beverage' : d || '')
+  const employees = actualEmployees.map(emp => ({ ...emp, department: normalizeDept(emp.department) }))
 
   // Filtra e ordina dipendenti
   const filteredEmployees = useMemo(() => {
@@ -148,7 +149,8 @@ export default function TeamEmployees() {
     const total = employees.length
     const active = employees.filter(emp => emp.isActive).length
     const byDepartment = employees.reduce((acc, emp) => {
-      acc[emp.department] = (acc[emp.department] || 0) + 1
+      const d = normalizeDept(emp.department)
+      acc[d] = (acc[d] || 0) + 1
       return acc
     }, {} as Record<string, number>)
     const byRole = employees.reduce((acc, emp) => {
@@ -159,14 +161,15 @@ export default function TeamEmployees() {
     return { total, active, byDepartment, byRole }
   }, [employees])
 
-  const departments = ['all', 'cucina', 'sala', 'bar']
+  const departments = ['all', 'cucina', 'sala', 'beverage', 'accoglienza']
   const roles = ['all', ...Array.from(new Set(employees.map(emp => emp.role)))]
 
   const getDepartmentColor = (dept: string) => {
     switch (dept) {
       case 'cucina': return 'bg-red-50 text-red-700 border-red-200'
       case 'sala': return 'bg-blue-50 text-blue-700 border-blue-200'
-      case 'bar': return 'bg-green-50 text-green-700 border-green-200'
+      case 'beverage': return 'bg-green-50 text-green-700 border-green-200'
+      case 'accoglienza': return 'bg-purple-50 text-purple-700 border-purple-200'
       default: return 'bg-gray-50 text-gray-700 border-gray-200'
     }
   }
@@ -175,7 +178,8 @@ export default function TeamEmployees() {
     switch (dept) {
       case 'cucina': return '🔥'
       case 'sala': return '🍽️'
-      case 'bar': return '🍹'
+      case 'beverage': return '🍷'
+      case 'accoglienza': return '🛎️'
       default: return '🏢'
     }
   }
@@ -346,10 +350,7 @@ export default function TeamEmployees() {
                         <span className="text-gray-600">Ruolo:</span>
                         <span className="font-medium">{employee.role.replace(/_/g, ' ')}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Tariffa:</span>
-                        <span className="font-medium">{formatCurrency(employee.hourlyRate)}/h</span>
-                      </div>
+                      {/* Tariffa rimossa: retribuzione ora è mensile CCNL */}
                       <div className="flex justify-between">
                         <span className="text-gray-600">Assunzione:</span>
                         <span className="font-medium">{formatDate(employee.startDate)}</span>

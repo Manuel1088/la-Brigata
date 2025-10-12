@@ -75,7 +75,7 @@ export default function ShiftsHistory() {
         employeeName: 'Luca Barista',
         date: '2025-01-21',
         time: '17:00-01:00',
-        department: 'bar',
+        department: 'beverage',
         action: 'created',
         changedBy: 'Manager',
         changedAt: '2025-01-21T10:00:00Z',
@@ -179,7 +179,7 @@ export default function ShiftsHistory() {
     switch (dept) {
       case 'cucina': return 'bg-red-50 text-red-700'
       case 'sala': return 'bg-blue-50 text-blue-700'
-      case 'bar': return 'bg-green-50 text-green-700'
+      case 'beverage': return 'bg-green-50 text-green-700'
       default: return 'bg-gray-50 text-gray-700'
     }
   }
@@ -188,7 +188,7 @@ export default function ShiftsHistory() {
     switch (dept) {
       case 'cucina': return '🔥'
       case 'sala': return '🍽️'
-      case 'bar': return '🍹'
+      case 'beverage': return '🍷'
       default: return '🏢'
     }
   }
@@ -229,7 +229,7 @@ export default function ShiftsHistory() {
               <option value="all">Tutti</option>
               <option value="cucina">Cucina</option>
               <option value="sala">Sala</option>
-              <option value="bar">Bar</option>
+              <option value="beverage">Beverage</option>
             </select>
           </div>
 

@@ -239,7 +239,74 @@ export function getLeaveTypeConfig(type: string): LeaveTypeConfig {
 }
 
 export function getLeaveBalances(userId: string): LeaveBalance[] {
-  return mockLeaveBalances[userId] || []
+  const base = (mockLeaveBalances[userId] || []).map(b => ({ ...b }))
+  if (typeof window === 'undefined') return base
+  try {
+    const raw = localStorage.getItem('leave_balances_overrides_v1')
+    if (!raw) return base
+    const overrides = JSON.parse(raw) as Record<string, { VACATION?: number; ROL?: number }>
+    const userOv = overrides[userId]
+    if (!userOv) return base
+    // Merge overrides onto base
+    let merged = base.map(b => {
+      if (b.type === 'VACATION' && typeof userOv.VACATION === 'number') {
+        const remaining = Math.max(0, userOv.VACATION)
+        const used = Math.max(0, b.total - remaining)
+        const percentage = b.total > 0 ? Math.round((remaining / b.total) * 100) : 0
+        return { ...b, remaining, used, percentage }
+      }
+      if (b.type === 'ROL' && typeof userOv.ROL === 'number') {
+        const remaining = Math.max(0, userOv.ROL)
+        const used = Math.max(0, b.total - remaining)
+        const percentage = b.total > 0 ? Math.round((remaining / b.total) * 100) : 0
+        return { ...b, remaining, used, percentage }
+      }
+      return b
+    })
+    // Ensure entries exist even if missing in base
+    const hasVacation = merged.some(b => b.type === 'VACATION')
+    const hasRol = merged.some(b => b.type === 'ROL')
+    if (!hasVacation && typeof userOv.VACATION === 'number') {
+      const total = 26
+      const remaining = Math.max(0, userOv.VACATION)
+      const used = Math.max(0, total - remaining)
+      const percentage = total > 0 ? Math.round((remaining / total) * 100) : 0
+      merged = [
+        ...merged,
+        { type: 'VACATION', total, used, remaining, percentage }
+      ]
+    }
+    if (!hasRol && typeof userOv.ROL === 'number') {
+      const total = 32
+      const remaining = Math.max(0, userOv.ROL)
+      const used = Math.max(0, total - remaining)
+      const percentage = total > 0 ? Math.round((remaining / total) * 100) : 0
+      merged = [
+        ...merged,
+        { type: 'ROL', total, used, remaining, percentage }
+      ]
+    }
+    return merged
+  } catch {
+    return base
+  }
+}
+
+function setOverride(userId: string, partial: { VACATION?: number; ROL?: number }) {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem('leave_balances_overrides_v1')
+    const current = raw ? (JSON.parse(raw) as Record<string, { VACATION?: number; ROL?: number }>) : {}
+    const prev = current[userId] || {}
+    current[userId] = { ...prev, ...partial }
+    localStorage.setItem('leave_balances_overrides_v1', JSON.stringify(current))
+    window.dispatchEvent(new CustomEvent('leave_balances_updated', { detail: { userId } }))
+  } catch {}
+}
+
+export function updateLeaveRemaining(userId: string, type: 'VACATION' | 'ROL', remaining: number) {
+  if (type === 'VACATION') setOverride(userId, { VACATION: remaining })
+  if (type === 'ROL') setOverride(userId, { ROL: remaining })
 }
 
 export function getLeaveRequests(userId?: string): LeaveRequest[] {

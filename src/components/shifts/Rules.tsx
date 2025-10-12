@@ -9,7 +9,7 @@ export default function ShiftsRules() {
   const router = useRouter()
   const { data: session } = useSession()
   const [rules, setRules] = useState<RestRule[]>([])
-  const [selectedDepartment, setSelectedDepartment] = useState<'cucina' | 'sala' | 'bar'>('sala')
+  const [selectedDepartment, setSelectedDepartment] = useState<'cucina' | 'sala' | 'beverage'>('sala')
   
   // Usa l'hook useEmployees per caricare solo i dipendenti dell'azienda
   const { employees: employeesData, isLoading } = useEmployeeContext()
@@ -21,10 +21,10 @@ export default function ShiftsRules() {
     }))
   }, [employeesData])
   
-  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }>>({
-    cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
-    sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
-    bar: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' }
+  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'beverage', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }>>({
+    cucina: { mode: 'fixed', weeklyRestDays: 1 },
+    sala: { mode: 'fixed', weeklyRestDays: 1 },
+    beverage: { mode: 'fixed', weeklyRestDays: 1 }
   })
 
   useEffect(() => {
@@ -43,12 +43,12 @@ export default function ShiftsRules() {
   const { allowedDepartments, manageAll } = useMemo(() => {
     const role = ((session?.user as any)?.role || '').toString().toUpperCase()
     if (['PROPRIETARIO','DIRETTORE','MANAGER','ADMIN'].includes(role)) {
-      return { allowedDepartments: ['cucina','sala','bar'] as Array<'cucina'|'sala'|'bar'>, manageAll: true }
+      return { allowedDepartments: ['cucina','sala','beverage'] as Array<'cucina'|'sala'|'beverage'>, manageAll: true }
     }
     if (role === 'HEAD_CHEF') return { allowedDepartments: ['cucina'] as Array<'cucina'|'sala'|'bar'>, manageAll: false }
     if (role === 'RESPONSABILE_SALA' || role === 'CASSIERE') return { allowedDepartments: ['sala'] as Array<'cucina'|'sala'|'bar'>, manageAll: false }
     // Fallback: bar
-    return { allowedDepartments: ['bar'] as Array<'cucina'|'sala'|'bar'>, manageAll: false }
+    return { allowedDepartments: ['beverage'] as Array<'cucina'|'sala'|'beverage'>, manageAll: false }
   }, [session])
 
   const updateRule = (employeeName: string, dayOfWeek: number, isRestDay: boolean) => {
@@ -56,7 +56,7 @@ export default function ShiftsRules() {
     setRules(newRules)
   }
 
-  const saveDeptConfig = (dept: 'cucina'|'sala'|'bar', config: any) => {
+  const saveDeptConfig = (dept: 'cucina'|'sala'|'beverage', config: any) => {
     const newConfigs = { ...deptConfigs, [dept]: config }
     setDeptConfigs(newConfigs)
     try {
@@ -83,7 +83,7 @@ export default function ShiftsRules() {
     switch (dept) {
       case 'cucina': return 'bg-red-50 border-red-200'
       case 'sala': return 'bg-blue-50 border-blue-200'
-      case 'bar': return 'bg-green-50 border-green-200'
+      case 'beverage': return 'bg-green-50 border-green-200'
       default: return 'bg-gray-50 border-gray-200'
     }
   }
@@ -92,7 +92,7 @@ export default function ShiftsRules() {
     switch (dept) {
       case 'cucina': return '🔥'
       case 'sala': return '🍽️'
-      case 'bar': return '🍹'
+      case 'beverage': return '🍷'
       default: return '🏢'
     }
   }
@@ -222,7 +222,7 @@ export default function ShiftsRules() {
         <h3 className="text-lg font-semibold mb-4">📊 Riepilogo Regole</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {['cucina', 'sala', 'bar'].map(dept => {
+          {['cucina', 'sala', 'beverage'].map(dept => {
             const deptEmployees = getDepartmentEmployees(dept)
             const totalRestDays = deptEmployees.reduce((sum, emp) => {
               const empRules = getEmployeeRules(emp.name)

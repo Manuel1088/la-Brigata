@@ -76,7 +76,7 @@ export default function ShiftsCalendar() {
       { id: 'riposo', name: '😴 Riposo', time: 'RIPOSO', description: 'Giorno di riposo programmato' },
       { id: 'personalizzato', name: '⚙️ Personalizzato', time: 'custom', description: 'Inserisci orario manualmente' }
     ],
-    bar: [
+    beverage: [
       { id: 'apertura_bar', name: '🌅 Apertura Bar', time: '07:00-15:00', description: 'Caffè e colazioni' },
       { id: 'aperitivo', name: '🍸 Aperitivo', time: '17:00-21:00', description: 'Solo aperitivi' },
       { id: 'dopocena_bar', name: '🍷 Dopocena', time: '20:00-02:00', description: 'Bar serale e cocktail' },
@@ -91,10 +91,10 @@ export default function ShiftsCalendar() {
 
   // ✅ Configurazione riposi memoizzata
   type DeptConfig = { mode: 'fixed' | 'rotating'; weeklyRestDays: 1 | 2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }
-  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'bar', DeptConfig>>({
+  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'beverage', DeptConfig>>({
     cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
     sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
-    bar: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' }
+    beverage: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' }
   })
 
   // ✅ Carica dipendenti OPERATIVI (esclusi proprietari non lavoratori)
@@ -116,9 +116,10 @@ export default function ShiftsCalendar() {
         // - Tutti gli altri ruoli operativi
       })
       
+      const normalize = (d?: string) => d === 'bar' ? 'beverage' : (d || 'sala')
       setEmployees(operativeEmployees.map((e: any) => ({
         name: e.name,
-        department: e.department || 'sala',
+        department: normalize(e.department),
         role: e.role || 'DIPENDENTE_SALA'
       })))
     }
@@ -383,7 +384,7 @@ export default function ShiftsCalendar() {
   }, [employees, selectedDepartment])
 
   const weekDates = getWeekDates(currentWeek)
-  const departments = ['direzione', 'cucina', 'sala', 'bar']
+  const departments = ['direzione', 'cucina', 'sala', 'beverage']
 
   return (
     <div className="space-y-6">
@@ -485,14 +486,14 @@ export default function ShiftsCalendar() {
               🍽️ Sala
             </button>
             <button
-              onClick={() => setSelectedDepartment('bar')}
+              onClick={() => setSelectedDepartment('beverage')}
               className={`px-4 py-2 rounded-lg font-medium transition ${
-                selectedDepartment === 'bar'
+                selectedDepartment === 'beverage'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              🍹 Bar
+              🍷 Beverage
             </button>
           </div>
           

@@ -62,7 +62,7 @@ export function ShiftSwapManager({ isOpen, onClose, userId, userRole }: Props) {
   const [version, setVersion] = useState(0)
   const { notifyCustom } = useNotifications()
   const [showPendingOnly, setShowPendingOnly] = useState(true)
-  const [deptFilter, setDeptFilter] = useState<'all'|'cucina'|'sala'|'bar'>('all')
+  const [deptFilter, setDeptFilter] = useState<'all'|'cucina'|'sala'|'beverage'>('all')
 
   useEffect(() => {
     const onUpd = () => setVersion(v => v + 1)
@@ -133,7 +133,7 @@ export function ShiftSwapManager({ isOpen, onClose, userId, userRole }: Props) {
                 <option value="all">Tutti i reparti</option>
                 <option value="cucina">Cucina</option>
                 <option value="sala">Sala</option>
-                <option value="bar">Bar</option>
+                <option value="beverage">Beverage</option>
               </select>
             </div>
             <div className="text-xs text-gray-600">Totale: {filtered.length}</div>

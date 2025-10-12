@@ -23,7 +23,10 @@ export interface EmployeeRegistration {
   email: string
   phone: string
   password: string
-  department: 'cucina' | 'sala' | 'bar'
+  position?: string
+  level?: string
+  companyName?: string
+  department: 'cucina' | 'sala' | 'beverage' | 'dirigenti' | 'accoglienza'
   role: string
   userType: 'EMPLOYEE'
   companyFiscalCode: string
@@ -42,7 +45,9 @@ export interface CandidateRegistration {
   email: string
   phone: string
   password: string
-  department: 'cucina' | 'sala' | 'bar'
+  position?: string
+  level?: string
+  department: 'cucina' | 'sala' | 'beverage' | 'dirigenti' | 'accoglienza'
   userType: 'CANDIDATE'
   candidateData: {
     experience: Array<{

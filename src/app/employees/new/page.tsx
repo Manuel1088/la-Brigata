@@ -14,7 +14,6 @@ export default function NewEmployeePage() {
     email: '',
     phone: '',
     role: 'DIPENDENTE_SALA',
-    position: '',
     hourlyRate: 12.00,
     contractType: 'full-time',
     startDate: new Date().toISOString().split('T')[0],
@@ -23,7 +22,6 @@ export default function NewEmployeePage() {
   })
 
   const [newSkill, setNewSkill] = useState('')
-  const [autoMapRole, setAutoMapRole] = useState(true)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -65,36 +63,8 @@ export default function NewEmployeePage() {
     'DIPENDENTE_SALA',
     'DIPENDENTE_BAR',
     'CASSIERE',
-    'MANAGER',
-    'DIRETTORE'
+    'MANAGER'
   ]
-
-  const positions = [
-    'Direttore',
-    'Manager',
-    'Responsabile Sala',
-    'Chef',
-    'Sous Chef',
-    'Capo Partita',
-    'Cameriere',
-    'Barista',
-    'Cassiere'
-  ]
-
-  const mapPositionToRole = (pos: string): string => {
-    const p = (pos || '').toLowerCase()
-    if (p.includes('dirett')) return 'DIRETTORE'
-    if (p.includes('manager')) return 'MANAGER'
-    if (p.includes('responsabile') && p.includes('sala')) return 'RESPONSABILE_SALA'
-    if (p.includes('sous')) return 'SOUS_CHEF'
-    if (p.includes('capo partita')) return 'CAPO_PARTITA'
-    if (p.includes('chef')) return 'CHEF'
-    if (p.includes('bar')) return 'DIPENDENTE_BAR'
-    if (p.includes('cassier')) return 'CASSIERE'
-    return 'DIPENDENTE_SALA'
-  }
-
-  const roleLabel = (r: string) => r === 'DIRETTORE' ? 'DIRIGENTE' : r.replace(/_/g, ' ')
 
   if (status === 'loading' || !session) {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
@@ -153,55 +123,18 @@ export default function NewEmployeePage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mansione</label>
-                <select
-                  value={formData.position}
-                  onChange={(e) => {
-                    const pos = e.target.value
-                    setFormData(prev => ({ ...prev, position: pos }))
-                    if (autoMapRole) setFormData(prev => ({ ...prev, role: mapPositionToRole(pos) }))
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Seleziona mansione…</option>
-                  {positions.map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Ruolo</label>
                 <select
                   value={formData.role}
-                  onChange={(e) => { setAutoMapRole(false); setFormData(prev => ({ ...prev, role: e.target.value })) }}
+                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {roles.map(role => (
                     <option key={role} value={role}>
-                      {roleLabel(role)}
+                      {role.replace(/_/g, ' ')}
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  id="auto-map-role"
-                  type="checkbox"
-                  checked={autoMapRole}
-                  onChange={(e) => {
-                    setAutoMapRole(e.target.checked)
-                    if (e.target.checked && formData.position) {
-                      setFormData(prev => ({ ...prev, role: mapPositionToRole(formData.position) }))
-                    }
-                  }}
-                  className="w-4 h-4 text-blue-600 rounded"
-                />
-                <label htmlFor="auto-map-role" className="text-sm text-gray-700">
-                  Imposta ruolo automaticamente dalla mansione
-                </label>
               </div>
             </div>
 

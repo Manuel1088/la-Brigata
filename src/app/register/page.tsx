@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CompanyRegistration, EmployeeRegistration, CandidateRegistration } from '@/types/registration'
 
@@ -278,15 +278,64 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
     email: '',
     phone: '',
     password: '',
+    position: '',
     department: 'sala',
     role: 'DIPENDENTE',
     userType: 'EMPLOYEE',
-    companyFiscalCode: ''
+    companyFiscalCode: '',
+    level: ''
   })
+  const [uploadedPayroll, setUploadedPayroll] = useState<File | null>(null)
+  const [isAnalyzingPayroll, setIsAnalyzingPayroll] = useState(false)
+  const [extractedPayrollData, setExtractedPayrollData] = useState<{ companyName?: string, fiscalCode?: string, position?: string, level?: string, ferieResidue?: number, rolResidui?: number } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const mapPositionToDeptAndLevel = (pos: string): { dept: string, level: string } => {
+    const dept = pos.includes('Chef') || pos.includes('Cuoco') ? 'cucina'
+      : pos.includes('Bar') || pos.includes('Barman') ? 'beverage'
+      : pos.includes('Sommelier') ? 'beverage'
+      : pos.includes('Cassier') || pos.includes('Hostes') || pos.includes('Hostess') ? 'accoglienza'
+      : pos.includes('Dirett') || pos.includes('Manager') ? 'dirigenti'
+      : pos.includes('Lavapiatti') ? 'sala' : 'sala'
+    const level = pos.includes('Direttore') ? 'QA'
+      : pos.includes('Restaurant Manager') ? 'QB'
+      : pos.includes('Head Sommelier') ? '3'
+      : pos.includes('Sommelier') ? '3'
+      : pos.includes('Head Barman') ? '3'
+      : pos.includes('Barman') ? '4'
+      : pos.includes('Barista') ? '5'
+      : pos.includes('Chef de Rang') ? '4'
+      : pos.includes('Chef') ? '2'
+      : pos.includes('Sous Chef') ? '3'
+      : pos.includes('Cuoco') ? '4'
+      : pos.includes('Cassier') ? '4'
+      : pos.includes('Hostes') || pos.includes('Hostess') ? '5'
+      : pos.includes('Lavapiatti') ? '6'
+      : '6S'
+    return { dept, level }
+  }
+
+  const simulatePayrollExtraction = async (file: File) => {
+    // Placeholder di estrazione: in produzione integra OCR/AI
+    await new Promise(r => setTimeout(r, 1200))
+    // Demo: valori fittizi per precompilazione
+    return {
+      companyName: 'Ristorante Demo Srl',
+      fiscalCode: 'ABCDEF12G34H567I',
+      position: 'Cameriere',
+      level: '5',
+      ferieResidue: 10,
+      rolResidui: 8,
+    }
+  }
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault()
+      if (!formData.level) {
+        alert('Seleziona il livello')
+        return
+      }
       onSubmit(formData)
     }}>
       <div className="relative mb-6">
@@ -314,22 +363,198 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
           onChange={(e) => setFormData({...formData, email: e.target.value})}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
         />
+        <input
+          type="text"
+          placeholder="Nome Azienda"
+          value={formData.companyName || ''}
+          onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
         
-        <select
-          value={formData.department}
-          onChange={(e) => setFormData({...formData, department: e.target.value as any})}
-          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none cursor-pointer h-[42px]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 0.75rem center',
-            backgroundSize: '1.25rem'
-          }}
-        >
-          <option value="sala">Sala</option>
-          <option value="cucina">Cucina</option>
-          <option value="bar">Bar</option>
-        </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Mansione</label>
+            <select
+              value={formData.position || ''}
+              onChange={(e) => {
+                const pos = e.target.value
+                const dept = pos.includes('Chef') || pos.includes('Cuoco') ? 'cucina'
+                  : pos.includes('Bar') || pos.includes('Barman') ? 'beverage'
+                  : pos.includes('Sommelier') ? 'beverage'
+                  : pos.includes('Cassier') || pos.includes('Hostes') || pos.includes('Hostess') ? 'accoglienza'
+                  : pos.includes('Dirett') || pos.includes('Manager') ? 'dirigenti'
+                  : pos.includes('Lavapiatti') ? 'sala' : 'sala'
+                const level = pos.includes('Direttore') ? 'QA'
+                  : pos.includes('Restaurant Manager') ? 'QB'
+                  : pos.includes('Head Sommelier') ? '3'
+                  : pos.includes('Sommelier') ? '3'
+                  : pos.includes('Head Barman') ? '3'
+                  : pos.includes('Barman') ? '4'
+                  : pos.includes('Barista') ? '5'
+                  : pos.includes('Chef de Rang') ? '4'
+                  : pos.includes('Chef') ? '2'
+                  : pos.includes('Sous Chef') ? '3'
+                  : pos.includes('Cuoco') ? '4'
+                  : pos.includes('Cassier') ? '4'
+                  : pos.includes('Hostes') || pos.includes('Hostess') ? '5'
+                  : pos.includes('Lavapiatti') ? '6'
+                  : '6S'
+                setFormData({ ...formData, position: pos, department: dept as any, level })
+              }}
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none cursor-pointer h-[42px]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.75rem center',
+                backgroundSize: '1.25rem'
+              }}
+            >
+              <option value="">Seleziona mansione</option>
+              <option value="Direttore">Dirigente / Direttore</option>
+              <option value="Restaurant Manager">Restaurant Manager</option>
+              <option value="Chef">Chef</option>
+              <option value="Sous Chef">Sous Chef</option>
+              <option value="Cuoco">Cuoco</option>
+              <option value="Cameriere">Cameriere</option>
+              <option value="Maître">Maître</option>
+              <option value="Chef de Rang">Chef de Rang</option>
+              <option value="Sommelier">Sommelier</option>
+              <option value="Head Sommelier">Head Sommelier</option>
+              <option value="Head Barman">Head Barman</option>
+              <option value="Barman">Barman</option>
+              <option value="Barista">Barista</option>
+              <option value="Lavapiatti">Lavapiatti</option>
+              <option value="Cassiere">Cassiere/Cassiera</option>
+              <option value="Hostess">Hostess / Host</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Livello</label>
+            <select
+              value={formData.level || ''}
+              onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none cursor-pointer h-[42px]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.75rem center',
+                backgroundSize: '1.25rem'
+              }}
+              required
+            >
+              <option value="">Seleziona livello</option>
+              <option value="QA">Quadro A (Direttivo)</option>
+              <option value="QB">Quadro B (Direttivo)</option>
+              <option value="1">Primo Livello</option>
+              <option value="2">Secondo Livello</option>
+              <option value="3">Terzo Livello</option>
+              <option value="4">Quarto Livello</option>
+              <option value="5">Quinto Livello</option>
+              <option value="6">Sesto Livello</option>
+              <option value="6S">Sesto Livello S</option>
+              <option value="7">Settimo Livello</option>
+            </select>
+            
+            {(formData.position || '').includes('Cassier') && (
+              <div className="mt-2 text-xs">
+                <span className="text-gray-600 mr-2">Consigliato:</span>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '4' })} className="px-2 py-1 border rounded mr-1">4</button>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '5' })} className="px-2 py-1 border rounded">5</button>
+              </div>
+            )}
+            {(((formData.position || '').includes('Hostes')) || ((formData.position || '').includes('Hostess'))) && (
+              <div className="mt-2 text-xs">
+                <span className="text-gray-600 mr-2">Consigliato:</span>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '5' })} className="px-2 py-1 border rounded mr-1">5</button>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '6' })} className="px-2 py-1 border rounded">6</button>
+              </div>
+            )}
+            {(formData.position || '').includes('Lavapiatti') && (
+              <div className="mt-2 text-xs">
+                <span className="text-gray-600 mr-2">Consigliato:</span>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '6' })} className="px-2 py-1 border rounded mr-1">6</button>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '6S' })} className="px-2 py-1 border rounded">6S</button>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Upload Busta Paga (opzionale ma consigliato) */}
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-medium text-gray-900">Carica Busta Paga (PDF/Immagine)</div>
+            {extractedPayrollData && (
+              <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">Dati estratti</span>
+            )}
+          </div>
+          <div className="flex flex-col gap-3">
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => setUploadedPayroll(e.target.files?.[0] || null)}
+              className="block w-full"
+              ref={fileInputRef}
+            />
+            <p className="text-xs text-gray-500">Usiamo la busta paga per precompilare i dati (non memorizziamo il file).</p>
+            <div className="flex flex-wrap items-center gap-2 justify-center">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!uploadedPayroll) {
+                    fileInputRef.current?.click()
+                    return
+                  }
+                  setIsAnalyzingPayroll(true)
+                  try {
+                    const data = await simulatePayrollExtraction(uploadedPayroll)
+                    setExtractedPayrollData(data)
+                  } finally {
+                    setIsAnalyzingPayroll(false)
+                  }
+                }}
+                disabled={isAnalyzingPayroll}
+                className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+              >
+                {isAnalyzingPayroll ? 'Analisi…' : 'Analizza'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!extractedPayrollData) {
+                    alert('Analizza prima la busta paga per applicare i dati')
+                    return
+                  }
+                  const { companyName, fiscalCode, position, level, ferieResidue, rolResidui } = extractedPayrollData
+                  const mapping = mapPositionToDeptAndLevel(position || '')
+                  setFormData(prev => ({
+                    ...prev,
+                    companyName: companyName || prev.companyName,
+                    companyFiscalCode: fiscalCode || prev.companyFiscalCode,
+                    position: position || prev.position,
+                    department: mapping.dept as any,
+                    level: level || mapping.level
+                  }))
+                  try {
+                    localStorage.setItem('payroll_residui_preview', JSON.stringify({ ferieResidue, rolResidui }))
+                  } catch {}
+                }}
+                className="px-3 py-2 bg-green-600 text-white rounded disabled:opacity-50"
+              >
+                Applica dati estratti
+              </button>
+            </div>
+          </div>
+          {extractedPayrollData && (
+            <div className="mt-3 text-sm text-gray-700 grid md:grid-cols-3 gap-3">
+              <div><span className="text-gray-500">Azienda:</span> <span className="font-medium">{extractedPayrollData.companyName}</span></div>
+              <div><span className="text-gray-500">CF/P.IVA:</span> <span className="font-medium">{extractedPayrollData.fiscalCode}</span></div>
+              <div><span className="text-gray-500">Mansione:</span> <span className="font-medium">{extractedPayrollData.position}</span></div>
+              <div><span className="text-gray-500">Livello:</span> <span className="font-medium">{extractedPayrollData.level}</span></div>
+              <div><span className="text-gray-500">Ferie Residue:</span> <span className="font-medium">{extractedPayrollData.ferieResidue}</span></div>
+              <div><span className="text-gray-500">ROL Residui:</span> <span className="font-medium">{extractedPayrollData.rolResidui}</span></div>
+            </div>
+          )}
+        </div>
         
         <input
           type="text"
@@ -382,6 +607,7 @@ function CandidateRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (d
     email: '',
     phone: '',
     password: '',
+    position: '',
     department: 'sala',
     userType: 'CANDIDATE',
     candidateData: {
@@ -423,21 +649,125 @@ function CandidateRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (d
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
         />
         
-        <select
-          value={formData.department}
-          onChange={(e) => setFormData({...formData, department: e.target.value as any})}
-          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white appearance-none cursor-pointer h-[42px]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 0.75rem center',
-            backgroundSize: '1.25rem'
-          }}
-        >
-          <option value="sala">Sala</option>
-          <option value="cucina">Cucina</option>
-          <option value="bar">Bar</option>
-        </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Mansione desiderata</label>
+            <select
+              value={formData.position || ''}
+              onChange={(e) => {
+                const pos = e.target.value
+                const dept = pos.includes('Chef') || pos.includes('Cuoco') ? 'cucina'
+                  : pos.includes('Bar') || pos.includes('Barman') ? 'beverage'
+                  : pos.includes('Sommelier') ? 'beverage'
+                  : pos.includes('Cassier') || pos.includes('Hostes') || pos.includes('Hostess') ? 'accoglienza'
+                  : pos.includes('Dirett') || pos.includes('Manager') ? 'dirigenti'
+                  : pos.includes('Lavapiatti') ? 'sala' : 'sala'
+                const level = pos.includes('Direttore') ? 'QA'
+                  : pos.includes('Restaurant Manager') ? 'QB'
+                  : pos.includes('Head Sommelier') ? '3'
+                  : pos.includes('Sommelier') ? '3'
+                  : pos.includes('Head Barman') ? '3'
+                  : pos.includes('Barman') ? '4'
+                  : pos.includes('Barista') ? '5'
+                  : pos.includes('Chef de Rang') ? '4'
+                  : pos.includes('Chef') ? '2'
+                  : pos.includes('Sous Chef') ? '3'
+                  : pos.includes('Cuoco') ? '4'
+                  : pos.includes('Cassier') ? '4'
+                  : pos.includes('Hostes') || pos.includes('Hostess') ? '5'
+                  : pos.includes('Lavapiatti') ? '6'
+                  : undefined
+                setFormData({ ...formData, position: pos, department: dept as any, level })
+              }}
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white appearance-none cursor-pointer h-[42px]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.75rem center',
+                backgroundSize: '1.25rem'
+              }}
+            >
+              <option value="">Seleziona mansione</option>
+              <option value="Direttore">Dirigente / Direttore</option>
+              <option value="Restaurant Manager">Restaurant Manager</option>
+              <option value="Chef">Chef</option>
+              <option value="Sous Chef">Sous Chef</option>
+              <option value="Cuoco">Cuoco</option>
+              <option value="Cameriere">Cameriere</option>
+              <option value="Maître">Maître</option>
+              <option value="Chef de Rang">Chef de Rang</option>
+              <option value="Sommelier">Sommelier</option>
+              <option value="Head Sommelier">Head Sommelier</option>
+              <option value="Head Barman">Head Barman</option>
+              <option value="Barman">Barman</option>
+              <option value="Barista">Barista</option>
+              <option value="Lavapiatti">Lavapiatti</option>
+              <option value="Cassiere">Cassiere/Cassiera</option>
+              <option value="Hostess">Hostess / Host</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Livello desiderato</label>
+            <select
+              value={formData.level || ''}
+              onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white appearance-none cursor-pointer h-[42px]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.75rem center',
+                backgroundSize: '1.25rem'
+              }}
+            >
+              <option value="">Seleziona livello</option>
+              <option value="QA">Quadro A (Direttivo)</option>
+              <option value="QB">Quadro B (Direttivo)</option>
+              <option value="1">Primo Livello</option>
+              <option value="2">Secondo Livello</option>
+              <option value="3">Terzo Livello</option>
+              <option value="4">Quarto Livello</option>
+              <option value="5">Quinto Livello</option>
+              <option value="6">Sesto Livello</option>
+              <option value="6S">Sesto Livello S</option>
+              <option value="7">Settimo Livello</option>
+            </select>
+            <details className="mt-2 text-xs text-gray-600">
+              <summary className="cursor-pointer text-gray-700">Come funzionano i livelli?</summary>
+              <div className="mt-1 space-y-1">
+                <div>QA/QB: ruoli direttivi con responsabilità generali/specifiche.</div>
+                <div>1: alta professionalità e autonomia.</div>
+                <div>2: iniziativa e autonomia entro direttive generali.</div>
+                <div>3: mansioni di concetto, competenze tecniche.</div>
+                <div>4: amministrative/tecnico-pratiche/vendita.</div>
+                <div>5: esecutive con preparazione pratica.</div>
+                <div>6: addestramento normale, basi professionali.</div>
+                <div>6S: intermedio con competenze più specifiche.</div>
+                <div>7: mansioni semplici con macchine attrezzate.</div>
+              </div>
+            </details>
+            {(formData.position || '').includes('Cassier') && (
+              <div className="mt-2 text-xs">
+                <span className="text-gray-600 mr-2">Consigliato:</span>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '4' })} className="px-2 py-1 border rounded mr-1">4</button>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '5' })} className="px-2 py-1 border rounded">5</button>
+              </div>
+            )}
+            {(((formData.position || '').includes('Hostes')) || ((formData.position || '').includes('Hostess'))) && (
+              <div className="mt-2 text-xs">
+                <span className="text-gray-600 mr-2">Consigliato:</span>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '5' })} className="px-2 py-1 border rounded mr-1">5</button>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '6' })} className="px-2 py-1 border rounded">6</button>
+              </div>
+            )}
+            {(formData.position || '').includes('Lavapiatti') && (
+              <div className="mt-2 text-xs">
+                <span className="text-gray-600 mr-2">Consigliato:</span>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '6' })} className="px-2 py-1 border rounded mr-1">6</button>
+                <button type="button" onClick={() => setFormData({ ...formData, level: '6S' })} className="px-2 py-1 border rounded">6S</button>
+              </div>
+            )}
+          </div>
+        </div>
         
         <textarea
           placeholder="Presentati brevemente *"

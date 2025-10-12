@@ -4,8 +4,8 @@ export interface EmployeeFull {
   email: string
   phone: string
   role: string
-  department: 'cucina' | 'sala' | 'bar'
-  level: number
+  department: 'cucina' | 'sala' | 'beverage' | 'accoglienza'
+  level: number | string
   hourlyRate: number
   contractType: 'full-time' | 'part-time'
   startDate: string
@@ -18,12 +18,13 @@ export interface EmployeeFull {
     emergencyContact?: string
   }
   notes?: string
+  monthlyIncrease?: number
 }
 
 export interface SimpleEmployee {
   name: string
   role: string
-  department: 'cucina' | 'sala' | 'bar'
+  department: 'cucina' | 'sala' | 'beverage' | 'accoglienza'
 }
 
 const DEFAULT_EMPLOYEES_FULL: EmployeeFull[] = [
@@ -32,35 +33,40 @@ const DEFAULT_EMPLOYEES_FULL: EmployeeFull[] = [
     role: 'EXECUTIVE_CHEF', department: 'cucina', level: 5, hourlyRate: 25.00, contractType: 'full-time', startDate: '2020-03-15', isActive: true,
     avatar: '👨‍🍳', skills: ['Cucina Italiana', 'Menu Design', 'Team Management', 'Cost Control'],
     personalInfo: { fiscalCode: 'RSSGPP80A01H501U', address: 'Via Roma 123, 20100 Milano', emergencyContact: 'Maria Rossi - +39 333 987 6543' },
-    notes: 'Chef esperto con 15 anni di esperienza. Specializzato in cucina tradizionale italiana.'
+    notes: 'Chef esperto con 15 anni di esperienza. Specializzato in cucina tradizionale italiana.',
+    monthlyIncrease: 0
   },
   {
     id: '2', name: 'Anna Bianchi', email: 'anna.bianchi@brigata.it', phone: '+39 333 234 5678',
     role: 'SOUS_CHEF', department: 'cucina', level: 4, hourlyRate: 20.00, contractType: 'full-time', startDate: '2021-06-01', isActive: true,
     avatar: '👩‍🍳', skills: ['Pastry', 'Sauces', 'Kitchen Organization', 'Training'],
     personalInfo: { fiscalCode: 'BNCNNA85B02H501V', address: 'Corso Italia 456, 20100 Milano', emergencyContact: 'Marco Bianchi - +39 333 876 5432' },
-    notes: 'Sous chef talentuosa, esperta in pasticceria e formazione del personale.'
+    notes: 'Sous chef talentuosa, esperta in pasticceria e formazione del personale.',
+    monthlyIncrease: 0
   },
   {
     id: '3', name: 'Marco Verdi', email: 'marco.verdi@brigata.it', phone: '+39 333 345 6789',
     role: 'CHEF_DE_PARTIE', department: 'cucina', level: 3, hourlyRate: 16.00, contractType: 'full-time', startDate: '2022-01-10', isActive: true,
     avatar: '👨‍🍳', skills: ['Grill', 'Pasta', 'Quality Control', 'Inventory'],
     personalInfo: { fiscalCode: 'VRDMRC90C03H501W', address: 'Piazza Duomo 789, 20100 Milano', emergencyContact: 'Sofia Verdi - +39 333 765 4321' },
-    notes: 'Chef de partie affidabile, specializzato in griglia e pasta fresca.'
+    notes: 'Chef de partie affidabile, specializzato in griglia e pasta fresca.',
+    monthlyIncrease: 0
   },
   {
     id: '4', name: 'Sofia Neri', email: 'sofia.neri@brigata.it', phone: '+39 333 456 7890',
     role: 'DIPENDENTE_SALA', department: 'sala', level: 2, hourlyRate: 12.00, contractType: 'part-time', startDate: '2022-09-15', isActive: true,
     avatar: '👩‍💼', skills: ['Customer Service', 'Wine Knowledge', 'Table Service', 'Upselling'],
     personalInfo: { fiscalCode: 'NRISFI95D04H501X', address: 'Via Brera 321, 20100 Milano', emergencyContact: 'Luca Neri - +39 333 654 3210' },
-    notes: 'Cameriera professionale con ottime competenze nel servizio e conoscenza dei vini.'
+    notes: 'Cameriera professionale con ottime competenze nel servizio e conoscenza dei vini.',
+    monthlyIncrease: 0
   },
   {
     id: '5', name: 'Luca Blu', email: 'luca.blu@brigata.it', phone: '+39 333 567 8901',
-    role: 'DIPENDENTE_BAR', department: 'bar', level: 2, hourlyRate: 13.00, contractType: 'full-time', startDate: '2023-02-20', isActive: true,
+    role: 'DIPENDENTE_BAR', department: 'beverage', level: 2, hourlyRate: 13.00, contractType: 'full-time', startDate: '2023-02-20', isActive: true,
     avatar: '👨‍💼', skills: ['Cocktails', 'Coffee Art', 'Bar Management', 'Inventory'],
     personalInfo: { fiscalCode: 'BLULCA88E05H501Y', address: 'Via Navigli 654, 20100 Milano', emergencyContact: 'Giulia Blu - +39 333 543 2109' },
-    notes: 'Barista esperto, specializzato in cocktail classici e caffè artigianale.'
+    notes: 'Barista esperto, specializzato in cocktail classici e caffè artigianale.',
+    monthlyIncrease: 0
   }
 ]
 
@@ -111,7 +117,8 @@ export function setEmployeesClient(list: SimpleEmployee[]) {
     isActive: true,
     avatar: '👤',
     skills: [],
-    personalInfo: {}
+    personalInfo: {},
+    monthlyIncrease: 0
   }))
   setEmployeesFullClient(full)
 }
@@ -132,7 +139,8 @@ export function addEmployeeClient(emp: SimpleEmployee) {
     isActive: true,
     avatar: '👤',
     skills: [],
-    personalInfo: {}
+    personalInfo: {},
+    monthlyIncrease: 0
   }
   addEmployeeFullClient(newFull)
 }

@@ -8,7 +8,7 @@ type RestDaysType = { [key: string]: [string, string?] }
 type CcnlLevelsType = { [key: string]: string }
 type DepartmentPointsType = { cucina: number; sala: number; bar: number }
 type DepartmentChecksType = { cucina: boolean; sala: boolean; bar: boolean }
-type DepartmentKey = 'cucina' | 'sala' | 'bar'
+type DepartmentKey = 'cucina' | 'sala' | 'beverage'
 
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'] as const
 const CCNL_LEVELS = ['QA', '1', '2', '3', '4', '5', '6'] as const
@@ -182,7 +182,7 @@ export default function TipsManage() {
       .filter(e => e.department === 'sala')
       .reduce((sum, emp) => sum + (points[emp.name] || 0), 0)),
     bar: Math.max(1, employees
-      .filter(e => e.department === 'bar')
+      .filter(e => e.department === 'beverage')
       .reduce((sum, emp) => sum + (points[emp.name] || 0), 0))
   }), [employees, points])
 
@@ -359,7 +359,7 @@ export default function TipsManage() {
         />
         
         <DepartmentSection 
-          department="bar" 
+          department="beverage" 
           color="green" 
           icon="🍹" 
           label="Bar" 

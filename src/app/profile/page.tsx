@@ -3,6 +3,18 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
+// CCNL base mensile per livello (11/2027) per calcolo paga di default
+const CCNL_MONTHLY_BASE: Record<string, number> = {
+  QA: 2495.22, QB: 2310.11, A1: 2495.22, B2: 2310.11,
+  '1': 2152.32, '2': 1967.20, '3': 1855.32, '4': 1750.69,
+  '5': 1641.85, '6S': 1578.72, '6': 1556.35, '7': 1458.42
+}
+const getBaseForLevel = (level?: number | string | null) => {
+  if (!level && level !== 0) return 0
+  const key = String(level).toUpperCase()
+  return CCNL_MONTHLY_BASE[key] || 0
+}
+
 export default function ProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -10,6 +22,7 @@ export default function ProfilePage() {
   const [isEditingPersonal, setIsEditingPersonal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [myEmployee, setMyEmployee] = useState<any | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -52,6 +65,19 @@ export default function ProfilePage() {
       role: (session.user as any)?.role || '',
       department: (session.user as any)?.department || ''
     })
+
+    // Carica dati dipendente per il riquadro "Profilo Dipendente"
+    const companyId = (session.user as any)?.companyId
+    const userId = (session.user as any)?.id
+    if (companyId && userId) {
+      fetch(`/api/employees?companyId=${encodeURIComponent(companyId)}&active=true`)
+        .then(res => res.json())
+        .then(data => {
+          const emp = Array.isArray(data?.employees) ? data.employees.find((e: any) => e.id === userId) : null
+          setMyEmployee(emp || null)
+        })
+        .catch(() => setMyEmployee(null))
+    }
   }, [session, status, router])
 
   const handleSave = async () => {
@@ -317,7 +343,7 @@ export default function ProfilePage() {
                               <option value="">Seleziona reparto...</option>
                               <option value="cucina">🍳 Cucina</option>
                               <option value="sala">🍽️ Sala</option>
-                              <option value="bar">🍹 Bar</option>
+                              <option value="beverage">🍷 Beverage</option>
                               <option value="direzione">👔 Direzione</option>
                             </select>
                           </>
@@ -353,7 +379,7 @@ export default function ProfilePage() {
                     <span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                       {formData.department === 'cucina' ? '🍳 Cucina' :
                        formData.department === 'sala' ? '🍽️ Sala' :
-                       formData.department === 'bar' ? '🍹 Bar' :
+                       formData.department === 'beverage' ? '🍷 Beverage' :
                        formData.department === 'direzione' ? '👔 Direzione' :
                        formData.department}
                     </span>
@@ -361,6 +387,47 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* Profilo Dipendente (sola lettura per dipendenti) */}
+            {myEmployee && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">👤 Profilo Dipendente</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="block text-gray-600 mb-1">Mansione</span>
+                    <div className="font-medium">{myEmployee.role?.replace(/_/g,' ') || '—'}</div>
+                  </div>
+                  <div>
+                    <span className="block text-gray-600 mb-1">Livello</span>
+                    <div className="font-medium">{myEmployee.level ?? '—'}</div>
+                  </div>
+                  <div>
+                    <span className="block text-gray-600 mb-1">Contratto</span>
+                    <div className="font-medium">{myEmployee.contractTypeEnum === 'DETERMINATO' ? 'Determinato' : 'Indeterminato'}</div>
+                  </div>
+                  <div>
+                    <span className="block text-gray-600 mb-1">Part-time / Full-time</span>
+                    <div className="font-medium">{myEmployee.contractType === 'part-time' ? 'Part-time' : 'Full-time'}</div>
+                  </div>
+                  <div>
+                    <span className="block text-gray-600 mb-1">Ore settimanali</span>
+                    <div className="font-medium">{myEmployee.contractType === 'part-time' ? (myEmployee.weeklyHours ?? '—') : 40}</div>
+                  </div>
+                  <div>
+                    <span className="block text-gray-600 mb-1">Paga base</span>
+                    <div className="font-medium">€{(myEmployee.baseSalary ? myEmployee.baseSalary : getBaseForLevel(myEmployee.level)).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <span className="block text-gray-600 mb-1">Reparto</span>
+                    <div className="font-medium">{myEmployee.department || '—'}</div>
+                  </div>
+                  <div>
+                    <span className="block text-gray-600 mb-1">Data assunzione</span>
+                    <div className="font-medium">{myEmployee.startDate ? new Date(myEmployee.startDate).toLocaleDateString('it-IT') : '—'}</div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Cambio Password */}
             <div className="bg-white rounded-lg shadow p-6">

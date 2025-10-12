@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
         isActive: true,
         avatar: true,
         hourlyRate: true,
+        baseSalary: true,
         contractType: true,
+        contractTypeEnum: true,
+        weeklyHours: true,
         startDate: true,
         notes: true,
         skills: {
@@ -53,7 +56,10 @@ export async function GET(request: NextRequest) {
         isActive: e.isActive,
         avatar: e.avatar || '👤',
         hourlyRate: e.hourlyRate ? parseFloat(e.hourlyRate.toString()) : 0,
+        baseSalary: e.baseSalary ? parseFloat(e.baseSalary.toString()) : undefined,
         contractType: e.contractType,
+        contractTypeEnum: (e as any).contractTypeEnum,
+        weeklyHours: (e as any).weeklyHours ?? undefined,
         startDate: e.startDate,
         notes: e.notes,
         skills: e.skills.map(s => s.skill)
@@ -68,7 +74,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const data = await request.json()
-    const { id, name, email, phone, role, department, hourlyRate, contractType, startDate, notes, skills } = data
+    const { id, name, email, phone, role, department, hourlyRate, baseSalary, contractType, startDate, notes, skills, level, employmentStartDate, employmentEndDate, weeklyHours, contractTypeEnum } = data
 
     if (!id) {
       return NextResponse.json({ error: 'ID dipendente richiesto' }, { status: 400 })
@@ -86,7 +92,11 @@ export async function PUT(request: NextRequest) {
           ...(role && { role }),
           ...(department && { department }),
           ...(hourlyRate !== undefined && { hourlyRate: parseFloat(hourlyRate) }),
+          ...(baseSalary !== undefined && { baseSalary: parseFloat(baseSalary) }),
+          ...(level !== undefined && { hierarchyLevel: Number(level) }),
           ...(contractType && { contractType }),
+          ...(weeklyHours !== undefined && { weeklyHours: Number(weeklyHours) }),
+          ...(contractTypeEnum && { contractTypeEnum }),
           ...(startDate && { startDate: new Date(startDate) }),
           ...(notes !== undefined && { notes })
         }
@@ -110,6 +120,23 @@ export async function PUT(request: NextRequest) {
         }
       }
 
+      // 3. Aggiorna Employment (start/end date) se fornite
+      if (employmentStartDate || employmentEndDate) {
+        const latestEmployment = await tx.employment.findFirst({
+          where: { userId: id },
+          orderBy: { createdAt: 'desc' }
+        })
+        if (latestEmployment) {
+          await tx.employment.update({
+            where: { id: latestEmployment.id },
+            data: {
+              ...(employmentStartDate && { startDate: new Date(employmentStartDate) }),
+              ...(employmentEndDate && { endDate: new Date(employmentEndDate) })
+            }
+          })
+        }
+      }
+
       return updatedEmployee
     })
 
@@ -125,5 +152,49 @@ export async function PUT(request: NextRequest) {
       error: 'Errore nel salvataggio',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const contentType = request.headers.get('content-type') || ''
+    let id: string | null = null
+    let email: string | null = null
+    if (contentType.includes('application/json')) {
+      const body = await request.json().catch(() => ({}))
+      id = body?.id || null
+      email = body?.email || null
+    } else {
+      const { searchParams } = new URL(request.url)
+      id = searchParams.get('id')
+      email = searchParams.get('email')
+    }
+
+    if (!id && !email) {
+      return NextResponse.json({ error: 'Specificare id o email' }, { status: 400 })
+    }
+
+    const where: any = id ? { id } : { email: String(email).toLowerCase() }
+    const user = await prisma.user.findUnique({ where })
+    if (!user) {
+      return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 })
+    }
+
+    // Anonimizza e disattiva per evitare problemi di vincoli referenziali
+    const ts = Date.now()
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isActive: false,
+        email: `${user.email}.deleted.${ts}`,
+        name: `DELETED_${user.name}`,
+        notes: 'Account disattivato e anonimizzato',
+      }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('DELETE /api/employees error:', error)
+    return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
   }
 }
