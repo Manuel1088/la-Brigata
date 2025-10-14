@@ -12,7 +12,7 @@ const EMPLOYEE_PLAN = {
   currency: '€',
   billing: 'mese',
   type: 'individual',
-  icon: '👤',
+  icon: '🌱',
   features: [
     { icon: '🤖', text: 'AI Paycheck Advisor completo', highlight: true },
     { icon: '💬', text: 'Tax Coach Chatbot personale' },
@@ -24,7 +24,7 @@ const EMPLOYEE_PLAN = {
     { icon: '📱', text: 'Accesso mobile illimitato' }
   ],
   cta: 'Diventa Premium',
-  color: 'blue'
+  color: 'green'
 }
 
 const COMPANY_PLANS = [
@@ -264,6 +264,35 @@ export default function SubscriptionPage() {
         {/* Employee Plan - Solo se NON è proprietario */}
         {!isCompanyOwner && (
           <div className="max-w-md mx-auto">
+            {/* Billing Toggle (dipendente) */}
+            <div className="flex justify-center mb-6">
+              <div className="bg-white rounded-lg shadow p-2 flex gap-2">
+                <button
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`px-6 py-2 rounded-lg font-medium transition ${
+                    billingCycle === 'monthly'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Mensile
+                </button>
+                <button
+                  onClick={() => setBillingCycle('yearly')}
+                  className={`px-6 py-2 rounded-lg font-medium transition ${
+                    billingCycle === 'yearly'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Annuale
+                  <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                    -20%
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <div className={`bg-white rounded-2xl shadow-xl border-2 ${getColorClasses(EMPLOYEE_PLAN.color).border} overflow-hidden`}>
               {/* Header */}
               <div className={`${getColorClasses(EMPLOYEE_PLAN.color).bg} p-6 text-center`}>
@@ -271,10 +300,19 @@ export default function SubscriptionPage() {
                 <h2 className="text-2xl font-bold text-gray-900">{EMPLOYEE_PLAN.name}</h2>
                 <p className="text-gray-600 mt-2">Potenzia la tua esperienza</p>
                 <div className="mt-6">
-                  <span className="text-5xl font-bold text-gray-900">
-                    {EMPLOYEE_PLAN.currency}{EMPLOYEE_PLAN.price}
-                  </span>
-                  <span className="text-gray-600">/{EMPLOYEE_PLAN.billing}</span>
+                  {(() => {
+                    const price = billingCycle === 'yearly' 
+                      ? Math.round(EMPLOYEE_PLAN.price * 12 * 0.8 * 100) / 100 
+                      : EMPLOYEE_PLAN.price
+                    return (
+                      <>
+                        <span className="text-5xl font-bold text-gray-900">
+                          {EMPLOYEE_PLAN.currency}{price}
+                        </span>
+                        <span className="text-gray-600">/{billingCycle === 'yearly' ? 'anno' : 'mese'}</span>
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
 
@@ -466,7 +504,12 @@ export default function SubscriptionPage() {
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-600">Costo:</span>
                 <span className="font-semibold">
-                  €{selectedPlan.price}/{billingCycle === 'yearly' ? 'anno' : 'mese'}
+                  {(() => {
+                    const price = billingCycle === 'yearly'
+                      ? Math.round(selectedPlan.price * 12 * 0.8 * 100) / 100
+                      : selectedPlan.price
+                    return <>€{price}/{billingCycle === 'yearly' ? 'anno' : 'mese'}</>
+                  })()}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -488,7 +531,13 @@ export default function SubscriptionPage() {
                 onClick={confirmUpgrade}
                 className="flex-1 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition"
               >
-                Conferma
+                {(() => {
+                  const price = billingCycle === 'yearly'
+                    ? Math.round(selectedPlan.price * 12 * 0.8 * 100) / 100
+                    : selectedPlan.price
+                  const unit = billingCycle === 'yearly' ? 'anno' : 'mese'
+                  return `Conferma • €${price}/${unit}`
+                })()}
               </button>
             </div>
           </div>

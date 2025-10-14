@@ -115,9 +115,9 @@ export default function TopBar() {
               className="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-2 py-1 transition-colors"
               title="Torna alla Dashboard"
             >
-              <img src="/laBrigata.it.svg" alt="La Brigata" className="h-7 w-auto" />
+              <img src="/laBrigata.it.svg" alt="La Brigata" className="h-8 w-auto" />
               <div className="hidden sm:block">
-                <span className="font-bold text-lg text-gray-900">La Brigata</span>
+                <span className="font-bold text-xl text-gray-900">La Brigata</span>
               </div>
             </button>
             
