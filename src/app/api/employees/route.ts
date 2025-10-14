@@ -44,8 +44,31 @@ export async function GET(request: NextRequest) {
       orderBy: { name: 'asc' }
     })
 
+    // Se viene richiesto 'active=true', escludi chi ha Employment PENDING (mostra solo APPROVED/ACTIVE)
+    let filteredEmployees = employees
+    if (activeParam === 'true') {
+      const userIds = employees.map(e => e.id)
+      if (userIds.length > 0) {
+        const employments = await (prisma as any).employment.findMany({
+          where: { userId: { in: userIds } },
+          orderBy: { createdAt: 'desc' }
+        })
+        const latestByUser: Record<string, any> = {}
+        for (const emp of employments) {
+          if (!latestByUser[emp.userId]) latestByUser[emp.userId] = emp
+        }
+        const accepted = new Set(['APPROVED', 'ACTIVE'])
+        filteredEmployees = employees.filter(e => {
+          const latest = latestByUser[e.id]
+          return latest ? accepted.has(latest.status) : false
+        })
+      } else {
+        filteredEmployees = []
+      }
+    }
+
     return NextResponse.json({ 
-      employees: employees.map(e => ({
+      employees: filteredEmployees.map(e => ({
         id: e.id,
         name: e.name,
         email: e.email,

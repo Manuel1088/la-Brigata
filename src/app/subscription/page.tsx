@@ -8,7 +8,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 const EMPLOYEE_PLAN = {
   id: 'premium_employee',
   name: 'Premium Employee',
-  price: 6.99,
+  price: 2.99,
   currency: '€',
   billing: 'mese',
   type: 'individual',

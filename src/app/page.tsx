@@ -8,8 +8,9 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
-          <h1 className="text-6xl font-bold text-gray-900 mb-4">
-            🍽️ LA BRIGATA
+          <h1 className="text-6xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-5">
+            <img src="/laBrigata.it.svg" alt="La Brigata" className="h-20 w-auto shrink-0" />
+            <span className="font-bold text-gray-900">La Brigata</span>
           </h1>
           <p className="text-2xl text-gray-600 mb-8">
             Gestione digitale per la ristorazione italiana

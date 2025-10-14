@@ -33,8 +33,9 @@ export default function LoginPage() {
       <div className="container mx-auto px-4">
         {/* Titolo e sottotitolo */}
         <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold text-gray-900 mb-4">
-            🍽️ LA BRIGATA
+          <h1 className="text-6xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-5">
+            <img src="/laBrigata.it.svg" alt="La Brigata" className="h-20 w-auto shrink-0" />
+            <span className="font-bold text-gray-900">La Brigata</span>
           </h1>
           <p className="text-2xl text-gray-600">
             Gestione digitale per la ristorazione italiana

@@ -292,13 +292,36 @@ export default function ProfilePage() {
                 <div className="text-6xl mb-4">{userAvatar}</div>
                 {isEditing ? (
                   <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center font-semibold"
-                      placeholder="Nome"
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        defaultValue={(() => {
+                          const parts = (formData.name || '').split(' ')
+                          return parts.slice(0, -1).join(' ')
+                        })()}
+                        onBlur={(e) => {
+                          const first = e.target.value.trim()
+                          const last = ((formData.name || '').split(' ').slice(-1)[0]) || ''
+                          setFormData(prev => ({...prev, name: `${first} ${last}`.trim()}))
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center font-semibold"
+                        placeholder="Nome"
+                      />
+                      <input
+                        type="text"
+                        defaultValue={(() => {
+                          const parts = (formData.name || '').split(' ')
+                          return parts.slice(-1)[0] || ''
+                        })()}
+                        onBlur={(e) => {
+                          const last = e.target.value.trim()
+                          const first = ((formData.name || '').split(' ').slice(0, -1).join(' ')) || ''
+                          setFormData(prev => ({...prev, name: `${first} ${last}`.trim()}))
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center font-semibold"
+                        placeholder="Cognome"
+                      />
+                    </div>
                     <input
                       type="email"
                       value={formData.email}
@@ -388,8 +411,8 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Profilo Dipendente (sola lettura per dipendenti) */}
-            {myEmployee && (
+            {/* Profilo Dipendente (mostra solo se non PROPRIETARIO non lavoratore) */}
+            {myEmployee && userRole !== 'PROPRIETARIO' && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">👤 Profilo Dipendente</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

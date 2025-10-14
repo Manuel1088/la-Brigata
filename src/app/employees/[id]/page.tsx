@@ -517,13 +517,36 @@ export default function EmployeeDetailPage() {
                 <div className="text-6xl mb-4">{currentEmployee?.avatar || '👤'}</div>
                 {isEditing ? (
                   <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={editedEmployee?.name || ''}
-                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, name: e.target.value}) : null)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center font-semibold"
-                      placeholder="Nome"
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        defaultValue={(() => {
+                          const parts = (editedEmployee?.name || '').split(' ')
+                          return parts.slice(0, -1).join(' ')
+                        })()}
+                        onBlur={(e) => {
+                          const first = e.target.value.trim()
+                          const last = ((editedEmployee?.name || '').split(' ').slice(-1)[0]) || ''
+                          setEditedEmployee(prev => prev ? ({...prev, name: `${first} ${last}`.trim()}) : null)
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center font-semibold"
+                        placeholder="Nome"
+                      />
+                      <input
+                        type="text"
+                        defaultValue={(() => {
+                          const parts = (editedEmployee?.name || '').split(' ')
+                          return parts.slice(-1)[0] || ''
+                        })()}
+                        onBlur={(e) => {
+                          const last = e.target.value.trim()
+                          const first = ((editedEmployee?.name || '').split(' ').slice(0, -1).join(' ')) || ''
+                          setEditedEmployee(prev => prev ? ({...prev, name: `${first} ${last}`.trim()}) : null)
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center font-semibold"
+                        placeholder="Cognome"
+                      />
+                    </div>
                     <input
                       type="email"
                       value={editedEmployee?.email || ''}

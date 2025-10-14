@@ -40,8 +40,9 @@ export default function RegisterPage() {
       <div className="container mx-auto px-4">
         {/* Titolo e sottotitolo */}
         <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold text-gray-900 mb-4">
-            🍽️ LA BRIGATA
+          <h1 className="text-6xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-5">
+            <img src="/laBrigata.it.svg" alt="La Brigata" className="h-20 w-auto shrink-0" />
+            <span className="font-bold text-gray-900">La Brigata</span>
           </h1>
           <p className="text-2xl text-gray-600">
             Gestione digitale per la ristorazione italiana
@@ -175,6 +176,8 @@ function CompanyRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (dat
     ownerRole: 'PROPRIETARIO_LAVORATORE',
     password: ''
   })
+  const [ownerFirstName, setOwnerFirstName] = useState('')
+  const [ownerLastName, setOwnerLastName] = useState('')
 
   return (
     <form onSubmit={(e) => {
@@ -215,14 +218,32 @@ function CompanyRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (dat
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
         />
         
-        <input
-          type="text"
-          placeholder="Nome Proprietario *"
-          required
-          value={formData.ownerName}
-          onChange={(e) => setFormData({...formData, ownerName: e.target.value})}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input
+            type="text"
+            placeholder="Nome *"
+            required
+            value={ownerFirstName}
+            onChange={(e) => {
+              const val = e.target.value
+              setOwnerFirstName(val)
+              setFormData({ ...formData, ownerName: `${val} ${ownerLastName}`.trim() })
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+          />
+          <input
+            type="text"
+            placeholder="Cognome *"
+            required
+            value={ownerLastName}
+            onChange={(e) => {
+              const val = e.target.value
+              setOwnerLastName(val)
+              setFormData({ ...formData, ownerName: `${ownerFirstName} ${val}`.trim() })
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+          />
+        </div>
         
         <select
           value={formData.ownerRole}
@@ -289,6 +310,8 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
   const [isAnalyzingPayroll, setIsAnalyzingPayroll] = useState(false)
   const [extractedPayrollData, setExtractedPayrollData] = useState<{ companyName?: string, fiscalCode?: string, position?: string, level?: string, ferieResidue?: number, rolResidui?: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [employeeFirstName, setEmployeeFirstName] = useState('')
+  const [employeeLastName, setEmployeeLastName] = useState('')
 
   const mapPositionToDeptAndLevel = (pos: string): { dept: string, level: string } => {
     const dept = pos.includes('Chef') || pos.includes('Cuoco') ? 'cucina'
@@ -346,14 +369,32 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
       </div>
       
       <div className="space-y-4">
-        <input
-          type="text"
-          placeholder="Nome Completo *"
-          required
-          value={formData.name}
-          onChange={(e) => setFormData({...formData, name: e.target.value})}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input
+            type="text"
+            placeholder="Nome *"
+            required
+            value={employeeFirstName}
+            onChange={(e) => {
+              const val = e.target.value
+              setEmployeeFirstName(val)
+              setFormData({ ...formData, name: `${val} ${employeeLastName}`.trim() })
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="text"
+            placeholder="Cognome *"
+            required
+            value={employeeLastName}
+            onChange={(e) => {
+              const val = e.target.value
+              setEmployeeLastName(val)
+              setFormData({ ...formData, name: `${employeeFirstName} ${val}`.trim() })
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         
         <input
           type="email"
@@ -617,6 +658,8 @@ function CandidateRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (d
       bio: ''
     }
   })
+  const [candidateFirstName, setCandidateFirstName] = useState('')
+  const [candidateLastName, setCandidateLastName] = useState('')
 
   return (
     <form onSubmit={(e) => {
@@ -631,14 +674,32 @@ function CandidateRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (d
       </div>
       
       <div className="space-y-4">
-        <input
-          type="text"
-          placeholder="Nome Completo *"
-          required
-          value={formData.name}
-          onChange={(e) => setFormData({...formData, name: e.target.value})}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input
+            type="text"
+            placeholder="Nome *"
+            required
+            value={candidateFirstName}
+            onChange={(e) => {
+              const val = e.target.value
+              setCandidateFirstName(val)
+              setFormData({ ...formData, name: `${val} ${candidateLastName}`.trim() })
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+          />
+          <input
+            type="text"
+            placeholder="Cognome *"
+            required
+            value={candidateLastName}
+            onChange={(e) => {
+              const val = e.target.value
+              setCandidateLastName(val)
+              setFormData({ ...formData, name: `${candidateFirstName} ${val}`.trim() })
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
         
         <input
           type="email"
