@@ -230,7 +230,12 @@ export class AutoScheduler {
    * Raccoglie tutti i vincoli per la settimana specifica
    */
   private async collectWeekConstraints(weekStart: Date) {
-    const constraints = {
+    const constraints: {
+      leaves: Map<string, string[]>
+      fixedRests: Map<string, number[]>
+      departmentRequirements: DepartmentRequirements[]
+      specialEvents: Array<{ date: string; extraStaff: number }>
+    } = {
       leaves: new Map<string, string[]>(),
       fixedRests: new Map<string, number[]>(),
       departmentRequirements: this.getDepartmentRequirements(weekStart),
@@ -279,7 +284,7 @@ export class AutoScheduler {
   /**
    * Applica vincoli hard non negoziabili
    */
-  private applyHardConstraints(schedule: { [key: string]: ShiftCell }, weekStart: Date, constraints: any) {
+  private applyHardConstraints(schedule: { [key: string]: ShiftCell }, weekStart: Date, constraints: { leaves: Map<string,string[]>; fixedRests: Map<string, number[]> }) {
     this.employees.forEach(employee => {
       // Applica ferie/permessi
       const leaves = constraints.leaves.get(employee.name) || []
@@ -320,7 +325,7 @@ export class AutoScheduler {
   private optimizeSchedule(
     baseSchedule: { [key: string]: ShiftCell }, 
     weekStart: Date, 
-    constraints: any
+    constraints: { leaves: Map<string,string[]>; fixedRests: Map<string, number[]> }
   ): { [key: string]: ShiftCell } {
     const schedule = { ...baseSchedule }
     
@@ -328,7 +333,7 @@ export class AutoScheduler {
     this.assignMandatoryRests(schedule, weekStart, constraints)
     
     // FASE 2: Ottimizza turni lavorativi per ogni reparto
-    const departments = ['cucina', 'sala', 'bar']
+    const departments: Array<'cucina'|'sala'|'bar'> = ['cucina', 'sala', 'bar']
     departments.forEach(dept => {
       const deptEmployees = this.employees.filter(emp => emp.department === dept)
       this.optimizeDepartmentSchedule(schedule, deptEmployees, weekStart, constraints)
@@ -346,7 +351,7 @@ export class AutoScheduler {
   private assignMandatoryRests(
     schedule: { [key: string]: ShiftCell },
     weekStart: Date,
-    constraints: any
+    constraints: { leaves: Map<string,string[]>; fixedRests: Map<string, number[]> }
   ) {
     this.employees.forEach(employee => {
       const pattern = this.historicalData.get(employee.name)
@@ -488,7 +493,7 @@ export class AutoScheduler {
    * Bilancia riposi aggiuntivi per equità tra dipendenti
    */
   private balanceAdditionalRests(schedule: { [key: string]: ShiftCell }, weekStart: Date) {
-    const departments = ['cucina', 'sala', 'bar']
+    const departments: Array<'cucina'|'sala'|'bar'> = ['cucina', 'sala', 'bar']
     
     departments.forEach(dept => {
       const deptEmployees = this.employees.filter(emp => emp.department === dept)
@@ -546,7 +551,7 @@ export class AutoScheduler {
     schedule: { [key: string]: ShiftCell },
     employees: SimpleEmployee[],
     weekStart: Date,
-    constraints: any
+    constraints: { leaves: Map<string,string[]>; fixedRests: Map<string, number[]> }
   ) {
     const departmentShifts = this.getDepartmentShifts(employees[0]?.department || 'sala')
     
@@ -877,7 +882,7 @@ export class AutoScheduler {
     const [startHour, startMin] = start.split(':').map(Number)
     const [endHour, endMin] = end.split(':').map(Number)
     
-    let startMinutes = startHour * 60 + startMin
+    const startMinutes = startHour * 60 + startMin
     let endMinutes = endHour * 60 + endMin
     
     // Gestisce turni che attraversano la mezzanotte
@@ -901,8 +906,8 @@ export class AutoScheduler {
     const [endHour, endMin] = endTime.split(':').map(Number)
     const [startHour, startMin] = startTime.split(':').map(Number)
     
-    let endMinutes = endHour * 60 + endMin
-    let startMinutes = startHour * 60 + startMin + (24 * 60)
+    const endMinutes = endHour * 60 + endMin
+    const startMinutes = startHour * 60 + startMin + (24 * 60)
     
     return (startMinutes - endMinutes) / 60
   }
@@ -1002,7 +1007,7 @@ export class AutoScheduler {
     return []
   }
 
-  private getSpecialEvents(weekStart: Date): any[] {
+  private getSpecialEvents(weekStart: Date): Array<{ date: string; extraStaff: number }> {
     // Placeholder: da integrare con calendario eventi
     return []
   }

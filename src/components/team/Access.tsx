@@ -18,13 +18,14 @@ interface AccessConfig {
 }
 
 type AccessStore = Record<string, AccessConfig>
+type SimpleEmployee = { id: string; name: string; avatar: string; department: string; level: number }
 
 export default function TeamAccess() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const { canAccessAdmin } = usePermissions()
 
-  const [employees, setEmployees] = useState<any[]>([])
+  const [employees, setEmployees] = useState<SimpleEmployee[]>([])
   const { employees: employeesData, mutate: mutateEmployees, isLoading } = useEmployeeContext()
   const [accessMap, setAccessMap] = useState<AccessStore>({})
   const [permMap, setPermMap] = useState<Record<string, { permissions: string[] }>>({})
@@ -32,17 +33,17 @@ export default function TeamAccess() {
   const [isEditing, setIsEditing] = useState(false)
   const [pendingChanges, setPendingChanges] = useState<AccessStore>({})
   
-  const waitingForCompany = !!session && !(session.user as any)?.companyId
+  const waitingForCompany = !!session && !session.user?.companyId
 
   useEffect(() => {
     if (!employeesData) return
     try {
-      const list = employeesData.map((e: any, idx: number) => ({
+      const list: SimpleEmployee[] = employeesData.map((e, idx: number) => ({
         id: e.id || String(idx + 1),
         name: e.name,
-        avatar: e.avatar || '👤',
-        department: (e as any).department || 'sala',
-        level: (e as any).level || 2,
+        avatar: (e as unknown as { avatar?: string })?.avatar || '👤',
+        department: (e as unknown as { department?: string })?.department || 'sala',
+        level: (e as unknown as { level?: number })?.level ?? 2,
       }))
       setEmployees(list)
     } catch {
@@ -84,7 +85,7 @@ export default function TeamAccess() {
     }
   }
 
-  const updateAccessConfig = (employeeId: string, section: string, key: string, value: any) => {
+  const updateAccessConfig = (employeeId: string, section: string, key: string, value: boolean | string) => {
     setPendingChanges(prev => ({
       ...prev,
       [employeeId]: {

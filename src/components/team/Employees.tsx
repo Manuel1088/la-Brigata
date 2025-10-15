@@ -87,12 +87,13 @@ export default function TeamEmployees() {
 
   // Filtra dipendenti REALI (escludi PROPRIETARIO non lavoratore e ADMIN)
   const actualEmployees = useMemo(() => {
-    return (employeesData || employeesDefault).filter(emp => {
+    const base = employeesData && employeesData.length > 0 ? employeesData : employeesDefault
+    return base.filter(emp => {
       const role = emp.role || ''
       // Escludi PROPRIETARIO (non lavoratore) e ADMIN (non sono dipendenti)
       return role !== 'PROPRIETARIO' && role !== 'ADMIN'
     })
-  }, [employeesData, employeesDefault])
+  }, [employeesData])
 
   const normalizeDept = (d?: string) => (d === 'bar' ? 'beverage' : d || '')
   const employees = actualEmployees.map(emp => ({ ...emp, department: normalizeDept(emp.department) }))
@@ -110,7 +111,8 @@ export default function TeamEmployees() {
 
     // Ordina
     filtered.sort((a, b) => {
-      let aValue: any, bValue: any
+      let aValue: string | number | Date
+      let bValue: string | number | Date
       
       switch (sortBy) {
         case 'name':
@@ -289,7 +291,7 @@ export default function TeamEmployees() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Ordina per</label>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => setSortBy(e.target.value as 'name'|'role'|'department'|'startDate')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="name">Nome</option>
@@ -303,7 +305,7 @@ export default function TeamEmployees() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Ordine</label>
               <select
                 value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as any)}
+                onChange={(e) => setSortOrder(e.target.value as 'asc'|'desc')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="asc">Crescente</option>

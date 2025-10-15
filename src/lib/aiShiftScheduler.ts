@@ -67,6 +67,8 @@ export interface ShiftPattern {
   }[]
 }
 
+type TimeSlot = { startTime: string; endTime: string }
+
 // Pattern di turni per reparto
 const shiftPatterns: ShiftPattern[] = [
   {
@@ -358,7 +360,7 @@ function calculateExpectedCovers(date: string, bookings: Booking[], events: Comp
 
 // Calcola numero dipendenti necessari per un turno
 function calculateRequiredEmployees(
-  timeSlot: any,
+  timeSlot: TimeSlot,
   expectedCovers: number,
   department: string
 ): number {
@@ -378,7 +380,7 @@ function calculateRequiredEmployees(
 // Trova i migliori dipendenti per un turno
 function findBestEmployees(
   employees: Employee[],
-  timeSlot: any,
+  timeSlot: TimeSlot,
   dayOfWeek: string,
   date: string
 ): Employee[] {
@@ -392,7 +394,7 @@ function findBestEmployees(
 }
 
 // Controlla se un dipendente è disponibile
-function isEmployeeAvailable(employee: Employee, timeSlot: any, dayOfWeek: string): boolean {
+function isEmployeeAvailable(employee: Employee, timeSlot: TimeSlot, dayOfWeek: string): boolean {
   const availability = employee.availability[dayOfWeek]
   if (!availability) return false
   
@@ -403,7 +405,7 @@ function isEmployeeAvailable(employee: Employee, timeSlot: any, dayOfWeek: strin
 // Calcola score di un dipendente per un turno
 function calculateEmployeeScore(
   employee: Employee,
-  timeSlot: any,
+  timeSlot: TimeSlot,
   dayOfWeek: string,
   date: string
 ): number {
@@ -435,19 +437,21 @@ function calculateEmployeeScore(
 }
 
 // Ottieni performance storica di un dipendente
-function getHistoricalPerformance(employeeId: string, timeSlot: any, dayOfWeek: string): number {
+function getHistoricalPerformance(employeeId: string, timeSlot: TimeSlot, dayOfWeek: string): number {
   const historicalShiftsForEmployee = historicalShifts.filter(shift => 
-    shift.employeeId === employeeId && 
-    shift.startTime === timeSlot.startTime &&
-    shift.status === 'completed'
+    shift.employeeId === employeeId && shift.date === dayOfWeek
   )
   
-  if (historicalShiftsForEmployee.length === 0) return 5 // Score neutro
+  const shiftTime = `${timeSlot.startTime}-${timeSlot.endTime}`
+  const matchingShifts = historicalShiftsForEmployee.filter(shift => {
+    const st = `${shift.startTime}-${shift.endTime}`
+    return st === shiftTime
+  })
   
-  const avgPerformance = historicalShiftsForEmployee.reduce((sum, shift) => 
-    sum + (shift.performance || 5), 0) / historicalShiftsForEmployee.length
+  if (matchingShifts.length === 0) return 0
   
-  return avgPerformance
+  const averageScore = matchingShifts.reduce((sum, shift) => sum + (shift.performance ?? 5), 0) / matchingShifts.length
+  return averageScore
 }
 
 // Controlla se è un'ora di punta
@@ -459,7 +463,7 @@ function isPeakHour(time: string): boolean {
 // Calcola confidenza del suggerimento
 function calculateConfidence(
   employee: Employee,
-  timeSlot: any,
+  timeSlot: TimeSlot,
   dayOfWeek: string,
   expectedCovers: number
 ): number {
@@ -489,7 +493,7 @@ function calculateConfidence(
 }
 
 // Controlla se è un turno standard
-function isStandardShift(timeSlot: any): boolean {
+function isStandardShift(timeSlot: TimeSlot): boolean {
   const standardShifts = [
     '09:00-17:00',
     '14:00-22:00',
@@ -504,7 +508,7 @@ function isStandardShift(timeSlot: any): boolean {
 // Genera reasoning per il suggerimento
 function generateReasoning(
   employee: Employee,
-  timeSlot: any,
+  timeSlot: TimeSlot,
   expectedCovers: number,
   dayOfWeek: string
 ): string {

@@ -43,24 +43,48 @@ export default function AdminAudit() {
       ])
       
       // Normalizza logs per soddisfare AuditLog
-      const normalizedLogs: AuditLog[] = logsData.map((l: any) => ({
-        id: String(l.id),
-        action: String(l.action || ''),
-        user: String(l.user || l.userName || 'Sconosciuto'),
-        userId: String(l.userId || ''),
-        timestamp: new Date(l.timestamp || l.createdAt || Date.now()),
-        details: (l.details as Record<string, unknown>) || {},
-        ipAddress: l.ipAddress,
-        userAgent: l.userAgent
+      type UnknownLog = {
+        id?: unknown
+        action?: unknown
+        user?: unknown
+        userName?: unknown
+        userId?: unknown
+        timestamp?: unknown
+        createdAt?: unknown
+        details?: unknown
+        ipAddress?: unknown
+        userAgent?: unknown
+      }
+      const normalizedLogs: AuditLog[] = (logsData as UnknownLog[]).map((l) => ({
+        id: String(l.id ?? ''),
+        action: String(l.action ?? ''),
+        user: String((l.user ?? l.userName) ?? 'Sconosciuto'),
+        userId: String(l.userId ?? ''),
+        timestamp: new Date((l.timestamp as string | number | Date | undefined) ?? (l.createdAt as string | number | Date | undefined) ?? Date.now()),
+        details: (typeof l.details === 'object' && l.details !== null ? l.details : {}) as Record<string, unknown>,
+        ipAddress: typeof l.ipAddress === 'string' ? l.ipAddress : undefined,
+        userAgent: typeof l.userAgent === 'string' ? l.userAgent : undefined
       }))
       setLogs(normalizedLogs)
 
       // Adatta stats minime richieste dall'interfaccia
+      const sd = statsData as unknown
+      const totalLogs = typeof (sd as Record<string, unknown>)?.totalLogs === 'number' ? (sd as Record<string, unknown>).totalLogs as number : (normalizedLogs?.length ?? 0)
+      const logsToday = typeof (sd as Record<string, unknown>)?.logsToday === 'number' ? (sd as Record<string, unknown>).logsToday as number : 0
+      const uniqueUsers = typeof (sd as Record<string, unknown>)?.uniqueUsers === 'number' ? (sd as Record<string, unknown>).uniqueUsers as number : new Set(normalizedLogs.map(l => l.userId)).size
+      const topActionsRaw = (sd as Record<string, unknown>)?.topActions
+      const topActions = Array.isArray(topActionsRaw)
+        ? topActionsRaw.filter((a: unknown): a is { action: string; count: number } => {
+            if (!a || typeof a !== 'object') return false
+            const obj = a as Record<string, unknown>
+            return typeof obj.action === 'string' && typeof obj.count === 'number'
+          })
+        : []
       const adaptedStats: AuditStats = {
-        totalLogs: Number((statsData as any).totalLogs || (normalizedLogs?.length ?? 0)),
-        todayLogs: Number((statsData as any).logsToday || 0),
-        uniqueUsers: Number((statsData as any).uniqueUsers || new Set(normalizedLogs.map(l => l.userId)).size),
-        topActions: Array.isArray((statsData as any).topActions) ? (statsData as any).topActions : [],
+        totalLogs,
+        todayLogs: logsToday,
+        uniqueUsers,
+        topActions,
         recentActivity: normalizedLogs.slice(0, 10)
       }
       setStats(adaptedStats)

@@ -468,20 +468,25 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
                   </div>
                   
                   {/* Dettagli specifici per tipo */}
-                  {request.type === 'overtime' && (request.metadata as any).hoursWorked && (
+                  {request.type === 'overtime' && (() => {
+                    const md = (request.metadata as unknown)
+                    const m = (md && typeof md === 'object') ? (md as Record<string, unknown>) : {}
+                    const hoursWorked = typeof m.hoursWorked === 'number' ? m.hoursWorked : Number(m.hoursWorked ?? 0)
+                    return Boolean(hoursWorked)
+                  })() && (
                     <div className="bg-yellow-50 rounded-lg p-3 mb-3">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Ore lavorate:</span>
-                          <div className="font-medium">{Number((request.metadata as any).hoursWorked)}h</div>
+                          <div className="font-medium">{(() => { const m = (request.metadata && typeof request.metadata === 'object' ? request.metadata as Record<string, unknown> : {}); const v = typeof m.hoursWorked === 'number' ? m.hoursWorked : Number(m.hoursWorked ?? 0); return `${v}h` })()}</div>
                         </div>
                         <div>
                           <span className="text-gray-600">Tariffa oraria:</span>
-                          <div className="font-medium">{formatCurrency(Number((request.metadata as any).hourlyRate ?? 0))}</div>
+                          <div className="font-medium">{(() => { const m = (request.metadata && typeof request.metadata === 'object' ? request.metadata as Record<string, unknown> : {}); const v = typeof m.hourlyRate === 'number' ? m.hourlyRate : Number(m.hourlyRate ?? 0); return formatCurrency(v) })()}</div>
                         </div>
                         <div>
                           <span className="text-gray-600">Date:</span>
-                          <div className="font-medium">{Array.isArray((request.metadata as any).dates) ? (request.metadata as any).dates.join(', ') : ''}</div>
+                          <div className="font-medium">{(() => { const m = (request.metadata && typeof request.metadata === 'object' ? request.metadata as Record<string, unknown> : {}); const d = m.dates; return Array.isArray(d) ? d.join(', ') : '' })()}</div>
                         </div>
                       </div>
                     </div>
@@ -491,8 +496,8 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
                     <div className="bg-purple-50 rounded-lg p-3 mb-3">
                       <div className="text-sm">
                         <span className="text-gray-600">Certificazione:</span>
-                        <div className="font-medium">{String((request.metadata as any).certification || '')}</div>
-                        {Boolean((request.metadata as any).receiptUrl) && (
+                        <div className="font-medium">{(() => { const m = (request.metadata && typeof request.metadata === 'object' ? request.metadata as Record<string, unknown> : {}); return String(m.certification ?? '') })()}</div>
+                        {(() => { const m = (request.metadata && typeof request.metadata === 'object' ? request.metadata as Record<string, unknown> : {}); return Boolean(m.receiptUrl) })() && (
                           <button className="mt-1 text-blue-600 hover:text-blue-800 underline">
                             📄 Visualizza ricevuta
                           </button>

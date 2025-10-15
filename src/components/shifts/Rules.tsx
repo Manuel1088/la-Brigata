@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { getRestRules, updateRestRule, type RestRule } from '@/lib/restRules'
+import { getRestRules, updateRestRule, type FixedDayIndex, type RestRule } from '@/lib/restRules'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 export default function ShiftsRules() {
@@ -56,11 +56,12 @@ export default function ShiftsRules() {
   const updateRule = (employeeName: string, dayOfWeek: number, isRestDay: boolean) => {
     // Adatta a RestRule: gestiamo giorni fissi usando fixedDayIndices
     const current = getRestRules().find(r => r.employeeName === employeeName)
-    const currentFixed = (current?.fixedDayIndices || []).slice()
-    const idx = currentFixed.indexOf(dayOfWeek as any)
-    if (isRestDay && idx === -1) currentFixed.push(dayOfWeek as any)
+    const currentFixed: FixedDayIndex[] = ((current?.fixedDayIndices || []) as FixedDayIndex[]).slice()
+    const day = (dayOfWeek as FixedDayIndex)
+    const idx = currentFixed.indexOf(day)
+    if (isRestDay && idx === -1) currentFixed.push(day)
     if (!isRestDay && idx !== -1) currentFixed.splice(idx, 1)
-    const updated = updateRestRule(employeeName, { fixedDayIndices: currentFixed as any })
+    const updated = updateRestRule(employeeName, { fixedDayIndices: currentFixed })
     setRules(prev => prev.map(r => r.employeeName === employeeName ? updated : r))
   }
 
@@ -191,8 +192,8 @@ export default function ShiftsRules() {
         <div className="space-y-4">
           {getDepartmentEmployees(selectedDepartment).map(employee => {
             const employeeRules = getEmployeeRules(employee.name)
-            const fixed = employeeRules[0]?.fixedDayIndices || []
-            const restDays = Array.from({ length: 7 }, (_, i) => fixed.includes(i as any))
+            const fixed = (employeeRules[0]?.fixedDayIndices || []) as FixedDayIndex[]
+            const restDays = Array.from({ length: 7 }, (_, i) => fixed.includes(i as FixedDayIndex))
             
             return (
               <div key={employee.name} className={`border rounded-lg p-4 ${getDepartmentColor(selectedDepartment)}`}>

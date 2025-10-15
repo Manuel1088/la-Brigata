@@ -43,10 +43,29 @@ export default function AdminUsers() {
         
         if (data.success && data.users) {
           // Mappa date da string a Date
-          const usersWithDates = data.users.map((user: any) => ({
-            ...user,
-            lastLogin: new Date(user.lastLogin),
-            createdAt: new Date(user.createdAt)
+          type ApiUser = {
+            id: string
+            name: string
+            email: string
+            role: string
+            level: number
+            avatar: string
+            isActive: boolean
+            lastLogin?: string | Date | null
+            createdAt: string | Date
+            company?: string
+          }
+          const usersWithDates: User[] = (data.users as ApiUser[]).map((user) => ({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            level: user.level,
+            avatar: user.avatar,
+            isActive: user.isActive,
+            lastLogin: user.lastLogin ? new Date(user.lastLogin) : (null as unknown as Date),
+            createdAt: new Date(user.createdAt),
+            company: user.company
           }))
           setUsers(usersWithDates)
         } else {
