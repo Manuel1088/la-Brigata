@@ -75,9 +75,11 @@ export default function OperationsCustomers() {
       recurrences: newCustomer.recurrences,
       preferences: newCustomer.preferences,
       notes: newCustomer.notes,
-      totalVisits: 0,
-      lastVisit: undefined,
-      createdAt: new Date().toISOString()
+      totalBookings: 0,
+      totalGuests: 0,
+      lastVisitDate: new Date().toISOString().split('T')[0],
+      lunchCount: 0,
+      dinnerCount: 0
     }
     
     const updated = [...customers, customer]
@@ -99,12 +101,12 @@ export default function OperationsCustomers() {
   const filteredCustomers = customers
     .filter(customer => {
       const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           customer.phone.includes(searchTerm) ||
+                           (customer.phone || '').includes(searchTerm) ||
                            (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()))
       
       const matchesFilter = filterBy === 'all' || 
-                           (filterBy === 'vip' && customer.totalVisits >= 10) ||
-                           (filterBy === 'regular' && customer.totalVisits < 10)
+                           (filterBy === 'vip' && (customer.totalBookings || 0) >= 10) ||
+                           (filterBy === 'regular' && (customer.totalBookings || 0) < 10)
       
       return matchesSearch && matchesFilter
     })
@@ -113,11 +115,11 @@ export default function OperationsCustomers() {
         case 'name':
           return a.name.localeCompare(b.name)
         case 'lastVisit':
-          const aDate = a.lastVisit ? new Date(a.lastVisit).getTime() : 0
-          const bDate = b.lastVisit ? new Date(b.lastVisit).getTime() : 0
+          const aDate = a.lastVisitDate ? new Date(a.lastVisitDate).getTime() : 0
+          const bDate = b.lastVisitDate ? new Date(b.lastVisitDate).getTime() : 0
           return bDate - aDate
         case 'totalVisits':
-          return b.totalVisits - a.totalVisits
+          return (b.totalBookings || 0) - (a.totalBookings || 0)
         default:
           return 0
       }
@@ -135,10 +137,11 @@ export default function OperationsCustomers() {
   }
 
   const getCustomerStatus = (customer: Customer) => {
-    if (customer.totalVisits >= 20) return { label: 'VIP', color: 'bg-purple-100 text-purple-800' }
-    if (customer.totalVisits >= 10) return { label: 'Fedele', color: 'bg-green-100 text-green-800' }
-    if (customer.totalVisits >= 5) return { label: 'Regolare', color: 'bg-blue-100 text-blue-800' }
-    if (customer.totalVisits >= 1) return { label: 'Nuovo', color: 'bg-yellow-100 text-yellow-800' }
+    const visits = customer.totalBookings || 0
+    if (visits >= 20) return { label: 'VIP', color: 'bg-purple-100 text-purple-800' }
+    if (visits >= 10) return { label: 'Fedele', color: 'bg-green-100 text-green-800' }
+    if (visits >= 5) return { label: 'Regolare', color: 'bg-blue-100 text-blue-800' }
+    if (visits >= 1) return { label: 'Nuovo', color: 'bg-yellow-100 text-yellow-800' }
     return { label: 'Prospect', color: 'bg-gray-100 text-gray-800' }
   }
 
@@ -187,7 +190,7 @@ export default function OperationsCustomers() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Filtra per</label>
               <select
                 value={filterBy}
-                onChange={(e) => setFilterBy(e.target.value as any)}
+                onChange={(e) => setFilterBy(e.target.value as 'all' | 'vip' | 'regular')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">Tutti</option>
@@ -200,7 +203,7 @@ export default function OperationsCustomers() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Ordina per</label>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => setSortBy(e.target.value as 'name' | 'lastVisit' | 'totalVisits')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="name">Nome</option>
@@ -253,8 +256,8 @@ export default function OperationsCustomers() {
                             <div className="text-sm text-gray-600">
                               <div>📞 {customer.phone}</div>
                               {customer.email && <div>📧 {customer.email}</div>}
-                              <div>🔄 {customer.totalVisits} visite</div>
-                              <div>📅 Ultima: {formatDate(customer.lastVisit)}</div>
+                              <div>🔄 {(customer.totalBookings || 0)} visite</div>
+                              <div>📅 Ultima: {formatDate(customer.lastVisitDate)}</div>
                             </div>
                           </div>
                           
@@ -301,11 +304,11 @@ export default function OperationsCustomers() {
                     </div>
                     <div>
                       <span className="text-gray-600">Totale visite:</span>
-                      <div className="font-medium">{selected.totalVisits}</div>
+                      <div className="font-medium">{selected.totalBookings || 0}</div>
                     </div>
                     <div>
                       <span className="text-gray-600">Ultima visita:</span>
-                      <div className="font-medium">{formatDate(selected.lastVisit)}</div>
+                      <div className="font-medium">{formatDate(selected.lastVisitDate)}</div>
                     </div>
                   </div>
 

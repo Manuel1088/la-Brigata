@@ -22,8 +22,8 @@ export default function TopBar() {
   useEffect(() => {
     const calculatePendingNotifications = () => {
       try {
-        const uid = (session?.user as any)?.id
-        const dept = String((session?.user as any)?.department || '').toLowerCase()
+        const uid = session?.user?.id
+        const dept = String(session?.user?.department || '').toLowerCase()
         const role = String(userRole || '').toUpperCase()
         const all = getNotifications(uid)
         const filtered = all.filter(n => {
@@ -34,8 +34,8 @@ export default function TopBar() {
             }
             return true
           }
-          const allowed: NotificationCategory[] = ['LEAVES','SHIFTS','TIPS','MESSAGES'] as any
-          if (!(allowed as any).includes(n.category)) return false
+          const allowed: NotificationCategory[] = ['LEAVES','SHIFTS','TIPS','MESSAGES']
+          if (!allowed.includes(n.category)) return false
           if (n.metadata?.department) {
             return String(n.metadata.department).toLowerCase() === dept
           }
@@ -226,9 +226,9 @@ export default function TopBar() {
             <NotificationCenter 
               isOpen={isNotificationCenterOpen}
               onClose={() => setIsNotificationCenterOpen(false)}
-              userId={(session?.user as any)?.id}
-              userRole={userRole as any}
-              department={(session?.user as any)?.department}
+              userId={session?.user?.id}
+              userRole={String(userRole)}
+              department={session?.user?.department}
             />
           </div>
         </>

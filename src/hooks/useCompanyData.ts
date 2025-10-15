@@ -4,7 +4,14 @@ import useSWR from 'swr'
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export function useCompanyData(userId: string | undefined) {
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR<{
+    success?: boolean
+    company?: unknown
+    restaurant?: unknown
+    restaurants?: unknown[]
+    hasMultiple?: boolean
+    employments?: unknown[]
+  }>(
     userId ? `/api/users/${userId}/company` : null,
     fetcher,
     {
@@ -44,7 +51,7 @@ export interface CompanyData {
 
 export interface UseCompanyDataResult {
   data: CompanyData | undefined
-  error: any
+  error: unknown
   isLoading: boolean
   mutate: () => void
 }

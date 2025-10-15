@@ -1,12 +1,27 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
+interface RecentCompany { id: string; name: string; restaurantName: string; ownerName: string; createdAt: string }
+interface RecentUser { id: string; name: string; email: string; role: string; companyName?: string; createdAt: string }
+interface AdminStats {
+  totalUsers: number
+  activeUsers: number
+  activeCompanies: number
+  totalCompanies: number
+  pendingCandidates: number
+  totalRestaurants: number
+  totalLogs: number
+  recentCompanies: RecentCompany[]
+  recentUsers: RecentUser[]
+  companyGrowth: string
+  userGrowth: string
+  recentActivities?: Array<{ icon: string; action: string; user: string; time: string }>
+}
+
 export default function AdminOverview() {
-  const { data: session } = useSession()
   const router = useRouter()
-  const [stats, setStats] = useState<any>(null)
+  const [stats, setStats] = useState<AdminStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -14,7 +29,16 @@ export default function AdminOverview() {
       try {
         // Fetch dati reali dal database
         const response = await fetch('/api/admin/stats')
-        const data = await response.json()
+        const data = await response.json() as {
+          success: boolean
+          stats: {
+            users: { total: number; active: number; growth: string }
+            companies: { total: number; active: number; growth: string }
+            candidates: { pending: number }
+            restaurants: { total: number }
+          }
+          recent: { companies: RecentCompany[]; users: RecentUser[] }
+        }
         
         if (data.success) {
           // Mappa dati per il componente
@@ -114,7 +138,7 @@ export default function AdminOverview() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold mb-2">
-              👑 Benvenuto nell'Amministrazione
+              👑 Benvenuto nell&apos;Amministrazione
             </h2>
             <p className="text-orange-100">
               Gestisci il sistema La Brigata con tutti gli strumenti di controllo necessari
@@ -225,7 +249,7 @@ export default function AdminOverview() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="p-6">
             <div className="space-y-4">
-              {stats?.recentActivities?.map((activity: any, index: number) => (
+              {stats?.recentActivities?.map((activity, index) => (
                 <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                   <div className="text-2xl">{activity.icon}</div>
                   <div className="flex-1">

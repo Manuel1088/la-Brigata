@@ -1,5 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { EmploymentStatus as PrismaEmploymentStatus, UserRole as PrismaUserRole } from '@prisma/client'
+
+type EmploymentStatus = 'PENDING' | 'APPROVED' | 'ACTIVE' | 'REJECTED' | 'INACTIVE'
+type EmploymentInclude = {
+  user: {
+    select: {
+      id: true
+      name: true
+      email: true
+      phone: true
+      role: true
+      ccnlLevel: true
+      position: true
+    }
+  }
+  restaurant: {
+    select: {
+      id: true
+      name: true
+      address: true
+      phone: true
+    }
+  }
+}
 
 // GET - Ottieni employments con filtri
 export async function GET(request: NextRequest) {
@@ -10,9 +34,14 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
 
     // Costruisci il where clause in modo pulito
-    const employments = await (prisma as any).employment.findMany({
+    const statusUpper = status ? status.toUpperCase() : undefined
+    const statusFilter = statusUpper && (Object.values(PrismaEmploymentStatus) as string[]).includes(statusUpper)
+      ? { status: statusUpper as PrismaEmploymentStatus }
+      : {}
+
+    const employments = await prisma.employment.findMany({
       where: {
-        ...(status && { status }),
+        ...statusFilter,
         ...(userId && { userId }),
         ...(restaurantId && { restaurantId })
       },
@@ -86,12 +115,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Verifica se esiste già un employment per questa combinazione
-    const existingEmployment = await (prisma as any).employment.findFirst({
+    const existingEmployment = await prisma.employment.findFirst({
       where: {
         userId,
         restaurantId,
         status: {
-          in: ['PENDING', 'APPROVED', 'ACTIVE'],
+          in: [
+            PrismaEmploymentStatus.PENDING,
+            PrismaEmploymentStatus.APPROVED,
+            PrismaEmploymentStatus.ACTIVE,
+          ],
         },
       },
     })
@@ -108,12 +141,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Crea il nuovo employment
-    const employment = await (prisma as any).employment.create({
+    const employment = await prisma.employment.create({
       data: {
         userId,
         restaurantId,
-        status: 'PENDING',
-        role: role || 'DIPENDENTE',
+        status: PrismaEmploymentStatus.PENDING,
+        role: ((role || 'DIPENDENTE').toUpperCase() as PrismaUserRole),
         department: department || null,
         startDate: startDate ? new Date(startDate) : null,
       },
@@ -174,16 +207,19 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Prepara i dati per l'update
-    const dataToUpdate: any = {
+    const dataToUpdate: Record<string, unknown> = {
       updatedAt: new Date(),
     }
     
     if (status) {
-      dataToUpdate.status = status
+      const st = status.toUpperCase()
+      if ((Object.values(PrismaEmploymentStatus) as string[]).includes(st)) {
+        dataToUpdate.status = st as PrismaEmploymentStatus
+      }
       dataToUpdate.reviewedAt = new Date()
       
       // Se viene approvato, imposta la data di inizio se non presente
-      if (status === 'APPROVED' && !startDate) {
+      if (st === 'APPROVED' && !startDate) {
         dataToUpdate.startDate = new Date()
       }
     }
@@ -191,10 +227,15 @@ export async function PATCH(request: NextRequest) {
     if (reviewedBy) dataToUpdate.reviewedBy = reviewedBy
     if (startDate) dataToUpdate.startDate = new Date(startDate)
     if (endDate) dataToUpdate.endDate = new Date(endDate)
-    if (role) dataToUpdate.role = role
+    if (role) {
+      const r = (role as string).toUpperCase()
+      if ((Object.values(PrismaUserRole) as string[]).includes(r)) {
+        dataToUpdate.role = r as PrismaUserRole
+      }
+    }
     if (department !== undefined) dataToUpdate.department = department
 
-    const employment = await (prisma as any).employment.update({
+    const employment = await prisma.employment.update({
       where: {
         id,
       },
@@ -252,7 +293,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    await (prisma as any).employment.delete({
+    await prisma.employment.delete({
       where: {
         id,
       },

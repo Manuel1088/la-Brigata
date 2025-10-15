@@ -36,9 +36,9 @@ function normalizeAndMigrateRules(list: RestRule[]): RestRule[] {
     seen.add(newName)
     migrated.push({
       employeeName: newName,
-      weeklyRestDays: (r.weeklyRestDays || 1) as 1 | 2,
-      fixedDayIndices: r.fixedDayIndices as any,
-      rotatingStartDayIndex: r.rotatingStartDayIndex as any
+      weeklyRestDays: ((r.weeklyRestDays as 1 | 2) || 1),
+      fixedDayIndices: r.fixedDayIndices as FixedDayIndex[] | undefined,
+      rotatingStartDayIndex: r.rotatingStartDayIndex as FixedDayIndex | undefined
     })
   }
   return migrated

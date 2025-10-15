@@ -364,7 +364,7 @@ export default function TeamAccess() {
             <div className="flex items-center gap-2">
               <span className="text-yellow-600">⚠️</span>
               <span className="text-yellow-800">
-                In attesa dell'assegnazione dell'azienda. Alcune funzionalità potrebbero non essere disponibili.
+                In attesa dell&apos;assegnazione dell&apos;azienda. Alcune funzionalità potrebbero non essere disponibili.
               </span>
             </div>
           </div>

@@ -1,8 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { usePermissions } from '@/hooks/usePermissions'
-import { PermissionGuard } from '@/components/PermissionGuard'
+// Accesso consentito a tutti gli utenti autenticati
 import { formatCurrency, safeSum } from '@/lib/formatNumber'
 
 interface PayrollAnalysis {
@@ -49,7 +48,6 @@ interface PayrollDocument {
 
 export default function PayrollSection() {
   const { data: session } = useSession()
-  const { canViewPayroll, canManagePayroll } = usePermissions()
   
   const [isScanning, setIsScanning] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -245,7 +243,6 @@ export default function PayrollSection() {
   }
 
   return (
-    <PermissionGuard permission="payroll_view">
       <div className="bg-white rounded-lg shadow">
         {/* Tabs Navigation */}
         <div className="border-b border-gray-200">
@@ -295,7 +292,7 @@ export default function PayrollSection() {
                 <div className="text-4xl mb-4">📄</div>
                 <h4 className="text-lg font-medium text-gray-900 mb-2">Carica Documento Payroll</h4>
                 <p className="text-gray-600 mb-4">
-                  Carica busta paga, CU o altri documenti per l'analisi AI
+                  Carica busta paga, CU o altri documenti per l&apos;analisi AI
                 </p>
                 
                 <input
@@ -569,6 +566,5 @@ export default function PayrollSection() {
           )}
         </div>
       </div>
-    </PermissionGuard>
   )
 }

@@ -39,7 +39,7 @@ export default function AdminCompanies() {
       const data = await response.json()
       
       if (data.companies) {
-        setCompanies(data.companies.map((company: any) => ({
+        setCompanies(data.companies.map((company: Company) => ({
           ...company,
           createdAt: new Date(company.createdAt),
           lastActivity: new Date(company.lastActivity || company.createdAt)
@@ -47,7 +47,7 @@ export default function AdminCompanies() {
       }
     } catch (error) {
       console.error('Errore nel caricamento aziende:', error)
-      notifyCustom('Errore nel caricamento aziende', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Aziende', 'Errore nel caricamento aziende')
     } finally {
       setLoading(false)
     }
@@ -63,22 +63,22 @@ export default function AdminCompanies() {
           setCompanies(prev => prev.map(c => 
             c.id === companyId ? { ...c, status: 'active' } : c
           ))
-          notifyCustom(`Azienda ${company.name} attivata`, 'success')
-          logReadAction('company_activated', { companyId, companyName: company.name })
+          notifyCustom('SUCCESS', 'SYSTEM', 'Aziende', `Azienda ${company.name} attivata`)
+          logReadAction('company_activated')
           break
         case 'deactivate':
           setCompanies(prev => prev.map(c => 
             c.id === companyId ? { ...c, status: 'inactive' } : c
           ))
-          notifyCustom(`Azienda ${company.name} disattivata`, 'warning')
-          logReadAction('company_deactivated', { companyId, companyName: company.name })
+          notifyCustom('INFO', 'SYSTEM', 'Aziende', `Azienda ${company.name} disattivata`)
+          logReadAction('company_deactivated')
           break
         case 'view':
           router.push(`/admin/companies/${companyId}/employees`)
           break
       }
     } catch (error) {
-      notifyCustom('Errore nell\'operazione', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Aziende', 'Errore nell\'operazione')
     }
   }
 

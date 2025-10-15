@@ -1,9 +1,21 @@
 import { useState } from 'react'
 
+type Department = 'direzione' | 'cucina' | 'sala' | 'beverage' | 'accoglienza'
+interface NewShift {
+	id: string
+	date: string
+	startTime: string
+	endTime: string
+	department: Department
+	employee: string
+	role: string
+	status: 'scheduled' | 'pending' | 'completed' | 'cancelled'
+}
+
 interface NewShiftModalProps {
 	isOpen: boolean
 	onClose: () => void
-	onSave: (shift: any) => void
+	onSave: (shift: NewShift) => void
 	selectedDate: string
 }
 
@@ -11,18 +23,18 @@ export default function NewShiftModal({ isOpen, onClose, onSave, selectedDate }:
 	const [formData, setFormData] = useState({
 		employee: '',
 		role: '',
-		department: '',
+		department: '' as Department | '',
 		startTime: '',
 		endTime: ''
 	})
 
-	const employees = [
+	const employees: Array<{ name: string; role: string; department: Department }> = [
 		{ name: 'Giuseppe Chef', role: 'CHEF', department: 'cucina' },
 		{ name: 'Maria Cameriera', role: 'DIPENDENTE_SALA', department: 'sala' },
-		{ name: 'Luca Barista', role: 'DIPENDENTE_BAR', department: 'bar' },
+		{ name: 'Luca Barista', role: 'DIPENDENTE_BAR', department: 'beverage' },
 		{ name: 'Anna Sous Chef', role: 'CAPO_PARTITA', department: 'cucina' },
 		{ name: 'Marco Cameriere', role: 'DIPENDENTE_SALA', department: 'sala' },
-		{ name: 'Sofia Cassiera', role: 'CASSIERE', department: 'sala' }
+		{ name: 'Sofia Cassiera', role: 'CASSIERE', department: 'accoglienza' }
 	]
 
 	const handleEmployeeChange = (employeeName: string) => {
@@ -40,12 +52,12 @@ export default function NewShiftModal({ isOpen, onClose, onSave, selectedDate }:
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
     
-		const newShift = {
+		const newShift: NewShift = {
 			id: Date.now().toString(),
 			date: selectedDate,
 			startTime: formData.startTime,
 			endTime: formData.endTime,
-			department: formData.department,
+			department: (formData.department || 'sala') as Department,
 			employee: formData.employee,
 			role: formData.role,
 			status: 'scheduled'

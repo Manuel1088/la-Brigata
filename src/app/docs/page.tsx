@@ -47,7 +47,7 @@ export default function DocsPage() {
 
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow p-6 text-gray-700">
-          Qui saranno disponibili guide e documentazione dell'app.
+          Qui saranno disponibili guide e documentazione dell&apos;app.
         </div>
       </main>
     </div>

@@ -2,6 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import type { EmployeeFull } from '@/lib/employees'
 
 // CCNL base mensile per livello (11/2027) per calcolo paga di default
 const CCNL_MONTHLY_BASE: Record<string, number> = {
@@ -22,7 +23,7 @@ export default function ProfilePage() {
   const [isEditingPersonal, setIsEditingPersonal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [myEmployee, setMyEmployee] = useState<any | null>(null)
+  const [myEmployee, setMyEmployee] = useState<EmployeeFull | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -61,20 +62,21 @@ export default function ProfilePage() {
     setFormData({
       name: session.user?.name || '',
       email: session.user?.email || '',
-      phone: (session.user as any)?.phone || '',
-      role: (session.user as any)?.role || '',
-      department: (session.user as any)?.department || ''
+      phone: session.user?.phone || '',
+      role: session.user?.role || '',
+      department: session.user?.department || ''
     })
 
     // Carica dati dipendente per il riquadro "Profilo Dipendente"
-    const companyId = (session.user as any)?.companyId
-    const userId = (session.user as any)?.id
+    const companyId = session.user?.companyId
+    const userId = session.user?.id
     if (companyId && userId) {
       fetch(`/api/employees?companyId=${encodeURIComponent(companyId)}&active=true`)
         .then(res => res.json())
         .then(data => {
-          const emp = Array.isArray(data?.employees) ? data.employees.find((e: any) => e.id === userId) : null
-          setMyEmployee(emp || null)
+          const employees = Array.isArray(data?.employees) ? (data.employees as EmployeeFull[]) : []
+          const emp = employees.find((e) => e.id === userId) || null
+          setMyEmployee(emp)
         })
         .catch(() => setMyEmployee(null))
     }
@@ -216,8 +218,8 @@ export default function ProfilePage() {
 
   if (!session) return null
 
-  const userRole = (session.user as any)?.role || 'DIPENDENTE'
-  const userAvatar = (session.user as any)?.avatar || '👤'
+  const userRole = session.user?.role || 'DIPENDENTE'
+  const userAvatar = session.user?.avatar || '👤'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
@@ -243,11 +245,12 @@ export default function ProfilePage() {
                   <button
                     onClick={() => {
                       setIsEditing(false)
-                      setFormData({
+                      setFormData(prev => ({
+                        ...prev,
                         name: session.user?.name || '',
                         email: session.user?.email || '',
-                        phone: (session.user as any)?.phone || ''
-                      })
+                        phone: session.user?.phone || ''
+                      }))
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
                   >

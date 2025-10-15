@@ -2,6 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useCompanyData } from '@/hooks/useCompanyData'
+import type { CompanyData } from '@/hooks/useCompanyData'
 import { formatCurrency, safeSum, safeAverage } from '@/lib/formatNumber'
 
 interface TipEntry {
@@ -36,11 +37,11 @@ export default function TipsHistory() {
     if (!companyData) return
 
     try {
-      const rid = (session?.user as any)?.restaurantId as string | undefined
+      const rid = session?.user?.restaurantId as string | undefined
       if (rid) {
         setTipsKey(`tipEntries_v1::${rid}`)
       } else {
-        const firstRest = companyData?.company?.restaurants?.[0]?.id as string | undefined
+        const firstRest = (companyData as CompanyData | null | undefined)?.company?.restaurants?.[0]?.id as string | undefined
         if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
       }
     } finally {
@@ -70,11 +71,11 @@ export default function TipsHistory() {
     }
     load()
     const onUpdate = () => load()
-    try { window.addEventListener('tip_entries_updated', onUpdate as any) } catch {}
-    try { window.addEventListener('storage', onUpdate as any) } catch {}
+    try { window.addEventListener('tip_entries_updated', onUpdate) } catch {}
+    try { window.addEventListener('storage', onUpdate) } catch {}
     return () => {
-      try { window.removeEventListener('tip_entries_updated', onUpdate as any) } catch {}
-      try { window.removeEventListener('storage', onUpdate as any) } catch {}
+      try { window.removeEventListener('tip_entries_updated', onUpdate) } catch {}
+      try { window.removeEventListener('storage', onUpdate) } catch {}
     }
   }, [tipsKey])
 
@@ -82,14 +83,14 @@ export default function TipsHistory() {
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
   useEffect(() => {
     let cancelled = false
-    const fiscal: string | undefined = companyData?.company?.fiscalCode
+    const fiscal: string | undefined = (companyData as CompanyData | null | undefined)?.company?.fiscalCode
     if (!fiscal) return
     const key = `booking_areas_v1::${fiscal}`
     const load = () => {
       try {
         const raw = localStorage.getItem(key)
-        const areas = raw ? JSON.parse(raw) : []
-        const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
+        const areas = (raw ? JSON.parse(raw) : []) as Array<{ id: string; name: string }>
+        const locs = (areas || []).map((a) => ({ id: a.id, name: a.name }))
         if (!cancelled) setLocations(locs)
       } catch {
         if (!cancelled) setLocations([])
@@ -97,9 +98,9 @@ export default function TipsHistory() {
     }
     load()
     const onUpdate = () => load()
-    try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
+    try { window.addEventListener('booking_areas_updated', onUpdate) } catch {}
     return () => {
-      try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}
+      try { window.removeEventListener('booking_areas_updated', onUpdate) } catch {}
       cancelled = true
     }
   }, [companyData])

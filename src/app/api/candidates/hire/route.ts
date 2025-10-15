@@ -1,5 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { UserRole as PrismaUserRole } from '@prisma/client'
+
+function toUserRole(roleString?: string): PrismaUserRole {
+  switch ((roleString || '').toUpperCase()) {
+    case 'PROPRIETARIO': return PrismaUserRole.PROPRIETARIO
+    case 'DIRETTORE': return PrismaUserRole.DIRETTORE
+    case 'MANAGER': return PrismaUserRole.MANAGER
+    case 'RESPONSABILE_SALA': return PrismaUserRole.RESPONSABILE_SALA
+    case 'HEAD_CHEF': return PrismaUserRole.HEAD_CHEF
+    case 'HEAD_BARMAN': return PrismaUserRole.HEAD_BARMAN
+    case 'HEAD_SOMMELIER': return PrismaUserRole.HEAD_SOMMELIER
+    case 'CASSIERE': return PrismaUserRole.CASSIERE
+    case 'DIPENDENTE': return PrismaUserRole.DIPENDENTE
+    default: return PrismaUserRole.DIPENDENTE
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     const candidate = await prisma.user.findUnique({ where: { id: candidateId } })
     if (!candidate) return NextResponse.json({ error: 'Candidato non trovato' }, { status: 404 })
-    if ((candidate as any).userType !== 'CANDIDATE') {
+    if (candidate.userType !== 'CANDIDATE') {
       return NextResponse.json({ error: 'L’utente non è in stato CANDIDATE' }, { status: 400 })
     }
 
@@ -42,9 +58,9 @@ export async function POST(req: NextRequest) {
         userType: 'EMPLOYEE',
         companyId: company.id,
         restaurantId: restaurant.id,
-        role: (role as any) || 'DIPENDENTE',
-        department: department || (candidate as any).department || null,
-        hierarchyLevel: (candidate as any).hierarchyLevel ?? 5,
+        role: toUserRole(role),
+        department: department || candidate.department || null,
+        hierarchyLevel: candidate.hierarchyLevel ?? 5,
         isActive: true,
       }
     })

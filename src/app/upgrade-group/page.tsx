@@ -117,7 +117,7 @@ export default function UpgradeGroupPage() {
           🏢 Registra il Tuo Gruppo come Azienda
         </h1>
         <p className="text-lg text-gray-600">
-          Converti il tuo gruppo temporaneo in un'azienda registrata con tutti i benefici
+          Converti il tuo gruppo temporaneo in un&apos;azienda registrata con tutti i benefici
         </p>
       </div>
 
@@ -131,12 +131,12 @@ export default function UpgradeGroupPage() {
         <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
           <div className="text-3xl mb-2">📊</div>
           <div className="font-semibold text-blue-900">Funzionalità Complete</div>
-          <div className="text-sm text-blue-700">Accesso a tutte le funzionalità pro dell'azienda</div>
+          <div className="text-sm text-blue-700">Accesso a tutte le funzionalità pro dell&apos;azienda</div>
         </div>
         <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
           <div className="text-3xl mb-2">🔔</div>
           <div className="font-semibold text-purple-900">Notifiche a Tutti</div>
-          <div className="text-sm text-purple-700">Tutti i membri ricevono notifica dell'upgrade</div>
+          <div className="text-sm text-purple-700">Tutti i membri ricevono notifica dell&apos;upgrade</div>
         </div>
       </div>
 
@@ -213,7 +213,7 @@ export default function UpgradeGroupPage() {
                     Registra Azienda
                   </h2>
                   <p className="text-gray-600">
-                    Converti "{selectedGroup.name}" in azienda registrata
+                    Converti &quot;{selectedGroup.name}&quot; in azienda registrata
                   </p>
                 </div>
               </div>
@@ -311,7 +311,7 @@ export default function UpgradeGroupPage() {
                         <li>Verrà creata una nuova azienda con i dati inseriti</li>
                         <li>Verrà creato un ristorante con il nome del gruppo</li>
                         <li>Tutti i {selectedGroup.memberCount} membri saranno automaticamente approvati</li>
-                        <li>Ogni membro riceverà una notifica dell'upgrade</li>
+                        <li>Ogni membro riceverà una notifica dell&apos;upgrade</li>
                         <li>Il gruppo temporaneo verrà eliminato</li>
                       </ul>
                     </div>

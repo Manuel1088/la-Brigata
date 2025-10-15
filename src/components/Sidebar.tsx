@@ -22,6 +22,9 @@ interface MenuSection {
   roles?: UserRole[]
 }
 
+type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+interface PendingItem { status: ApprovalStatus }
+
 export default function Sidebar() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -43,20 +46,20 @@ export default function Sidebar() {
       
       try {
         // Conteggio richieste ferie
-        const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]')
-        count += leaveRequests.filter((req: any) => req.status === 'PENDING').length
+        const leaveRequests = (JSON.parse(localStorage.getItem('leave_requests') || '[]') as PendingItem[])
+        count += leaveRequests.filter((req) => req.status === 'PENDING').length
         
         // Conteggio richieste swap turni
-        const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]')
-        count += swapRequests.filter((req: any) => req.status === 'PENDING').length
+        const swapRequests = (JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]') as PendingItem[])
+        count += swapRequests.filter((req) => req.status === 'PENDING').length
         
         // Conteggio richieste dipendenti
-        const employeeRequests = JSON.parse(localStorage.getItem('employee_requests') || '[]')
-        count += employeeRequests.filter((req: any) => req.status === 'PENDING').length
+        const employeeRequests = (JSON.parse(localStorage.getItem('employee_requests') || '[]') as PendingItem[])
+        count += employeeRequests.filter((req) => req.status === 'PENDING').length
         
         // Conteggio richieste payroll
-        const payrollRequests = JSON.parse(localStorage.getItem('payroll_requests') || '[]')
-        count += payrollRequests.filter((req: any) => req.status === 'PENDING').length
+        const payrollRequests = (JSON.parse(localStorage.getItem('payroll_requests') || '[]') as PendingItem[])
+        count += payrollRequests.filter((req) => req.status === 'PENDING').length
       } catch (error) {
         console.error('Errore nel calcolo approvazioni:', error)
       }

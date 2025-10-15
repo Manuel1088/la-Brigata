@@ -35,26 +35,7 @@ export function PermissionGuard({
       return
     }
 
-    // Controllo livello minimo
-    if (minLevel && userLevel < minLevel) {
-      router.push(redirectTo)
-      return
-    }
-
-    // Controllo permessi
-    let hasAccess = false
-
-    if (permission) {
-      hasAccess = can(permission)
-    } else if (permissions.length > 0) {
-      hasAccess = requireAll ? canAll(permissions) : canAny(permissions)
-    } else {
-      hasAccess = true // Nessun controllo specifico
-    }
-
-    if (!hasAccess) {
-      router.push(redirectTo)
-    }
+    // Niente redirect automatici su accesso negato: mostriamo il messaggio fallback
   }, [session, status, permission, permissions, requireAll, redirectTo, minLevel, userLevel, can, canAny, canAll, router])
 
   if (status === 'loading') {

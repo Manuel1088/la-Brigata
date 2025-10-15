@@ -21,8 +21,8 @@ export default function AdminLayout({
     }
 
     // 🛡️ Verifica che sia ADMIN (livello 11)
-    const userRole = (session.user as any)?.role
-    const userLevel = (session.user as any)?.level
+    const userRole = session.user?.role
+    const userLevel = session.user?.level
 
     if (userRole !== 'ADMIN' || userLevel !== 11) {
       console.warn('Access denied to /admin/* - User is not Super Admin')
@@ -44,8 +44,8 @@ export default function AdminLayout({
   }
 
   // Verifica finale prima di renderizzare
-  const userRole = (session?.user as any)?.role
-  const userLevel = (session?.user as any)?.level
+  const userRole = session?.user?.role
+  const userLevel = session?.user?.level
   
   if (userRole !== 'ADMIN' || userLevel !== 11) {
     return null // Non renderizzare nulla se non autorizzato

@@ -41,7 +41,7 @@ export async function POST(
     }
     
     // Verifica permessi (solo proprietario/manager del restaurant)
-    const userRole = (session.user as any).role?.toString().toUpperCase()
+    const userRole = session.user.role?.toString().toUpperCase()
     if (!['PROPRIETARIO', 'DIRETTORE', 'MANAGER', 'ADMIN'].includes(userRole)) {
       return NextResponse.json(
         { error: 'Permesso negato' },
@@ -60,7 +60,7 @@ export async function POST(
         department: body.department || employment.department,
         startDate: body.startDate ? new Date(body.startDate) : new Date(),
         reviewedAt: new Date(),
-        reviewedBy: (session.user as any).id
+        reviewedBy: session.user.id
       }
     })
     

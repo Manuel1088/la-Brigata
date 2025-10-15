@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = session.user.id
-    const userRole = (session.user as any)?.role
-    const restaurantId = (session.user as any)?.restaurantId
-    const companyId = (session.user as any)?.companyId
+    const userRole = session.user.role
+    const restaurantId = session.user.restaurantId
+    const companyId = session.user.companyId
 
     // ✅ PARALLEL QUERIES - Tutte eseguite contemporaneamente!
     const [userData, pendingEmployments, employeesCount, activeEmployments] = await Promise.all([

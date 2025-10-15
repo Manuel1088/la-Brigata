@@ -11,6 +11,10 @@ export interface NotificationAction {
   icon?: string
 }
 
+export interface NotificationMetadata {
+  [key: string]: string | number | boolean | null | undefined
+}
+
 export interface Notification {
   id: string
   type: NotificationType
@@ -21,7 +25,7 @@ export interface Notification {
   isRead: boolean
   isUrgent: boolean
   actions?: NotificationAction[]
-  metadata?: Record<string, any>
+  metadata?: NotificationMetadata
   userId?: string // Se specifico per un utente
   autoDismiss?: boolean
   dismissAfter?: number // millisecondi

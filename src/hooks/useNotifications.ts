@@ -119,7 +119,7 @@ export const useNotifications = () => {
       actions: [
         { label: 'Visualizza Modifiche', action: 'view_changes', variant: 'primary', icon: '👁️' }
       ],
-      metadata: { employeeName, changes }
+      metadata: { employeeName, changes: changes.join(', ') }
     })
   }, [])
 
@@ -151,7 +151,7 @@ export const useNotifications = () => {
   }, [])
 
   // Notifiche di emergenza
-  const notifyEmergency = useCallback((title: string, message: string, actions?: any[]) => {
+  const notifyEmergency = useCallback((title: string, message: string, actions?: Array<{ label: string; action: string; variant?: 'primary'|'secondary'|'danger'; icon?: string }>) => {
     return createNotification({
       type: 'URGENT',
       category: 'ALERT',
@@ -171,7 +171,7 @@ export const useNotifications = () => {
     title: string,
     message: string,
     isUrgent: boolean = false,
-    actions?: any[]
+    actions?: Array<{ label: string; action: string; variant?: 'primary'|'secondary'|'danger'; icon?: string }>
   ) => {
     return createNotification({
       type,

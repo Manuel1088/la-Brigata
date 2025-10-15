@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNotifications } from '@/hooks/useNotifications'
 
 interface PersonnelReport {
@@ -10,7 +10,7 @@ interface PersonnelReport {
   value: number
   target: number
   trend: 'up' | 'down' | 'stable'
-  details: Record<string, any>
+  details: Record<string, number | string>
 }
 
 export default function ReportsPersonnel() {
@@ -20,11 +20,7 @@ export default function ReportsPersonnel() {
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
 
-  useEffect(() => {
-    loadPersonnelReports()
-  }, [selectedPeriod])
-
-  const loadPersonnelReports = async () => {
+  const loadPersonnelReports = useCallback(async () => {
     try {
       // Mock data - in produzione verrà dal database
       const mockReports: PersonnelReport[] = [
@@ -100,11 +96,15 @@ export default function ReportsPersonnel() {
       setReports(mockReports)
     } catch (error) {
       console.error('Errore nel caricamento report personale:', error)
-      notifyCustom('Errore nel caricamento report personale', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Reports Personale', 'Errore nel caricamento report personale')
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedPeriod, notifyCustom])
+
+  useEffect(() => {
+    void loadPersonnelReports()
+  }, [loadPersonnelReports])
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -176,7 +176,7 @@ export default function ReportsPersonnel() {
               <option value="week">Questa Settimana</option>
               <option value="month">Questo Mese</option>
               <option value="quarter">Questo Trimestre</option>
-              <option value="year">Quest\'Anno</option>
+              <option value="year">Quest&apos;Anno</option>
             </select>
           </div>
           

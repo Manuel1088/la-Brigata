@@ -25,7 +25,7 @@ export function RestaurantSelector() {
         <div className="text-left">
           <div className="text-xs text-gray-600">Restaurant Attivo</div>
           <div className="font-medium text-gray-900">
-            {activeEmployment?.restaurant.name || 'Seleziona...'}
+            {activeEmployment?.restaurant?.name || 'Seleziona...'}
           </div>
         </div>
         <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,11 +59,11 @@ export function RestaurantSelector() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className={`font-medium truncate ${isActive ? 'text-white' : 'text-gray-900'}`}>
-                      {employment.restaurant.name}
+                      {employment.restaurant?.name || 'Ristorante'}
                     </div>
-                    {employment.restaurant.address && (
+                    {employment.restaurant?.address && (
                       <div className={`text-xs truncate ${isActive ? 'text-orange-100' : 'text-gray-500'}`}>
-                        📍 {employment.restaurant.address}
+                        📍 {employment.restaurant?.address}
                       </div>
                     )}
                     <div className={`text-xs mt-1 ${isActive ? 'text-orange-100' : 'text-gray-600'}`}>

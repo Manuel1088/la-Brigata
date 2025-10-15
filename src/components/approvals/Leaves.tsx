@@ -19,13 +19,14 @@ export default function ApprovalsLeaves({ onUpdate }: { onUpdate: () => void }) 
   const [allItems, setAllItems] = useState<LeaveRequestItem[]>([])
   const [statusFilter, setStatusFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'>('PENDING')
 
-  const userRole = (session?.user as any)?.role || ''
-  const userDept = ((session?.user as any)?.department || '').toLowerCase()
+  const userRole = session?.user?.role || ''
+  const userDept = (session?.user?.department || '').toLowerCase()
   const isAdmin = ['ADMIN','PROPRIETARIO','MANAGER','DIRETTORE'].includes(userRole)
 
   const load = () => {
     try {
-      const all: LeaveRequestItem[] = JSON.parse(localStorage.getItem('leave_requests') || '[]')
+      const raw = localStorage.getItem('leave_requests')
+      const all: LeaveRequestItem[] = raw ? JSON.parse(raw) : []
       const filteredByScope = isAdmin ? all : all.filter(r => (r.department || '').toLowerCase() === userDept)
       setAllItems(filteredByScope)
       // default view: pending (ordine di arrivo: più vecchi prima)

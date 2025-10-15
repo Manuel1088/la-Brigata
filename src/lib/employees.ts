@@ -19,6 +19,11 @@ export interface EmployeeFull {
   }
   notes?: string
   monthlyIncrease?: number
+  // Campi aggiuntivi utilizzati in UI e API
+  baseSalary?: number
+  weeklyHours?: number
+  contractTypeEnum?: 'INDETERMINATO' | 'DETERMINATO'
+  employmentEndDate?: string
 }
 
 export interface SimpleEmployee {

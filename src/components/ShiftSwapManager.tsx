@@ -98,7 +98,12 @@ export function ShiftSwapManager({ isOpen, onClose, userId, userRole }: Props) {
     const req = list.find(r => r.id === id)
     if (!req) return
     applySwapToSchedule(req)
-    const updated = list.map(r => r.id === id ? ({ ...r, status: 'APPROVED', decidedBy: (session?.user?.id as string) || userId || '', decidedAt: new Date().toISOString() }) : r)
+    const updated: ShiftSwapRequest[] = list.map(r => r.id === id ? ({
+      ...r,
+      status: 'APPROVED',
+      decidedBy: (session?.user?.id as string) || userId || '',
+      decidedAt: new Date().toISOString()
+    } as ShiftSwapRequest) : r)
     saveSwapRequests(updated)
     notifyCustom('SUCCESS','SHIFTS','Cambio turno approvato', `${req.requesterName} ⇄ ${req.targetEmployeeName} • ${new Date(req.dateISO).toLocaleDateString('it-IT')}`, false)
     setVersion(v => v + 1)
@@ -106,7 +111,13 @@ export function ShiftSwapManager({ isOpen, onClose, userId, userRole }: Props) {
 
   const reject = (id: string) => {
     const reason = prompt('Motivo (opzionale):') || undefined
-    const updated = list.map(r => r.id === id ? ({ ...r, status: 'REJECTED', reason, decidedBy: (session?.user?.id as string) || userId || '', decidedAt: new Date().toISOString() }) : r)
+    const updated: ShiftSwapRequest[] = list.map(r => r.id === id ? ({
+      ...r,
+      status: 'REJECTED',
+      reason,
+      decidedBy: (session?.user?.id as string) || userId || '',
+      decidedAt: new Date().toISOString()
+    } as ShiftSwapRequest) : r)
     saveSwapRequests(updated)
     const req = list.find(r => r.id === id)
     if (req) notifyCustom('WARNING','SHIFTS','Cambio turno rifiutato', `${req.requesterName} ⇄ ${req.targetEmployeeName}`, false)
@@ -129,7 +140,7 @@ export function ShiftSwapManager({ isOpen, onClose, userId, userRole }: Props) {
                 <input type="checkbox" checked={showPendingOnly} onChange={(e)=> setShowPendingOnly(e.target.checked)} />
                 Solo in attesa
               </label>
-              <select value={deptFilter} onChange={(e)=> setDeptFilter(e.target.value as any)} className="px-2 py-1 border rounded">
+              <select value={deptFilter} onChange={(e)=> setDeptFilter(e.target.value as 'all'|'cucina'|'sala'|'beverage')} className="px-2 py-1 border rounded">
                 <option value="all">Tutti i reparti</option>
                 <option value="cucina">Cucina</option>
                 <option value="sala">Sala</option>

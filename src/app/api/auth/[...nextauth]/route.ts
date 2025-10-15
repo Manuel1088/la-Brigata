@@ -1,4 +1,5 @@
-import NextAuth, { AuthOptions } from 'next-auth'
+import NextAuth, { AuthOptions, type User } from 'next-auth'
+import type { UserRoleString } from '@/types/roles'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { logLogin, logLogout } from '@/lib/audit'
 import { getEmployeesFullClient } from '@/lib/employees'
@@ -48,7 +49,7 @@ export const authOptions: AuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' }
       },
-      async authorize(credentials) {
+      async authorize(credentials, _req) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
@@ -60,19 +61,19 @@ export const authOptions: AuthOptions = {
           if (dbUser && dbUser.password) {
             const ok = await compare(credentials.password, dbUser.password)
             if (ok) {
-              const user = {
-                id: dbUser.id,
-                email: dbUser.email,
-                name: dbUser.name,
-                role: dbUser.role as any,
-                level: (dbUser as any).hierarchyLevel ?? 5,
-                avatar: (dbUser as any).avatar ?? '👤',
-                userType: (dbUser as any).userType ?? 'EMPLOYEE',
-                companyId: (dbUser as any).companyId ?? null,
-                informalCompanyId: (dbUser as any).informalCompanyId ?? null
-              }
-              await logLogin(user.id)
-              return user as any
+            const user: User = {
+              id: dbUser.id,
+              email: dbUser.email,
+              name: dbUser.name,
+              role: String(dbUser.role) as UserRoleString,
+              level: Number((dbUser as unknown as { hierarchyLevel?: number }).hierarchyLevel ?? 5),
+              avatar: (dbUser as unknown as { avatar?: string }).avatar ?? '👤',
+              userType: (dbUser as unknown as { userType?: string }).userType ?? 'EMPLOYEE',
+              companyId: (dbUser as unknown as { companyId?: string | null }).companyId ?? null,
+              informalCompanyId: (dbUser as unknown as { informalCompanyId?: string | null }).informalCompanyId ?? null
+            } as unknown as User
+              await logLogin((user as unknown as { id: string }).id)
+            return user
             }
           }
         } catch {}
@@ -104,9 +105,17 @@ export const authOptions: AuthOptions = {
                 companyId = company.id
               } catch {}
             }
-            const user = { ...account.user, id: mappedId || account.user.id, companyId }
-            await logLogin(user.id)
-            return user as any
+            const user: User = {
+              id: mappedId || account.user.id,
+              email: account.user.email,
+              name: account.user.name,
+              role: account.user.role as UserRoleString,
+              level: account.user.level,
+              avatar: account.user.avatar,
+              companyId
+            } as unknown as User
+            await logLogin((user as unknown as { id: string }).id)
+            return user
           }
         }
 
@@ -123,17 +132,17 @@ export const authOptions: AuthOptions = {
               DIPENDENTE_SALA: 'DIPENDENTE',
               DIPENDENTE_BAR: 'DIPENDENTE'
             }
-            const mappedRole = roleMap[found.role] || 'DIPENDENTE'
-            const user = {
+            const mappedRole = (roleMap[found.role] || 'DIPENDENTE') as UserRoleString
+            const user: User = {
               id: found.id,
               email: found.email,
               name: found.name,
               role: mappedRole,
               level: found.level || 5,
               avatar: found.avatar || '👤'
-            }
-            await logLogin(user.id)
-            return user as any
+            } as unknown as User
+            await logLogin((user as unknown as { id: string }).id)
+            return user
           }
         } catch {}
         
@@ -149,27 +158,27 @@ export const authOptions: AuthOptions = {
     maxAge: 8 * 60 * 60, // 8 ore
   },
   callbacks: {
-    async jwt({ token, user, trigger }: any) {
+    async jwt({ token, user }: { token: import('next-auth/jwt').JWT; user?: User | null }) {
       // Al primo login, salva i dati dell'utente
       if (user && 'role' in user) {
-        token.role = (user as any).role;
-        token.level = (user as any).level;
-        token.avatar = (user as any).avatar;
+        token.role = (user as unknown as { role?: import('@/types/roles').UserRoleString }).role;
+        token.level = (user as unknown as { level?: number }).level;
+        token.avatar = (user as unknown as { avatar?: string }).avatar;
         token.name = user.name;
         token.email = user.email;
       }
       if (user && 'id' in user) {
-        token.sub = (user as any).id;
+        token.sub = (user as unknown as { id: string }).id;
       }
       // Propaga sempre companyId/informalCompanyId se presenti (anche per account demo)
       if (user && 'userType' in user) {
-        (token as any).userType = (user as any).userType;
+        (token as unknown as { userType?: string }).userType = (user as unknown as { userType?: string }).userType;
       }
       if (user && 'companyId' in user) {
-        (token as any).companyId = (user as any).companyId;
+        (token as unknown as { companyId?: string | null }).companyId = (user as unknown as { companyId?: string | null }).companyId;
       }
       if (user && 'informalCompanyId' in user) {
-        (token as any).informalCompanyId = (user as any).informalCompanyId;
+        (token as unknown as { informalCompanyId?: string | null }).informalCompanyId = (user as unknown as { informalCompanyId?: string | null }).informalCompanyId;
       }
       
       // Ricarica i dati dal database ogni volta per avere sempre i dati freschi
@@ -182,8 +191,8 @@ export const authOptions: AuthOptions = {
           if (dbUser) {
             token.name = dbUser.name
             token.email = dbUser.email
-            token.role = dbUser.role as any
-            token.avatar = (dbUser as any).avatar ?? '👤'
+            token.role = String(dbUser.role) as import('@/types/roles').UserRoleString
+            token.avatar = (dbUser as unknown as { avatar?: string }).avatar ?? '👤'
           }
         } catch (e) {
           console.error('Error refreshing user data in JWT:', e)
@@ -192,17 +201,17 @@ export const authOptions: AuthOptions = {
       
       return token;
     },
-    async session({ session, token }: any) {
+    async session({ session, token }: { session: import('next-auth').Session; token: import('next-auth/jwt').JWT }) {
       if (token && session.user) {
-        (session.user as any).id = token.sub;
-        (session.user as any).name = token.name;  // ← Aggiornato dal JWT
-        (session.user as any).email = token.email;  // ← Aggiornato dal JWT
-        (session.user as any).role = token.role as string;
-        (session.user as any).level = token.level as number;
-        (session.user as any).avatar = token.avatar as string;
-        (session.user as any).userType = (token as any).userType as string | undefined;
-        (session.user as any).companyId = (token as any).companyId as string | null | undefined;
-        (session.user as any).informalCompanyId = (token as any).informalCompanyId as string | null | undefined;
+        session.user.id = token.sub as string;
+        session.user.name = token.name as string | undefined;
+        session.user.email = token.email as string | undefined;
+        session.user.role = token.role as unknown as import('@/types/roles').UserRoleString;
+        session.user.level = token.level as number;
+        session.user.avatar = token.avatar as string;
+        session.user.userType = token.userType as string | undefined;
+        session.user.companyId = (token.companyId as string | null | undefined) ?? undefined;
+        session.user.informalCompanyId = token.informalCompanyId as string | null | undefined;
       }
       return session;
     }

@@ -6,8 +6,8 @@ import { useEmployeeContext } from '@/contexts/EmployeeContext'
 type PointsType = { [key: string]: number }
 type RestDaysType = { [key: string]: [string, string?] }
 type CcnlLevelsType = { [key: string]: string }
-type DepartmentPointsType = { cucina: number; sala: number; bar: number }
-type DepartmentChecksType = { cucina: boolean; sala: boolean; bar: boolean }
+type DepartmentPointsType = { cucina: number; sala: number; beverage: number }
+type DepartmentChecksType = { cucina: boolean; sala: boolean; beverage: boolean }
 type DepartmentKey = 'cucina' | 'sala' | 'beverage'
 
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'] as const
@@ -24,17 +24,16 @@ export default function TipsManage() {
   
   // Dipendenti via SWR - FILTRA dipendenti REALI
   const { employees: employeesData, isLoading } = useEmployeeContext()
-  const employees = useMemo(() => 
+  const employees: Employee[] = useMemo(() =>
     (employeesData || [])
-      .filter((e: any) => {
-        const role = e.role || ''
-        // Escludi PROPRIETARIO (non lavoratore) e ADMIN (non dipendenti)
+      .filter((e) => {
+        const role = (e as { role?: string }).role || ''
         return role !== 'PROPRIETARIO' && role !== 'ADMIN'
       })
-      .map((e: any) => ({
-        name: e.name,
-        role: e.role,
-        department: (e.department || 'sala') as DepartmentKey
+      .map((e) => ({
+        name: (e as { name: string }).name,
+        role: (e as { role: string }).role,
+        department: ((e as { department?: string }).department as DepartmentKey) || 'sala'
       })),
     [employeesData]
   )
@@ -44,15 +43,11 @@ export default function TipsManage() {
   const [points, setPoints] = useState<PointsType>({})
   const [restDays, setRestDays] = useState<RestDaysType>({})
   const [ccnlLevels, setCcnlLevels] = useState<CcnlLevelsType>({})
-  const [departmentPoints, setDepartmentPoints] = useState<DepartmentPointsType>({
-    cucina: 5,
-    sala: 5,
-    bar: 5
-  })
+  const [departmentPoints, setDepartmentPoints] = useState<DepartmentPointsType>({ cucina: 5, sala: 5, beverage: 5 })
   const [departmentChecks, setDepartmentChecks] = useState<DepartmentChecksType>({
     cucina: false,
     sala: false,
-    bar: false
+    beverage: false
   })
   const [savedMessage, setSavedMessage] = useState('')
 
@@ -74,8 +69,8 @@ export default function TipsManage() {
       setPoints(savedPoints ? JSON.parse(savedPoints) : {})
       setRestDays(savedRestDays ? JSON.parse(savedRestDays) : {})
       setCcnlLevels(savedCcnl ? JSON.parse(savedCcnl) : {})
-      setDepartmentPoints(savedDeptPoints ? JSON.parse(savedDeptPoints) : { cucina: 5, sala: 5, bar: 5 })
-      setDepartmentChecks(savedDeptChecks ? JSON.parse(savedDeptChecks) : { cucina: false, sala: false, bar: false })
+      setDepartmentPoints(savedDeptPoints ? JSON.parse(savedDeptPoints) : { cucina: 5, sala: 5, beverage: 5 })
+      setDepartmentChecks(savedDeptChecks ? JSON.parse(savedDeptChecks) : { cucina: false, sala: false, beverage: false })
     } catch (error) {
       console.error('Error loading from localStorage:', error)
     } finally {
@@ -143,8 +138,8 @@ export default function TipsManage() {
     setPoints(defaultPoints)
     setRestDays({})
     setCcnlLevels({})
-    setDepartmentPoints({ cucina: 5, sala: 5, bar: 5 })
-    setDepartmentChecks({ cucina: false, sala: false, bar: false })
+    setDepartmentPoints({ cucina: 5, sala: 5, beverage: 5 })
+    setDepartmentChecks({ cucina: false, sala: false, beverage: false })
     
     localStorage.removeItem('employeePoints')
     localStorage.removeItem('employeeRestDays')
@@ -181,7 +176,7 @@ export default function TipsManage() {
     sala: Math.max(1, employees
       .filter(e => e.department === 'sala')
       .reduce((sum, emp) => sum + (points[emp.name] || 0), 0)),
-    bar: Math.max(1, employees
+    beverage: Math.max(1, employees
       .filter(e => e.department === 'beverage')
       .reduce((sum, emp) => sum + (points[emp.name] || 0), 0))
   }), [employees, points])
@@ -358,12 +353,7 @@ export default function TipsManage() {
           label="Sala" 
         />
         
-        <DepartmentSection 
-          department="beverage" 
-          color="green" 
-          icon="🍹" 
-          label="Bar" 
-        />
+        <DepartmentSection department="beverage" color="green" icon="🍹" label="Bar" />
 
         {/* Azioni */}
         <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3">

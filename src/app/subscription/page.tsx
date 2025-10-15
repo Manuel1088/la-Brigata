@@ -4,8 +4,45 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 
+// Tipi per i piani e classi colore
+interface PlanFeature {
+  icon: string
+  text: string
+  highlight?: boolean
+}
+
+interface BasePlan {
+  id: string
+  name: string
+  price: number
+  currency: string
+  billing: string
+  icon: string
+  features: PlanFeature[]
+  color: string
+}
+
+interface EmployeePlan extends BasePlan {
+  type: 'individual'
+  cta: string
+}
+
+interface CompanyPlan extends BasePlan {
+  employees: number
+  popular: boolean
+}
+
+type Plan = EmployeePlan | CompanyPlan
+
+interface ColorClasses {
+  bg: string
+  border: string
+  text: string
+  button: string
+}
+
 // Piani secondo il Business Plan
-const EMPLOYEE_PLAN = {
+const EMPLOYEE_PLAN: EmployeePlan = {
   id: 'premium_employee',
   name: 'Premium Employee',
   price: 2.99,
@@ -27,7 +64,7 @@ const EMPLOYEE_PLAN = {
   color: 'green'
 }
 
-const COMPANY_PLANS = [
+const COMPANY_PLANS: CompanyPlan[] = [
   {
     id: 'brigata_light',
     name: 'Brigata Light',
@@ -122,7 +159,7 @@ export default function SubscriptionPage() {
   const [currentPlan, setCurrentPlan] = useState<string | null>(null)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<any>(null)
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   
   // Determina automaticamente se è proprietario o dipendente
   const isCompanyOwner = canManageCompany()
@@ -143,7 +180,7 @@ export default function SubscriptionPage() {
     }
   }, [session, status, router])
 
-  const handleUpgrade = (plan: any) => {
+  const handleUpgrade = (plan: Plan) => {
     setSelectedPlan(plan)
     setShowUpgradeModal(true)
   }
@@ -185,8 +222,8 @@ export default function SubscriptionPage() {
     }
   }
 
-  const getColorClasses = (color: string) => {
-    const colors: Record<string, any> = {
+  const getColorClasses = (color: string): ColorClasses => {
+    const colors: Record<string, ColorClasses> = {
       blue: { 
         bg: 'bg-blue-50', 
         border: 'border-blue-200', 
@@ -463,11 +500,11 @@ export default function SubscriptionPage() {
             <div>
               <h3 className="font-semibold text-gray-900 mb-2">Cosa succede se supero il numero di dipendenti?</h3>
               <p className="text-gray-600 text-sm">
-                Riceverai una notifica automatica per fare upgrade al piano superiore. I nuovi dipendenti potranno essere aggiunti solo dopo l'upgrade.
+                Riceverai una notifica automatica per fare upgrade al piano superiore. I nuovi dipendenti potranno essere aggiunti solo dopo l&apos;upgrade.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">C'è un periodo di prova gratuito?</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">C&apos;è un periodo di prova gratuito?</h3>
               <p className="text-gray-600 text-sm">
                 Sì! 14 giorni di prova gratuita per tutti i piani azienda. Nessuna carta di credito richiesta.
               </p>

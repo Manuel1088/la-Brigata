@@ -114,7 +114,7 @@ export async function POST(
             department: member.department,
             requestedAt: member.createdAt,
             reviewedAt: new Date(),
-            reviewedBy: (session.user as any).id,
+            reviewedBy: session.user.id,
             startDate: member.startDate || member.createdAt
           }
         })

@@ -21,7 +21,7 @@ export default function ShiftsCalendar() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [currentWeek, setCurrentWeek] = useState(new Date())
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('direzione')
+  const [selectedDepartment, setSelectedDepartment] = useState<'direzione'|'cucina'|'sala'|'beverage'|'accoglienza'>('direzione')
   const [viewMode, setViewMode] = useState<'week' | 'twoWeeks' | 'month'>('week')
   const [isGenerating, setIsGenerating] = useState(false)
   const { generateSchedule } = useAutoScheduler()
@@ -42,7 +42,7 @@ export default function ShiftsCalendar() {
   const [isAddingCustomShift, setIsAddingCustomShift] = useState(false)
   const [targetDepartment, setTargetDepartment] = useState('')
   const { canCreateShift, canAssignShift, canApproveShift } = usePermissions()
-  const userRole = (session?.user as any)?.role || ''
+  const userRole = session?.user?.role || ''
   const userName = session?.user?.name || ''
   const [restVersion, setRestVersion] = useState(0)
   const [showCcnlDetails, setShowCcnlDetails] = useState(false)
@@ -108,8 +108,8 @@ export default function ShiftsCalendar() {
   useEffect(() => {
     if (employeesData) {
       // Filtra solo dipendenti REALI (escludi PROPRIETARIO non lavoratore e ADMIN)
-      const operativeEmployees = employeesData.filter((e: any) => {
-        const role = e.role || ''
+      const operativeEmployees = employeesData.filter((e) => {
+        const role = (e as SimpleEmployee & { role?: string }).role || ''
         // Escludi SOLO:
         // - PROPRIETARIO (non lavoratore, solo gestione)
         // - ADMIN (team La Brigata, non dipendente dell'azienda)
@@ -123,11 +123,16 @@ export default function ShiftsCalendar() {
         // - Tutti gli altri ruoli operativi
       })
       
-      const normalize = (d?: string) => d === 'bar' ? 'beverage' : (d || 'sala')
-      setEmployees(operativeEmployees.map((e: any) => ({
-        name: e.name,
-        department: normalize(e.department),
-        role: e.role || 'DIPENDENTE_SALA'
+      const normalize = (d?: string): 'cucina'|'sala'|'beverage'|'accoglienza' => {
+        if (d === 'bar' || d === 'beverage') return 'beverage'
+        if (d === 'accoglienza') return 'accoglienza'
+        if (d === 'cucina') return 'cucina'
+        return 'sala'
+      }
+      setEmployees(operativeEmployees.map((e) => ({
+        name: (e as SimpleEmployee).name,
+        department: normalize((e as SimpleEmployee & { department?: string }).department),
+        role: (e as SimpleEmployee & { role?: string }).role || 'DIPENDENTE_SALA'
       })))
     }
   }, [employeesData])
@@ -172,8 +177,8 @@ export default function ShiftsCalendar() {
   useEffect(() => {
     if (!session?.user) return
     
-    const role = (session.user as any)?.role || ''
-    const userDept = (session.user as any)?.department || 'sala'
+    const role = session.user.role || ''
+    const userDept = session.user?.department || 'sala'
     setUserDepartment(userDept)
     
     if (['PROPRIETARIO', 'DIRETTORE', 'MANAGER', 'ADMIN'].includes(role)) {
@@ -348,10 +353,10 @@ export default function ShiftsCalendar() {
       existing.push(swapRequest)
       localStorage.setItem('shift_swap_requests_v1', JSON.stringify(existing))
       
-      notifyCustom('Richiesta di cambio turno inviata!', 'success')
+      notifyCustom('SUCCESS','SHIFTS','Cambio turno','Richiesta inviata!')
       setSwapVersion(prev => prev + 1)
     } catch (error) {
-      notifyCustom('Errore nell\'invio della richiesta', 'error')
+      notifyCustom('ERROR','SHIFTS','Cambio turno','Errore nell\'invio della richiesta')
     }
 
     setIsSwapModalOpen(false)
@@ -363,16 +368,16 @@ export default function ShiftsCalendar() {
   const handleGenerateSchedule = async () => {
     setIsGenerating(true)
     try {
-      const weekDates = getWeekDates(currentWeek)
-      const schedule = await generateSchedule(weekDates, employees, selectedDepartment)
-      
-      if (schedule) {
-        setShifts(schedule)
-        saveShifts(schedule)
-        notifyCustom('Turni generati automaticamente!', 'success')
+      const result = await generateSchedule(getWeekDates(currentWeek)[0])
+      if (result.success && result.schedule) {
+        setShifts(result.schedule)
+        saveShifts(result.schedule)
+        notifyCustom('SUCCESS','SHIFTS','Auto-scheduler','Turni generati automaticamente!')
+      } else {
+        notifyCustom('ERROR','SHIFTS','Auto-scheduler','Errore nella generazione automatica')
       }
     } catch (error) {
-      notifyCustom('Errore nella generazione automatica', 'error')
+      notifyCustom('ERROR','SHIFTS','Auto-scheduler','Errore nella generazione automatica')
     } finally {
       setIsGenerating(false)
     }
@@ -383,7 +388,7 @@ export default function ShiftsCalendar() {
     if (selectedDepartment === 'direzione') {
       // Dirigenti: chi ha department 'direzione' o ruoli dirigenziali
       return employees.filter(emp => 
-        emp.department === 'direzione' || 
+        // i dirigenti sono filtrati per ruolo
         ['PROPRIETARIO_OPERATIVO', 'DIRETTORE_GENERALE', 'MANAGER'].includes(emp.role)
       )
     }
@@ -592,9 +597,13 @@ export default function ShiftsCalendar() {
       <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
         <div className="text-sm font-semibold text-blue-900 mb-1">Turni disponibili — {selectedDepartment === 'direzione' ? 'Direzione' : selectedDepartment.charAt(0).toUpperCase() + selectedDepartment.slice(1)}</div>
         <ul className="list-disc list-inside text-sm text-blue-800">
-          {(departmentShifts as any)[selectedDepartment]?.filter((s: any) => s.time !== 'RIPOSO' && s.time !== 'custom').map((s: any) => (
-            <li key={s.id}>{s.name} — {s.time}</li>
-          )) || null}
+          {(
+            departmentShifts[selectedDepartment as keyof typeof departmentShifts]
+              ?.filter((s) => s.time !== 'RIPOSO' && s.time !== 'custom')
+              .map((s) => (
+                <li key={s.id}>{s.name} — {s.time}</li>
+              ))
+          ) || null}
         </ul>
       </div>
 

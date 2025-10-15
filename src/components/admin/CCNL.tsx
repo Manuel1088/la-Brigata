@@ -138,7 +138,7 @@ export default function AdminCCNL() {
       setCcnlEntries(mockEntries)
     } catch (error) {
       console.error('Errore nel caricamento CCNL:', error)
-      notifyCustom('Errore nel caricamento CCNL', 'error')
+      notifyCustom('ERROR','SYSTEM','CCNL','Errore nel caricamento CCNL')
     } finally {
       setLoading(false)
     }
@@ -154,11 +154,11 @@ export default function AdminCCNL() {
       
       const entry = ccnlEntries.find(e => e.id === entryId)
       if (entry) {
-        notifyCustom(`Voce CCNL ${entry.isActive ? 'disattivata' : 'attivata'}`, 'success')
-        logReadAction('ccnl_toggled', { entryId, entryName: entry.name, newStatus: !entry.isActive })
+        notifyCustom('SUCCESS','SYSTEM','CCNL',`Voce ${entry.isActive ? 'disattivata' : 'attivata'}`)
+        logReadAction('ccnl_toggled')
       }
     } catch (error) {
-      notifyCustom('Errore nell\'operazione', 'error')
+      notifyCustom('ERROR','SYSTEM','CCNL','Errore nell\'operazione')
     }
   }
 
@@ -177,10 +177,10 @@ export default function AdminCCNL() {
       
       setIsEditing(false)
       setEditingEntry(null)
-      notifyCustom('Voce CCNL aggiornata', 'success')
-      logReadAction('ccnl_updated', { entryId: updatedEntry.id, entryName: updatedEntry.name })
+      notifyCustom('SUCCESS','SYSTEM','CCNL','Voce aggiornata')
+      logReadAction('ccnl_updated')
     } catch (error) {
-      notifyCustom('Errore nel salvataggio', 'error')
+      notifyCustom('ERROR','SYSTEM','CCNL','Errore nel salvataggio')
     }
   }
 

@@ -3,7 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
-import { LEAVE_TYPES } from '@/lib/leaveSystem'
+// import { LEAVE_TYPES } from '@/lib/leaveSystem'
 
 // Stati richiesta ferie
 export enum LeaveStatus {
@@ -23,16 +23,27 @@ export default function LeavesPage() {
   const [activeView, setActiveView] = useState('my-requests')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [form, setForm] = useState<{ type: string; startDate: string; endDate: string; reason: string }>({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
-  const userId = (session?.user as any)?.id
-  const department = (session?.user as any)?.department || ''
-  const [myRequests, setMyRequests] = useState<any[]>([])
+  const userId: string = session?.user?.id || ''
+  const department = session?.user?.department || ''
+  interface LeaveRequestLocal {
+    id: string
+    userId: string
+    department?: string
+    type: string
+    startDate: string
+    endDate: string
+    reason?: string
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+    createdAt: string
+  }
+  const [myRequests, setMyRequests] = useState<LeaveRequestLocal[]>([])
 
   // Load personal requests safely (no state updates during render)
   useEffect(() => {
     const loadMine = () => {
       try {
-        const all = JSON.parse(localStorage.getItem('leave_requests') || '[]')
-        const mine = all.filter((r: any) => r.userId === userId)
+        const all = JSON.parse(localStorage.getItem('leave_requests') || '[]') as LeaveRequestLocal[]
+        const mine = all.filter((r) => r.userId === userId)
         setMyRequests(mine)
       } catch {
         setMyRequests([])
@@ -127,7 +138,7 @@ export default function LeavesPage() {
 
             {isFormOpen && (
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Nuova Richiesta</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Nuova Richiesta</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-sm text-gray-700 mb-1">Tipo</label>
@@ -164,9 +175,9 @@ export default function LeavesPage() {
                   <button
                     onClick={() => {
                       if (!form.startDate || !form.endDate) { alert('Seleziona date'); return }
-                      const list = JSON.parse(localStorage.getItem('leave_requests') || '[]')
-                      const newReq = {
-                        id: crypto.randomUUID(), userId, department, type: form.type, startDate: form.startDate, endDate: form.endDate, reason: form.reason,
+                      const list = JSON.parse(localStorage.getItem('leave_requests') || '[]') as LeaveRequestLocal[]
+                      const newReq: LeaveRequestLocal = {
+                        id: crypto.randomUUID(), userId: userId, department, type: form.type, startDate: form.startDate, endDate: form.endDate, reason: form.reason,
                         status: 'PENDING', createdAt: new Date().toISOString()
                       }
                       list.push(newReq)
@@ -174,7 +185,7 @@ export default function LeavesPage() {
                       window.dispatchEvent(new CustomEvent('leave_system_updated'))
                       setIsFormOpen(false)
                       // ricarica lista
-                      // try { setMyRequests(list.filter((r: any) => r.userId === userId)) } catch {} // This line is removed as per the new_code
+                      try { setMyRequests(list.filter((r) => r.userId === userId)) } catch {}
                     }}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                   >
@@ -228,7 +239,7 @@ export default function LeavesPage() {
                 </div>
                 
                 <div className="text-sm text-gray-700 mb-4 p-3 bg-white rounded">
-                  <strong>Motivazione:</strong> "Abbiamo già 2 persone in ferie dal 10-12. Le date 12-17 vanno meglio."
+                  <strong>Motivazione:</strong> &quot;Abbiamo già 2 persone in ferie dal 10-12. Le date 12-17 vanno meglio.&quot;
                 </div>
                 
                 <div className="flex gap-2">

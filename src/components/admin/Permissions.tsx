@@ -115,7 +115,7 @@ export default function AdminPermissions() {
       setRolePermissions(mockRolePermissions)
     } catch (error) {
       console.error('Errore nel caricamento permessi:', error)
-      notifyCustom('Errore nel caricamento permessi', 'error')
+      notifyCustom('ERROR','SYSTEM','Permessi','Errore nel caricamento permessi')
     } finally {
       setLoading(false)
     }
@@ -138,11 +138,11 @@ export default function AdminPermissions() {
       
       const permission = permissions.find(p => p.id === permissionId)
       if (permission) {
-        notifyCustom(`Permesso ${permission.name} aggiornato per ${role}`, 'success')
-        logReadAction('permission_updated', { permissionId, role, permissionName: permission.name })
+        notifyCustom('SUCCESS','SYSTEM','Permessi',`Permesso ${permission.name} aggiornato per ${role}`)
+        logReadAction('permission_updated')
       }
     } catch (error) {
-      notifyCustom('Errore nell\'aggiornamento permesso', 'error')
+      notifyCustom('ERROR','SYSTEM','Permessi','Errore nell\'aggiornamento permesso')
     }
   }
 

@@ -11,9 +11,9 @@ interface DayHours {
   isClosed: boolean
 }
 
-interface OpeningHours {
-  [key: string]: DayHours
-}
+type DayId = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
+
+type OpeningHours = Record<DayId, DayHours>
 
 interface RestaurantRoom {
   id: string
@@ -38,7 +38,7 @@ interface Outlet {
   rooms: RestaurantRoom[]
 }
 
-const DAYS_OF_WEEK = [
+const DAYS_OF_WEEK: Array<{ id: DayId; label: string }> = [
   { id: 'monday', label: 'Lunedì' },
   { id: 'tuesday', label: 'Martedì' },
   { id: 'wednesday', label: 'Mercoledì' },
@@ -103,6 +103,26 @@ export default function CompanyPage() {
     sunday: { open: '12:00', close: '22:00', isClosed: false }
   })
 
+  const normalizeOpeningHours = (
+    hours: Partial<Record<DayId, Partial<DayHours>>> | undefined
+  ): OpeningHours => {
+    const base: OpeningHours = getDefaultHours()
+    if (!hours) return base
+    const result: OpeningHours = { ...(base as OpeningHours) }
+    ;(Object.keys(base) as Array<keyof OpeningHours>).forEach((dayKey: keyof OpeningHours) => {
+      const day = dayKey as DayId
+      const h = (hours as Partial<Record<DayId, Partial<DayHours>>>)[day]
+      if (h) {
+        result[day] = {
+          open: h.open ?? base[day].open,
+          close: h.close ?? base[day].close,
+          isClosed: h.isClosed ?? base[day].isClosed,
+        }
+      }
+    })
+    return result
+  }
+
   useEffect(() => {
     if (status === 'loading') return
     if (!session) {
@@ -119,11 +139,11 @@ export default function CompanyPage() {
   useEffect(() => {
     if (companyData) {
       setCompanyForm({
-        name: companyData.name || '',
-        fiscalCode: companyData.fiscalCode || '',
-        address: companyData.address || '',
-        phone: companyData.phone || '',
-        email: companyData.email || '',
+        name: (companyData as { name?: string }).name || '',
+        fiscalCode: (companyData as { fiscalCode?: string }).fiscalCode || '',
+        address: (companyData as { address?: string }).address || '',
+        phone: (companyData as { phone?: string }).phone || '',
+        email: (companyData as { email?: string }).email || '',
         website: ''
       })
     }
@@ -133,9 +153,9 @@ export default function CompanyPage() {
   useEffect(() => {
     if (restaurantData) {
       setRestaurantForm({
-        name: restaurantData.name || '',
-        address: restaurantData.address || '',
-        phone: restaurantData.phone || ''
+        name: (restaurantData as { name?: string }).name || '',
+        address: (restaurantData as { address?: string }).address || '',
+        phone: (restaurantData as { phone?: string }).phone || ''
       })
     }
   }, [restaurantData])
@@ -145,14 +165,12 @@ export default function CompanyPage() {
     try {
       const savedRooms = localStorage.getItem('restaurant_rooms')
       if (savedRooms) {
-        const parsed = JSON.parse(savedRooms)
-        const normalized = (parsed || []).map((r: any) => {
-          const defaultHours = getDefaultHours()
-          const existing: any = r?.openingHours || {}
-          // Merge per garantire tutte le chiavi giorno
-          const merged: any = { ...defaultHours, ...existing }
-          return { ...r, openingHours: merged }
-        })
+        const parsedUnknown = JSON.parse(savedRooms) as unknown
+        const arr = Array.isArray(parsedUnknown) ? (parsedUnknown as RestaurantRoom[]) : []
+        const normalized = arr.map((r) => ({
+          ...r,
+          openingHours: normalizeOpeningHours(r.openingHours as Partial<Record<DayId, Partial<DayHours>>> | undefined)
+        }))
         setRooms(normalized)
       } else {
         setRooms([
@@ -173,10 +191,10 @@ export default function CompanyPage() {
         const parsed: Outlet[] = JSON.parse(raw) || []
         const normalized = parsed.map(o => ({
           ...o,
-          openingHours: { ...getDefaultHours(), ...(o.openingHours || {}) },
+          openingHours: normalizeOpeningHours(o.openingHours as Partial<Record<DayId, Partial<DayHours>>> | undefined),
           rooms: (o.rooms || []).map(r => ({
             ...r,
-            openingHours: { ...getDefaultHours(), ...(r.openingHours || {}) }
+            openingHours: normalizeOpeningHours(r.openingHours as Partial<Record<DayId, Partial<DayHours>>> | undefined)
           }))
         }))
         setOutlets(normalized)
@@ -207,7 +225,7 @@ export default function CompanyPage() {
   }
 
   const handleSaveCompany = async () => {
-    if (!companyData?.id) return
+    if (!companyData || !(companyData as { id?: string }).id) return
     
     setIsSaving(true)
     setMessage('')
@@ -217,7 +235,7 @@ export default function CompanyPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: companyData.id,
+          id: (companyData as { id: string }).id,
           ...companyForm
         })
       })
@@ -238,13 +256,13 @@ export default function CompanyPage() {
   }
 
   const handleSaveRestaurant = async () => {
-    if (!restaurantData?.id) return
+    if (!restaurantData || !(restaurantData as { id?: string }).id) return
     
     setIsSaving(true)
     setMessage('')
     
     try {
-      const response = await fetch(`/api/restaurants/${restaurantData.id}`, {
+      const response = await fetch(`/api/restaurants/${(restaurantData as { id: string }).id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(restaurantForm)
@@ -319,7 +337,12 @@ export default function CompanyPage() {
     }
   }
 
-  const handleUpdateRoomHours = (roomId: string, day: string, field: 'open' | 'close' | 'isClosed', value: any) => {
+  const handleUpdateRoomHours = (
+    roomId: string,
+    day: DayId,
+    field: 'open' | 'close' | 'isClosed',
+    value: string | boolean
+  ) => {
     const updatedRooms = rooms.map(room => {
       if (room.id === roomId) {
         const defaultHours = getDefaultHours()
@@ -330,8 +353,8 @@ export default function CompanyPage() {
           openingHours: {
             ...existingOpening,
             [day]: field === 'isClosed' 
-              ? { ...existingDay, isClosed: value }
-              : { ...existingDay, [field]: value }
+              ? { ...existingDay, isClosed: Boolean(value) }
+              : { ...existingDay, [field]: String(value) }
           }
         }
       }
@@ -343,7 +366,12 @@ export default function CompanyPage() {
     setTimeout(() => setMessage(''), 2000)
   }
 
-  const handleUpdateOutletHours = (outletId: string, day: string, field: 'open' | 'close' | 'isClosed', value: any) => {
+  const handleUpdateOutletHours = (
+    outletId: string,
+    day: DayId,
+    field: 'open' | 'close' | 'isClosed',
+    value: string | boolean
+  ) => {
     const updated = outlets.map(o => {
       if (o.id !== outletId) return o
       const defaultHours = getDefaultHours()
@@ -354,8 +382,8 @@ export default function CompanyPage() {
         openingHours: {
           ...existingOpening,
           [day]: field === 'isClosed'
-            ? { ...existingDay, isClosed: value }
-            : { ...existingDay, [field]: value }
+            ? { ...existingDay, isClosed: Boolean(value) }
+            : { ...existingDay, [field]: String(value) }
         }
       }
     })
@@ -416,7 +444,7 @@ export default function CompanyPage() {
             </button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                🏢 {companyData?.name || 'La Mia Azienda'}
+                🏢 {(companyData as { name?: string } | undefined)?.name || 'La Mia Azienda'}
               </h1>
               <p className="text-gray-600 mt-2">
                 Gestione centralizzata azienda e ristoranti
@@ -444,7 +472,7 @@ export default function CompanyPage() {
               {tabs.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id as 'info' | 'outlets' | 'rooms' | 'stats')}
                   className={`flex-1 py-4 px-6 text-center font-medium text-sm transition ${
                     activeTab === tab.id
                       ? 'border-b-2 border-orange-500 text-orange-600'
@@ -687,7 +715,7 @@ export default function CompanyPage() {
                       <div className="flex items-center gap-2">
                         <select
                           value={addRoomTarget}
-                          onChange={(e) => setAddRoomTarget(e.target.value as any)}
+                          onChange={(e) => setAddRoomTarget(e.target.value as 'outlet' | 'standalone')}
                           className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
                           title="Dove aggiungere la sala"
                         >

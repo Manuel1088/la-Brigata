@@ -4,13 +4,14 @@
 import { createContext, useContext, ReactNode } from 'react'
 import { useEmployees } from '@/hooks/useEmployees'
 import { useCompanyData } from '@/hooks/useCompanyData'
+import type { CompanyData } from '@/hooks/useCompanyData'
 import { useSession } from 'next-auth/react'
 import type { EmployeeFull } from '@/lib/employees'
 
 interface EmployeeContextType {
   employees: EmployeeFull[]
   isLoading: boolean
-  error: any
+  error: unknown
   companyId: string | undefined
   mutate: () => void
 }
@@ -20,7 +21,7 @@ const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined
 export function EmployeeProvider({ children }: { children: ReactNode }) {
   const { data: session } = useSession()
   const { data: companyResp, isLoading: isLoadingCompany } = useCompanyData(session?.user?.id)
-  const companyId = companyResp?.company?.id
+  const companyId = (companyResp as CompanyData | null | undefined)?.company?.id
   
   const { 
     data: employees, 

@@ -12,7 +12,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleRegistration = async (type: RegistrationType, data: any) => {
+  // Overload-like typed handler (single implementation with union types)
+  async function handleRegistration(
+    type: RegistrationType,
+    data: CompanyRegistration | EmployeeRegistration | CandidateRegistration
+  ): Promise<void> {
     setLoading(true)
     try {
       const response = await fetch(`/api/auth/register-${type}`, {
@@ -247,7 +251,10 @@ function CompanyRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (dat
         
         <select
           value={formData.ownerRole}
-          onChange={(e) => setFormData({...formData, ownerRole: e.target.value as any})}
+          onChange={(e) => setFormData({
+            ...formData,
+            ownerRole: e.target.value as CompanyRegistration['ownerRole']
+          })}
           className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white appearance-none cursor-pointer h-[42px]"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
@@ -313,12 +320,11 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
   const [employeeFirstName, setEmployeeFirstName] = useState('')
   const [employeeLastName, setEmployeeLastName] = useState('')
 
-  const mapPositionToDeptAndLevel = (pos: string): { dept: string, level: string } => {
-    const dept = pos.includes('Chef') || pos.includes('Cuoco') ? 'cucina'
-      : pos.includes('Bar') || pos.includes('Barman') ? 'beverage'
-      : pos.includes('Sommelier') ? 'beverage'
-      : pos.includes('Cassier') || pos.includes('Hostes') || pos.includes('Hostess') ? 'accoglienza'
-      : pos.includes('Dirett') || pos.includes('Manager') ? 'dirigenti'
+  const mapPositionToDeptAndLevel = (pos: string): { dept: EmployeeRegistration['department'], level: string } => {
+    const dept: EmployeeRegistration['department'] = pos.includes('Chef') || pos.includes('Cuoco') ? 'cucina'
+      : (pos.includes('Bar') || pos.includes('Barman') || pos.includes('Sommelier')) ? 'beverage'
+      : (pos.includes('Cassier') || pos.includes('Hostes') || pos.includes('Hostess')) ? 'accoglienza'
+      : (pos.includes('Dirett') || pos.includes('Manager')) ? 'dirigenti'
       : pos.includes('Lavapiatti') ? 'sala' : 'sala'
     const level = pos.includes('Direttore') ? 'QA'
       : pos.includes('Restaurant Manager') ? 'QB'
@@ -332,7 +338,7 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
       : pos.includes('Sous Chef') ? '3'
       : pos.includes('Cuoco') ? '4'
       : pos.includes('Cassier') ? '4'
-      : pos.includes('Hostes') || pos.includes('Hostess') ? '5'
+      : (pos.includes('Hostes') || pos.includes('Hostess')) ? '5'
       : pos.includes('Lavapiatti') ? '6'
       : '6S'
     return { dept, level }
@@ -419,11 +425,10 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
               value={formData.position || ''}
               onChange={(e) => {
                 const pos = e.target.value
-                const dept = pos.includes('Chef') || pos.includes('Cuoco') ? 'cucina'
-                  : pos.includes('Bar') || pos.includes('Barman') ? 'beverage'
-                  : pos.includes('Sommelier') ? 'beverage'
-                  : pos.includes('Cassier') || pos.includes('Hostes') || pos.includes('Hostess') ? 'accoglienza'
-                  : pos.includes('Dirett') || pos.includes('Manager') ? 'dirigenti'
+                const dept: EmployeeRegistration['department'] = pos.includes('Chef') || pos.includes('Cuoco') ? 'cucina'
+                  : (pos.includes('Bar') || pos.includes('Barman') || pos.includes('Sommelier')) ? 'beverage'
+                  : (pos.includes('Cassier') || pos.includes('Hostes') || pos.includes('Hostess')) ? 'accoglienza'
+                  : (pos.includes('Dirett') || pos.includes('Manager')) ? 'dirigenti'
                   : pos.includes('Lavapiatti') ? 'sala' : 'sala'
                 const level = pos.includes('Direttore') ? 'QA'
                   : pos.includes('Restaurant Manager') ? 'QB'
@@ -437,10 +442,10 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
                   : pos.includes('Sous Chef') ? '3'
                   : pos.includes('Cuoco') ? '4'
                   : pos.includes('Cassier') ? '4'
-                  : pos.includes('Hostes') || pos.includes('Hostess') ? '5'
+                  : (pos.includes('Hostes') || pos.includes('Hostess')) ? '5'
                   : pos.includes('Lavapiatti') ? '6'
                   : '6S'
-                setFormData({ ...formData, position: pos, department: dept as any, level })
+                setFormData({ ...formData, position: pos, department: dept, level })
               }}
               className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white appearance-none cursor-pointer h-[42px]"
               style={{
@@ -572,7 +577,7 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
                     companyName: companyName || prev.companyName,
                     companyFiscalCode: fiscalCode || prev.companyFiscalCode,
                     position: position || prev.position,
-                    department: mapping.dept as any,
+                    department: mapping.dept,
                     level: level || mapping.level
                   }))
                   try {
@@ -613,7 +618,8 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
               if (data?.company) {
                 alert(`Azienda trovata: ${data.company.name}`)
               } else if (Array.isArray(data?.companies)) {
-                const match = data.companies.find((c: any) => (c.fiscalCode || '').toUpperCase() === cf.toUpperCase())
+                type SimpleCompany = { name: string; fiscalCode?: string }
+                const match = (data.companies as SimpleCompany[]).find((c) => (c.fiscalCode || '').toUpperCase() === cf.toUpperCase())
                 if (match) alert(`Azienda trovata: ${match.name}`)
               }
             } catch {}
@@ -735,10 +741,10 @@ function CandidateRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (d
                   : pos.includes('Sous Chef') ? '3'
                   : pos.includes('Cuoco') ? '4'
                   : pos.includes('Cassier') ? '4'
-                  : pos.includes('Hostes') || pos.includes('Hostess') ? '5'
+                  : (pos.includes('Hostes') || pos.includes('Hostess')) ? '5'
                   : pos.includes('Lavapiatti') ? '6'
                   : undefined
-                setFormData({ ...formData, position: pos, department: dept as any, level })
+                setFormData({ ...formData, position: pos, department: dept, level })
               }}
               className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white appearance-none cursor-pointer h-[42px]"
               style={{

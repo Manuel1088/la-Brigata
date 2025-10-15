@@ -22,9 +22,20 @@ type TipEntry = {
 export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant = 'full' }: Props) {
   const { data: session } = useSession()
   const [tipEntries, setTipEntries] = useState<TipEntry[]>([])
-  const [employeesList, setEmployeesList] = useState<any[]>(getEmployeesFullClient())
-  const waitingForCompany = !!session && !(session.user as any)?.companyId
-  const { employees: employeesData, mutate: mutateEmployees, isLoading } = useEmployeeContext()
+  type EmployeeLite = {
+    id: string
+    name: string
+    email?: string
+    phone?: string
+    role?: string
+    department?: string
+    level?: number | string
+    isActive?: boolean
+    avatar?: string
+  }
+  const [employeesList, setEmployeesList] = useState<EmployeeLite[]>(getEmployeesFullClient() as unknown as EmployeeLite[])
+  const waitingForCompany = !!session && !(session.user)?.companyId
+  const { employees: employeesData, mutate: mutateEmployees } = useEmployeeContext()
   const [isExportOpen, setIsExportOpen] = useState(false)
   
   // Helpers export
@@ -114,7 +125,7 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
     } catch {}
   }
 
-  const targetMonth = month ? new Date(month) : new Date()
+  const targetMonth = useMemo(() => (month ? new Date(month) : new Date()), [month])
   const monthName = targetMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
 
   useEffect(() => {
@@ -129,47 +140,42 @@ export default function MonthlyTipsSummary({ month, leftLabel = 'mance', variant
     }
     load()
     const onUpdate = () => load()
-    try { window.addEventListener('tip_entries_updated', onUpdate as any) } catch {}
-    try { window.addEventListener('storage', onUpdate as any) } catch {}
+    try { window.addEventListener('tip_entries_updated', onUpdate) } catch {}
+    try { window.addEventListener('storage', onUpdate) } catch {}
     return () => {
-      try { window.removeEventListener('tip_entries_updated', onUpdate as any) } catch {}
-      try { window.removeEventListener('storage', onUpdate as any) } catch {}
+      try { window.removeEventListener('tip_entries_updated', onUpdate) } catch {}
+      try { window.removeEventListener('storage', onUpdate) } catch {}
     }
   }, [])
 
   useEffect(() => {
     if (employeesData && Array.isArray(employeesData)) {
       try {
-        const empList = employeesData
-          .filter((e: any) => (e as any).role !== 'PROPRIETARIO')
-          .map((e: any, idx: number) => ({
+        const empList: EmployeeLite[] = (employeesData as unknown as EmployeeLite[])
+          .filter((e) => e.role !== 'PROPRIETARIO')
+          .map((e, idx) => ({
             id: e.id || String(idx + 1),
             name: e.name,
             email: e.email,
             phone: e.phone || '',
             role: e.role,
-            department: (e as any).department || 'sala',
-            level: (e as any).level || 2,
-            hourlyRate: 12,
-            contractType: 'full-time',
-            startDate: new Date().toISOString().split('T')[0],
+            department: e.department || 'sala',
+            level: e.level || 2,
             isActive: e.isActive,
             avatar: e.avatar || '👤',
-            skills: [],
-            personalInfo: {}
-          })) as any
+          }))
         setEmployeesList(empList)
         return
       } catch {}
     }
     // Fallback lato client
-    setEmployeesList(getEmployeesFullClient())
+    setEmployeesList(getEmployeesFullClient() as unknown as EmployeeLite[])
   }, [employeesData])
 
   useEffect(() => {
     const onEmployeesUpdate = () => { try { mutateEmployees() } catch {} }
-    try { window.addEventListener('employees_updated', onEmployeesUpdate as any) } catch {}
-    return () => { try { window.removeEventListener('employees_updated', onEmployeesUpdate as any) } catch {} }
+    try { window.addEventListener('employees_updated', onEmployeesUpdate) } catch {}
+    return () => { try { window.removeEventListener('employees_updated', onEmployeesUpdate) } catch {} }
   }, [mutateEmployees])
 
   const totals = useMemo(() => {

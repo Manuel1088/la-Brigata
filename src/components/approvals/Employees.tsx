@@ -23,7 +23,10 @@ interface EmployeeRequest {
   rejectedBy?: string
   rejectedAt?: string
   rejectionReason?: string
-  metadata: Record<string, any>
+  metadata?: {
+    source?: 'api_employments' | 'local'
+    restaurantId?: string
+  }
 }
 
 interface Props {
@@ -61,21 +64,24 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
       const res = await fetch('/api/employments')
       if (res.ok) {
         const json = await res.json()
-        const emps = (json.employments || json.data || []) as any[]
+        const emps = (json.employments || json.data || []) as Array<Record<string, unknown>>
         // Mappa in formato EmployeeRequest per UI uniforme
-        const mapped: EmployeeRequest[] = emps.map((e: any) => ({
-          id: e.id,
-          type: 'new_employee',
-          employeeName: e.user?.name || e.userId,
-          employeeId: e.user?.id || e.userId,
-          department: (e.department || '').toLowerCase(),
-          newRole: e.role,
-          reason: e.status === 'PENDING' ? 'Nuova richiesta di assunzione' : 'Aggiornamento employment',
-          requestedBy: e.user?.email || 'Sistema',
-          status: (e.status || 'PENDING'),
-          createdAt: e.createdAt || new Date().toISOString(),
-          metadata: { source: 'api_employments', restaurantId: e.restaurantId }
-        }))
+        const mapped: EmployeeRequest[] = emps.map((e) => {
+          const user = (e as { user?: { id?: string; name?: string; email?: string } }).user
+          return {
+            id: String((e as { id?: string }).id || ''),
+            type: 'new_employee',
+            employeeName: user?.name || String((e as { userId?: string }).userId || ''),
+            employeeId: user?.id || String((e as { userId?: string }).userId || ''),
+            department: String((e as { department?: string }).department || '').toLowerCase(),
+            newRole: String((e as { role?: string }).role || ''),
+            reason: ((e as { status?: string }).status || 'PENDING') === 'PENDING' ? 'Nuova richiesta di assunzione' : 'Aggiornamento employment',
+            requestedBy: user?.email || 'Sistema',
+            status: String((e as { status?: string }).status || 'PENDING') as EmployeeRequest['status'],
+            createdAt: String((e as { createdAt?: string }).createdAt || new Date().toISOString()),
+            metadata: { source: 'api_employments', restaurantId: String((e as { restaurantId?: string }).restaurantId || '') }
+          }
+        })
         setRequests(mapped)
         return
       }
@@ -117,7 +123,7 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
       await loadRequests()
       notifyCustom('SUCCESS', 'PERSONNEL', 'Richiesta dipendente', 'Richiesta dipendente approvata')
       onUpdate()
-      logReadAction('employee_request_approved', { requestId })
+      logReadAction('employee_request_approved')
     } catch (error) {
       notifyCustom('ERROR', 'PERSONNEL', 'Richiesta dipendente', 'Errore nell\'approvazione della richiesta')
     }
@@ -136,7 +142,7 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
       await loadRequests()
       notifyCustom('WARNING', 'PERSONNEL', 'Richiesta dipendente', 'Richiesta dipendente rifiutata')
       onUpdate()
-      logReadAction('employee_request_rejected', { requestId, reason })
+      logReadAction('employee_request_rejected')
     } catch (error) {
       notifyCustom('ERROR', 'PERSONNEL', 'Richiesta dipendente', 'Errore nel rifiuto della richiesta')
     }
@@ -151,7 +157,7 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
       return true
     })
     .sort((a, b) => {
-      let aValue: any, bValue: any
+      let aValue: string | Date, bValue: string | Date
       
       switch (sortBy) {
         case 'createdAt':

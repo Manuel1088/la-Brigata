@@ -17,9 +17,9 @@ export default function SettingsPreferences() {
     setLoading(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 1000))
-      notifyCustom('Preferenze salvate con successo', 'success')
+      notifyCustom('SUCCESS','SYSTEM','Preferenze','Salvate con successo')
     } catch (error) {
-      notifyCustom('Errore nel salvataggio delle preferenze', 'error')
+      notifyCustom('ERROR','SYSTEM','Preferenze','Errore nel salvataggio delle preferenze')
     } finally {
       setLoading(false)
     }

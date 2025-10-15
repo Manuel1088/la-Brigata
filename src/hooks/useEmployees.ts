@@ -30,7 +30,7 @@ export interface Employee {
 
 export interface UseEmployeesResult {
   data: Employee[] | undefined
-  error: any
+  error: unknown
   isLoading: boolean
   mutate: () => void
 }

@@ -14,7 +14,7 @@ export interface AuditLogEntry {
 }
 
 // Mock database per audit logs (in produzione sarà un database reale)
-let auditLogs: AuditLogEntry[] = []
+const auditLogs: AuditLogEntry[] = []
 
 // Funzione per loggare un'azione
 export async function logAuditAction(entry: AuditLogEntry): Promise<void> {
@@ -57,7 +57,7 @@ export async function logLogout(userId: string, ipAddress?: string, userAgent?: 
   })
 }
 
-export async function logCreate(userId: string, resource: string, resourceId: string, details?: any): Promise<void> {
+export async function logCreate(userId: string, resource: string, resourceId: string, details?: unknown): Promise<void> {
   await logAuditAction({
     userId,
     action: 'CREATE',
@@ -67,7 +67,7 @@ export async function logCreate(userId: string, resource: string, resourceId: st
   })
 }
 
-export async function logUpdate(userId: string, resource: string, resourceId: string, details?: any): Promise<void> {
+export async function logUpdate(userId: string, resource: string, resourceId: string, details?: unknown): Promise<void> {
   await logAuditAction({
     userId,
     action: 'UPDATE',
@@ -77,7 +77,7 @@ export async function logUpdate(userId: string, resource: string, resourceId: st
   })
 }
 
-export async function logDelete(userId: string, resource: string, resourceId: string, details?: any): Promise<void> {
+export async function logDelete(userId: string, resource: string, resourceId: string, details?: unknown): Promise<void> {
   await logAuditAction({
     userId,
     action: 'DELETE',
@@ -105,7 +105,7 @@ export async function logExport(userId: string, resource: string, format: string
   })
 }
 
-export async function logApprove(userId: string, resource: string, resourceId: string, details?: any): Promise<void> {
+export async function logApprove(userId: string, resource: string, resourceId: string, details?: unknown): Promise<void> {
   await logAuditAction({
     userId,
     action: 'APPROVE',
@@ -115,7 +115,7 @@ export async function logApprove(userId: string, resource: string, resourceId: s
   })
 }
 
-export async function logReject(userId: string, resource: string, resourceId: string, details?: any): Promise<void> {
+export async function logReject(userId: string, resource: string, resourceId: string, details?: unknown): Promise<void> {
   await logAuditAction({
     userId,
     action: 'REJECT',

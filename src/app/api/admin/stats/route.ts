@@ -10,9 +10,12 @@ export async function GET(req: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
     }
+    if (!session.user) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
 
     // Verifica ruolo ADMIN
-    const userRole = (session.user as any)?.role
+  const userRole = session.user.role
     if (userRole !== 'ADMIN') {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }

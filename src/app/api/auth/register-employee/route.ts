@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, UserRole as PrismaUserRole } from '@prisma/client'
 import { createNotification } from '@/lib/notifications'
 
 const prisma = new PrismaClient()
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     let restaurantId: string | undefined = undefined
 
     // CASO 1: Collegamento ad azienda esistente tramite CF
-    let foundCompany: any = null
+    let foundCompany: { id: string; name: string; restaurants?: Array<{ id: string }> } | null = null
     if (companyFiscalCode) {
       foundCompany = await prisma.company.findUnique({
         where: { fiscalCode: companyFiscalCode },
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
         OR: [
           companyId ? { companyId } : undefined,
           { companyId: null }
-        ].filter(Boolean) as any
+        ].filter(Boolean) as Array<{ companyId?: string | null }>
       }
     })
     if (anyRestaurant) {
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mappa mansione -> ruolo interno UI
-    const mapPositionToRole = (pos?: string): any => {
+    const mapPositionToRole = (pos?: string): string => {
       if (!pos) return role || 'DIPENDENTE'
       const p = pos.toLowerCase()
       if (p.includes('dirett')) return 'MANAGER'
@@ -170,6 +170,15 @@ export async function POST(request: NextRequest) {
       if (p.includes('hostes') || p.includes('hostess') || p.includes('host')) return 'CASSIERE'
       if (p.includes('lavapiatti')) return 'LAVAPIATTI'
       return role || 'DIPENDENTE'
+    }
+
+    // Converte stringa ruolo in enum Prisma UserRole in modo sicuro
+    const toUserRole = (r?: string): PrismaUserRole => {
+      const candidate = (r || 'DIPENDENTE').toUpperCase()
+      if ((Object.values(PrismaUserRole) as string[]).includes(candidate)) {
+        return candidate as PrismaUserRole
+      }
+      return PrismaUserRole.DIPENDENTE
     }
 
     // Mappa livello stringa -> numero gerarchico
@@ -193,7 +202,7 @@ export async function POST(request: NextRequest) {
         email: normalizedEmail,
         name,
         password: hashedPassword,
-        role: (mappedRole || role || 'DIPENDENTE') as any,
+        role: toUserRole(mappedRole || role || 'DIPENDENTE'),
         userType: 'EMPLOYEE',
         hierarchyLevel,
         position: position || null,
@@ -216,7 +225,7 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             restaurantId: restaurantId,
             status: 'PENDING', // ⏳ Richiede approvazione
-            role: (mappedRole || role || 'DIPENDENTE') as any,
+            role: toUserRole(mappedRole || role || 'DIPENDENTE'),
             department: department || null,
             requestedAt: new Date()
           }
@@ -230,13 +239,13 @@ export async function POST(request: NextRequest) {
             type: 'URGENT',
             category: 'PERSONNEL',
             title: '👥 Nuovo dipendente in attesa',
-            message: `${user.name} richiede approvazione per ${foundCompany.name} (${department || '—'})`,
+            message: `${user.name} richiede approvazione per ${(foundCompany?.name) || 'azienda'} (${department || '—'})`,
             isUrgent: true,
             actions: [
               { label: 'Visualizza Richieste', action: '/approvals', variant: 'primary', icon: '👁️' },
               { label: 'Vai al Team', action: '/team/requests', variant: 'secondary', icon: '✅' }
             ],
-            metadata: { employmentId: employment.id, userId: user.id, companyId: foundCompany.id }
+            metadata: { employmentId: employment.id, userId: user.id, companyId: (foundCompany?.id || companyId || '') }
           })
         } catch (notifError) {
           console.error('Errore creazione notifica:', notifError)

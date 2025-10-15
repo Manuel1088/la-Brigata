@@ -9,7 +9,7 @@ interface SystemSetting {
   description: string
   category: 'general' | 'security' | 'backup' | 'notifications' | 'performance'
   type: 'string' | 'number' | 'boolean' | 'select'
-  value: any
+  value: string | number | boolean
   options?: string[]
   isRequired: boolean
   isActive: boolean
@@ -22,7 +22,7 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [editedSettings, setEditedSettings] = useState<Record<string, any>>({})
+  const [editedSettings, setEditedSettings] = useState<Record<string, string | number | boolean>>({})
 
   useEffect(() => {
     loadSettings()
@@ -217,20 +217,20 @@ export default function AdminSettings() {
       
       setSettings(mockSettings)
       // Inizializza editedSettings con i valori correnti
-      const initialEdited = mockSettings.reduce((acc, setting) => {
+      const initialEdited = mockSettings.reduce<Record<string, string | number | boolean>>((acc, setting) => {
         acc[setting.id] = setting.value
         return acc
-      }, {} as Record<string, any>)
+      }, {})
       setEditedSettings(initialEdited)
     } catch (error) {
       console.error('Errore nel caricamento impostazioni:', error)
-      notifyCustom('Errore nel caricamento impostazioni', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Impostazioni', 'Errore nel caricamento impostazioni')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSettingChange = (settingId: string, value: any) => {
+  const handleSettingChange = (settingId: string, value: string | number | boolean) => {
     setEditedSettings(prev => ({
       ...prev,
       [settingId]: value
@@ -249,25 +249,23 @@ export default function AdminSettings() {
         value: editedSettings[setting.id] !== undefined ? editedSettings[setting.id] : setting.value
       })))
       
-      notifyCustom('Impostazioni salvate con successo', 'success')
-      logReadAction('settings_updated', { 
-        settingsCount: Object.keys(editedSettings).length,
-        categories: Array.from(new Set(settings.map(s => s.category)))
-      })
+      notifyCustom('SUCCESS', 'SYSTEM', 'Impostazioni', 'Impostazioni salvate con successo')
+      logReadAction('settings_updated')
     } catch (error) {
-      notifyCustom('Errore nel salvataggio delle impostazioni', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Impostazioni', 'Errore nel salvataggio delle impostazioni')
     } finally {
       setSaving(false)
     }
   }
 
   const handleResetSettings = () => {
-    const initialValues = settings.reduce((acc, setting) => {
+      const initialValues = settings.reduce<Record<string, string | number | boolean>>((acc, setting) => {
       acc[setting.id] = setting.value
       return acc
-    }, {} as Record<string, any>)
+    }, {})
     setEditedSettings(initialValues)
-    notifyCustom('Impostazioni ripristinate', 'info')
+    notifyCustom('INFO', 'SYSTEM', 'Impostazioni', 'Impostazioni ripristinate')
+    logReadAction('settings_reset')
   }
 
   const filteredSettings = settings.filter(setting => {
@@ -442,7 +440,7 @@ export default function AdminSettings() {
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={editedSettings[setting.id] || false}
+                          checked={Boolean(editedSettings[setting.id])}
                           onChange={(e) => handleSettingChange(setting.id, e.target.checked)}
                           className="sr-only peer"
                         />
@@ -453,7 +451,7 @@ export default function AdminSettings() {
                       </label>
                     ) : setting.type === 'select' ? (
                       <select
-                        value={editedSettings[setting.id] || setting.value}
+                        value={String(editedSettings[setting.id] ?? setting.value)}
                         onChange={(e) => handleSettingChange(setting.id, e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
@@ -464,14 +462,14 @@ export default function AdminSettings() {
                     ) : setting.type === 'number' ? (
                       <input
                         type="number"
-                        value={editedSettings[setting.id] || setting.value}
+                        value={Number(editedSettings[setting.id] ?? setting.value)}
                         onChange={(e) => handleSettingChange(setting.id, Number(e.target.value))}
                         className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
                       <input
                         type="text"
-                        value={editedSettings[setting.id] || setting.value}
+                        value={String(editedSettings[setting.id] ?? setting.value)}
                         onChange={(e) => handleSettingChange(setting.id, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />

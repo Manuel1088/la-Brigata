@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNotifications } from '@/hooks/useNotifications'
 
 interface AnalyticsData {
@@ -10,7 +10,7 @@ interface AnalyticsData {
   value: number | string
   change: number
   period: string
-  details: Record<string, any>
+  details: Record<string, number | string | boolean | string[] | number[]>
 }
 
 export default function ReportsAnalytics() {
@@ -20,11 +20,7 @@ export default function ReportsAnalytics() {
   const [selectedTimeframe, setSelectedTimeframe] = useState('month')
   const [selectedCategory, setSelectedCategory] = useState('all')
 
-  useEffect(() => {
-    loadAnalyticsData()
-  }, [selectedTimeframe])
-
-  const loadAnalyticsData = async () => {
+  const loadAnalyticsData = useCallback(async () => {
     try {
       // Mock data - in produzione verrà dal database
       const mockAnalytics: AnalyticsData[] = [
@@ -132,11 +128,15 @@ export default function ReportsAnalytics() {
       setAnalytics(mockAnalytics)
     } catch (error) {
       console.error('Errore nel caricamento analytics:', error)
-      notifyCustom('Errore nel caricamento analytics', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Reports Analytics', 'Errore nel caricamento analytics')
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedTimeframe, notifyCustom])
+
+  useEffect(() => {
+    void loadAnalyticsData()
+  }, [loadAnalyticsData])
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -200,7 +200,7 @@ export default function ReportsAnalytics() {
               <option value="week">Questa Settimana</option>
               <option value="month">Questo Mese</option>
               <option value="quarter">Questo Trimestre</option>
-              <option value="year">Quest\'Anno</option>
+              <option value="year">Quest&apos;Anno</option>
             </select>
           </div>
           
@@ -310,7 +310,7 @@ export default function ReportsAnalytics() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Fattori:</span>
-                    <span className="font-medium">{item.details.factors?.join(', ')}</span>
+                    <span className="font-medium">{Array.isArray(item.details.factors) ? item.details.factors.join(', ') : String(item.details.factors || '')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Raccomandazione:</span>
@@ -340,11 +340,11 @@ export default function ReportsAnalytics() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Top Performers:</span>
-                    <span className="font-medium">{item.details.topPerformers?.join(', ')}</span>
+                    <span className="font-medium">{Array.isArray(item.details.topPerformers) ? item.details.topPerformers.join(', ') : String(item.details.topPerformers || '')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Raccomandazioni:</span>
-                    <span className="font-medium">{item.details.recommendations?.join(', ')}</span>
+                    <span className="font-medium">{Array.isArray(item.details.recommendations) ? item.details.recommendations.join(', ') : String(item.details.recommendations || '')}</span>
                   </div>
                 </div>
               )}

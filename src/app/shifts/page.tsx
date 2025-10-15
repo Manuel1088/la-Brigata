@@ -131,7 +131,7 @@ export default function ShiftsPage() {
       { name: 'Serale Accoglienza', time: '18:00-24:00' }
     ]
   }
-  const sessionDeptRaw = (session?.user as any)?.department || 'sala'
+  const sessionDeptRaw = session?.user?.department || 'sala'
   const userDepartment = sessionDeptRaw === 'bar' ? 'beverage' : sessionDeptRaw
   const deptShifts = deptShiftCatalog[userDepartment] || deptShiftCatalog['sala']
 

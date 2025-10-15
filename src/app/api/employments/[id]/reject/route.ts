@@ -39,7 +39,7 @@ export async function POST(
     }
     
     // Verifica permessi
-    const userRole = (session.user as any).role?.toString().toUpperCase()
+    const userRole = session.user.role?.toString().toUpperCase()
     if (!['PROPRIETARIO', 'DIRETTORE', 'MANAGER', 'ADMIN'].includes(userRole)) {
       return NextResponse.json(
         { error: 'Permesso negato' },
@@ -55,7 +55,7 @@ export async function POST(
       data: {
         status: 'REJECTED',
         reviewedAt: new Date(),
-        reviewedBy: (session.user as any).id
+        reviewedBy: session.user.id
       }
     })
     

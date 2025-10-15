@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const userId = (session.user as any).id
+    const userId = session.user.id
 
     // Ottieni tutti i gruppi informali
     const informalCompanies = await prisma.informalCompany.findMany({

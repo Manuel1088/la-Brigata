@@ -30,7 +30,7 @@ type PointsType = { [key: string]: number }
 type RestDaysType = { [key: string]: [string, string?] }
 
 // Utility sicura per sommare numeri
-const safeSum = (value: any): number => {
+const safeSum = (value: unknown): number => {
   const num = Number(value)
   return isNaN(num) ? 0 : num
 }
@@ -111,11 +111,12 @@ export default function TipsOverview() {
     if (!companyData) return
 
     try {
-      const rid = (session?.user as any)?.restaurantId as string | undefined
+      const rid = session?.user?.restaurantId as string | undefined
       if (rid) {
         setTipsKey(`tipEntries_v1::${rid}`)
       } else {
-        const firstRest = companyData?.company?.restaurants?.[0]?.id as string | undefined
+        const cd = companyData as unknown as { company?: { restaurants?: Array<{ id?: string }> } }
+        const firstRest = cd.company?.restaurants?.[0]?.id as string | undefined
         if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
       }
     } finally {
@@ -136,17 +137,17 @@ export default function TipsOverview() {
 
   // Dipendenti via SWR - FILTRA dipendenti REALI
   const { employees: employeesData, isLoading } = useEmployeeContext()
-  const employees = useMemo(() => 
+  type EmployeeLite = { name: string; role: string; department?: string }
+  const employees: EmployeeLite[] = useMemo(() =>
     (employeesData || [])
-      .filter((e: any) => {
-        const role = e.role || ''
-        // Escludi PROPRIETARIO (non lavoratore) e ADMIN (non dipendenti)
+      .filter((e) => {
+        const role = (e as { role?: string }).role || ''
         return role !== 'PROPRIETARIO' && role !== 'ADMIN'
       })
-      .map((e: any) => ({
-        name: e.name,
-        role: e.role,
-        department: (e as any).department || 'sala'
+      .map((e) => ({
+        name: (e as { name: string }).name,
+        role: (e as { role: string }).role,
+        department: (e as { department?: string }).department || 'sala'
       })),
     [employeesData]
   )

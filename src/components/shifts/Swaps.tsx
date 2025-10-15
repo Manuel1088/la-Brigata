@@ -63,7 +63,7 @@ export default function ShiftsSwaps() {
   // Gestione approvazione/rifiuto
   const handleApprove = (requestId: string) => {
     if (!canManageEmployees()) {
-      notifyCustom('Non hai i permessi per approvare richieste', 'error')
+      notifyCustom('ERROR', 'SHIFTS', 'Permessi', 'Non hai i permessi per approvare richieste')
       return
     }
 
@@ -80,13 +80,13 @@ export default function ShiftsSwaps() {
     })
 
     saveSwapRequests(updatedRequests)
-    notifyCustom('Richiesta approvata!', 'success')
+    notifyCustom('SUCCESS', 'SHIFTS', 'Scambio Turno', 'Richiesta approvata!')
     setSwapVersion(prev => prev + 1)
   }
 
   const handleReject = (requestId: string) => {
     if (!canManageEmployees()) {
-      notifyCustom('Non hai i permessi per rifiutare richieste', 'error')
+      notifyCustom('ERROR', 'SHIFTS', 'Permessi', 'Non hai i permessi per rifiutare richieste')
       return
     }
 
@@ -103,7 +103,7 @@ export default function ShiftsSwaps() {
     })
 
     saveSwapRequests(updatedRequests)
-    notifyCustom('Richiesta rifiutata', 'info')
+    notifyCustom('INFO', 'SHIFTS', 'Scambio Turno', 'Richiesta rifiutata')
     setSwapVersion(prev => prev + 1)
   }
 
@@ -178,7 +178,7 @@ export default function ShiftsSwaps() {
               <option value="all">Tutti i reparti</option>
               <option value="cucina">Cucina</option>
               <option value="sala">Sala</option>
-              <option value="bar">Bar</option>
+              <option value="beverage">Beverage</option>
             </select>
           </div>
         </div>

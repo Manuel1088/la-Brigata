@@ -8,6 +8,10 @@ declare module 'next-auth' {
     role?: UserRoleString
     level?: number
     avatar?: string
+    department?: string
+    companyId?: string
+    restaurantId?: string
+    phone?: string
   }
   interface Session {
     user?: User & {
@@ -15,6 +19,12 @@ declare module 'next-auth' {
       role: UserRoleString
       level: number
       avatar: string
+      department?: string
+      companyId?: string
+      restaurantId?: string
+      phone?: string
+      userType?: string
+      informalCompanyId?: string | null
     }
   }
 }
@@ -24,6 +34,9 @@ declare module 'next-auth/jwt' {
     role?: UserRoleString
     level?: number
     avatar?: string
+    userType?: string
+    companyId?: string | null
+    informalCompanyId?: string | null
   }
 }
 

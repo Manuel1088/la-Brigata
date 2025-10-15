@@ -50,7 +50,7 @@ interface WalkinEntry {
 }
 
 export default function OperationsBookings() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   const { can } = usePermissions()
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -95,15 +95,15 @@ export default function OperationsBookings() {
   // Carica aree di prenotazione
   useEffect(() => {
     let cancelled = false
-    const fiscal: string | undefined = companyData?.company?.fiscalCode
+    const fiscal: string | undefined = (companyData as { company?: { fiscalCode?: string } } | undefined)?.company?.fiscalCode
     if (!fiscal) return
     const key = `booking_areas_v1::${fiscal}`
     setAreasKey(key)
     const load = () => {
       try {
         const raw = localStorage.getItem(key)
-        const areasData = raw ? JSON.parse(raw) : []
-        const areaList = (areasData || []).map((a: any) => ({ id: a.id, name: a.name }))
+        const areasData = raw ? JSON.parse(raw) : [] as Array<{ id: string; name: string }>
+        const areaList = (areasData || []).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name }))
         if (!cancelled) {
           setAreas(areaList)
           if (!selectedArea && areaList.length > 0) setSelectedArea(areaList[0].id)
@@ -114,8 +114,8 @@ export default function OperationsBookings() {
     }
     load()
     const onUpdate = () => load()
-    try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
-    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}; cancelled = true }
+    try { window.addEventListener('booking_areas_updated', onUpdate) } catch {}
+    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate) } catch {}; cancelled = true }
   }, [selectedArea, companyData])
 
   // Carica prenotazioni
@@ -203,9 +203,15 @@ export default function OperationsBookings() {
 
       // Aggiorna cliente
       await addOrUpdateCustomerFromBooking({
-        name: booking.customerName,
-        phone: booking.customerPhone,
-        email: booking.customerEmail
+        id: booking.id,
+        customerName: booking.customerName,
+        customerPhone: booking.customerPhone,
+        customerEmail: booking.customerEmail,
+        date: booking.date,
+        time: booking.time,
+        partySize: booking.partySize,
+        status: booking.status,
+        notes: booking.notes
       })
 
       setMessage(editingBooking ? '✅ Prenotazione aggiornata!' : '✅ Prenotazione creata!')
@@ -292,13 +298,7 @@ export default function OperationsBookings() {
     setSelectedDate(d.toISOString().split('T')[0])
   }
 
-  const selectedDateLabel = useMemo(() => {
-    try {
-      return new Date(selectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
-    } catch {
-      return selectedDate
-    }
-  }, [selectedDate])
+  // label calcolata ma non usata: rimossa per evitare warning
 
   // Raggruppamento per fasce orarie
   const lunchBookings = useMemo(() => {

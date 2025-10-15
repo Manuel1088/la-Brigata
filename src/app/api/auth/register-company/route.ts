@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
-import { PrismaClient, Prisma } from '@prisma/client'
+import { PrismaClient, Prisma, UserRole as PrismaUserRole } from '@prisma/client'
 
 const prisma = new PrismaClient()
+
+function toUserRole(roleString: string): PrismaUserRole {
+  // Map known labels to Prisma enum; fallback to PROPRIETARIO
+  switch (roleString) {
+    case 'PROPRIETARIO':
+      return PrismaUserRole.PROPRIETARIO
+    case 'PROPRIETARIO_OPERATIVO':
+      return (PrismaUserRole as unknown as Record<string, PrismaUserRole>)['PROPRIETARIO_OPERATIVO'] || PrismaUserRole.PROPRIETARIO
+    case 'DIRETTORE_GENERALE':
+      return (PrismaUserRole as unknown as Record<string, PrismaUserRole>)['DIRETTORE_GENERALE'] || PrismaUserRole.DIRETTORE
+    case 'DIRETTORE':
+      return PrismaUserRole.DIRETTORE
+    default:
+      return PrismaUserRole.PROPRIETARIO
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -112,7 +128,7 @@ export async function POST(request: NextRequest) {
           email: ownerEmail,
           name: ownerName,
           password: hashedPassword,
-          role: mappedRole.role,
+          role: toUserRole(mappedRole.role),
           userType: 'OWNER',
           hierarchyLevel: mappedRole.level,
           phone: ownerPhone || undefined,

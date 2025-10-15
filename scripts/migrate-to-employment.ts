@@ -6,15 +6,8 @@ async function main() {
   console.log('🚀 Inizio migrazione dati a Employment...')
   
   try {
-    // Trova tutti gli utenti con restaurantId
-    const users = await prisma.user.findMany({
-      where: {
-        restaurantId: { not: null }
-      },
-      include: {
-        restaurant: true
-      }
-    })
+    // Trova tutti gli utenti (si filtrerà in memoria per restaurantId presente)
+    const users = await prisma.user.findMany({})
     
     console.log(`📊 Trovati ${users.length} utenti da migrare`)
     
@@ -56,13 +49,13 @@ async function main() {
             department: user.department || null,
             requestedAt: user.createdAt,
             reviewedAt: user.createdAt, // Già approvato
-            startDate: user.startDate || user.createdAt,
+            startDate: user.createdAt,
             createdAt: user.createdAt,
-            updatedAt: user.updatedAt || new Date()
+            updatedAt: new Date()
           }
         })
         
-        console.log(`✅ Migrato: ${user.name} (${user.email}) -> ${user.restaurant?.name}`)
+        console.log(`✅ Migrato: ${user.name} (${user.email}) -> ristorante ${user.restaurantId}`)
         migrated++
         
       } catch (error: any) {

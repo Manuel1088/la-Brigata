@@ -2,6 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useCompanyData } from '@/hooks/useCompanyData'
+import type { CompanyData } from '@/hooks/useCompanyData'
 
 // Definizione dei tipi
 type Employee = {
@@ -30,7 +31,7 @@ export default function TipsDaily() {
 
   // Risolvi chiave per ristorante e carica storico (senza fetch)
   useEffect(() => {
-    const rid = (session?.user as any)?.restaurantId as string | undefined
+    const rid = session?.user?.restaurantId as string | undefined
     if (rid) setTipsKey(`tipEntries_v1::${rid}`)
     setWaitingCtx(false)
   }, [session])
@@ -54,11 +55,11 @@ export default function TipsDaily() {
     }
     load()
     const onUpdate = () => load()
-    try { window.addEventListener('tip_entries_updated', onUpdate as any) } catch {}
-    try { window.addEventListener('storage', onUpdate as any) } catch {}
+    try { window.addEventListener('tip_entries_updated', onUpdate) } catch {}
+    try { window.addEventListener('storage', onUpdate) } catch {}
     return () => {
-      try { window.removeEventListener('tip_entries_updated', onUpdate as any) } catch {}
-      try { window.removeEventListener('storage', onUpdate as any) } catch {}
+      try { window.removeEventListener('tip_entries_updated', onUpdate) } catch {}
+      try { window.removeEventListener('storage', onUpdate) } catch {}
     }
   }, [tipsKey])
 
@@ -66,21 +67,21 @@ export default function TipsDaily() {
   const { data: companyData } = useCompanyData(session?.user?.id)
   useEffect(() => {
     let cancelled = false
-    const fiscal: string | undefined = companyData?.company?.fiscalCode
+    const fiscal: string | undefined = (companyData as CompanyData | null | undefined)?.company?.fiscalCode
     if (!fiscal) return
     const key = `booking_areas_v1::${fiscal}`
     const load = () => {
       try {
         const raw = localStorage.getItem(key)
-        const areas = raw ? JSON.parse(raw) : []
-        const locs = (areas || []).map((a: any) => ({ id: a.id, name: a.name }))
+        const areas = (raw ? JSON.parse(raw) : []) as Array<{ id: string; name: string }>
+        const locs = (areas || []).map((a) => ({ id: a.id, name: a.name }))
         if (!cancelled) setLocations(locs)
       } catch { if (!cancelled) setLocations([]) }
     }
     load()
     const onUpdate = () => load()
-    try { window.addEventListener('booking_areas_updated', onUpdate as any) } catch {}
-    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate as any) } catch {}; cancelled = true }
+    try { window.addEventListener('booking_areas_updated', onUpdate) } catch {}
+    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate) } catch {}; cancelled = true }
   }, [companyData])
 
   const startEdit = (e: TipEntry) => {

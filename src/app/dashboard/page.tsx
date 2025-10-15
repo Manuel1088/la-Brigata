@@ -32,6 +32,36 @@ interface TodayShift {
   role?: string
 }
 
+interface TipEntry {
+  date: string
+  amount: number
+}
+
+interface StoredShift {
+  date: string
+  employeeId: string
+  start: string
+  end: string
+  role?: string
+}
+
+function isTipEntry(value: unknown): value is TipEntry {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  return typeof v.date === 'string' && typeof v.amount === 'number'
+}
+
+function isStoredShift(value: unknown): value is StoredShift {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  return (
+    typeof v.date === 'string' &&
+    typeof v.employeeId === 'string' &&
+    typeof v.start === 'string' &&
+    typeof v.end === 'string'
+  )
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -91,7 +121,8 @@ export default function DashboardPage() {
         return
       }
       
-      const entries = JSON.parse(raw)
+      const parsed = JSON.parse(raw) as unknown
+      const entries: TipEntry[] = Array.isArray(parsed) ? parsed.filter(isTipEntry) : []
       
       // Validazione formato array
       if (!Array.isArray(entries)) {
@@ -102,19 +133,15 @@ export default function DashboardPage() {
       
       const currentMonth = new Date()
       const monthTotal = entries
-        .filter((e: any) => {
-          if (!e?.date) return false
+        .filter((e) => {
           try {
             const d = new Date(e.date)
-            return d.getFullYear() === currentMonth.getFullYear() && 
-                   d.getMonth() === currentMonth.getMonth()
+            return d.getFullYear() === currentMonth.getFullYear() && d.getMonth() === currentMonth.getMonth()
           } catch {
             return false
           }
         })
-        .reduce((sum: number, e: any) => {
-          return safeSum(sum, e?.amount)
-        }, 0)
+        .reduce((sum, e) => safeSum(sum, e.amount), 0)
       
       // ✅ Validazione finale prima di settare
       setMonthlyTips(monthTotal)
@@ -131,13 +158,12 @@ export default function DashboardPage() {
       const raw = localStorage.getItem('shifts_v1::restaurant_1')
       if (!raw) return
       
-      const shifts = JSON.parse(raw)
-      if (!Array.isArray(shifts)) return
+      const parsed = JSON.parse(raw) as unknown
+      const shifts: StoredShift[] = Array.isArray(parsed) ? parsed.filter(isStoredShift) : []
+      if (shifts.length === 0) return
       
       const today = new Date().toISOString().split('T')[0]
-      const shift = shifts.find((s: any) => 
-        s.date === today && s.employeeId === session?.user?.id
-      )
+      const shift = shifts.find((s) => s.date === today && s.employeeId === (session?.user?.id || ''))
       
       setTodayShift(shift || null)
     } catch (error) {

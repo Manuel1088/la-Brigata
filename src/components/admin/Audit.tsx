@@ -8,7 +8,7 @@ interface AuditLog {
   user: string
   userId: string
   timestamp: Date
-  details: Record<string, any>
+  details: Record<string, unknown>
   ipAddress?: string
   userAgent?: string
 }
@@ -42,8 +42,28 @@ export default function AdminAudit() {
         getStats()
       ])
       
-      setLogs(logsData)
-      setStats(statsData)
+      // Normalizza logs per soddisfare AuditLog
+      const normalizedLogs: AuditLog[] = logsData.map((l: any) => ({
+        id: String(l.id),
+        action: String(l.action || ''),
+        user: String(l.user || l.userName || 'Sconosciuto'),
+        userId: String(l.userId || ''),
+        timestamp: new Date(l.timestamp || l.createdAt || Date.now()),
+        details: (l.details as Record<string, unknown>) || {},
+        ipAddress: l.ipAddress,
+        userAgent: l.userAgent
+      }))
+      setLogs(normalizedLogs)
+
+      // Adatta stats minime richieste dall'interfaccia
+      const adaptedStats: AuditStats = {
+        totalLogs: Number((statsData as any).totalLogs || (normalizedLogs?.length ?? 0)),
+        todayLogs: Number((statsData as any).logsToday || 0),
+        uniqueUsers: Number((statsData as any).uniqueUsers || new Set(normalizedLogs.map(l => l.userId)).size),
+        topActions: Array.isArray((statsData as any).topActions) ? (statsData as any).topActions : [],
+        recentActivity: normalizedLogs.slice(0, 10)
+      }
+      setStats(adaptedStats)
     } catch (error) {
       console.error('Errore nel caricamento audit:', error)
     } finally {

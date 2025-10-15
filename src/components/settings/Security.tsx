@@ -15,9 +15,9 @@ export default function SettingsSecurity() {
     setLoading(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 1000))
-      notifyCustom('Impostazioni di sicurezza aggiornate', 'success')
+      notifyCustom('SUCCESS','SYSTEM','Sicurezza','Impostazioni aggiornate')
     } catch (error) {
-      notifyCustom('Errore nell\'aggiornamento delle impostazioni', 'error')
+      notifyCustom('ERROR','SYSTEM','Sicurezza','Errore nell\'aggiornamento delle impostazioni')
     } finally {
       setLoading(false)
     }

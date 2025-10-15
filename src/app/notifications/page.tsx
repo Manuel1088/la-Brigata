@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { 
   Notification,
   getNotifications,
@@ -21,6 +21,13 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [stats, setStats] = useState(getNotificationStats())
 
+  const loadNotifications = useCallback(() => {
+    const userId = session?.user?.id
+    const allNotifications = getNotifications(userId)
+    setNotifications(allNotifications)
+    setStats(getNotificationStats(userId))
+  }, [session])
+
   useEffect(() => {
     if (status === 'loading') return
     if (!session) {
@@ -28,14 +35,7 @@ export default function NotificationsPage() {
       return
     }
     loadNotifications()
-  }, [session, status, router])
-
-  const loadNotifications = () => {
-    const userId = (session?.user as any)?.id
-    const allNotifications = getNotifications(userId)
-    setNotifications(allNotifications)
-    setStats(getNotificationStats(userId))
-  }
+  }, [session, status, router, loadNotifications])
 
   const handleMarkAsRead = (notificationId: string) => {
     markAsRead(notificationId)
@@ -43,7 +43,7 @@ export default function NotificationsPage() {
   }
 
   const handleMarkAllAsRead = () => {
-    const userId = (session?.user as any)?.id
+    const userId = session?.user?.id
     const count = markAllAsRead(userId)
     if (count > 0) {
       loadNotifications()

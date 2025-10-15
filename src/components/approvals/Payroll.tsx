@@ -22,7 +22,7 @@ interface PayrollRequest {
   rejectedBy?: string
   rejectedAt?: string
   rejectionReason?: string
-  metadata: Record<string, any>
+  metadata: Record<string, unknown>
 }
 
 interface Props {
@@ -34,9 +34,9 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
   const { notifyCustom } = useNotifications()
   const { logReadAction } = useAudit()
   const [requests, setRequests] = useState<PayrollRequest[]>([])
-  const [filterStatus, setFilterStatus] = useState<string>('PENDING')
-  const [filterType, setFilterType] = useState<string>('all')
-  const [filterDepartment, setFilterDepartment] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<'all'|'PENDING'|'APPROVED'|'REJECTED'>('PENDING')
+  const [filterType, setFilterType] = useState<'all'|'salary_adjustment'|'bonus'|'deduction'|'overtime'|'expense_reimbursement'>('all')
+  const [filterDepartment, setFilterDepartment] = useState<'all'|'cucina'|'sala'|'beverage'>('all')
   const [sortBy, setSortBy] = useState<'createdAt' | 'amount' | 'employeeName'>('createdAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -171,11 +171,11 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
       })
       
       saveRequests(updatedRequests)
-      notifyCustom('✅ Richiesta payroll approvata', 'success')
+      notifyCustom('SUCCESS','PERSONNEL','Richiesta payroll','✅ Richiesta approvata')
       onUpdate()
-      logReadAction('payroll_request_approved', { requestId })
+      logReadAction('payroll_request_approved')
     } catch (error) {
-      notifyCustom('Errore nell\'approvazione della richiesta', 'error')
+      notifyCustom('ERROR','PERSONNEL','Errore','Errore nell\'approvazione della richiesta')
     }
   }
 
@@ -198,11 +198,11 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
       })
       
       saveRequests(updatedRequests)
-      notifyCustom('❌ Richiesta payroll rifiutata', 'warning')
+      notifyCustom('WARNING','PERSONNEL','Richiesta payroll','❌ Richiesta rifiutata')
       onUpdate()
-      logReadAction('payroll_request_rejected', { requestId, reason })
+      logReadAction('payroll_request_rejected')
     } catch (error) {
-      notifyCustom('Errore nel rifiuto della richiesta', 'error')
+      notifyCustom('ERROR','PERSONNEL','Errore','Errore nel rifiuto della richiesta')
     }
   }
 
@@ -215,7 +215,8 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
       return true
     })
     .sort((a, b) => {
-      let aValue: any, bValue: any
+      let aValue: number|string|Date
+      let bValue: number|string|Date
       
       switch (sortBy) {
         case 'createdAt':
@@ -356,7 +357,7 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
             <label className="block text-sm font-medium text-gray-700 mb-2">Stato</label>
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => setFilterStatus(e.target.value as 'all'|'PENDING'|'APPROVED'|'REJECTED')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tutti</option>
@@ -370,7 +371,7 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
             <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
+              onChange={(e) => setFilterType(e.target.value as 'all'|'salary_adjustment'|'bonus'|'deduction'|'overtime'|'expense_reimbursement')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tutti</option>
@@ -386,13 +387,13 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
             <label className="block text-sm font-medium text-gray-700 mb-2">Reparto</label>
             <select
               value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
+              onChange={(e) => setFilterDepartment(e.target.value as 'all'|'cucina'|'sala'|'beverage')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tutti</option>
               <option value="cucina">Cucina</option>
               <option value="sala">Sala</option>
-              <option value="bar">Bar</option>
+              <option value="beverage">Beverage</option>
             </select>
           </div>
           
@@ -400,7 +401,7 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
             <label className="block text-sm font-medium text-gray-700 mb-2">Ordina per</label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as 'createdAt'|'amount'|'employeeName')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="createdAt">Data richiesta</option>
@@ -467,20 +468,20 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
                   </div>
                   
                   {/* Dettagli specifici per tipo */}
-                  {request.type === 'overtime' && request.metadata.hoursWorked && (
+                  {request.type === 'overtime' && (request.metadata as any).hoursWorked && (
                     <div className="bg-yellow-50 rounded-lg p-3 mb-3">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Ore lavorate:</span>
-                          <div className="font-medium">{request.metadata.hoursWorked}h</div>
+                          <div className="font-medium">{Number((request.metadata as any).hoursWorked)}h</div>
                         </div>
                         <div>
                           <span className="text-gray-600">Tariffa oraria:</span>
-                          <div className="font-medium">{formatCurrency(request.metadata.hourlyRate || 0)}</div>
+                          <div className="font-medium">{formatCurrency(Number((request.metadata as any).hourlyRate ?? 0))}</div>
                         </div>
                         <div>
                           <span className="text-gray-600">Date:</span>
-                          <div className="font-medium">{request.metadata.dates?.join(', ')}</div>
+                          <div className="font-medium">{Array.isArray((request.metadata as any).dates) ? (request.metadata as any).dates.join(', ') : ''}</div>
                         </div>
                       </div>
                     </div>
@@ -490,8 +491,8 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
                     <div className="bg-purple-50 rounded-lg p-3 mb-3">
                       <div className="text-sm">
                         <span className="text-gray-600">Certificazione:</span>
-                        <div className="font-medium">{request.metadata.certification}</div>
-                        {request.metadata.receiptUrl && (
+                        <div className="font-medium">{String((request.metadata as any).certification || '')}</div>
+                        {Boolean((request.metadata as any).receiptUrl) && (
                           <button className="mt-1 text-blue-600 hover:text-blue-800 underline">
                             📄 Visualizza ricevuta
                           </button>

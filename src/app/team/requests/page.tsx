@@ -172,14 +172,14 @@ export default function PendingRequestsPage() {
                 <div className="flex items-start gap-4 flex-1">
                   {/* Avatar */}
                   <div className="text-5xl">
-                    {request.user.avatar || '👤'}
+                    {(request.user?.name?.slice(0,1).toUpperCase()) || '👤'}
                   </div>
                   
                   {/* Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-xl font-semibold text-gray-900">
-                        {request.user.name}
+                        {request.user?.name || 'Utente'}
                       </h3>
                       {getStatusBadge(request.status)}
                     </div>
@@ -187,18 +187,18 @@ export default function PendingRequestsPage() {
                     <div className="space-y-1 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <span>📧</span>
-                        <span>{request.user.email}</span>
+                        <span>{request.user?.email || ''}</span>
                       </div>
-                      {request.user.phone && (
+                      {request.user?.phone && (
                         <div className="flex items-center gap-2">
                           <span>📱</span>
-                          <span>{request.user.phone}</span>
+                          <span>{request.user?.phone}</span>
                         </div>
                       )}
-                      {request.department && (
+                      {((request as { department?: string | null }).department ?? null) && (
                         <div className="flex items-center gap-2">
                           <span>🏢</span>
-                          <span>Reparto: {request.department}</span>
+                          <span>Reparto: {(request as { department?: string | null }).department}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2">
@@ -207,7 +207,7 @@ export default function PendingRequestsPage() {
                       </div>
                       <div className="flex items-center gap-2 text-gray-400">
                         <span>📅</span>
-                        <span>Richiesto: {new Date(request.requestedAt).toLocaleDateString('it-IT')}</span>
+                        <span>Richiesto: {new Date(request.createdAt).toLocaleDateString('it-IT')}</span>
                       </div>
                     </div>
                   </div>
@@ -217,13 +217,13 @@ export default function PendingRequestsPage() {
                 {request.status === 'PENDING' && (
                   <div className="flex gap-2 ml-4">
                     <button
-                      onClick={() => handleApprove(request.id, request.user.name)}
+                      onClick={() => handleApprove(request.id, request.user?.name || 'Utente')}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
                     >
                       ✓ Approva
                     </button>
                     <button
-                      onClick={() => handleReject(request.id, request.user.name)}
+                      onClick={() => handleReject(request.id, request.user?.name || 'Utente')}
                       className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
                     >
                       ✗ Rifiuta

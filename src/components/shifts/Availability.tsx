@@ -56,7 +56,7 @@ export default function ShiftsAvailability() {
   // Aggiungi nuova regola
   const handleAddRule = () => {
     if (!selectedEmployee) {
-      notifyCustom('Seleziona un dipendente', 'error')
+      notifyCustom('ERROR', 'SHIFTS', 'Disponibilità', 'Seleziona un dipendente')
       return
     }
 
@@ -72,7 +72,7 @@ export default function ShiftsAvailability() {
 
     const updatedRules = [...availabilityRules, newRule]
     saveAvailabilityRules(updatedRules)
-    notifyCustom('Regola di disponibilità aggiunta!', 'success')
+    notifyCustom('SUCCESS', 'SHIFTS', 'Disponibilità', 'Regola di disponibilità aggiunta!')
     
     // Reset form
     setSelectedEmployee('')
@@ -86,7 +86,7 @@ export default function ShiftsAvailability() {
   const handleRemoveRule = (ruleId: string) => {
     const updatedRules = availabilityRules.filter(rule => rule.id !== ruleId)
     saveAvailabilityRules(updatedRules)
-    notifyCustom('Regola rimossa', 'info')
+    notifyCustom('INFO', 'SHIFTS', 'Disponibilità', 'Regola rimossa')
   }
 
   // Filtra regole per dipendente
@@ -129,7 +129,7 @@ export default function ShiftsAvailability() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Seleziona dipendente</option>
-              {employeesData?.map((emp: any) => (
+              {employeesData?.map((emp) => (
                 <option key={emp.name} value={emp.name}>{emp.name}</option>
               ))}
             </select>
@@ -211,7 +211,7 @@ export default function ShiftsAvailability() {
 
       {/* Lista regole per dipendente */}
       <div className="space-y-4">
-        {employeesData?.map((emp: any) => {
+        {employeesData?.map((emp) => {
           const employeeRules = getRulesForEmployee(emp.name)
           if (employeeRules.length === 0) return null
 

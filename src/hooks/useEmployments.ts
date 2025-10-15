@@ -38,7 +38,7 @@ interface Employment {
 interface UseEmploymentsReturn {
   employments: Employment[]
   isLoading: boolean
-  error: any
+  error: unknown
   mutate: () => void
   isValidating: boolean
 }

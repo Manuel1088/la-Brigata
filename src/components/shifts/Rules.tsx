@@ -13,15 +13,17 @@ export default function ShiftsRules() {
   
   // Usa l'hook useEmployees per caricare solo i dipendenti dell'azienda
   const { employees: employeesData, isLoading } = useEmployeeContext()
-  const employees = useMemo(() => {
+  type EmployeeLite = { name: string; department?: 'cucina'|'sala'|'beverage' }
+  const employees = useMemo<EmployeeLite[]>(() => {
     if (!employeesData) return []
-    return employeesData.map((e: any) => ({ 
-      name: e.name, 
-      department: e.department || 'sala' 
+    return employeesData.map((e) => ({ 
+      name: (e as { name: string }).name, 
+      department: ((e as { department?: string }).department as EmployeeLite['department']) || 'sala' 
     }))
   }, [employeesData])
   
-  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'beverage', { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }>>({
+  type DeptConfig = { mode: 'fixed'|'rotating'; weeklyRestDays: 1|2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }
+  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'beverage', DeptConfig>>({
     cucina: { mode: 'fixed', weeklyRestDays: 1 },
     sala: { mode: 'fixed', weeklyRestDays: 1 },
     beverage: { mode: 'fixed', weeklyRestDays: 1 }
@@ -41,22 +43,28 @@ export default function ShiftsRules() {
 
   // Permessi base: limita i reparti visibili/modificabili in base al ruolo
   const { allowedDepartments, manageAll } = useMemo(() => {
-    const role = ((session?.user as any)?.role || '').toString().toUpperCase()
+    const role = (session?.user?.role || '').toString().toUpperCase()
     if (['PROPRIETARIO','DIRETTORE','MANAGER','ADMIN'].includes(role)) {
       return { allowedDepartments: ['cucina','sala','beverage'] as Array<'cucina'|'sala'|'beverage'>, manageAll: true }
     }
-    if (role === 'HEAD_CHEF') return { allowedDepartments: ['cucina'] as Array<'cucina'|'sala'|'bar'>, manageAll: false }
-    if (role === 'RESPONSABILE_SALA' || role === 'CASSIERE') return { allowedDepartments: ['sala'] as Array<'cucina'|'sala'|'bar'>, manageAll: false }
+    if (role === 'HEAD_CHEF') return { allowedDepartments: ['cucina'] as Array<'cucina'|'sala'|'beverage'>, manageAll: false }
+    if (role === 'RESPONSABILE_SALA' || role === 'CASSIERE') return { allowedDepartments: ['sala'] as Array<'cucina'|'sala'|'beverage'>, manageAll: false }
     // Fallback: bar
     return { allowedDepartments: ['beverage'] as Array<'cucina'|'sala'|'beverage'>, manageAll: false }
   }, [session])
 
   const updateRule = (employeeName: string, dayOfWeek: number, isRestDay: boolean) => {
-    const newRules = updateRestRule(employeeName, dayOfWeek, isRestDay)
-    setRules(newRules)
+    // Adatta a RestRule: gestiamo giorni fissi usando fixedDayIndices
+    const current = getRestRules().find(r => r.employeeName === employeeName)
+    const currentFixed = (current?.fixedDayIndices || []).slice()
+    const idx = currentFixed.indexOf(dayOfWeek as any)
+    if (isRestDay && idx === -1) currentFixed.push(dayOfWeek as any)
+    if (!isRestDay && idx !== -1) currentFixed.splice(idx, 1)
+    const updated = updateRestRule(employeeName, { fixedDayIndices: currentFixed as any })
+    setRules(prev => prev.map(r => r.employeeName === employeeName ? updated : r))
   }
 
-  const saveDeptConfig = (dept: 'cucina'|'sala'|'beverage', config: any) => {
+  const saveDeptConfig = (dept: 'cucina'|'sala'|'beverage', config: DeptConfig) => {
     const newConfigs = { ...deptConfigs, [dept]: config }
     setDeptConfigs(newConfigs)
     try {
@@ -137,7 +145,7 @@ export default function ShiftsRules() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Modalità</label>
               <select
                 value={deptConfigs[selectedDepartment].mode}
-                onChange={(e) => saveDeptConfig(selectedDepartment, { ...deptConfigs[selectedDepartment], mode: e.target.value })}
+                onChange={(e) => saveDeptConfig(selectedDepartment, { ...deptConfigs[selectedDepartment], mode: e.target.value as DeptConfig['mode'] })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="fixed">Fisso</option>
@@ -149,7 +157,7 @@ export default function ShiftsRules() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Giorni riposo settimanali</label>
               <select
                 value={deptConfigs[selectedDepartment].weeklyRestDays}
-                onChange={(e) => saveDeptConfig(selectedDepartment, { ...deptConfigs[selectedDepartment], weeklyRestDays: Number(e.target.value) })}
+                onChange={(e) => saveDeptConfig(selectedDepartment, { ...deptConfigs[selectedDepartment], weeklyRestDays: (Number(e.target.value) as 1|2) })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value={1}>1 giorno</option>
@@ -162,7 +170,7 @@ export default function ShiftsRules() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Direzione rotazione</label>
                 <select
                   value={deptConfigs[selectedDepartment].rotateDirection || 'forward'}
-                  onChange={(e) => saveDeptConfig(selectedDepartment, { ...deptConfigs[selectedDepartment], rotateDirection: e.target.value })}
+                  onChange={(e) => saveDeptConfig(selectedDepartment, { ...deptConfigs[selectedDepartment], rotateDirection: e.target.value as NonNullable<DeptConfig['rotateDirection']> })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="forward">Avanti</option>
@@ -183,9 +191,8 @@ export default function ShiftsRules() {
         <div className="space-y-4">
           {getDepartmentEmployees(selectedDepartment).map(employee => {
             const employeeRules = getEmployeeRules(employee.name)
-            const restDays = Array.from({ length: 7 }, (_, i) => 
-              employeeRules.some(rule => rule.dayOfWeek === i && rule.isRestDay)
-            )
+            const fixed = employeeRules[0]?.fixedDayIndices || []
+            const restDays = Array.from({ length: 7 }, (_, i) => fixed.includes(i as any))
             
             return (
               <div key={employee.name} className={`border rounded-lg p-4 ${getDepartmentColor(selectedDepartment)}`}>
@@ -226,7 +233,8 @@ export default function ShiftsRules() {
             const deptEmployees = getDepartmentEmployees(dept)
             const totalRestDays = deptEmployees.reduce((sum, emp) => {
               const empRules = getEmployeeRules(emp.name)
-              return sum + empRules.filter(rule => rule.isRestDay).length
+              const fixed = empRules[0]?.fixedDayIndices || []
+              return sum + fixed.length
             }, 0)
             
             return (

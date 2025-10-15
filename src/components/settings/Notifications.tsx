@@ -18,9 +18,9 @@ export default function SettingsNotifications() {
     setLoading(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 1000))
-      notifyCustom('Impostazioni notifiche aggiornate', 'success')
+      notifyCustom('SUCCESS','SYSTEM','Notifiche','Impostazioni aggiornate')
     } catch (error) {
-      notifyCustom('Errore nell\'aggiornamento delle notifiche', 'error')
+      notifyCustom('ERROR','SYSTEM','Notifiche','Errore nell\'aggiornamento delle notifiche')
     } finally {
       setLoading(false)
     }

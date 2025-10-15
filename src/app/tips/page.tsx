@@ -10,7 +10,6 @@ export default function TipsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
-  const { canManageEmployees } = usePermissions()
 
   // Redirect se non autenticato
   useEffect(() => {

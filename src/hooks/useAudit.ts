@@ -20,7 +20,7 @@ import {
 export function useAudit() {
   const { data: session } = useSession()
   
-  const userId = (session?.user as any)?.id
+  const userId = session?.user?.id
 
   // Funzione base per loggare azioni
   const logAction = useCallback(async (entry: Omit<AuditLogEntry, 'userId'>) => {
@@ -43,17 +43,17 @@ export function useAudit() {
     await logLogout(userId)
   }, [userId])
 
-  const logCreateAction = useCallback(async (resource: string, resourceId: string, details?: any) => {
+  const logCreateAction = useCallback(async (resource: string, resourceId: string, details?: unknown) => {
     if (!userId) return
     await logCreate(userId, resource, resourceId, details)
   }, [userId])
 
-  const logUpdateAction = useCallback(async (resource: string, resourceId: string, details?: any) => {
+  const logUpdateAction = useCallback(async (resource: string, resourceId: string, details?: unknown) => {
     if (!userId) return
     await logUpdate(userId, resource, resourceId, details)
   }, [userId])
 
-  const logDeleteAction = useCallback(async (resource: string, resourceId: string, details?: any) => {
+  const logDeleteAction = useCallback(async (resource: string, resourceId: string, details?: unknown) => {
     if (!userId) return
     await logDelete(userId, resource, resourceId, details)
   }, [userId])
@@ -68,12 +68,12 @@ export function useAudit() {
     await logExport(userId, resource, format, recordCount)
   }, [userId])
 
-  const logApproveAction = useCallback(async (resource: string, resourceId: string, details?: any) => {
+  const logApproveAction = useCallback(async (resource: string, resourceId: string, details?: unknown) => {
     if (!userId) return
     await logApprove(userId, resource, resourceId, details)
   }, [userId])
 
-  const logRejectAction = useCallback(async (resource: string, resourceId: string, details?: any) => {
+  const logRejectAction = useCallback(async (resource: string, resourceId: string, details?: unknown) => {
     if (!userId) return
     await logReject(userId, resource, resourceId, details)
   }, [userId])

@@ -1,12 +1,12 @@
 'use client'
 import { useSession } from 'next-auth/react'
-import { hasPermission, hasAnyPermission, hasAllPermissions, canAccess, getUserPermissions, getPermissionsByCategory, PERMISSIONS } from '@/lib/permissions'
+import { hasAnyPermission, hasAllPermissions, canAccess, getUserPermissions, getPermissionsByCategory, PERMISSIONS } from '@/lib/permissions'
 
 export function usePermissions() {
   const { data: session } = useSession()
   
-  const userRole = (session?.user as any)?.role
-  const userLevel = (session?.user as any)?.level || 0
+  const userRole = session?.user?.role
+  const userLevel = session?.user?.level || 0
   const userId = session?.user?.id as string | undefined
   const upperRole = (userRole || '').toString().toUpperCase()
 

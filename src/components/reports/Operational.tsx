@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNotifications } from '@/hooks/useNotifications'
 
 interface OperationalReport {
@@ -10,7 +10,7 @@ interface OperationalReport {
   value: number
   target: number
   status: 'good' | 'warning' | 'critical'
-  details: Record<string, any>
+  details: Record<string, number | string>
 }
 
 export default function ReportsOperational() {
@@ -19,11 +19,7 @@ export default function ReportsOperational() {
   const [loading, setLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState('week')
 
-  useEffect(() => {
-    loadOperationalReports()
-  }, [selectedPeriod])
-
-  const loadOperationalReports = async () => {
+  const loadOperationalReports = useCallback(async () => {
     try {
       // Mock data - in produzione verrà dal database
       const mockReports: OperationalReport[] = [
@@ -95,11 +91,15 @@ export default function ReportsOperational() {
       setReports(mockReports)
     } catch (error) {
       console.error('Errore nel caricamento report operativi:', error)
-      notifyCustom('Errore nel caricamento report operativi', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Reports Operativi', 'Errore nel caricamento report operativi')
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedPeriod, notifyCustom])
+
+  useEffect(() => {
+    void loadOperationalReports()
+  }, [loadOperationalReports])
 
   const getTypeIcon = (type: string) => {
     switch (type) {

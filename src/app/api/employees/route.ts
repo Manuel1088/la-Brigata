@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import type { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,11 +50,11 @@ export async function GET(request: NextRequest) {
     if (activeParam === 'true') {
       const userIds = employees.map(e => e.id)
       if (userIds.length > 0) {
-        const employments = await (prisma as any).employment.findMany({
+        const employments = await prisma.employment.findMany({
           where: { userId: { in: userIds } },
           orderBy: { createdAt: 'desc' }
         })
-        const latestByUser: Record<string, any> = {}
+        const latestByUser: Record<string, { status: string; userId: string }> = {}
         for (const emp of employments) {
           if (!latestByUser[emp.userId]) latestByUser[emp.userId] = emp
         }
@@ -81,8 +82,8 @@ export async function GET(request: NextRequest) {
         hourlyRate: e.hourlyRate ? parseFloat(e.hourlyRate.toString()) : 0,
         baseSalary: e.baseSalary ? parseFloat(e.baseSalary.toString()) : undefined,
         contractType: e.contractType,
-        contractTypeEnum: (e as any).contractTypeEnum,
-        weeklyHours: (e as any).weeklyHours ?? undefined,
+        contractTypeEnum: e.contractTypeEnum as string | null | undefined,
+        weeklyHours: e.weeklyHours ?? undefined,
         startDate: e.startDate,
         notes: e.notes,
         skills: e.skills.map(s => s.skill)
@@ -197,8 +198,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Specificare id o email' }, { status: 400 })
     }
 
-    const where: any = id ? { id } : { email: String(email).toLowerCase() }
-    const user = await prisma.user.findUnique({ where })
+    const whereUnique: Prisma.UserWhereUniqueInput = id ? { id } : { email: String(email).toLowerCase() }
+    const user = await prisma.user.findUnique({ where: whereUnique })
     if (!user) {
       return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 })
     }

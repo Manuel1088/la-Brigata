@@ -6,7 +6,7 @@ import { getLeaveBalances, updateLeaveRemaining } from '@/lib/leaveSystem'
 import type { EmployeeFull } from '@/lib/employees'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import PayrollSection from '@/components/PayrollSection'
-import { formatNumber } from '@/lib/formatNumber'
+// import { formatNumber } from '@/lib/formatNumber'
 
 // Configurazione ruoli e livelli (stessa del form nuovo)
 const roleConfig = {
@@ -140,7 +140,7 @@ export default function EmployeeDetailPage() {
     const sessionId = session?.user?.id
     const sessionEmail = session?.user?.email
     
-    return employees.find((emp: any) => 
+    return employees.find((emp: EmployeeFull) => 
       emp.id === paramId || 
       (paramId === sessionId && emp.email === sessionEmail)
     ) || null
@@ -232,11 +232,11 @@ export default function EmployeeDetailPage() {
   // Quando entri in modalità editing, copia i dati
   const handleEditMode = () => {
     const localInc = employee?.id ? getSalaryIncrease(employee.id) : 0
-    setEditedEmployee(employee ? ({ ...(employee as any), monthlyIncrease: localInc }) : employee)
+    setEditedEmployee(employee ? ({ ...employee, monthlyIncrease: localInc }) : employee)
     setEditedVacationRemaining(prevVacationCarry)
     setEditedRolRemaining(prevRolCarry)
     const stepsOv = employee?.id ? getSeniorityStepsOverride(employee.id) : null
-    const maxSteps = computeMaxSenioritySteps(employee?.startDate as any)
+    const maxSteps = computeMaxSenioritySteps(employee?.startDate)
     setSenioritySteps(Math.min(stepsOv ?? 0, maxSteps))
     setIsEditing(true)
   }
@@ -264,18 +264,18 @@ export default function EmployeeDetailPage() {
           email: editedEmployee.email,
           phone: editedEmployee.phone,
           role: editedEmployee.role,
-          department: (editedEmployee as any)?.department,
-          monthlyIncrease: (editedEmployee as any)?.monthlyIncrease || 0,
-          baseSalary: getMonthlyBaseForLevel((editedEmployee as any)?.level ?? roleInfo?.level),
-          level: (editedEmployee as any)?.level ?? roleInfo?.level,
+          department: editedEmployee.department,
+          monthlyIncrease: editedEmployee.monthlyIncrease || 0,
+          baseSalary: getMonthlyBaseForLevel(editedEmployee.level ?? roleInfo?.level),
+          level: editedEmployee.level ?? roleInfo?.level,
           contractType: editedEmployee.contractType,
-          contractTypeEnum: (editedEmployee as any)?.contractTypeEnum,
+          contractTypeEnum: editedEmployee.contractTypeEnum,
           startDate: editedEmployee.startDate,
           employmentStartDate: editedEmployee.startDate,
-          employmentEndDate: (editedEmployee as any)?.employmentEndDate || undefined,
+          employmentEndDate: editedEmployee.employmentEndDate || undefined,
           notes: editedEmployee.notes,
           skills: editedEmployee.skills || [],
-          weeklyHours: (editedEmployee as any)?.weeklyHours || 0
+          weeklyHours: editedEmployee.weeklyHours || 0
         })
       })
 
@@ -287,7 +287,7 @@ export default function EmployeeDetailPage() {
 
       // Persisti overrides locali
       if (editedEmployee.id) {
-        setSalaryIncrease(editedEmployee.id, Number((editedEmployee as any)?.monthlyIncrease || 0))
+        setSalaryIncrease(editedEmployee.id, Number(editedEmployee.monthlyIncrease || 0))
         updateLeaveRemaining(editedEmployee.id, 'VACATION', Number(editedVacationRemaining || 0))
         updateLeaveRemaining(editedEmployee.id, 'ROL', Number(editedRolRemaining || 0))
         setSeniorityStepsOverride(editedEmployee.id, Number(senioritySteps || 0))
@@ -307,7 +307,7 @@ export default function EmployeeDetailPage() {
         window.location.reload()
       }, 1500)
     } catch (error) {
-      setMessage(`❌ Errore nel salvataggio`)
+      setMessage('❌ Errore nel salvataggio')
     } finally {
       setIsLoading(false)
     }
@@ -431,8 +431,8 @@ export default function EmployeeDetailPage() {
 
   // Controlli permessi
   const canEditPersonal = (
-    (session?.user as any)?.role === 'MANAGER' || 
-    (session?.user as any)?.role === 'PROPRIETARIO'
+    session?.user?.role === 'MANAGER' || 
+    session?.user?.role === 'PROPRIETARIO'
   )
 
   // Gestione navigazione indietro intelligente
@@ -446,7 +446,7 @@ export default function EmployeeDetailPage() {
 
   // Informazioni dipendente
   const roleInfo = roleConfig[currentEmployee.role as keyof typeof roleConfig]
-  const deptKey = normalizeDepartment((currentEmployee as any)?.department) || normalizeDepartment(roleInfo?.department as any)
+  const deptKey = normalizeDepartment(currentEmployee.department) || normalizeDepartment(roleInfo?.department as unknown as string)
   const departmentInfo = deptKey ? departments[deptKey] : undefined
   const availableSkills = commonSkills[roleInfo?.department as keyof typeof commonSkills] || []
 
@@ -595,9 +595,9 @@ export default function EmployeeDetailPage() {
                         onChange={(e) => {
                           const mapTo = e.target.value as keyof typeof roleConfig
                           const found = mansioniOptions.find(m => m.mapTo === mapTo)
-                          const nextLevel = found?.defaultLevel ?? (editedEmployee as any)?.level
+                          const nextLevel = found?.defaultLevel ?? editedEmployee?.level
                           const nextDept = mapRoleToDepartment(mapTo)
-                          setEditedEmployee(prev => prev ? ({...prev, role: mapTo as any, level: nextLevel as any, department: nextDept as any}) : null)
+                          setEditedEmployee(prev => prev ? ({...prev, role: String(mapTo), level: nextLevel as number | string, department: nextDept}) : null)
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                       >
@@ -614,7 +614,7 @@ export default function EmployeeDetailPage() {
                     {isEditing ? (
                       <>
                         <select
-                          value={(editedEmployee as any)?.level ?? roleInfo?.level ?? ''}
+                          value={editedEmployee?.level ?? roleInfo?.level ?? ''}
                           onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, level: parseInt(e.target.value)}) : null)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         >
@@ -626,18 +626,18 @@ export default function EmployeeDetailPage() {
                         {(() => {
                           const currentRole = (editedEmployee?.role as keyof typeof roleConfig) || (currentEmployee.role as keyof typeof roleConfig)
                           const suggested = mansioniOptions.find(m => m.mapTo === currentRole)?.defaultLevel
-                          const currentLevel = (editedEmployee as any)?.level ?? roleConfig[currentRole]?.level
+                          const currentLevel = editedEmployee?.level ?? roleConfig[currentRole]?.level
                           if (!suggested || suggested === currentLevel) return null
                           return (
                             <div className="mt-2 text-xs">
                               <span className="text-gray-600 mr-2">Suggerito:</span>
-                              <button type="button" onClick={() => setEditedEmployee(prev => prev ? ({...prev, level: suggested as any}) : null)} className="px-2 py-1 border rounded">{suggested}</button>
+                              <button type="button" onClick={() => setEditedEmployee(prev => prev ? ({...prev, level: suggested as number | string}) : null)} className="px-2 py-1 border rounded">{suggested}</button>
                             </div>
                           )
                         })()}
                       </>
                     ) : (
-                      <div className="font-medium">{(currentEmployee as any)?.level ?? roleInfo?.level ?? '-'}</div>
+                      <div className="font-medium">{currentEmployee?.level ?? roleInfo?.level ?? '-'}</div>
                     )}
                   </div>
                 </div>
@@ -645,8 +645,8 @@ export default function EmployeeDetailPage() {
                   <span className="text-gray-600 block mb-2">Reparto:</span>
                   {isEditing ? (
                     <select
-                      value={normalizeDepartment((editedEmployee as any)?.department) || deptKey || ''}
-                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, department: e.target.value as any}) : null)}
+                      value={normalizeDepartment(editedEmployee?.department) || deptKey || ''}
+                      onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, department: e.target.value as EmployeeFull['department']}) : null)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                     >
                       <option value="">Seleziona reparto</option>
@@ -663,17 +663,17 @@ export default function EmployeeDetailPage() {
                   <div>
                     <span className="text-gray-600 block mb-2">Paga base</span>
                     {(() => {
-                      const levelForCalc = (isEditing ? (editedEmployee as any)?.level : (currentEmployee as any)?.level) || roleInfo?.level
+                      const levelForCalc = (isEditing ? editedEmployee?.level : currentEmployee?.level) || roleInfo?.level
                       const baseFromLevel = getMonthlyBaseForLevel(levelForCalc)
-                      const baseUsed = (currentEmployee as any)?.baseSalary || baseFromLevel
-                      const currentInc = currentEmployee?.id ? getSalaryIncrease(currentEmployee.id) : ((currentEmployee as any)?.monthlyIncrease || 0)
+                      const baseUsed = currentEmployee?.baseSalary || baseFromLevel
+                      const currentInc = currentEmployee?.id ? getSalaryIncrease(currentEmployee.id) : (currentEmployee?.monthlyIncrease || 0)
                       const totalView = Math.max(0, baseUsed + currentInc)
                       if (!isEditing) {
                         return (
                           <div className="font-semibold text-lg">€{totalView}</div>
                         )
                       }
-                      const totalEdit = Math.max(0, ((editedEmployee as any)?.monthlyIncrease || 0) + baseFromLevel)
+                      const totalEdit = Math.max(0, (editedEmployee?.monthlyIncrease || 0) + baseFromLevel)
                       return (
                         <input
                           type="number"
@@ -694,7 +694,7 @@ export default function EmployeeDetailPage() {
                     <span className="text-gray-600 block mb-2">Scatti anzianità</span>
                     {(() => {
                       const start = (isEditing ? editedEmployee?.startDate : currentEmployee?.startDate) || null
-                      const maxSteps = computeMaxSenioritySteps(start as any)
+                      const maxSteps = computeMaxSenioritySteps(start)
                       const viewSteps = (() => {
                         const ov = currentEmployee?.id ? getSeniorityStepsOverride(currentEmployee.id) : null
                         const val = (isEditing ? senioritySteps : (ov ?? 0))
@@ -729,8 +729,8 @@ export default function EmployeeDetailPage() {
                     <span className="text-gray-600 block mb-2">Contratto:</span>
                     {isEditing ? (
                       <select
-                        value={(editedEmployee as any)?.contractTypeEnum || (currentEmployee as any)?.contractTypeEnum || 'INDETERMINATO'}
-                        onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, contractTypeEnum: e.target.value as any}) : null)}
+                        value={editedEmployee?.contractTypeEnum || currentEmployee?.contractTypeEnum || 'INDETERMINATO'}
+                        onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, contractTypeEnum: e.target.value as 'INDETERMINATO' | 'DETERMINATO'}) : null)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                       >
                         <option value="INDETERMINATO">Indeterminato</option>
@@ -738,7 +738,7 @@ export default function EmployeeDetailPage() {
                       </select>
                     ) : (
                       <div className="font-medium">
-                        {(currentEmployee as any)?.contractTypeEnum === 'DETERMINATO' ? 'Determinato' : 'Indeterminato'}
+                        {currentEmployee?.contractTypeEnum === 'DETERMINATO' ? 'Determinato' : 'Indeterminato'}
                       </div>
                     )}
                   </div>
@@ -746,7 +746,7 @@ export default function EmployeeDetailPage() {
                     {isEditing ? (
                       <select
                         value={editedEmployee?.contractType || 'full-time'}
-                        onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, contractType: e.target.value as any}) : null)}
+                        onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, contractType: e.target.value as 'full-time' | 'part-time'}) : null)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                       >
                         <option value="full-time">Full-time</option>
@@ -764,7 +764,7 @@ export default function EmployeeDetailPage() {
                             value={(() => {
                               const regime = editedEmployee?.contractType || 'full-time'
                               if (regime === 'full-time') return 40
-                              return (editedEmployee as any)?.weeklyHours ?? ''
+                              return editedEmployee?.weeklyHours ?? ''
                             })()}
                             onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, weeklyHours: parseInt(e.target.value || '0')}) : null)}
                             disabled={(editedEmployee?.contractType || 'full-time') === 'full-time'}
@@ -778,7 +778,7 @@ export default function EmployeeDetailPage() {
                           <span>{(() => {
                             const regime = currentEmployee?.contractType || 'full-time'
                             if (regime === 'full-time') return 40
-                            return (currentEmployee as any)?.weeklyHours ?? '—'
+                            return currentEmployee?.weeklyHours ?? '—'
                           })()}</span>
                           <span className="ml-2 text-gray-500 text-sm">/ ore settimanali</span>
                         </div>
@@ -803,11 +803,11 @@ export default function EmployeeDetailPage() {
                   <div>
                     <span className="text-gray-600 block mb-2">Fine contratto:</span>
                     {isEditing ? (
-                      ((editedEmployee as any)?.contractTypeEnum === 'DETERMINATO') ? (
+                      (editedEmployee?.contractTypeEnum === 'DETERMINATO') ? (
                         <input
                           type="date"
-                          value={(editedEmployee as any)?.employmentEndDate || ''}
-                          onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, employmentEndDate: e.target.value as any}) : null)}
+                          value={editedEmployee?.employmentEndDate || ''}
+                          onChange={(e) => setEditedEmployee(prev => prev ? ({...prev, employmentEndDate: e.target.value}) : null)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         />
                       ) : (
@@ -819,7 +819,7 @@ export default function EmployeeDetailPage() {
                         />
                       )
                     ) : (
-                      <div className="font-medium">{(currentEmployee as any)?.employmentEndDate ? new Date((currentEmployee as any).employmentEndDate).toLocaleDateString('it-IT') : '—'}</div>
+                      <div className="font-medium">{currentEmployee?.employmentEndDate ? new Date(currentEmployee.employmentEndDate).toLocaleDateString('it-IT') : '—'}</div>
                     )}
                   </div>
                 </div>
@@ -974,7 +974,7 @@ export default function EmployeeDetailPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-red-600 mb-4">⚠️ Zona Pericolosa</h3>
               <p className="text-gray-600 mb-4">
-                L'eliminazione di un dipendente rimuoverà permanentemente tutti i suoi dati dal sistema.
+                L&apos;eliminazione di un dipendente rimuoverà permanentemente tutti i suoi dati dal sistema.
               </p>
               <button
                 onClick={handleDelete}

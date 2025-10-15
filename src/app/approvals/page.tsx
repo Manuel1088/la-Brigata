@@ -1,7 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useNotifications } from '@/hooks/useNotifications'
 import ApprovalsSwaps from '@/components/approvals/Swaps'
@@ -21,8 +21,36 @@ export interface ApprovalItem {
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   createdAt: string
   dueDate?: string
-  metadata: Record<string, any>
+  metadata: ApprovalMetadata
   actions: string[]
+}
+
+interface ApprovalMetadata {
+  department?: string
+  shiftId?: string
+  dateISO?: string
+  requestId?: string
+  employeeId?: string
+  [key: string]: unknown
+}
+
+interface LeaveRequestLocal {
+  startDate: string
+  endDate: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+}
+
+interface SwapRequestLocal {
+  dateISO: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+}
+
+interface EmployeeRequestLocal {
+  status: 'pending' | 'approved' | 'rejected'
+}
+
+interface PayrollRequestLocal {
+  status: 'pending' | 'approved' | 'rejected'
 }
 
 export default function ApprovalsPage() {
@@ -90,7 +118,7 @@ export default function ApprovalsPage() {
 
       // Integra Ferie/Permessi
       if (canEmployees) {
-        const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]') as Array<any>
+        const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]') as LeaveRequestLocal[]
         for (const req of leaveRequests) {
           const start = new Date(req.startDate)
           const end = new Date(req.endDate)
@@ -108,7 +136,7 @@ export default function ApprovalsPage() {
 
       // Integra Cambi Turno
       if (canShifts) {
-        const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]') as Array<any>
+        const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]') as SwapRequestLocal[]
         for (const req of swapRequests) {
           const d = new Date(req.dateISO)
           if (d.getFullYear() === year && d.getMonth() === month) {
@@ -120,7 +148,7 @@ export default function ApprovalsPage() {
       }
 
       setDayStatuses(statuses)
-    } catch (e) {
+    } catch {
       setDayStatuses({})
     }
   }, [currentMonth, canEmployees, canShifts])
@@ -147,29 +175,29 @@ export default function ApprovalsPage() {
       try {
         // Conteggio richieste swap turni
         if (canShifts) {
-          const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]')
-          swaps = swapRequests.filter((req: any) => req.status === 'PENDING').length
+          const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]') as SwapRequestLocal[]
+          swaps = swapRequests.filter((req) => req.status === 'PENDING').length
           count += swaps
         }
         
         // Conteggio richieste dipendenti
         if (canEmployees) {
-          const employeeRequests = JSON.parse(localStorage.getItem('employee_requests') || '[]')
-          employees = employeeRequests.filter((req: any) => req.status === 'pending').length
+          const employeeRequests = JSON.parse(localStorage.getItem('employee_requests') || '[]') as EmployeeRequestLocal[]
+          employees = employeeRequests.filter((req) => req.status === 'pending').length
           count += employees
         }
         
         // Conteggio richieste payroll
         if (canPayroll) {
-          const payrollRequests = JSON.parse(localStorage.getItem('payroll_requests') || '[]')
-          payroll = payrollRequests.filter((req: any) => req.status === 'pending').length
+          const payrollRequests = JSON.parse(localStorage.getItem('payroll_requests') || '[]') as PayrollRequestLocal[]
+          payroll = payrollRequests.filter((req) => req.status === 'pending').length
           count += payroll
         }
 
         // Conteggio richieste ferie/permessi
         if (canEmployees) {
-          const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]')
-          leaves = leaveRequests.filter((req: any) => req.status === 'PENDING').length
+          const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]') as LeaveRequestLocal[]
+          leaves = leaveRequests.filter((req) => req.status === 'PENDING').length
           count += leaves
         }
       } catch (error) {
@@ -238,7 +266,7 @@ export default function ApprovalsPage() {
     }
   }, [visibleTabs, activeTab])
 
-  const handleBulkAction = async (action: string, itemIds: string[]) => {
+  const handleBulkAction = async (action: string, _itemIds: string[]) => {
     try {
       // Implementa azioni bulk
       switch (action) {
@@ -254,7 +282,7 @@ export default function ApprovalsPage() {
       
       // Aggiorna conteggio
       window.dispatchEvent(new CustomEvent('approvals_updated'))
-    } catch (error) {
+    } catch {
       notifyCustom('ERROR', 'SYSTEM', 'Approvazioni', 'Errore nell\'esecuzione dell\'azione')
     }
   }
@@ -357,7 +385,7 @@ export default function ApprovalsPage() {
                 const total = new Date(year, month + 1, 0).getDate()
                 const firstDay = new Date(year, month, 1)
                 const leading = getMondayIndex(firstDay) // numero di celle vuote prima del 1°
-                const cells: any[] = []
+                const cells: ReactElement[] = []
                 for (let i = 0; i < leading; i++) {
                   cells.push(<div key={`lead_${i}`} className="h-12" />)
                 }

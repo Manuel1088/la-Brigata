@@ -20,16 +20,16 @@ export default function WalkinsReport() {
   const [areas, setAreas] = useState<Array<{id: string, name: string}>>([])
   const [walkins, setWalkins] = useState<WalkinEntry[]>([])
 
-  const { data: companyData } = useCompanyData()
+  const { data: companyData } = useCompanyData(undefined)
 
   useEffect(() => {
-    const fiscal: string | undefined = companyData?.company?.fiscalCode
+    const fiscal: string | undefined = (companyData as { company?: { fiscalCode?: string } } | undefined)?.company?.fiscalCode
     if (!fiscal) return
     const key = `booking_areas_v1::${fiscal}`
     try {
       const raw = localStorage.getItem(key)
-      const areasData = raw ? JSON.parse(raw) : []
-      const list = (areasData || []).map((a: any) => ({ id: a.id, name: a.name }))
+      const areasData = raw ? JSON.parse(raw) : [] as Array<{ id: string; name: string }>
+      const list = (areasData || []).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name }))
       setAreas(list)
       if (!selectedArea && list.length > 0) setSelectedArea(list[0].id)
     } catch {

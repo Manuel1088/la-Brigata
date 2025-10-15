@@ -9,11 +9,11 @@ interface Employment {
   restaurantId: string
   status: string
   role: string
-  department: string | null
-  restaurant: {
+  department?: string | null
+  restaurant?: {
     id: string
     name: string
-    address: string | null
+    address?: string | null
   }
 }
 
@@ -32,7 +32,7 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
   const { data: session } = useSession()
   const [activeRestaurantId, setActiveRestaurantIdState] = useState<string | null>(null)
 
-  const userId = (session?.user as any)?.id
+  const userId = session?.user?.id
 
   // ✅ Usa il nuovo hook con SWR (cache + deduplicazione automatica)
   const { employments: rawEmployments, isLoading: loading, mutate } = useEmployments({
@@ -42,14 +42,14 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
   })
 
   // Filtra solo employments ACTIVE (doppia sicurezza)
-  const employments = rawEmployments.filter((e: any) => e.status === 'ACTIVE')
+  const employments = rawEmployments.filter((e) => e.status === 'ACTIVE')
 
   useEffect(() => {
     // Seleziona automaticamente il primo restaurant se non ce n'è uno attivo
     if (!activeRestaurantId && employments.length > 0 && userId) {
       const savedRestaurantId = localStorage.getItem(`activeRestaurant_${userId}`)
       
-      if (savedRestaurantId && employments.find((e: any) => e.restaurantId === savedRestaurantId)) {
+      if (savedRestaurantId && employments.find((e) => e.restaurantId === savedRestaurantId)) {
         setActiveRestaurantIdState(savedRestaurantId)
       } else {
         setActiveRestaurantIdState(employments[0].restaurantId)

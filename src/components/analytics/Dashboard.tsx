@@ -10,7 +10,7 @@ interface DashboardMetric {
   trend: 'up' | 'down' | 'stable'
   icon: string
   color: string
-  details: Record<string, any>
+  details: Record<string, number | string | boolean | string[] | number[]>
 }
 
 export default function AnalyticsDashboard() {
@@ -123,7 +123,7 @@ export default function AnalyticsDashboard() {
       setMetrics(mockMetrics)
     } catch (error) {
       console.error('Errore nel caricamento metriche dashboard:', error)
-      notifyCustom('Errore nel caricamento metriche dashboard', 'error')
+      notifyCustom('ERROR', 'SYSTEM', 'Analytics', 'Errore nel caricamento metriche dashboard')
     } finally {
       setLoading(false)
     }
@@ -197,7 +197,7 @@ export default function AnalyticsDashboard() {
                 <option value="week">Questa Settimana</option>
                 <option value="month">Questo Mese</option>
                 <option value="quarter">Questo Trimestre</option>
-                <option value="year">Quest\'Anno</option>
+                  <option value="year">Quest&apos;Anno</option>
               </select>
             </div>
             
@@ -320,7 +320,7 @@ export default function AnalyticsDashboard() {
                 <span className="font-semibold text-green-800">Punto di Forza</span>
               </div>
               <p className="text-green-700 text-sm">
-                Il fatturato è cresciuto del 12.5% questo mese, superando l'obiettivo del 10%.
+                Il fatturato è cresciuto del 12.5% questo mese, superando l&apos;obiettivo del 10%.
               </p>
             </div>
             
@@ -330,7 +330,7 @@ export default function AnalyticsDashboard() {
                 <span className="font-semibold text-yellow-800">Attenzione</span>
               </div>
               <p className="text-yellow-700 text-sm">
-                L'efficienza operativa è scesa del 2.1%. Rivedere i processi di servizio.
+                L&apos;efficienza operativa è scesa del 2.1%. Rivedere i processi di servizio.
               </p>
             </div>
             

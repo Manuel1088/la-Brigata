@@ -38,8 +38,8 @@ export default function AdminPage() {
     }
     
     // 🛡️ SOLO ADMIN (livello 11) può accedere
-    const userRole = (session.user as any)?.role
-    const userLevel = (session.user as any)?.level
+    const userRole = session.user?.role
+    const userLevel = session.user?.level
     
     if (userRole !== 'ADMIN' || userLevel !== 11) {
       router.push('/dashboard')
@@ -124,8 +124,8 @@ export default function AdminPage() {
   }
 
   // 🛡️ Controllo accesso ADMIN
-  const userRole = (session?.user as any)?.role
-  const userLevel = (session?.user as any)?.level
+  const userRole = session?.user?.role
+  const userLevel = session?.user?.level
   const isAdmin = userRole === 'ADMIN' && userLevel === 11
 
   if (status === 'loading') {

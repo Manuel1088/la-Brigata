@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNotifications } from '@/hooks/useNotifications'
-import { formatCurrency, safeSum } from '@/lib/formatNumber'
+import { safeSum } from '@/lib/formatNumber'
 
 interface FinancialReport {
   id: string
@@ -10,7 +10,7 @@ interface FinancialReport {
   amount: number
   trend: 'up' | 'down' | 'stable'
   percentage: number
-  details: Record<string, any>
+  details: Record<string, number | string>
 }
 
 type ReportPeriod = 'week' | 'month' | 'quarter' | 'year'
@@ -23,11 +23,7 @@ export default function ReportsFinancial() {
   const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>('month')
   const [selectedType, setSelectedType] = useState<ReportType>('all')
 
-  useEffect(() => {
-    loadFinancialReports()
-  }, [selectedPeriod])
-
-  const loadFinancialReports = async () => {
+  const loadFinancialReports = useCallback(async () => {
     try {
       setLoading(true)
       // TODO: Sostituire con chiamata API reale
@@ -103,7 +99,11 @@ export default function ReportsFinancial() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedPeriod, notifyCustom])
+
+  useEffect(() => {
+    void loadFinancialReports()
+  }, [loadFinancialReports])
 
   const handleExport = async (reportType: string, format: 'csv' | 'pdf' = 'csv') => {
     try {
@@ -214,7 +214,7 @@ export default function ReportsFinancial() {
               <option value="week">Questa Settimana</option>
               <option value="month">Questo Mese</option>
               <option value="quarter">Questo Trimestre</option>
-              <option value="year">Quest'Anno</option>
+              <option value="year">Quest&apos;Anno</option>
             </select>
           </div>
           
@@ -294,11 +294,11 @@ export default function ReportsFinancial() {
                 <>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Media giornaliera:</span>
-                    <span className="font-medium">{formatCurrency(report.details.dailyAverage)}</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.dailyAverage))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Giorno migliore:</span>
-                    <span className="font-medium">{report.details.topDay} ({formatCurrency(report.details.topDayAmount)})</span>
+                    <span className="font-medium">{report.details.topDay} ({formatCurrency(Number(report.details.topDayAmount))})</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Totale entrate:</span>
@@ -311,7 +311,7 @@ export default function ReportsFinancial() {
                 <>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Media giornaliera:</span>
-                    <span className="font-medium">{formatCurrency(report.details.dailyAverage)}</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.dailyAverage))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Ordini totali:</span>
@@ -319,7 +319,7 @@ export default function ReportsFinancial() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Ticket medio:</span>
-                    <span className="font-medium">{formatCurrency(report.details.averageOrder)}</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.averageOrder))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Ora di punta:</span>
@@ -332,15 +332,15 @@ export default function ReportsFinancial() {
                 <>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Ore totali:</span>
-                    <span className="font-medium">{report.details.totalHours}h</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.totalHours))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Tariffa media:</span>
-                    <span className="font-medium">{formatCurrency(report.details.averageHourlyRate)}/h</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.averageHourlyRate))}/h</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Ore straordinarie:</span>
-                    <span className="font-medium">{report.details.overtimeHours}h ({formatCurrency(report.details.overtimeAmount)})</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.overtimeHours))}h ({formatCurrency(Number(report.details.overtimeAmount))})</span>
                   </div>
                 </>
               )}
@@ -349,19 +349,19 @@ export default function ReportsFinancial() {
                 <>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Forniture:</span>
-                    <span className="font-medium">{formatCurrency(report.details.supplies)}</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.supplies))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Utilità:</span>
-                    <span className="font-medium">{formatCurrency(report.details.utilities)}</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.utilities))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Manutenzione:</span>
-                    <span className="font-medium">{formatCurrency(report.details.maintenance)}</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.maintenance))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Altro:</span>
-                    <span className="font-medium">{formatCurrency(report.details.other)}</span>
+                    <span className="font-medium">{formatCurrency(Number(report.details.other))}</span>
                   </div>
                 </>
               )}

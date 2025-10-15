@@ -86,7 +86,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
       saveSwapRequests(updatedRequests)
       notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', 'Cambio turno approvato')
       onUpdate()
-      logReadAction('shift_swap_approved', { requestId })
+      logReadAction('shift_swap_approved')
     } catch (error) {
       notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', 'Errore nell\'approvazione del cambio turno')
     }
@@ -113,7 +113,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
       saveSwapRequests(updatedRequests)
       notifyCustom('WARNING', 'SHIFTS', 'Cambio turno', 'Cambio turno rifiutato')
       onUpdate()
-      logReadAction('shift_swap_rejected', { requestId, reason })
+      logReadAction('shift_swap_rejected')
     } catch (error) {
       notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', 'Errore nel rifiuto del cambio turno')
     }
@@ -136,7 +136,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
       saveSwapRequests(updatedRequests)
       notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', `${requestIds.length} cambi turno approvati`)
       onUpdate()
-      logReadAction('shift_swaps_bulk_approved', { count: requestIds.length })
+      logReadAction('shift_swaps_bulk_approved')
     } catch (error) {
       notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', 'Errore nell\'approvazione multipla')
     }
@@ -150,7 +150,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
       return true
     })
     .sort((a, b) => {
-      let aValue: any, bValue: any
+      let aValue: string | Date, bValue: string | Date
       
       switch (sortBy) {
         case 'createdAt':

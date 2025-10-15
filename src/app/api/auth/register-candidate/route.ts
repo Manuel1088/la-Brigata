@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       phone?: string
       password: string
       department?: string
-      candidateData?: any
+      candidateData?: unknown
     }
 
     // Verifica se email già esiste
