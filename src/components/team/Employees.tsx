@@ -4,6 +4,73 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
+// Default employees fallback (top-level to avoid useMemo dependencies)
+const EMPLOYEES_DEFAULT = [
+  {
+    id: '1',
+    name: 'Giuseppe Rossi',
+    email: 'giuseppe.rossi@brigata.it',
+    phone: '+39 333 123 4567',
+    role: 'EXECUTIVE_CHEF',
+    department: 'cucina',
+    level: 5,
+    hourlyRate: 25.0,
+    contractType: 'full-time',
+    startDate: '2020-03-15',
+    isActive: true,
+    avatar: '👨‍🍳',
+    skills: ['Cucina Italiana', 'Menu Design', 'Team Management', 'Cost Control'],
+    personalInfo: {
+      fiscalCode: 'RSSGPP80A01H501U',
+      address: 'Via Roma 123, 20100 Milano',
+      emergencyContact: 'Maria Rossi - +39 333 987 6543'
+    },
+    notes: 'Chef esperto con 15 anni di esperienza. Specializzato in cucina tradizionale italiana.'
+  },
+  {
+    id: '2',
+    name: 'Anna Bianchi',
+    email: 'anna.bianchi@brigata.it',
+    phone: '+39 333 234 5678',
+    role: 'SOUS_CHEF',
+    department: 'cucina',
+    level: 4,
+    hourlyRate: 20.0,
+    contractType: 'full-time',
+    startDate: '2021-06-01',
+    isActive: true,
+    avatar: '👩‍🍳',
+    skills: ['Pastry', 'Sauces', 'Kitchen Organization', 'Training'],
+    personalInfo: {
+      fiscalCode: 'BNCNNA85B02H501V',
+      address: 'Corso Italia 456, 20100 Milano',
+      emergencyContact: 'Marco Bianchi - +39 333 876 5432'
+    },
+    notes: 'Sous chef esperta in pasticceria. Ottima gestione del team.'
+  },
+  {
+    id: '3',
+    name: 'Marco Verdi',
+    email: 'marco.verdi@brigata.it',
+    phone: '+39 333 345 6789',
+    role: 'RESPONSABILE_SALA',
+    department: 'sala',
+    level: 4,
+    hourlyRate: 18.0,
+    contractType: 'full-time',
+    startDate: '2019-09-15',
+    isActive: true,
+    avatar: '👨‍💼',
+    skills: ['Customer Service', 'Wine Knowledge', 'Team Leadership', 'Sales'],
+    personalInfo: {
+      fiscalCode: 'VRDMRC83C03H501W',
+      address: 'Piazza Duomo 789, 20100 Milano',
+      emergencyContact: 'Laura Verdi - +39 333 765 4321'
+    },
+    notes: 'Responsabile sala con ottime competenze nel servizio clienti.'
+  }
+]
+
 export default function TeamEmployees() {
   // session/router non usati in questa vista
   const { canManageEmployees } = usePermissions()
@@ -15,76 +82,9 @@ export default function TeamEmployees() {
 
   const { employees: employeesData } = useEmployeeContext()
 
-  // Mock data per dipendenti (in produzione verrà dal database)
-  const employeesDefault = [
-    {
-      id: '1',
-      name: 'Giuseppe Rossi',
-      email: 'giuseppe.rossi@brigata.it',
-      phone: '+39 333 123 4567',
-      role: 'EXECUTIVE_CHEF',
-      department: 'cucina',
-      level: 5,
-      hourlyRate: 25.00,
-      contractType: 'full-time',
-      startDate: '2020-03-15',
-      isActive: true,
-      avatar: '👨‍🍳',
-      skills: ['Cucina Italiana', 'Menu Design', 'Team Management', 'Cost Control'],
-      personalInfo: {
-        fiscalCode: 'RSSGPP80A01H501U',
-        address: 'Via Roma 123, 20100 Milano',
-        emergencyContact: 'Maria Rossi - +39 333 987 6543'
-      },
-      notes: 'Chef esperto con 15 anni di esperienza. Specializzato in cucina tradizionale italiana.'
-    },
-    {
-      id: '2',
-      name: 'Anna Bianchi',
-      email: 'anna.bianchi@brigata.it',
-      phone: '+39 333 234 5678',
-      role: 'SOUS_CHEF',
-      department: 'cucina',
-      level: 4,
-      hourlyRate: 20.00,
-      contractType: 'full-time',
-      startDate: '2021-06-01',
-      isActive: true,
-      avatar: '👩‍🍳',
-      skills: ['Pastry', 'Sauces', 'Kitchen Organization', 'Training'],
-      personalInfo: {
-        fiscalCode: 'BNCNNA85B02H501V',
-        address: 'Corso Italia 456, 20100 Milano',
-        emergencyContact: 'Marco Bianchi - +39 333 876 5432'
-      },
-      notes: 'Sous chef esperta in pasticceria. Ottima gestione del team.'
-    },
-    {
-      id: '3',
-      name: 'Marco Verdi',
-      email: 'marco.verdi@brigata.it',
-      phone: '+39 333 345 6789',
-      role: 'RESPONSABILE_SALA',
-      department: 'sala',
-      level: 4,
-      hourlyRate: 18.00,
-      contractType: 'full-time',
-      startDate: '2019-09-15',
-      isActive: true,
-      avatar: '👨‍💼',
-      skills: ['Customer Service', 'Wine Knowledge', 'Team Leadership', 'Sales'],
-      personalInfo: {
-        fiscalCode: 'VRDMRC83C03H501W',
-        address: 'Piazza Duomo 789, 20100 Milano',
-        emergencyContact: 'Laura Verdi - +39 333 765 4321'
-      },
-      notes: 'Responsabile sala con ottime competenze nel servizio clienti.'
-    }
-  ]
-
   // Filtra dipendenti REALI (escludi PROPRIETARIO non lavoratore e ADMIN)
   const actualEmployees = useMemo(() => {
-    const base = employeesData && employeesData.length > 0 ? employeesData : employeesDefault
+    const base = employeesData && employeesData.length > 0 ? employeesData : EMPLOYEES_DEFAULT
     return base.filter(emp => {
       const role = emp.role || ''
       // Escludi PROPRIETARIO (non lavoratore) e ADMIN (non sono dipendenti)
