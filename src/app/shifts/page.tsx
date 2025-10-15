@@ -212,45 +212,24 @@ export default function ShiftsPage() {
                 return (
                   <div
                     key={index}
-                    className={`border-r border-b last:border-r-0 ${
-                      isToday ? 'bg-blue-50' : ''
-                    }`}
+                    className={`border-r border-b last:border-r-0`}
                   >
                     {/* Giorno Header */}
-                    <div className={`p-3 text-center border-b ${
-                      isToday ? 'bg-blue-500 text-white' : 'bg-gray-50'
-                    }`}>
+                    <div className={`p-3 text-center border-b bg-gray-50`}>
                       <div className="text-xs font-medium">{dayNames[index]}</div>
-                      <div className={`text-lg font-bold ${
-                        isToday ? 'text-white' : 'text-gray-900'
-                      }`}>
+                      <div className={`text-lg font-bold ${isToday ? 'text-red-600' : 'text-gray-900'}`}>
                         {day.getDate()}
                       </div>
                     </div>
                     
                     {/* Turno Content */}
-                    <div className="p-3 min-h-[120px]">
+                    <div className="p-3 min-h-[120px] flex items-center justify-center">
                       {shift ? (
-                        <div className={`rounded-lg p-3 h-full ${
-                          shift.status === 'scheduled' ? 'bg-blue-100 border-2 border-blue-300' :
-                          shift.status === 'completed' ? 'bg-green-100 border-2 border-green-300' :
-                          'bg-gray-100 border-2 border-gray-300'
-                        }`}>
-                          <div className="text-xs font-semibold text-gray-900 mb-1">
-                            {shift.role}
-                          </div>
-                          <div className="text-sm font-bold text-blue-700">
-                            {shift.startTime} - {shift.endTime}
-                          </div>
-                          {shift.status === 'completed' && (
-                            <div className="text-xs text-green-600 mt-1">✓ Completato</div>
-                          )}
+                        <div className="text-sm font-semibold text-gray-900 text-center">
+                          {shift.role}
                         </div>
                       ) : (
-                        <div className="text-center py-6 text-gray-400">
-                          <div className="text-2xl">⚪</div>
-                          <div className="text-xs mt-1">Riposo</div>
-                        </div>
+                        <div className="text-xs text-gray-400 text-center">Riposo</div>
                       )}
                     </div>
                   </div>
@@ -280,13 +259,10 @@ export default function ShiftsPage() {
               <div className="text-2xl font-bold text-purple-600">{7 - myShifts.length}</div>
             </div>
           </div>
-
-          {/* Legenda */}
+ 
+          {/* Legenda ridotta: rimosse icone/pallini, resta solo catalogo turni */}
           <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-700">
-              🔵 Turno Lavorativo | ⚪ Riposo | 🟢 Ferie | 🟣 Evento Aziendale
-            </p>
-            <div className="mt-3 text-sm">
+            <div className="text-sm">
               <div className="font-semibold text-blue-900 mb-1">Turni disponibili nel tuo reparto</div>
               <ul className="list-disc list-inside text-blue-800">
                 {deptShifts.map((s, idx) => (

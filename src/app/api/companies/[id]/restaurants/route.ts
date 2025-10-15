@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
-type Params = { params: { id: string } }
-
-export async function POST(req: NextRequest, params: Promise<Params["params"]>) {
+export async function POST(
+  req: NextRequest,
+  context: unknown
+) {
   try {
-    const { id: companyId } = await params
+    const { params } = (context as { params?: { id?: string } }) ?? {}
+    const companyId = params?.id
     if (!companyId) return NextResponse.json({ error: 'Missing company id' }, { status: 400 })
 
     const { name, address, phone } = await req.json()

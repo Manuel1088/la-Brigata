@@ -33,9 +33,9 @@ export default function AdminAudit() {
 
   useEffect(() => {
     loadAuditData()
-  }, [loadAuditData])
+  }, [])
 
-  const loadAuditData = async () => {
+  async function loadAuditData() {
     try {
       const [logsData, statsData] = await Promise.all([
         getLogs({ limit: 100 }),

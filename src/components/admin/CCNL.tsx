@@ -27,9 +27,9 @@ export default function AdminCCNL() {
 
   useEffect(() => {
     loadCCNLEntries()
-  }, [loadCCNLEntries])
+  }, [])
 
-  const loadCCNLEntries = async () => {
+  async function loadCCNLEntries() {
     try {
       // Mock data - in produzione verrà dal database
       const mockEntries: CCNLEntry[] = [

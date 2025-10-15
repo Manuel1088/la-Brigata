@@ -1,12 +1,12 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
-// import { LEAVE_TYPES } from '@/lib/leaveSystem'
+import { getLeaveBalances, type LeaveBalance } from '@/lib/leaveSystem'
 
-// Stati richiesta ferie
-export enum LeaveStatus {
+// Stati richiesta ferie (solo locale, non esportato)
+enum LeaveStatus {
   SUBMITTED = 'SUBMITTED',
   MANAGER_MODIFIED = 'MANAGER_MODIFIED',
   EMPLOYEE_COUNTER = 'EMPLOYEE_COUNTER',
@@ -25,6 +25,24 @@ export default function LeavesPage() {
   const [form, setForm] = useState<{ type: string; startDate: string; endDate: string; reason: string }>({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
   const userId: string = session?.user?.id || ''
   const department = session?.user?.department || ''
+  // Calendario
+  const today = new Date()
+  const [currentMonth, setCurrentMonth] = useState<Date>(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
+  const [dayStatuses, setDayStatuses] = useState<Record<string, 'pending' | 'approved' | null>>({})
+
+  const formatISO = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${dd}`
+  }
+  const getMondayIndex = (d: Date) => {
+    const jsDay = d.getDay() // 0=Sun..6=Sat
+    return (jsDay + 6) % 7 // 0=Mon..6=Sun
+  }
   interface LeaveRequestLocal {
     id: string
     userId: string
@@ -37,6 +55,7 @@ export default function LeavesPage() {
     createdAt: string
   }
   const [myRequests, setMyRequests] = useState<LeaveRequestLocal[]>([])
+  const [balances, setBalances] = useState<LeaveBalance[]>([])
 
   // Load personal requests safely (no state updates during render)
   useEffect(() => {
@@ -54,6 +73,57 @@ export default function LeavesPage() {
     window.addEventListener('leave_system_updated', onUpdate)
     return () => window.removeEventListener('leave_system_updated', onUpdate)
   }, [userId])
+
+  // Carica saldi Ferie/ROL e ascolta aggiornamenti
+  useEffect(() => {
+    const loadBalances = () => {
+      if (!userId) { setBalances([]); return }
+      try {
+        const b = getLeaveBalances(userId)
+        setBalances(b)
+      } catch {
+        setBalances([])
+      }
+    }
+    loadBalances()
+    const onBalances = () => loadBalances()
+    window.addEventListener('leave_balances_updated', onBalances)
+    return () => window.removeEventListener('leave_balances_updated', onBalances)
+  }, [userId])
+
+  // Costruisce stato giorni del mese corrente in base alle MIE richieste
+  useEffect(() => {
+    try {
+      const year = currentMonth.getFullYear()
+      const month = currentMonth.getMonth()
+      const totalDays = new Date(year, month + 1, 0).getDate()
+      const statuses: Record<string, 'pending' | 'approved' | null> = {}
+      // Inizializza tutti i giorni del mese a null
+      for (let day = 1; day <= totalDays; day++) {
+        const d = new Date(year, month, day)
+        statuses[formatISO(d)] = null
+      }
+      // Integra solo le richieste dell'utente corrente
+      for (const req of myRequests) {
+        const start = new Date(req.startDate)
+        const end = new Date(req.endDate)
+        for (let day = 1; day <= totalDays; day++) {
+          const d = new Date(year, month, day)
+          const key = formatISO(d)
+          if (
+            d >= new Date(start.getFullYear(), start.getMonth(), start.getDate()) &&
+            d <= new Date(end.getFullYear(), end.getMonth(), end.getDate())
+          ) {
+            if (req.status === 'PENDING') statuses[key] = 'pending'
+            else if (req.status === 'APPROVED' && !statuses[key]) statuses[key] = 'approved'
+          }
+        }
+      }
+      setDayStatuses(statuses)
+    } catch {
+      setDayStatuses({})
+    }
+  }, [currentMonth, myRequests])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -100,7 +170,7 @@ export default function LeavesPage() {
 
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         
-        {/* Link approvazioni (solo Manager/Owner) */}
+        {/* Link approvazioni (solo chi gestisce il team) */}
         {isManager && (
           <div className="mb-4">
             <button onClick={() => router.push('/approvals')} className="text-sm text-orange-600 font-semibold hover:underline">
@@ -112,20 +182,126 @@ export default function LeavesPage() {
         {/* VISTA: Le Mie Richieste */}
         {activeView === 'my-requests' && (
           <div className="space-y-6">
-            {/* Saldo Ferie */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-green-50 rounded-lg p-4 text-center border border-green-200">
-                <div className="text-3xl font-bold text-green-600">26</div>
-                <div className="text-sm text-green-700">Giorni Totali</div>
+            {/* Calendario mese corrente (solo richieste personali) */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <button
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                    className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                  >
+                    ←
+                  </button>
+                  <div className={`font-semibold ${currentMonth.getMonth() === today.getMonth() && currentMonth.getFullYear() === today.getFullYear() ? 'text-red-700' : 'text-gray-900'}`}>
+                    {currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+                  </div>
+                  <button
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                    className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                  >
+                    →
+                  </button>
+                </div>
+                <div className="grid grid-cols-7 text-xs text-gray-500 mb-2 px-1">
+                  {['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].map(d => (
+                    <div key={d} className="text-center">{d}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {(() => {
+                    const year = currentMonth.getFullYear()
+                    const month = currentMonth.getMonth()
+                    const total = new Date(year, month + 1, 0).getDate()
+                    const firstDay = new Date(year, month, 1)
+                    const leading = getMondayIndex(firstDay)
+                    const cells: ReactElement[] = []
+                    for (let i = 0; i < leading; i++) {
+                      cells.push(<div key={`lead_${i}`} className="h-12" />)
+                    }
+                    for (let day = 1; day <= total; day++) {
+                      const d = new Date(year, month, day)
+                      const key = formatISO(d)
+                      const status = dayStatuses[key]
+                      const dotClass = status === 'approved' ? 'bg-green-500' : status === 'pending' ? 'bg-yellow-500' : 'bg-transparent'
+                      const isToday = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate()
+                      cells.push(
+                        <div key={key} className="h-12 flex flex-col items-center justify-center">
+                          <div className={`text-sm ${isToday ? 'text-red-700 font-semibold' : 'text-gray-700'}`}>{day}</div>
+                          <div className={`w-2 h-2 rounded-full mt-1 ${dotClass}`}></div>
+                        </div>
+                      )
+                    }
+                    return cells
+                  })()}
+                </div>
+                <div className="flex items-center gap-4 mt-3 text-xs text-gray-600">
+                  <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Approvato</div>
+                  <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500 inline-block"></span> In attesa</div>
+                </div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4 text-center border border-orange-200">
-                <div className="text-3xl font-bold text-orange-600">10</div>
-                <div className="text-sm text-orange-700">Usati</div>
-              </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
-                <div className="text-3xl font-bold text-blue-600">16</div>
-                <div className="text-sm text-blue-700">Disponibili</div>
-              </div>
+            </div>
+
+            {/* Riquadri Ferie e ROL */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Ferie */}
+              {(() => {
+                const vac = balances.find(b => b.type === 'VACATION')
+                const maturate = vac?.total ?? 0
+                const godute = vac?.used ?? 0
+                const residue = vac?.remaining ?? 0
+                return (
+                  <div className="bg-white rounded-lg p-5 border shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-xl font-semibold text-gray-900">🏖️ Ferie</div>
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 border border-blue-200">Annuale</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="text-2xl font-bold text-blue-700">{maturate}</div>
+                        <div className="text-xs text-blue-700 mt-1">Maturate</div>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="text-2xl font-bold text-green-700">{residue}</div>
+                        <div className="text-xs text-green-700 mt-1">Residue</div>
+                      </div>
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                        <div className="text-2xl font-bold text-orange-700">{godute}</div>
+                        <div className="text-xs text-orange-700 mt-1">Godute</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* ROL */}
+              {(() => {
+                const rol = balances.find(b => b.type === 'ROL')
+                const maturate = rol?.total ?? 0
+                const godute = rol?.used ?? 0
+                const residue = rol?.remaining ?? 0
+                return (
+                  <div className="bg-white rounded-lg p-5 border shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-xl font-semibold text-gray-900">⏰ ROL</div>
+                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">Ore</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="text-2xl font-bold text-blue-700">{maturate}</div>
+                        <div className="text-xs text-blue-700 mt-1">Maturate</div>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="text-2xl font-bold text-green-700">{residue}</div>
+                        <div className="text-xs text-green-700 mt-1">Residue</div>
+                      </div>
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                        <div className="text-2xl font-bold text-orange-700">{godute}</div>
+                        <div className="text-xs text-orange-700 mt-1">Godute</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Nuova Richiesta */}

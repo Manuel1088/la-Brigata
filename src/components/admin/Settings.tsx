@@ -28,7 +28,7 @@ export default function AdminSettings() {
     loadSettings()
   }, [])
 
-  const loadSettings = async () => {
+  async function loadSettings() {
     try {
       // Mock settings data
       const mockSettings: SystemSetting[] = [

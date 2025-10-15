@@ -30,7 +30,7 @@ export default function AdminPermissions() {
     loadPermissions()
   }, [])
 
-  const loadPermissions = async () => {
+  async function loadPermissions() {
     try {
       // Mock permissions data
       const mockPermissions: Permission[] = [

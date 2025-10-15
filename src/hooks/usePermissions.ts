@@ -56,7 +56,8 @@ export function usePermissions() {
 
   // Controlli specifici per sezioni
   const canManageEmployees = (): boolean => {
-    return canAny(['personale_view', 'personale_create', 'personale_edit'])
+    // Richiede permessi gestionali reali (non solo view)
+    return canAny(['personale_create', 'personale_edit', 'personale_activate', 'personale_salary'])
   }
 
   const canManageTips = (): boolean => {
