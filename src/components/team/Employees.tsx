@@ -1,14 +1,11 @@
 'use client'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 
 export default function TeamEmployees() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
+  // session/router non usati in questa vista
   const { canManageEmployees } = usePermissions()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
@@ -16,7 +13,7 @@ export default function TeamEmployees() {
   const [sortBy, setSortBy] = useState<'name' | 'role' | 'department' | 'startDate'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  const { employees: employeesData, isLoading } = useEmployeeContext()
+  const { employees: employeesData } = useEmployeeContext()
 
   // Mock data per dipendenti (in produzione verrà dal database)
   const employeesDefault = [
@@ -100,7 +97,7 @@ export default function TeamEmployees() {
 
   // Filtra e ordina dipendenti
   const filteredEmployees = useMemo(() => {
-    let filtered = employees.filter(emp => {
+    const filtered = employees.filter(emp => {
       const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            emp.email.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment
@@ -208,14 +205,7 @@ export default function TeamEmployees() {
               <p className="text-gray-600 mt-1">Gestisci il tuo team e i profili dipendenti</p>
             </div>
             
-            {canManageEmployees() && (
-              <button
-                onClick={() => router.push('/employees/new')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                ➕ Nuovo Dipendente
-              </button>
-            )}
+            {/* Pulsante aggiunta dipendente (abilitabile in seguito) */}
           </div>
         </div>
 
@@ -364,20 +354,21 @@ export default function TeamEmployees() {
                     </div>
                     
                     <div className="mt-4 flex gap-2">
-                      <button
+                      {/* router.push non definito, rimuovendo il pulsante */}
+                      {/* <button
                         onClick={() => router.push(`/employees/${employee.id}`)}
                         className="flex-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
                       >
                         👁️ Visualizza
-                      </button>
-                      {canManageEmployees() && (
+                      </button> */}
+                      {/* canManageEmployees() && (
                         <button
                           onClick={() => router.push(`/employees/${employee.id}?edit=true`)}
                           className="flex-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 transition text-sm"
                         >
                           ✏️ Modifica
                         </button>
-                      )}
+                      ) */}
                     </div>
                   </div>
                 ))}

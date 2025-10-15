@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+// import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
@@ -21,14 +21,14 @@ type AccessStore = Record<string, AccessConfig>
 type SimpleEmployee = { id: string; name: string; avatar: string; department: string; level: number }
 
 export default function TeamAccess() {
-  const router = useRouter()
-  const { data: session, status } = useSession()
+  // const router = useRouter()
+  const { data: session } = useSession()
   const { canAccessAdmin } = usePermissions()
 
   const [employees, setEmployees] = useState<SimpleEmployee[]>([])
-  const { employees: employeesData, mutate: mutateEmployees, isLoading } = useEmployeeContext()
+  const { employees: employeesData, mutate: mutateEmployees } = useEmployeeContext()
   const [accessMap, setAccessMap] = useState<AccessStore>({})
-  const [permMap, setPermMap] = useState<Record<string, { permissions: string[] }>>({})
+  // const [permMap, setPermMap] = useState<Record<string, { permissions: string[] }>>({})
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [pendingChanges, setPendingChanges] = useState<AccessStore>({})
@@ -136,17 +136,6 @@ export default function TeamAccess() {
     { key: 'department', label: 'Reparto' },
     { key: 'all', label: 'Tutti' }
   ]
-
-  if (status === 'loading') {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <div className="text-xl">Caricamento...</div>
-        </div>
-      </div>
-    )
-  }
 
   if (!canAccessAdmin()) {
     return (
