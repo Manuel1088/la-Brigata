@@ -33,7 +33,7 @@ export default function AdminAudit() {
 
   useEffect(() => {
     loadAuditData()
-  }, [])
+  }, [loadAuditData])
 
   const loadAuditData = async () => {
     try {

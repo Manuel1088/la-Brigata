@@ -1,9 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useAudit } from '@/hooks/useAudit'
-import { UserRole } from '@/types/roles'
 
 interface User {
   id: string
@@ -19,7 +17,7 @@ interface User {
 }
 
 export default function AdminUsers() {
-  const { data: session } = useSession()
+  // const { data: session } = useSession()
   const { notifyCustom } = useNotifications()
   const { logReadAction } = useAudit()
   const [users, setUsers] = useState<User[]>([])

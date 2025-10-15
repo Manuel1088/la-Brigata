@@ -27,7 +27,7 @@ export default function AdminCCNL() {
 
   useEffect(() => {
     loadCCNLEntries()
-  }, [])
+  }, [loadCCNLEntries])
 
   const loadCCNLEntries = async () => {
     try {
