@@ -134,6 +134,61 @@ export const LEAVE_TYPES: Record<string, LeaveTypeConfig> = {
     requiresAttachment: false,
     description: 'Permesso per attività sindacali',
     color: 'orange'
+  },
+  MARRIAGE_LEAVE: {
+    id: 'MARRIAGE_LEAVE',
+    name: 'Congedo Matrimonio',
+    icon: '💍',
+    maxDays: 15,
+    noticeDays: 30,
+    autoApprove: false,
+    requiresAttachment: true,
+    description: 'Congedo straordinario per matrimonio (fino a 15 giorni)',
+    color: 'rose'
+  },
+  BEREAVEMENT_LEAVE: {
+    id: 'BEREAVEMENT_LEAVE',
+    name: 'Lutto',
+    icon: '🕊️',
+    maxDays: 3,
+    noticeDays: 0,
+    autoApprove: true,
+    requiresAttachment: true,
+    description: 'Permesso per lutto familiare (fino a 3 giorni)',
+    color: 'gray'
+  },
+  BLOOD_DONATION: {
+    id: 'BLOOD_DONATION',
+    name: 'Donazione Sangue',
+    icon: '🩸',
+    maxDays: 1,
+    noticeDays: 0,
+    autoApprove: true,
+    requiresAttachment: true,
+    description: 'Permesso retribuito per donazione di sangue',
+    color: 'red'
+  },
+  MEDICAL_VISIT: {
+    id: 'MEDICAL_VISIT',
+    name: 'Visita Medica',
+    icon: '🏥',
+    maxDays: 2,
+    noticeDays: 1,
+    autoApprove: false,
+    requiresAttachment: true,
+    description: 'Permesso per visite mediche/terapie documentate',
+    color: 'teal'
+  },
+  UNION_ASSEMBLY: {
+    id: 'UNION_ASSEMBLY',
+    name: 'Assemblea Sindacale',
+    icon: '🗣️',
+    maxDays: 2,
+    noticeDays: 3,
+    autoApprove: false,
+    requiresAttachment: false,
+    description: 'Permesso per partecipazione ad assemblee sindacali',
+    color: 'orange'
   }
 }
 

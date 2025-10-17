@@ -21,7 +21,6 @@ export default function LeavesPage() {
   
   const isManager = canManageEmployees()
   const [activeView, setActiveView] = useState('my-requests')
-  const [isFormOpen, setIsFormOpen] = useState(false)
   const [form, setForm] = useState<{ type: string; startDate: string; endDate: string; reason: string }>({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
   const userId: string = session?.user?.id || ''
   const department = session?.user?.department || ''
@@ -253,7 +252,7 @@ export default function LeavesPage() {
                   <div className="bg-white rounded-lg p-5 border shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-xl font-semibold text-gray-900">🏖️ Ferie</div>
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 border border-blue-200">Annuale</span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 border border-blue-200">Giorni</span>
                     </div>
                     <div className="grid grid-cols-3 gap-3 text-center">
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -304,25 +303,18 @@ export default function LeavesPage() {
               })()}
             </div>
 
-            {/* Nuova Richiesta */}
-            <button
-              onClick={() => setIsFormOpen(true)}
-              className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold shadow"
-            >
-              ➕ Nuova Richiesta
-            </button>
-
-            {isFormOpen && (
-              <div className="bg-white rounded-lg shadow p-6">
+            {/* Nuova Richiesta sempre visibile */}
+            <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Nuova Richiesta</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-sm text-gray-700 mb-1">Tipo</label>
-                    <select
-                      value={form.type}
-                      onChange={(e) => setForm({ ...form, type: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    >
+                    <div className="relative">
+                      <select
+                        value={form.type}
+                        onChange={(e) => setForm({ ...form, type: e.target.value })}
+                        className="w-full px-3 h-10 border border-gray-300 rounded-lg bg-white appearance-none pr-8"
+                      >
                       <option value="VACATION">Ferie</option>
                       <option value="ROL">ROL</option>
                       <option value="PAID_LEAVE">Permesso Retribuito</option>
@@ -331,15 +323,26 @@ export default function LeavesPage() {
                       <option value="PARENTAL_LEAVE">Congedo Parentale</option>
                       <option value="STUDY_LEAVE">Permesso Studio</option>
                       <option value="UNION_LEAVE">Permesso Sindacale</option>
-                    </select>
+                      <option value="MARRIAGE_LEAVE">Congedo Matrimonio</option>
+                      <option value="BEREAVEMENT_LEAVE">Lutto</option>
+                      <option value="BLOOD_DONATION">Donazione Sangue</option>
+                      <option value="MEDICAL_VISIT">Visita Medica</option>
+                      <option value="UNION_ASSEMBLY">Assemblea Sindacale</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                        <svg className="w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm text-gray-700 mb-1">Dal</label>
-                    <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                    <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="w-full px-3 h-10 border border-gray-300 rounded-lg" />
                   </div>
                   <div>
                     <label className="block text-sm text-gray-700 mb-1">Al</label>
-                    <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                    <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="w-full px-3 h-10 border border-gray-300 rounded-lg" />
                   </div>
                 </div>
                 <div className="mt-3">
@@ -347,7 +350,7 @@ export default function LeavesPage() {
                   <input type="text" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Es. Vacanza famiglia" />
                 </div>
                 <div className="flex gap-2 justify-end mt-4">
-                  <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Annulla</button>
+                  <button onClick={() => setForm({ type: 'VACATION', startDate: '', endDate: '', reason: '' })} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Annulla</button>
                   <button
                     onClick={() => {
                       if (!form.startDate || !form.endDate) { alert('Seleziona date'); return }
@@ -359,17 +362,16 @@ export default function LeavesPage() {
                       list.push(newReq)
                       localStorage.setItem('leave_requests', JSON.stringify(list))
                       window.dispatchEvent(new CustomEvent('leave_system_updated'))
-                      setIsFormOpen(false)
                       // ricarica lista
                       try { setMyRequests(list.filter((r) => r.userId === userId)) } catch {}
+                      setForm({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
                     }}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                   >
                     Invia
                   </button>
                 </div>
-              </div>
-            )}
+            </div>
 
             {/* Le Tue Richieste */}
             <div className="bg-white rounded-lg shadow p-6">

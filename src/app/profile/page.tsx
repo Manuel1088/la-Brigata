@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { EmployeeFull } from '@/lib/employees'
+import { useEmployees } from '@/hooks/useEmployees'
 
 // CCNL base mensile per livello (11/2027) per calcolo paga di default
 const CCNL_MONTHLY_BASE: Record<string, number> = {
@@ -57,7 +58,6 @@ export default function ProfilePage() {
       router.push('/login')
       return
     }
-    
     // Inizializza con dati sessione
     setFormData({
       name: session.user?.name || '',
@@ -66,21 +66,14 @@ export default function ProfilePage() {
       role: session.user?.role || '',
       department: session.user?.department || ''
     })
-
-    // Carica dati dipendente per il riquadro "Profilo Dipendente"
-    const companyId = session.user?.companyId
-    const userId = session.user?.id
-    if (companyId && userId) {
-      fetch(`/api/employees?companyId=${encodeURIComponent(companyId)}&active=true`)
-        .then(res => res.json())
-        .then(data => {
-          const employees = Array.isArray(data?.employees) ? (data.employees as EmployeeFull[]) : []
-          const emp = employees.find((e) => e.id === userId) || null
-          setMyEmployee(emp)
-        })
-        .catch(() => setMyEmployee(null))
-    }
   }, [session, status, router])
+
+  const { employees: employeesList } = useEmployees({ active: true })
+  useEffect(() => {
+    if (!session?.user?.id) return
+    const emp = (employeesList as EmployeeFull[]).find(e => e.id === session.user!.id) || null
+    setMyEmployee(emp)
+  }, [employeesList, session?.user?.id])
 
   const handleSave = async () => {
     if (!session?.user?.id) return
