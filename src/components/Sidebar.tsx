@@ -138,7 +138,7 @@ export default function Sidebar() {
         }
       ]
     },
-    // TEAM - Manager e superiori
+    // TEAM - Manager e superiori (e Maître per reparto sala)
     {
       title: 'TEAM',
       items: [
@@ -147,32 +147,32 @@ export default function Sidebar() {
           label: 'Il Team', 
           path: '/team', 
           color: '#FDCB6E',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA]
         },
         { 
           icon: '💰', 
           label: 'Mance Team', 
           path: '/team/mance', 
           color: '#FDCB6E',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA]
         },
         { 
           icon: '📅', 
           label: 'Turni Team', 
           path: '/team/turni', 
           color: '#74B9FF',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA]
         },
         {
           icon: '✅', 
           label: 'Approvazioni', 
           path: '/approvals', 
           color: '#00B894',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE],
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA],
           badge: pendingApprovals > 0 ? pendingApprovals : undefined
         }
       ],
-      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA]
     },
     // GESTIONE - Manager e superiori
     {

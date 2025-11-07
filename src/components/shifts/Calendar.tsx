@@ -553,9 +553,6 @@ export default function ShiftsCalendar() {
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     <div className="flex items-center gap-2">
                       <span>{employee.name}</span>
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {employee.department}
-                      </span>
                     </div>
                   </td>
                   {weekDates.map((date, dayIndex) => {
