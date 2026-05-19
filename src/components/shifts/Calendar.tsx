@@ -433,6 +433,8 @@ export default function ShiftsCalendar() {
   const handleGenerateSchedule = async () => {
     setIsGenerating(true)
     try {
+      const confirmed = confirm('⚠️ Questa operazione cancella e rigenera tutti i turni della settimana. Continuare?')
+      if (!confirmed) return
       const result = await generateSchedule(getWeekDates(currentWeek)[0])
       if (result.success && result.schedule) {
         setShifts(result.schedule)

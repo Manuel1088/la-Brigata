@@ -1,20 +1,10 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { useCompanyData } from '@/hooks/useCompanyData'
-import type { CompanyData } from '@/hooks/useCompanyData'
-
-// Tipi di pagamento
-const paymentTypes = [
-  { id: 'cash', name: '💵 Contanti', color: 'green' },
-  { id: 'card', name: '💳 Carta di Credito', color: 'blue' },
-  { id: 'foreign', name: '🌍 Monete Estere', color: 'purple' }
-]
 
 export default function TipsInsert() {
   const { data: session } = useSession()
-  
-  // Stati del form
+
   const [amountCash, setAmountCash] = useState('')
   const [amountCard, setAmountCard] = useState('')
   const [amountForeign, setAmountForeign] = useState('')
@@ -23,37 +13,47 @@ export default function TipsInsert() {
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingLocations, setIsLoadingLocations] = useState(true)
   const [message, setMessage] = useState('')
 
-  // Carica sale esistenti dalla pagina /sale, scope per codice fiscale azienda (via hook condiviso)
-  const { data: companyData } = useCompanyData(session?.user?.id)
+  const restaurantId = session?.user?.restaurantId as string | undefined
+
   useEffect(() => {
+    if (!restaurantId) {
+      setLocations([])
+      setIsLoadingLocations(false)
+      return
+    }
+
     let cancelled = false
-    const fiscal: string | undefined = (companyData as CompanyData | null | undefined)?.company?.fiscalCode
-    if (!fiscal) return
-    const key = `booking_areas_v1::${fiscal}`
-    const load = () => {
+    const load = async () => {
+      setIsLoadingLocations(true)
       try {
-        const raw = localStorage.getItem(key)
-        const areas = (raw ? JSON.parse(raw) : []) as Array<{ id: string; name: string }>
-        const locs = (areas || []).map((a) => ({ id: a.id, name: a.name }))
+        const params = new URLSearchParams({ restaurantId })
+        const res = await fetch(`/api/tips?${params}`, { credentials: 'include' })
+        if (!res.ok) throw new Error('Failed to load locations')
+        const data = await res.json()
+        const locs = (data.locations ?? []) as Array<{ id: string; name: string }>
         if (!cancelled) {
           setLocations(locs)
-          if (!selectedLocation && locs.length > 0) setSelectedLocation(locs[0].id)
+          if (locs.length > 0) {
+            setSelectedLocation((prev) => prev || locs[0].id)
+          }
         }
       } catch {
         if (!cancelled) setLocations([])
+      } finally {
+        if (!cancelled) setIsLoadingLocations(false)
       }
     }
+
     load()
-    const onUpdate = () => load()
-    try { window.addEventListener('booking_areas_updated', onUpdate) } catch {}
-    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate) } catch {}; cancelled = true }
-  }, [selectedLocation, companyData])
+    return () => { cancelled = true }
+  }, [restaurantId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const numCash = parseFloat(amountCash || '0') || 0
     const numCard = parseFloat(amountCard || '0') || 0
     const numForeign = parseFloat(amountForeign || '0') || 0
@@ -65,55 +65,60 @@ export default function TipsInsert() {
       return
     }
 
+    if (!restaurantId) {
+      setMessage('❌ Ristorante non configurato per il tuo account')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+
     setIsLoading(true)
-    
+
     try {
-      // Determina la chiave per il ristorante
-      const rid = session?.user?.restaurantId as string | undefined
-      let tipsKey = ''
-      if (rid) {
-        tipsKey = `tipEntries_v1::${rid}`
-      } else {
-        const firstRest = (companyData as CompanyData | null | undefined)?.company?.restaurants?.[0]?.id as string | undefined
-        if (firstRest) tipsKey = `tipEntries_v1::${firstRest}`
+      const res = await fetch('/api/tips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          restaurantId,
+          locationId: selectedLocation,
+          date,
+          amounts: {
+            cash: numCash,
+            card: numCard,
+            foreign: numForeign,
+          },
+          notes: notes || undefined,
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Salvataggio fallito')
       }
 
-      if (!tipsKey) {
-        setMessage('❌ Errore: ristorante non trovato')
-        setTimeout(() => setMessage(''), 3000)
-        return
-      }
+      const warning = data.warning as string | undefined
+      setMessage(
+        warning
+          ? `✅ Mancia salvata. ${warning}`
+          : `✅ Mancia salvata e distribuita a ${data.distributions?.length ?? 0} dipendenti`
+      )
 
-      // Simula persistenza locale (tip entries database locale)
-      const raw = localStorage.getItem(tipsKey)
-      const arr: Array<{ id: string; date: string; location: string; type: 'cash'|'card'|'foreign'; amount: number; notes: string; createdAt: string }> = raw ? JSON.parse(raw) : []
-      const locName = locations.find(l => l.id === selectedLocation)?.name || selectedLocation
-      if (numCash > 0) {
-        arr.push({ id: crypto.randomUUID(), date, location: locName, type: 'cash', amount: numCash, notes, createdAt: new Date().toISOString() })
-      }
-      if (numCard > 0) {
-        arr.push({ id: crypto.randomUUID(), date, location: locName, type: 'card', amount: numCard, notes, createdAt: new Date().toISOString() })
-      }
-      if (numForeign > 0) {
-        arr.push({ id: crypto.randomUUID(), date, location: locName, type: 'foreign', amount: numForeign, notes, createdAt: new Date().toISOString() })
-      }
-      localStorage.setItem(tipsKey, JSON.stringify(arr))
-      try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
+      try {
+        window.dispatchEvent(new CustomEvent('tip_entries_updated'))
+      } catch {}
 
-      setMessage('✅ Mancia inserita con successo!')
       setTimeout(() => {
         setMessage('')
-        // Reset form
         setAmountCash('')
         setAmountCard('')
         setAmountForeign('')
-        setSelectedLocation('')
         setNotes('')
-      }, 2000)
-      
+      }, 3500)
     } catch (error) {
-      setMessage('❌ Errore durante il salvataggio')
-      setTimeout(() => setMessage(''), 3000)
+      const msg = error instanceof Error ? error.message : 'Errore durante il salvataggio'
+      setMessage(`❌ ${msg}`)
+      setTimeout(() => setMessage(''), 4000)
     } finally {
       setIsLoading(false)
     }
@@ -123,37 +128,33 @@ export default function TipsInsert() {
     try {
       const d = new Date(date)
       d.setDate(d.getDate() + delta)
-      const iso = d.toISOString().split('T')[0]
-      setDate(iso)
+      setDate(d.toISOString().split('T')[0])
     } catch {}
   }
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Messaggio di stato */}
       {message && (
-        <div className={`mb-6 p-4 rounded-lg ${
-          message.includes('✅') 
-            ? 'bg-green-100 border border-green-400 text-green-700' 
-            : 'bg-red-100 border border-red-400 text-red-700'
-        }`}>
+        <div
+          className={`mb-6 p-4 rounded-lg ${
+            message.includes('✅')
+              ? 'bg-green-100 border border-green-400 text-green-700'
+              : 'bg-red-100 border border-red-400 text-red-700'
+          }`}
+        >
           {message}
         </div>
       )}
 
-      {/* Form */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
-            📝 Nuova Mancia
-          </h2>
+          <h2 className="text-xl font-semibold text-gray-900">📝 Nuova Mancia</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Inserisci i dettagli della mancia ricevuta
+            Salvataggio su database con distribuzione automatica
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Data con frecce sinistra/destra e input centrato */}
           <div className="w-full">
             <label className="block text-sm font-medium text-gray-700 mb-2">📅 Data</label>
             <div className="grid grid-cols-3 items-center">
@@ -163,7 +164,6 @@ export default function TipsInsert() {
                   onClick={() => shiftDate(-1)}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
                   aria-label="Giorno precedente"
-                  title="Giorno precedente"
                 >
                   ←
                 </button>
@@ -183,15 +183,13 @@ export default function TipsInsert() {
                   onClick={() => shiftDate(1)}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
                   aria-label="Giorno successivo"
-                  title="Giorno successivo"
                 >
                   →
                 </button>
               </div>
             </div>
           </div>
-          
-          {/* Importi per tipo pagamento */}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">💰 Importi</label>
             <div className="grid md:grid-cols-3 gap-3">
@@ -234,47 +232,59 @@ export default function TipsInsert() {
             </div>
           </div>
 
-          {/* Sala di Provenienza */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
               🏢 Sala di Provenienza
             </label>
-            <div className="flex flex-wrap gap-3">
-              {locations.map((loc) => (
-                <label
-                  key={loc.id}
-                  className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition whitespace-nowrap ${
-                    selectedLocation === loc.id
-                      ? 'border-indigo-500 bg-indigo-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="location"
-                    value={loc.id}
-                    checked={selectedLocation === loc.id}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="sr-only"
-                  />
-                  <div className="flex items-center">
-                    <div className={`w-4 h-4 rounded-full border-2 mr-3 ${
-                      selectedLocation === loc.id ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'
-                    }`}>
-                      {selectedLocation === loc.id && (
-                        <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
-                      )}
+            {isLoadingLocations ? (
+              <p className="text-sm text-gray-500">Caricamento sale...</p>
+            ) : locations.length === 0 ? (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                Nessuna location trovata per questo ristorante.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {locations.map((loc) => (
+                  <label
+                    key={loc.id}
+                    className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition whitespace-nowrap ${
+                      selectedLocation === loc.id
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="location"
+                      value={loc.id}
+                      checked={selectedLocation === loc.id}
+                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      className="sr-only"
+                    />
+                    <div className="flex items-center">
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                          selectedLocation === loc.id
+                            ? 'border-indigo-500 bg-indigo-500'
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        {selectedLocation === loc.id && (
+                          <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5" />
+                        )}
+                      </div>
+                      <span className="text-lg">{loc.name}</span>
                     </div>
-                    <span className="text-lg">{loc.name}</span>
-                  </div>
-                </label>
-              ))}
-            </div>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Note */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">📝 Note (opzionale)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              📝 Note (opzionale)
+            </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -284,11 +294,10 @@ export default function TipsInsert() {
             />
           </div>
 
-          {/* Pulsanti */}
           <div className="flex justify-end space-x-3 pt-4">
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isLoadingLocations || locations.length === 0}
               className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
             >
               {isLoading ? 'Salvataggio...' : '💾 Salva Mancia'}
