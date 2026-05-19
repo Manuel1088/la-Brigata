@@ -37,6 +37,8 @@ declare module 'next-auth/jwt' {
     userType?: string
     companyId?: string | null
     informalCompanyId?: string | null
+    restaurantId?: string
+    department?: string
   }
 }
 

@@ -23,12 +23,20 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
   const { data: companyResp, isLoading: isLoadingCompany } = useCompanyData(session?.user?.id)
   const companyId = (companyResp as CompanyData | null | undefined)?.company?.id
   
+  const restaurantId = session?.user?.restaurantId
+  const resolvedCompanyId = companyId ?? session?.user?.companyId
+
   const {
     employees: employeesList,
     error, 
     isLoading: isLoadingEmployees,
     mutate 
-  } = useEmployees({ active: true, enabled: !!session?.user?.companyId })
+  } = useEmployees({
+    active: true,
+    enabled: !!(resolvedCompanyId || restaurantId),
+    companyId: resolvedCompanyId,
+    restaurantId,
+  })
 
   const isLoading = isLoadingCompany || isLoadingEmployees
 

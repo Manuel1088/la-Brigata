@@ -9,19 +9,18 @@ import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
 import { type SimpleEmployee } from '@/lib/employees'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
+import { shiftsToGrid, toDateOnlyIso, type ShiftGridCell } from '@/lib/shifts'
+import type { ShiftAssignment } from '@/lib/validations/shifts'
 
-interface ShiftCell {
-  employee: string
-  time?: string
-  department?: string
-  role?: string
-}
+type CalendarEmployee = SimpleEmployee & { id: string }
+
+interface ShiftCell extends ShiftGridCell {}
 
 export default function ShiftsCalendar() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [currentWeek, setCurrentWeek] = useState(new Date())
-  const [selectedDepartment, setSelectedDepartment] = useState<'direzione'|'cucina'|'sala'|'beverage'|'accoglienza'>('direzione')
+  const [selectedDepartment, setSelectedDepartment] = useState<'direzione'|'cucina'|'sala'|'beverage'|'accoglienza'>('sala')
   const [viewMode, setViewMode] = useState<'week' | 'twoWeeks' | 'month'>('week')
   const [isGenerating, setIsGenerating] = useState(false)
   const { generateSchedule } = useAutoScheduler()
@@ -47,7 +46,9 @@ export default function ShiftsCalendar() {
   const [restVersion, setRestVersion] = useState(0)
   const [showCcnlDetails, setShowCcnlDetails] = useState(false)
   const [shifts, setShifts] = useState<{[key: string]: ShiftCell}>({})
-  const [employees, setEmployees] = useState<SimpleEmployee[]>([])
+  const [employees, setEmployees] = useState<CalendarEmployee[]>([])
+  const [isLoadingShifts, setIsLoadingShifts] = useState(false)
+  const [isSavingShifts, setIsSavingShifts] = useState(false)
   const { employees: employeesData, mutate: mutateEmployees, isLoading } = useEmployeeContext()
   const [userDepartment, setUserDepartment] = useState<string>('sala')
   const [accessScope, setAccessScope] = useState<'own' | 'department' | 'all' | null>(null)
@@ -130,6 +131,7 @@ export default function ShiftsCalendar() {
         return 'sala'
       }
       setEmployees(operativeEmployees.map((e) => ({
+        id: (e as SimpleEmployee & { id: string }).id,
         name: (e as SimpleEmployee).name,
         department: normalize((e as SimpleEmployee & { department?: string }).department),
         role: (e as SimpleEmployee & { role?: string }).role || 'DIPENDENTE_SALA'
@@ -158,20 +160,66 @@ export default function ShiftsCalendar() {
     } catch {}
   }, [])
 
-  // ✅ Carica turni settimanali
-  useEffect(() => {
-    const weekKey = getWeekKey(currentWeek)
-    try {
-      const raw = localStorage.getItem(weekKey)
-      if (raw) {
-        setShifts(JSON.parse(raw))
-      } else {
-        setShifts({})
-      }
-    } catch {
-      setShifts({})
+  const restaurantId = session?.user?.restaurantId as string | undefined
+
+  const getWeekDates = useCallback((date: Date) => {
+    const start = new Date(date)
+    const day = start.getDay()
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1)
+    start.setDate(diff)
+
+    let numDays = 7
+    if (viewMode === 'twoWeeks') numDays = 14
+    if (viewMode === 'month') {
+      const year = start.getFullYear()
+      const month = start.getMonth()
+      numDays = new Date(year, month + 1, 0).getDate()
+      start.setDate(1)
     }
-  }, [currentWeek])
+
+    const dates: Date[] = []
+    for (let i = 0; i < numDays; i++) {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      dates.push(d)
+    }
+    return dates
+  }, [viewMode])
+
+  // ✅ Carica turni da API
+  useEffect(() => {
+    if (!restaurantId || status !== 'authenticated') return
+
+    const weekDates = getWeekDates(currentWeek)
+    const fromDate = toDateOnlyIso(weekDates[0])
+    const numDays = weekDates.length
+
+    let cancelled = false
+    const load = async () => {
+      setIsLoadingShifts(true)
+      try {
+        const params = new URLSearchParams({
+          restaurantId,
+          date: fromDate,
+          days: String(numDays),
+        })
+        const res = await fetch(`/api/shifts?${params}`, { credentials: 'include' })
+        if (!res.ok) throw new Error('Failed to load shifts')
+        const data = await res.json()
+        if (cancelled) return
+
+        setShifts(shiftsToGrid(data.shifts ?? [], weekDates, new Map()))
+      } catch (error) {
+        console.error('Errore caricamento turni:', error)
+        if (!cancelled) setShifts({})
+      } finally {
+        if (!cancelled) setIsLoadingShifts(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [currentWeek, viewMode, restaurantId, status, getWeekDates])
 
   // ✅ Determina accesso utente
   useEffect(() => {
@@ -194,44 +242,6 @@ export default function ShiftsCalendar() {
   }, [session])
 
   // ✅ Helper functions
-  const getWeekKey = (date: Date) => {
-    const year = date.getFullYear()
-    const week = getWeekNumber(date)
-    return `shifts_${year}-W${week.toString().padStart(2, '0')}`
-  }
-
-  const getWeekNumber = (date: Date) => {
-    const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
-    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000
-    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7)
-  }
-
-  const getWeekDates = (date: Date) => {
-    const start = new Date(date)
-    const day = start.getDay()
-    const diff = start.getDate() - day + (day === 0 ? -6 : 1)
-    start.setDate(diff)
-    
-    // Calcola numero giorni in base a viewMode
-    let numDays = 7
-    if (viewMode === 'twoWeeks') numDays = 14
-    if (viewMode === 'month') {
-      // Mese completo
-      const year = start.getFullYear()
-      const month = start.getMonth()
-      numDays = new Date(year, month + 1, 0).getDate()
-      // Inizia dal primo del mese
-      start.setDate(1)
-    }
-    
-    const dates = []
-    for (let i = 0; i < numDays; i++) {
-      const d = new Date(start)
-      d.setDate(start.getDate() + i)
-      dates.push(d)
-    }
-    return dates
-  }
   
   // Formato data in base a viewMode
   const getDateRangeLabel = (dates: Date[]) => {
@@ -316,17 +326,72 @@ export default function ShiftsCalendar() {
     }
 
     setShifts(newShifts)
-    saveShifts(newShifts)
+    void saveShifts(newShifts)
     setIsShiftSelectorOpen(false)
     setSelectedEmployee(null)
   }
 
-  const saveShifts = (newShifts: {[key: string]: ShiftCell}) => {
-    const weekKey = getWeekKey(currentWeek)
+  const gridToAssignments = useCallback(
+    (grid: Record<string, ShiftCell>, weekDates: Date[]): ShiftAssignment[] => {
+      const byName = new Map(employees.map((e) => [e.name, e]))
+      const assignments: ShiftAssignment[] = []
+
+      for (const [key, cell] of Object.entries(grid)) {
+        if (!cell.time) continue
+        const lastDash = key.lastIndexOf('-')
+        if (lastDash === -1) continue
+        const name = key.slice(0, lastDash)
+        const dayIndex = parseInt(key.slice(lastDash + 1), 10)
+        const emp = byName.get(name)
+        const date = weekDates[dayIndex]
+        if (!emp || !date) continue
+
+        const dept = (cell.department || emp.department) as ShiftAssignment['department']
+        assignments.push({
+          userId: emp.id,
+          date: toDateOnlyIso(date),
+          department: dept === 'direzione' ? 'sala' : dept,
+          time: cell.time,
+        })
+      }
+
+      return assignments
+    },
+    [employees]
+  )
+
+  const saveShifts = async (newShifts: Record<string, ShiftCell>) => {
+    if (!restaurantId) {
+      notifyCustom('ERROR', 'SHIFTS', 'Salvataggio', 'Ristorante non configurato')
+      return
+    }
+
+    const weekDates = getWeekDates(currentWeek)
+    const assignments = gridToAssignments(newShifts, weekDates)
+
+    setIsSavingShifts(true)
     try {
-      localStorage.setItem(weekKey, JSON.stringify(newShifts))
+      const res = await fetch('/api/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          restaurantId,
+          rangeFrom: toDateOnlyIso(weekDates[0]),
+          rangeTo: toDateOnlyIso(weekDates[weekDates.length - 1]),
+          assignments,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Salvataggio fallito')
+      }
     } catch (error) {
       console.error('Errore nel salvataggio turni:', error)
+      notifyCustom('ERROR', 'SHIFTS', 'Salvataggio', 'Errore nel salvataggio turni')
+    } finally {
+      setIsSavingShifts(false)
     }
   }
 
@@ -371,7 +436,7 @@ export default function ShiftsCalendar() {
       const result = await generateSchedule(getWeekDates(currentWeek)[0])
       if (result.success && result.schedule) {
         setShifts(result.schedule)
-        saveShifts(result.schedule)
+        void saveShifts(result.schedule)
         notifyCustom('SUCCESS','SHIFTS','Auto-scheduler','Turni generati automaticamente!')
       } else {
         notifyCustom('ERROR','SHIFTS','Auto-scheduler','Errore nella generazione automatica')
@@ -389,7 +454,7 @@ export default function ShiftsCalendar() {
       // Dirigenti: chi ha department 'direzione' o ruoli dirigenziali
       return employees.filter(emp => 
         // i dirigenti sono filtrati per ruolo
-        ['PROPRIETARIO_OPERATIVO', 'DIRETTORE_GENERALE', 'MANAGER'].includes(emp.role)
+        ['PROPRIETARIO_OPERATIVO', 'DIRETTORE_GENERALE', 'DIRETTORE', 'MANAGER', 'RESTAURANT_MANAGER'].includes(emp.role)
       )
     }
     return employees.filter(emp => emp.department === selectedDepartment)
@@ -531,6 +596,12 @@ export default function ShiftsCalendar() {
           )}
         </div>
       </div>
+
+      {(isLoadingShifts || isSavingShifts) && (
+        <p className="text-sm text-gray-500 text-center">
+          {isSavingShifts ? 'Salvataggio turni...' : 'Caricamento turni...'}
+        </p>
+      )}
 
       {/* Tabella turni */}
       <div className="bg-white rounded-lg shadow overflow-hidden">

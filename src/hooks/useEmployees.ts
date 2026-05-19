@@ -7,6 +7,9 @@ interface UseEmployeesOptions {
   active?: boolean
   department?: string
   enabled?: boolean
+  /** Override esplicito (es. da EmployeeContext) */
+  companyId?: string
+  restaurantId?: string
 }
 
 interface EmployeesResponse {
@@ -15,15 +18,21 @@ interface EmployeesResponse {
 
 export function useEmployees(options: UseEmployeesOptions = {}) {
   const { data: session } = useSession()
-  const { active = true, department, enabled = true } = options
-  const companyId = session?.user?.companyId
+  const { active = true, department, enabled = true, companyId: companyIdOpt, restaurantId: restaurantIdOpt } = options
+  const companyId = companyIdOpt ?? session?.user?.companyId
+  const restaurantId = restaurantIdOpt ?? session?.user?.restaurantId
 
-  const key = companyId && enabled ? ['/api/employees', companyId, !!active, department ?? ''] : null
+  const canFetch = enabled && !!(companyId || restaurantId)
+  const key = canFetch
+    ? ['/api/employees', companyId ?? '', restaurantId ?? '', !!active, department ?? '']
+    : null
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<EmployeesResponse>(
     key,
-    async ([url, cId, act, dept]: [string, string, boolean, string]) => {
-      const params = new URLSearchParams({ companyId: cId })
+    async ([url, cId, rId, act, dept]: [string, string, string, boolean, string]) => {
+      const params = new URLSearchParams()
+      if (cId) params.set('companyId', cId)
+      if (rId) params.set('restaurantId', rId)
       if (act) params.set('active', 'true')
       if (dept) params.set('department', dept)
       const res = await fetch(`${url}?${params.toString()}`, { credentials: 'include' })

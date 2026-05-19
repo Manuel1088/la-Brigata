@@ -1,501 +1,668 @@
-/**
- * LA BRIGATA - Import completo 442 mance 2026
- * Esegui con: npx tsx scripts/seed-tips-completo.ts
- */
-import { PrismaClient } from '@prisma/client'
-const prisma = new PrismaClient()
-
-const TIPS = [
-  { date: "2026-01-01", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 240.0 },
-  { date: "2026-01-01", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 437.55 },
-  { date: "2026-01-02", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 142.0 },
-  { date: "2026-01-02", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 873.0 },
-  { date: "2026-01-03", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 188.0 },
-  { date: "2026-01-03", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 127.5 },
-  { date: "2026-01-04", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 159.0 },
-  { date: "2026-01-04", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 653.0 },
-  { date: "2026-01-05", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 320.15 },
-  { date: "2026-01-05", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 200.0 },
-  { date: "2026-01-06", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 513.0 },
-  { date: "2026-01-08", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 393.0 },
-  { date: "2026-01-08", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 382.0 },
-  { date: "2026-01-09", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 357.0 },
-  { date: "2026-01-10", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 430.0 },
-  { date: "2026-01-10", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 2.0 },
-  { date: "2026-01-10", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 143.9 },
-  { date: "2026-01-11", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 208.15 },
-  { date: "2026-01-11", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 430.0 },
-  { date: "2026-01-12", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 75.0 },
-  { date: "2026-01-12", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 158.0 },
-  { date: "2026-01-13", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 70.0 },
-  { date: "2026-01-13", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 214.0 },
-  { date: "2026-01-14", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 80.0 },
-  { date: "2026-01-14", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 539.0 },
-  { date: "2026-01-16", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 140.0 },
-  { date: "2026-01-16", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1011.0 },
-  { date: "2026-01-17", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 220.0 },
-  { date: "2026-01-17", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1368.95 },
-  { date: "2026-01-18", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 140.0 },
-  { date: "2026-01-18", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 181.35 },
-  { date: "2026-01-07", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 35.0 },
-  { date: "2026-01-07", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 208.4 },
-  { date: "2026-01-09", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 80.0 },
-  { date: "2026-01-15", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 90.0 },
-  { date: "2026-01-15", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 160.0 },
-  { date: "2026-01-19", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 81.0 },
-  { date: "2026-01-19", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 74.0 },
-  { date: "2026-01-20", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 265.0 },
-  { date: "2026-01-20", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 80.0 },
-  { date: "2026-01-21", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 35.0 },
-  { date: "2026-01-22", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 130.0 },
-  { date: "2026-01-22", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 492.2 },
-  { date: "2026-01-23", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 190.0 },
-  { date: "2026-01-23", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 190.0 },
-  { date: "2026-01-23", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 563.85 },
-  { date: "2026-01-23", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 15.0 },
-  { date: "2026-01-24", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 400.0 },
-  { date: "2026-01-25", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 20.0 },
-  { date: "2026-01-25", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 207.0 },
-  { date: "2026-01-26", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 65.0 },
-  { date: "2026-01-27", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 10.0 },
-  { date: "2026-01-27", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 243.65 },
-  { date: "2026-01-28", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 180.0 },
-  { date: "2026-01-28", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 249.0 },
-  { date: "2026-01-29", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 95.0 },
-  { date: "2026-01-29", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 104.9 },
-  { date: "2026-01-30", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 110.0 },
-  { date: "2026-01-30", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 214.0 },
-  { date: "2026-01-31", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 120.0 },
-  { date: "2026-01-31", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 838.0 },
-  { date: "2026-02-01", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 175.0 },
-  { date: "2026-02-01", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 174.0 },
-  { date: "2026-02-02", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 40.0 },
-  { date: "2026-02-02", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 80.0 },
-  { date: "2026-02-03", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 275.0 },
-  { date: "2026-02-03", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 238.0 },
-  { date: "2026-02-01", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-02-01", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 20.0 },
-  { date: "2026-02-02", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 11.4 },
-  { date: "2026-02-03", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 43.2 },
-  { date: "2026-02-04", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 75.0 },
-  { date: "2026-02-04", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 54.0 },
-  { date: "2026-02-05", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 15.0 },
-  { date: "2026-02-05", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 68.5 },
-  { date: "2026-02-06", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 6.0 },
-  { date: "2026-02-06", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 105.0 },
-  { date: "2026-02-06", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 420.0 },
-  { date: "2026-02-08", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 86.0 },
-  { date: "2026-02-08", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 794.0 },
-  { date: "2026-02-10", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 35.0 },
-  { date: "2026-02-10", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 68.7 },
-  { date: "2026-02-06", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 301.2 },
-  { date: "2026-02-07", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 616.5 },
-  { date: "2026-02-07", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 20.0 },
-  { date: "2026-02-07", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 438.85 },
-  { date: "2026-02-04", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 140.0 },
-  { date: "2026-02-04", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 4208.0 },
-  { date: "2026-02-11", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 95.0 },
-  { date: "2026-02-11", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 365.55 },
-  { date: "2026-01-22", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-01-24", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 23.0 },
-  { date: "2026-01-26", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-01-27", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-01-30", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-01-30", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 61.0 },
-  { date: "2026-01-31", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 25.0 },
-  { date: "2026-01-31", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-02-13", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 430.0 },
-  { date: "2026-02-13", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 10.0 },
-  { date: "2026-02-13", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1173.0 },
-  { date: "2026-02-14", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 424.0 },
-  { date: "2026-02-14", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 2338.0 },
-  { date: "2026-02-12", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 135.0 },
-  { date: "2026-02-12", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 121.0 },
-  { date: "2026-02-15", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 521.35 },
-  { date: "2026-02-15", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 410.0 },
-  { date: "2026-02-05", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 381.3 },
-  { date: "2026-02-05", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 175.0 },
-  { date: "2026-02-09", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 75.0 },
-  { date: "2026-02-09", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 292.75 },
-  { date: "2026-02-07", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-02-07", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 16.5 },
-  { date: "2026-02-08", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 52.7 },
-  { date: "2026-02-09", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 15.9 },
-  { date: "2026-02-10", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-02-10", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 19.0 },
-  { date: "2026-02-11", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 8.0 },
-  { date: "2026-02-11", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 20.0 },
-  { date: "2026-02-12", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 146.0 },
-  { date: "2026-02-12", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 30.0 },
-  { date: "2026-02-13", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 23.0 },
-  { date: "2026-02-14", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 55.0 },
-  { date: "2026-02-14", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 78.0 },
-  { date: "2026-02-15", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 12.0 },
-  { date: "2026-02-16", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 315.0 },
-  { date: "2026-02-16", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 234.0 },
-  { date: "2026-02-17", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 316.0 },
-  { date: "2026-02-17", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 693.9 },
-  { date: "2026-02-18", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 116.0 },
-  { date: "2026-02-18", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 307.95 },
-  { date: "2026-02-19", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 90.0 },
-  { date: "2026-02-19", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 130.05 },
-  { date: "2026-02-21", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 215.0 },
-  { date: "2026-02-21", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 362.0 },
-  { date: "2026-02-21", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 362.0 },
-  { date: "2026-02-20", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 125.0 },
-  { date: "2026-02-20", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 203.0 },
-  { date: "2026-02-22", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 100.0 },
-  { date: "2026-02-22", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 180.0 },
-  { date: "2026-02-16", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 15.0 },
-  { date: "2026-02-16", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 20.0 },
-  { date: "2026-02-17", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-02-17", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 8.0 },
-  { date: "2026-02-18", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-02-19", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-02-21", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 15.0 },
-  { date: "2026-02-21", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 85.0 },
-  { date: "2026-02-23", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 117.5 },
-  { date: "2026-02-23", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 489.0 },
-  { date: "2026-02-24", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 160.0 },
-  { date: "2026-02-25", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 140.0 },
-  { date: "2026-02-25", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 179.7 },
-  { date: "2026-02-26", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 60.0 },
-  { date: "2026-02-26", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 10.0 },
-  { date: "2026-02-27", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 388.5 },
-  { date: "2026-02-27", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 290.0 },
-  { date: "2026-02-28", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 200.0 },
-  { date: "2026-02-28", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 434.0 },
-  { date: "2026-02-24", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 7.95 },
-  { date: "2026-02-25", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 105.85 },
-  { date: "2026-02-26", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 50.0 },
-  { date: "2026-02-26", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 265.45 },
-  { date: "2026-02-27", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 88.5 },
-  { date: "2026-02-27", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-02-28", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 67.15 },
-  { date: "2026-02-28", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 25.0 },
-  { date: "2026-03-01", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 110.0 },
-  { date: "2026-03-01", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 196.0 },
-  { date: "2026-03-02", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 315.0 },
-  { date: "2026-03-02", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1261.65 },
-  { date: "2026-03-03", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 165.0 },
-  { date: "2026-03-03", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 168.0 },
-  { date: "2026-03-04", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 530.0 },
-  { date: "2026-03-04", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 20.0 },
-  { date: "2026-03-04", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 112.2 },
-  { date: "2026-03-05", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 531.1 },
-  { date: "2026-03-05", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 315.0 },
-  { date: "2026-03-06", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 945.2 },
-  { date: "2026-03-06", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 175.0 },
-  { date: "2026-03-07", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 830.0 },
-  { date: "2026-03-07", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 770.65 },
-  { date: "2026-03-08", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 254.0 },
-  { date: "2026-03-08", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 30.0 },
-  { date: "2026-03-08", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 744.0 },
-  { date: "2026-03-09", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 90.0 },
-  { date: "2026-03-09", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 371.45 },
-  { date: "2026-03-10", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 100.0 },
-  { date: "2026-03-10", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 414.9 },
-  { date: "2026-03-11", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 240.0 },
-  { date: "2026-03-11", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 371.1 },
-  { date: "2026-03-01", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 6.0 },
-  { date: "2026-03-02", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 74.45 },
-  { date: "2026-03-03", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-03-05", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-03-05", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 22.95 },
-  { date: "2026-03-06", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 20.0 },
-  { date: "2026-03-06", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 34.5 },
-  { date: "2026-03-07", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 30.0 },
-  { date: "2026-03-07", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 70.65 },
-  { date: "2026-03-08", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 15.0 },
-  { date: "2026-03-08", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 45.0 },
-  { date: "2026-03-09", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-03-09", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 7.0 },
-  { date: "2026-03-12", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 256.0 },
-  { date: "2026-03-12", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 55.0 },
-  { date: "2026-03-12", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 10.0 },
-  { date: "2026-03-13", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 55.0 },
-  { date: "2026-03-13", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 50.0 },
-  { date: "2026-03-13", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 175.0 },
-  { date: "2026-03-14", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 105.0 },
-  { date: "2026-03-14", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 20.0 },
-  { date: "2026-03-14", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 778.05 },
-  { date: "2026-03-15", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 330.0 },
-  { date: "2026-03-15", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 10.0 },
-  { date: "2026-03-15", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 404.25 },
-  { date: "2026-03-13", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 25.0 },
-  { date: "2026-03-12", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 25.0 },
-  { date: "2026-03-13", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 34.3 },
-  { date: "2026-03-14", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 40.0 },
-  { date: "2026-03-14", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 57.8 },
-  { date: "2026-03-15", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 121.9 },
-  { date: "2026-03-15", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-03-16", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 100.0 },
-  { date: "2026-03-16", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 40.0 },
-  { date: "2026-03-16", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 901.95 },
-  { date: "2026-03-17", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 165.0 },
-  { date: "2026-03-17", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 20.0 },
-  { date: "2026-03-17", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 192.1 },
-  { date: "2026-03-18", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 220.0 },
-  { date: "2026-03-18", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 794.57 },
-  { date: "2026-03-20", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 385.0 },
-  { date: "2026-03-20", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 782.25 },
-  { date: "2026-03-21", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 285.0 },
-  { date: "2026-03-21", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 50.0 },
-  { date: "2026-03-21", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 918.45 },
-  { date: "2026-03-22", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 725.0 },
-  { date: "2026-03-22", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1121.6 },
-  { date: "2026-03-23", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 54.0 },
-  { date: "2026-03-23", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 37.4 },
-  { date: "2026-03-24", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 35.0 },
-  { date: "2026-03-25", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 125.0 },
-  { date: "2026-03-25", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 5.0 },
-  { date: "2026-03-25", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 749.4 },
-  { date: "2026-03-27", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 252.0 },
-  { date: "2026-03-27", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 205.0 },
-  { date: "2026-03-27", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1059.35 },
-  { date: "2026-03-28", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1557.55 },
-  { date: "2026-03-28", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 916.0 },
-  { date: "2026-03-29", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 460.0 },
-  { date: "2026-03-29", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1847.85 },
-  { date: "2026-03-16", payment: "Mon. Estere", service: "Non Festivo", location: "Adele", amount: 25.0 },
-  { date: "2026-03-16", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 34.65 },
-  { date: "2026-03-18", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-03-18", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 30.6 },
-  { date: "2026-03-19", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 106.35 },
-  { date: "2026-03-19", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 90.0 },
-  { date: "2026-03-20", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 40.0 },
-  { date: "2026-03-20", payment: "Mon. Estere", service: "Non Festivo", location: "Adele", amount: 20.0 },
-  { date: "2026-03-20", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 151.45 },
-  { date: "2026-03-21", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 65.5 },
-  { date: "2026-03-21", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 40.0 },
-  { date: "2026-03-22", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-03-22", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 142.5 },
-  { date: "2026-03-23", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-03-23", payment: "Mon. Estere", service: "Non Festivo", location: "Adele", amount: 40.0 },
-  { date: "2026-03-23", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 74.15 },
-  { date: "2026-03-24", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-03-24", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 93.0 },
-  { date: "2026-03-25", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-03-25", payment: "Mon. Estere", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-03-25", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 95.4 },
-  { date: "2026-03-26", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 62.25 },
-  { date: "2026-03-26", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-03-27", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 128.3 },
-  { date: "2026-03-28", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 179.35 },
-  { date: "2026-03-29", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-03-29", payment: "Mon. Estere", service: "Non Festivo", location: "Adele", amount: 50.0 },
-  { date: "2026-03-29", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 45.55 },
-  { date: "2026-03-30", payment: "Mon. Estere", service: "Non Festivo", location: "Adele", amount: 20.0 },
-  { date: "2026-03-30", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 112.05 },
-  { date: "2026-03-30", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 3.0 },
-  { date: "2026-03-30", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 128.55 },
-  { date: "2026-03-31", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 162.0 },
-  { date: "2026-03-31", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 2.0 },
-  { date: "2026-03-31", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 302.6 },
-  { date: "2026-04-01", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 105.0 },
-  { date: "2026-04-01", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 303.6 },
-  { date: "2026-04-02", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 345.0 },
-  { date: "2026-04-02", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 740.35 },
-  { date: "2026-04-03", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 302.0 },
-  { date: "2026-04-03", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 716.05 },
-  { date: "2026-04-04", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 456.0 },
-  { date: "2026-04-04", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 23.0 },
-  { date: "2026-04-04", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1662.75 },
-  { date: "2026-04-05", payment: "Contanti", service: "Pranzo", location: "Mirabelle", amount: 385.0 },
-  { date: "2026-04-05", payment: "Mon. Estere", service: "Pranzo", location: "Mirabelle", amount: 20.0 },
-  { date: "2026-04-05", payment: "Carta", service: "Pranzo", location: "Mirabelle", amount: 899.8 },
-  { date: "2026-04-05", payment: "Contanti", service: "Cena", location: "Mirabelle", amount: 533.0 },
-  { date: "2026-04-05", payment: "Mon. Estere", service: "Cena", location: "Mirabelle", amount: 300.0 },
-  { date: "2026-04-05", payment: "Carta", service: "Cena", location: "Mirabelle", amount: 1780.1 },
-  { date: "2026-03-19", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 173.0 },
-  { date: "2026-03-19", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 640.0 },
-  { date: "2026-03-18", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 170.0 },
-  { date: "2026-03-23", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 37.0 },
-  { date: "2026-03-26", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 145.0 },
-  { date: "2026-03-26", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 305.65 },
-  { date: "2026-04-06", payment: "Contanti", service: "Pranzo", location: "Mirabelle", amount: 196.0 },
-  { date: "2026-04-06", payment: "Carta", service: "Pranzo", location: "Mirabelle", amount: 50.0 },
-  { date: "2026-04-06", payment: "Carta", service: "Cena", location: "Mirabelle", amount: 370.0 },
-  { date: "2026-04-07", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 200.0 },
-  { date: "2026-04-07", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 448.9 },
-  { date: "2026-04-08", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 150.0 },
-  { date: "2026-04-08", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 507.75 },
-  { date: "2026-04-09", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 180.8 },
-  { date: "2026-04-09", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 602.35 },
-  { date: "2026-03-31", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 20.0 },
-  { date: "2026-04-01", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-04-01", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 39.45 },
-  { date: "2026-04-02", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 15.0 },
-  { date: "2026-04-02", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 93.55 },
-  { date: "2026-04-03", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 16.0 },
-  { date: "2026-04-03", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 94.6 },
-  { date: "2026-04-04", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 25.0 },
-  { date: "2026-04-04", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 267.55 },
-  { date: "2026-04-05", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 25.0 },
-  { date: "2026-04-05", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 146.35 },
-  { date: "2026-04-05", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 25.0 },
-  { date: "2026-04-06", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 15.0 },
-  { date: "2026-04-06", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 121.8 },
-  { date: "2026-04-07", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 89.7 },
-  { date: "2026-04-10", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 210.0 },
-  { date: "2026-04-10", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1018.7 },
-  { date: "2026-04-11", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 410.0 },
-  { date: "2026-04-11", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1750.7 },
-  { date: "2026-04-12", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 349.0 },
-  { date: "2026-04-12", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 20.0 },
-  { date: "2026-04-12", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 896.75 },
-  { date: "2026-04-13", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 100.0 },
-  { date: "2026-04-13", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1098.8 },
-  { date: "2026-04-14", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 210.0 },
-  { date: "2026-04-14", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 775.1 },
-  { date: "2026-04-09", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 80.0 },
-  { date: "2026-04-09", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 43.8 },
-  { date: "2026-04-10", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 50.0 },
-  { date: "2026-04-10", payment: "Mon. Estere", service: "Non Festivo", location: "Adele", amount: 30.0 },
-  { date: "2026-04-10", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 166.95 },
-  { date: "2026-04-11", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 55.0 },
-  { date: "2026-04-11", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 170.15 },
-  { date: "2026-04-13", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 25.0 },
-  { date: "2026-04-13", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 38.15 },
-  { date: "2026-04-14", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 30.0 },
-  { date: "2026-04-14", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 49.3 },
-  { date: "2026-04-15", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 280.0 },
-  { date: "2026-04-15", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 5.0 },
-  { date: "2026-04-15", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 237.35 },
-  { date: "2026-04-16", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 110.0 },
-  { date: "2026-04-16", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 531.95 },
-  { date: "2026-04-17", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 295.0 },
-  { date: "2026-04-17", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 2147.85 },
-  { date: "2026-04-18", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 190.0 },
-  { date: "2026-04-18", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1734.8 },
-  { date: "2026-04-19", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 442.0 },
-  { date: "2026-04-19", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1389.3 },
-  { date: "2026-04-20", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 2302.5 },
-  { date: "2026-04-20", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 215.0 },
-  { date: "2026-04-20", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 10.0 },
-  { date: "2026-04-22", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 150.0 },
-  { date: "2026-04-22", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 944.9 },
-  { date: "2026-04-23", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 280.0 },
-  { date: "2026-04-23", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 3.0 },
-  { date: "2026-04-23", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1534.1 },
-  { date: "2026-04-15", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 466.25 },
-  { date: "2026-04-16", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 49.0 },
-  { date: "2026-04-16", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 42.6 },
-  { date: "2026-04-17", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 90.0 },
-  { date: "2026-04-17", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 153.3 },
-  { date: "2026-04-18", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 73.0 },
-  { date: "2026-04-18", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 38.25 },
-  { date: "2026-04-19", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-04-19", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 144.95 },
-  { date: "2026-04-20", payment: "Mon. Estere", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-04-20", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 122.6 },
-  { date: "2026-04-21", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 20.0 },
-  { date: "2026-04-21", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 56.7 },
-  { date: "2026-04-22", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 62.3 },
-  { date: "2026-04-22", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-04-21", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 285.0 },
-  { date: "2026-04-21", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 5.0 },
-  { date: "2026-04-21", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1200.0 },
-  { date: "2026-04-24", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 235.0 },
-  { date: "2026-04-24", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 100.0 },
-  { date: "2026-04-24", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1836.8 },
-  { date: "2026-04-25", payment: "Contanti", service: "Pranzo", location: "Mirabelle", amount: 115.0 },
-  { date: "2026-04-25", payment: "Mon. Estere", service: "Pranzo", location: "Mirabelle", amount: 2.0 },
-  { date: "2026-04-25", payment: "Carta", service: "Pranzo", location: "Mirabelle", amount: 417.65 },
-  { date: "2026-04-25", payment: "Contanti", service: "Cena", location: "Mirabelle", amount: 510.0 },
-  { date: "2026-04-25", payment: "Carta", service: "Cena", location: "Mirabelle", amount: 1308.6 },
-  { date: "2026-04-26", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 318.0 },
-  { date: "2026-04-26", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 100.0 },
-  { date: "2026-04-26", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1355.55 },
-  { date: "2026-04-27", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 255.0 },
-  { date: "2026-04-27", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 2146.35 },
-  { date: "2026-04-28", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 230.0 },
-  { date: "2026-04-28", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 55.0 },
-  { date: "2026-04-28", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1133.9 },
-  { date: "2026-04-29", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 425.0 },
-  { date: "2026-04-29", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 53.0 },
-  { date: "2026-04-29", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 789.35 },
-  { date: "2026-04-30", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 194.0 },
-  { date: "2026-04-30", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 5.0 },
-  { date: "2026-04-30", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 2059.65 },
-  { date: "2026-04-24", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 45.0 },
-  { date: "2026-04-24", payment: "Mon. Estere", service: "Non Festivo", location: "Adele", amount: 20.0 },
-  { date: "2026-04-23", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 107.2 },
-  { date: "2026-04-24", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 302.55 },
-  { date: "2026-04-25", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 105.0 },
-  { date: "2026-04-25", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 213.15 },
-  { date: "2026-04-26", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 10.0 },
-  { date: "2026-04-26", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 411.85 },
-  { date: "2026-04-27", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 5.0 },
-  { date: "2026-04-27", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 116.0 },
-  { date: "2026-04-28", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 25.0 },
-  { date: "2026-04-28", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 53.6 },
-  { date: "2026-04-29", payment: "Contanti", service: "Non Festivo", location: "Adele", amount: 30.0 },
-  { date: "2026-04-29", payment: "Carta", service: "Non Festivo", location: "Adele", amount: 66.0 },
-  { date: "2026-05-01", payment: "Contanti", service: "Pranzo", location: "Mirabelle", amount: 30.0 },
-  { date: "2026-05-01", payment: "Carta", service: "Pranzo", location: "Mirabelle", amount: 182.6 },
-  { date: "2026-05-01", payment: "Contanti", service: "Cena", location: "Mirabelle", amount: 230.0 },
-  { date: "2026-05-01", payment: "Mon. Estere", service: "Cena", location: "Mirabelle", amount: 50.0 },
-  { date: "2026-05-01", payment: "Carta", service: "Cena", location: "Mirabelle", amount: 3011.85 },
-  { date: "2026-05-02", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 1020.0 },
-  { date: "2026-05-02", payment: "Mon. Estere", service: "Non Festivo", location: "Mirabelle", amount: 60.0 },
-  { date: "2026-05-02", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 2145.35 },
-  { date: "2026-05-03", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 472.0 },
-  { date: "2026-05-03", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 2887.75 },
-  { date: "2026-05-04", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 159.0 },
-  { date: "2026-05-04", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1439.45 },
-  { date: "2026-05-05", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 815.0 },
-  { date: "2026-05-05", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 780.05 },
-  { date: "2026-05-06", payment: "Contanti", service: "Non Festivo", location: "Mirabelle", amount: 373.0 },
-  { date: "2026-05-06", payment: "Carta", service: "Non Festivo", location: "Mirabelle", amount: 1047.3 },]
-
-async function main() {
-  console.log('💰 Import mance 2026 in corso...')
-
-  const restaurant = await prisma.restaurant.findFirst({ where: { id: 'mirabelle-001' } })
-  if (!restaurant) throw new Error('Ristorante non trovato — esegui prima seed-la-brigata.ts')
-
-  const locations = await prisma.restaurantLocation.findMany({ where: { restaurantId: 'mirabelle-001' } })
-  const locationMap: Record<string, string> = {}
-  locations.forEach(l => locationMap[l.name] = l.id)
-
-  const defaultEmployee = await prisma.employee.findFirst({ 
-    where: { restaurantId: 'mirabelle-001', name: 'Costanzi Luca' } 
-  })
-  if (!defaultEmployee) throw new Error('Dipendente non trovato')
-
-  let count = 0
-  let total = 0
-
-  for (const tip of TIPS) {
-    const locationId = locationMap[tip.location] || locationMap['Mirabelle']
-    const paymentType = tip.payment === 'Carta' ? 'CARD' : tip.payment === 'Contanti' ? 'CASH' : 'FOREIGN'
-    const id = `tip-${tip.date}-${paymentType}-${tip.location}-${count}`
-
-    await prisma.tipEntry.upsert({
-      where: { id },
-      update: {},
-      create: {
-        id,
-        date: new Date(tip.date),
-        location: tip.location,
-        type: paymentType as any,
-        amount: tip.amount,
-        restaurantId: 'mirabelle-001',
-        locationId,
-        createdBy: defaultEmployee.id,
-        updatedAt: new Date(),
-        notes: tip.service !== 'Non Festivo' ? tip.service : undefined,
-      }
-    })
-    count++
-    total += tip.amount
-  }
-
-  console.log(`✅ ${count} mance importate`)
-  console.log(`💶 Totale: €${total.toLocaleString('it-IT', {minimumFractionDigits: 2})}`)
+generator client {
+  provider = "prisma-client-js"
 }
 
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect())
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Restaurant {
+  id                 String               @id @default(cuid())
+  name               String
+  address            String?
+  phone              String?
+  companyId          String?              @map("company_id")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  Employee           Employee[]
+  RestaurantLocation RestaurantLocation[]
+  TipEntry           TipEntry[]
+  bookings           Booking[]
+  ccnlRules          CCNLRules[]
+  tips               DailyTips[]
+  leavePolicies      LeavePolicy[]
+  events             RestaurantEvent[]
+  shifts             Shift[]
+  tables             Table[]
+  users              User[]
+  company            Company?             @relation(fields: [companyId], references: [id])
+  employments        Employment[]         @relation("RestaurantEmployments")
+
+  @@index([companyId])
+  @@map("restaurants")
+}
+
+model User {
+  id                 String             @id @default(cuid())
+  email              String             @unique
+  name               String
+  password           String
+  role               UserRole
+  hierarchyLevel     Int                @map("hierarchy_level")
+  restaurantId       String             @map("restaurant_id")
+  department         String?
+  isActive           Boolean            @default(true) @map("is_active")
+  lastLogin          DateTime?          @map("last_login")
+  createdAt          DateTime           @default(now())
+  userType           UserType           @default(EMPLOYEE) @map("user_type")
+  companyId          String?            @map("company_id")
+  informalCompanyId  String?            @map("informal_company_id")
+  teamCode           String?            @map("team_code")
+  isJobSeeking       Boolean            @default(false) @map("is_job_seeking")
+  phone              String?
+  hourlyRate         Decimal?           @map("hourly_rate")
+  contractType       String?            @map("contract_type")
+  startDate          DateTime?          @map("start_date")
+  avatar             String?            @default("👤")
+  ccnlLevel          CCNLLevel?         @map("ccnl_level")
+  position           String?
+  baseSalary         Decimal?           @map("base_salary")
+  fiscalCode         String?            @map("fiscal_code")
+  address            String?
+  emergencyContact   String?            @map("emergency_contact")
+  notes              String?
+  weeklyHours        Int?               @map("weekly_hours")
+  nightShifts        Boolean?           @default(false) @map("night_shifts")
+  weekendWork        Boolean?           @default(true) @map("weekend_work")
+  maxConsecutiveDays Int?               @default(6) @map("max_consecutive_days")
+  contractTypeEnum   ContractType?      @map("contract_type_enum")
+  auditLogs          AuditLog[]
+  skills             EmployeeSkill[]
+  leaveApprovals     LeaveApproval[]
+  leaveBalances      LeaveBalance[]
+  leaveEntitlements  LeaveEntitlement[]
+  leaveRequests      LeaveRequest[]
+  payrolls           Payroll[]
+  shifts             Shift[]
+  tipDistributions   TipDistribution[]
+  userPermissions    UserPermission[]
+  company            Company?           @relation("CompanyUsers", fields: [companyId], references: [id])
+  informalCompany    InformalCompany?   @relation("InformalCompanyUsers", fields: [informalCompanyId], references: [id])
+  restaurant         Restaurant         @relation(fields: [restaurantId], references: [id])
+  employments        Employment[]       @relation("UserEmployments")
+
+  @@index([companyId])
+  @@index([companyId, isActive])
+  @@index([restaurantId])
+  @@index([informalCompanyId])
+  @@index([id, restaurantId]) // ✅ NUOVO - Per query dashboard rapide
+  @@map("users")
+}
+
+model Shift {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  restaurantId String     @map("restaurant_id")
+  date         DateTime
+  startTime    DateTime   @map("start_time")
+  endTime      DateTime   @map("end_time")
+  department   String
+  status       String     @default("scheduled")
+  createdAt    DateTime   @default(now())
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+
+  @@index([userId, date])
+  @@index([restaurantId, date])
+  @@map("shifts")
+}
+
+model DailyTips {
+  id                  String            @id @default(cuid())
+  restaurantId        String            @map("restaurant_id")
+  date                DateTime
+  cashTips            Decimal           @default(0) @map("cash_tips")
+  cardTips            Decimal           @default(0) @map("card_tips")
+  foreignCurrencyTips Decimal           @default(0) @map("foreign_currency_tips")
+  enteredBy           String            @map("entered_by")
+  createdAt           DateTime          @default(now())
+  restaurant          Restaurant        @relation(fields: [restaurantId], references: [id])
+  distributions       TipDistribution[]
+
+  @@unique([restaurantId, date])
+  @@map("daily_tips")
+}
+
+model TipDistribution {
+  id          String    @id @default(cuid())
+  dailyTipsId String    @map("daily_tips_id")
+  userId      String    @map("user_id")
+  amount      Decimal
+  createdAt   DateTime  @default(now())
+  dailyTips   DailyTips @relation(fields: [dailyTipsId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@map("tip_distributions")
+}
+
+model Payroll {
+  id            String   @id @default(cuid())
+  employeeId    String   @map("employee_id")
+  month         Int
+  year          Int
+  regularHours  Float    @default(0) @map("regular_hours")
+  overtimeHours Float    @default(0) @map("overtime_hours")
+  nightHours    Float    @default(0) @map("night_hours")
+  holidayHours  Float    @default(0) @map("holiday_hours")
+  basePay       Decimal  @map("base_pay")
+  overtimePay   Decimal  @map("overtime_pay")
+  nightPay      Decimal  @map("night_pay")
+  holidayPay    Decimal  @map("holiday_pay")
+  grossPay      Decimal  @map("gross_pay")
+  inpsTax       Decimal  @map("inps_tax")
+  irpefTax      Decimal  @map("irpef_tax")
+  netPay        Decimal  @map("net_pay")
+  createdAt     DateTime @default(now()) @map("created_at")
+  employee      User     @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, month, year])
+  @@map("payrolls")
+}
+
+model LeaveRequest {
+  id              String          @id @default(cuid())
+  userId          String          @map("user_id")
+  startDate       DateTime        @map("start_date")
+  endDate         DateTime        @map("end_date")
+  type            LeaveType
+  reason          String?
+  status          LeaveStatus     @default(PENDING)
+  approvedBy      String?         @map("approved_by")
+  approvedAt      DateTime?       @map("approved_at")
+  rejectedBy      String?         @map("rejected_by")
+  rejectedAt      DateTime?       @map("rejected_at")
+  rejectionReason String?         @map("rejection_reason")
+  isUrgent        Boolean         @default(false) @map("is_urgent")
+  attachment      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  approvals       LeaveApproval[]
+  user            User            @relation(fields: [userId], references: [id])
+
+  @@map("leave_requests")
+}
+
+model CCNLRules {
+  id                   String     @id @default(cuid())
+  restaurantId         String     @map("restaurant_id")
+  maxDailyHours        Int        @default(8) @map("max_daily_hours")
+  maxWeeklyHours       Int        @default(40) @map("max_weekly_hours")
+  minRestBetweenShifts Int        @default(11) @map("min_rest_between_shifts")
+  maxConsecutiveDays   Int        @default(6) @map("max_consecutive_days")
+  mandatoryWeeklyRest  Int        @default(36) @map("mandatory_weekly_rest")
+  restaurant           Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@map("ccnl_rules")
+}
+
+model RestaurantEvent {
+  id             String             @id @default(cuid())
+  restaurantId   String             @map("restaurant_id")
+  date           DateTime
+  expectedGuests Int                @map("expected_guests")
+  eventType      EventType          @map("event_type")
+  restaurant     Restaurant         @relation(fields: [restaurantId], references: [id])
+  staffNeeded    StaffRequirement[]
+
+  @@map("restaurant_events")
+}
+
+model StaffRequirement {
+  id         String          @id @default(cuid())
+  eventId    String          @map("event_id")
+  department Department
+  count      Int
+  event      RestaurantEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("staff_requirements")
+}
+
+model LeaveApproval {
+  id         String       @id @default(cuid())
+  requestId  String       @map("request_id")
+  approverId String       @map("approver_id")
+  status     String
+  comment    String?
+  approvedAt DateTime?    @map("approved_at")
+  createdAt  DateTime     @default(now())
+  approver   User         @relation(fields: [approverId], references: [id])
+  request    LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("leave_approvals")
+}
+
+model LeaveEntitlement {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  year            Int
+  vacationDays    Int      @default(26) @map("vacation_days")
+  rolHours        Int      @default(32) @map("rol_hours")
+  paidLeaveDays   Int      @default(3) @map("paid_leave_days")
+  unpaidLeaveDays Int      @default(30) @map("unpaid_leave_days")
+  parentalDays    Int      @default(180) @map("parental_days")
+  studyDays       Int      @default(150) @map("study_days")
+  unionDays       Int      @default(8) @map("union_days")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, year])
+  @@map("leave_entitlements")
+}
+
+model LeaveBalance {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  year      Int
+  type      LeaveType
+  total     Int
+  used      Int       @default(0)
+  remaining Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, year, type])
+  @@map("leave_balances")
+}
+
+model LeavePolicy {
+  id                 String     @id @default(cuid())
+  restaurantId       String     @map("restaurant_id")
+  type               LeaveType
+  maxDays            Int        @map("max_days")
+  noticeDays         Int        @map("notice_days")
+  autoApprove        Boolean    @default(false) @map("auto_approve")
+  requiresAttachment Boolean    @default(false) @map("requires_attachment")
+  blackoutPeriods    String?    @map("blackout_periods")
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  restaurant         Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@unique([restaurantId, type])
+  @@map("leave_policies")
+}
+
+model Booking {
+  id            String     @id @default(cuid())
+  restaurantId  String     @map("restaurant_id")
+  customerName  String     @map("customer_name")
+  customerPhone String?    @map("customer_phone")
+  date          DateTime
+  time          DateTime
+  partySize     Int        @map("party_size")
+  tableNumber   Int?       @map("table_number")
+  status        String     @default("confirmed")
+  notes         String?
+  createdAt     DateTime   @default(now())
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@map("bookings")
+}
+
+model Table {
+  id           String     @id @default(cuid())
+  restaurantId String     @map("restaurant_id")
+  tableNumber  Int        @map("table_number")
+  seats        Int
+  status       String     @default("available")
+  lastUpdated  DateTime   @default(now()) @map("last_updated")
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@unique([restaurantId, tableNumber])
+  @@map("tables")
+}
+
+model EmployeeSkill {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  skill     String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("employee_skills")
+}
+
+model Permission {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String
+  category        String
+  createdAt       DateTime         @default(now())
+  userPermissions UserPermission[]
+
+  @@map("permissions")
+}
+
+model UserPermission {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  permissionId String     @map("permission_id")
+  granted      Boolean    @default(true)
+  grantedBy    String?    @map("granted_by")
+  grantedAt    DateTime   @default(now())
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  action     String
+  resource   String
+  resourceId String?  @map("resource_id")
+  details    String?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Company {
+  id               String            @id @default(cuid())
+  name             String
+  fiscalCode       String            @unique @map("fiscal_code")
+  address          String?
+  phone            String?
+  email            String?
+  subscriptionType String            @default("BASIC") @map("subscription_type")
+  isActive         Boolean           @default(true) @map("is_active")
+  createdAt        DateTime          @default(now())
+  informalTeams    InformalCompany[]
+  users            User[]            @relation("CompanyUsers")
+  restaurants      Restaurant[]
+
+  @@map("companies")
+}
+
+model InformalCompany {
+  id              String   @id @default(cuid())
+  name            String
+  address         String?
+  city            String?
+  type            String?
+  description     String?
+  linkedCompanyId String?  @map("linked_company_id")
+  isVerified      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  linkedCompany   Company? @relation(fields: [linkedCompanyId], references: [id])
+  users           User[]   @relation("InformalCompanyUsers")
+
+  @@map("informal_companies")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Employee {
+  id                String              @id
+  name              String              @unique
+  email             String?             @unique
+  phone             String?
+  score             Int
+  restDays          String[]
+  ccnlLevel         CCNLLevel?
+  role              EmployeeRole
+  restaurantId      String
+  canInsertTips     Boolean             @default(false)
+  canViewAll        Boolean             @default(false)
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  createdBy         String?
+  restaurants       Restaurant          @relation(fields: [restaurantId], references: [id])
+  TipDistributionV2 TipDistributionV2[]
+  TipEntry          TipEntry[]
+  UserSession       UserSession[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model MonthlySummary {
+  id            String   @id
+  year          Int
+  month         Int
+  locationId    String
+  employeeId    String
+  totalAmount   Decimal
+  daysWorked    Int
+  averageDaily  Decimal
+  cashAmount    Decimal  @default(0)
+  cardAmount    Decimal  @default(0)
+  foreignAmount Decimal  @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([year, month, locationId, employeeId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model RestaurantLocation {
+  id           String     @id
+  name         String
+  address      String?
+  restaurantId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime
+  restaurants  Restaurant @relation(fields: [restaurantId], references: [id])
+  TipEntry     TipEntry[]
+
+  @@unique([restaurantId, name])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model TipDistributionV2 {
+  id                 String   @id
+  date               DateTime
+  locationId         String
+  employeeId         String
+  employeeName       String
+  employeeScore      Int
+  totalTips          Decimal
+  totalPoints        Int
+  amount             Decimal
+  isPresent          Boolean
+  calculatedAt       DateTime @default(now())
+  calculationVersion String   @default("v1.0")
+  Employee           Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([date, locationId, employeeId])
+  @@index([date, locationId])
+  @@index([employeeId, date])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model TipEntry {
+  id                 String             @id
+  date               DateTime
+  location           String
+  type               PaymentType
+  amount             Decimal
+  time               String?
+  notes              String?
+  restaurantId       String
+  locationId         String
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime
+  createdBy          String
+  Employee           Employee           @relation(fields: [createdBy], references: [id])
+  RestaurantLocation RestaurantLocation @relation(fields: [locationId], references: [id])
+  restaurants        Restaurant         @relation(fields: [restaurantId], references: [id])
+
+  @@index([createdAt])
+  @@index([date, locationId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model UserSession {
+  id         String   @id
+  employeeId String
+  token      String   @unique
+  expiresAt  DateTime
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  Employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([token])
+}
+
+enum EventType {
+  NORMALE
+  EVENTO_SPECIALE
+  FESTA
+}
+
+enum UserRole {
+  ADMIN
+  PROPRIETARIO
+  PROPRIETARIO_OPERATIVO
+  DIRETTORE
+  DIRETTORE_GENERALE
+  VICE_DIRETTORE
+  MANAGER
+  RESTAURANT_MANAGER
+  ASSISTANT_MANAGER
+  RESPONSABILE_SALA
+  MAITRE
+  CASSIERE
+  EXECUTIVE_CHEF
+  HEAD_CHEF
+  SOUS_CHEF
+  EXEC_SOUS_CHEF
+  CHEF_DE_CUISINE
+  CHEF_DE_PARTIE
+  DEMI_CHEF_DE_PARTIE
+  CHEF
+  CAPO_PARTITA
+  PIZZAIOLO_SPECIALIZZATO
+  CUOCO_QUALIFICATO
+  COMMIS_DE_CUISINE
+  COMMIS_DE_CUISINE_SENIOR
+  AIUTO_CUOCO
+  HEAD_SOMMELIER
+  SOMMELIER
+  HEAD_BARMAN
+  BARMAN_SENIOR
+  BARMAN
+  CAMERIERE_SENIOR
+  CAMERIERE_QUALIFICATO
+  CAMERIERE
+  COMMIS_DI_SALA
+  RUNNER
+  DIPENDENTE_SALA
+  DIPENDENTE_BAR
+  DIPENDENTE
+  LAVAPIATTI
+}
+
+enum Department {
+  CUCINA
+  SALA
+  BAR
+}
+
+enum ContractType {
+  FULL_TIME
+  PART_TIME
+  STAGIONALE
+}
+
+enum CCNLLevel {
+  LIVELLO_1Q
+  LIVELLO_2Q
+  LIVELLO_3
+  LIVELLO_4
+  LIVELLO_5
+  LIVELLO_6
+  LIVELLO_7
+  LIVELLO_8
+}
+
+enum LeaveType {
+  VACATION
+  SICK_LEAVE
+  ROL
+  PAID_LEAVE
+  UNPAID_LEAVE
+  PARENTAL_LEAVE
+  STUDY_LEAVE
+  UNION_LEAVE
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum UserType {
+  EMPLOYEE
+  CANDIDATE
+  OWNER
+}
+
+enum EmployeeRole {
+  OWNER
+  MANAGER
+  CASHIER
+  CHEF
+  SOUS_CHEF
+  COOK
+  WAITER
+  BARTENDER
+  DISHWASHER
+  HOST
+  CLEANER
+}
+
+enum PaymentType {
+  CARD
+  CASH
+  FOREIGN
+}
+
+enum EmploymentStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  REJECTED
+  TERMINATED
+}
+
+model Employment {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  user         User       @relation("UserEmployments", fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String     @map("restaurant_id")
+  restaurant   Restaurant @relation("RestaurantEmployments", fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  status     EmploymentStatus @default(PENDING)
+  role       UserRole         @default(DIPENDENTE)
+  department String?
+
+  requestedAt DateTime  @default(now()) @map("requested_at")
+  reviewedAt  DateTime? @map("reviewed_at")
+  reviewedBy  String?   @map("reviewed_by")
+
+  startDate DateTime? @map("start_date")
+  endDate   DateTime? @map("end_date")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, restaurantId])
+  @@index([userId])
+  @@index([restaurantId])
+  @@index([status])
+  @@index([userId, status]) // Per query: "tutti i PENDING di un user"
+  @@index([restaurantId, status]) // Per query: "tutti i PENDING di un restaurant"
+  @@index([createdAt]) // Per ordinamento temporale
+  @@map("employments")
+}

@@ -6,16 +6,21 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
+    const restaurantId = searchParams.get('restaurantId')
     const department = searchParams.get('department') || undefined
     const activeParam = searchParams.get('active')
 
-    if (!companyId) {
-      return NextResponse.json({ error: 'companyId is required' }, { status: 400 })
+    if (!companyId && !restaurantId) {
+      return NextResponse.json(
+        { error: 'companyId or restaurantId is required' },
+        { status: 400 }
+      )
     }
 
     const employees = await prisma.user.findMany({
       where: {
-        companyId,
+        ...(companyId && { companyId }),
+        ...(restaurantId && { restaurantId }),
         ...(department && { department }),
         ...(activeParam !== null && { isActive: activeParam === 'true' })
       },
@@ -61,7 +66,9 @@ export async function GET(request: NextRequest) {
         const accepted = new Set(['APPROVED', 'ACTIVE'])
         filteredEmployees = employees.filter(e => {
           const latest = latestByUser[e.id]
-          return latest ? accepted.has(latest.status) : false
+          // Nessun employment = dipendente diretto del ristorante (es. import seed)
+          if (!latest) return true
+          return accepted.has(latest.status)
         })
       } else {
         filteredEmployees = []

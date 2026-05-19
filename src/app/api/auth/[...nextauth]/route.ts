@@ -70,7 +70,9 @@ export const authOptions: AuthOptions = {
               avatar: (dbUser as unknown as { avatar?: string }).avatar ?? '👤',
               userType: (dbUser as unknown as { userType?: string }).userType ?? 'EMPLOYEE',
               companyId: (dbUser as unknown as { companyId?: string | null }).companyId ?? null,
-              informalCompanyId: (dbUser as unknown as { informalCompanyId?: string | null }).informalCompanyId ?? null
+              informalCompanyId: (dbUser as unknown as { informalCompanyId?: string | null }).informalCompanyId ?? null,
+              restaurantId: dbUser.restaurantId,
+              department: dbUser.department ?? undefined,
             } as unknown as User
               await logLogin((user as unknown as { id: string }).id)
             return user
@@ -180,6 +182,12 @@ export const authOptions: AuthOptions = {
       if (user && 'informalCompanyId' in user) {
         (token as unknown as { informalCompanyId?: string | null }).informalCompanyId = (user as unknown as { informalCompanyId?: string | null }).informalCompanyId;
       }
+      if (user && 'restaurantId' in user) {
+        (token as { restaurantId?: string }).restaurantId = (user as { restaurantId?: string }).restaurantId;
+      }
+      if (user && 'department' in user) {
+        (token as { department?: string }).department = (user as { department?: string }).department;
+      }
       
       // Ricarica i dati dal database ogni volta per avere sempre i dati freschi
       // (o almeno quando c'è un update trigger)
@@ -193,6 +201,8 @@ export const authOptions: AuthOptions = {
             token.email = dbUser.email
             token.role = String(dbUser.role) as import('@/types/roles').UserRoleString
             token.avatar = (dbUser as unknown as { avatar?: string }).avatar ?? '👤'
+            ;(token as { restaurantId?: string }).restaurantId = dbUser.restaurantId
+            ;(token as { department?: string | null }).department = dbUser.department
           }
         } catch (e) {
           console.error('Error refreshing user data in JWT:', e)
@@ -212,6 +222,8 @@ export const authOptions: AuthOptions = {
         session.user.userType = token.userType as string | undefined;
         session.user.companyId = (token.companyId as string | null | undefined) ?? undefined;
         session.user.informalCompanyId = token.informalCompanyId as string | null | undefined;
+        session.user.restaurantId = (token as { restaurantId?: string }).restaurantId;
+        session.user.department = (token as { department?: string }).department;
       }
       return session;
     }
