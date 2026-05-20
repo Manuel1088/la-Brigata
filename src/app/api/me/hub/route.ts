@@ -92,53 +92,23 @@ export async function GET() {
     let monthlyTipsTotal = 0
     let monthlyTipsDays = 0
 
-    const distributions = await prisma.tipDistribution.findMany({
-      where: {
-        userId: user.id,
-        dailyTips: {
-          restaurantId: user.restaurantId,
-          date: { gte: monthStart, lte: monthEnd },
-        },
-      },
-      include: { dailyTips: { select: { date: true } } },
+    const employee = await prisma.employee.findFirst({
+      where: { name: user.name, restaurantId: user.restaurantId },
+      select: { id: true },
     })
 
-    if (distributions.length > 0) {
-      monthlyTipsTotal = distributions.reduce((s, d) => s + Number(d.amount), 0)
-      monthlyTipsDays = new Set(
-        distributions.map((d) => toDateOnlyIso(d.dailyTips.date))
-      ).size
-    } else {
-      const employee = await prisma.employee.findFirst({
-        where: { name: user.name, restaurantId: user.restaurantId },
-        select: { id: true },
+    if (employee) {
+      const v2Rows = await prisma.tipDistributionV2.findMany({
+        where: {
+          employeeId: employee.id,
+          date: { gte: monthStart, lte: monthEnd },
+        },
+        select: { amount: true, date: true },
       })
 
-      if (employee) {
-        const v2Rows = await prisma.tipDistributionV2.findMany({
-          where: {
-            employeeId: employee.id,
-            date: { gte: monthStart, lte: monthEnd },
-          },
-          select: { amount: true, date: true },
-        })
-
-        if (v2Rows.length > 0) {
-          monthlyTipsTotal = v2Rows.reduce((s, r) => s + Number(r.amount), 0)
-          monthlyTipsDays = new Set(v2Rows.map((r) => toDateOnlyIso(r.date))).size
-        } else {
-          const summary = await prisma.monthlySummary.findFirst({
-            where: {
-              employeeId: employee.id,
-              year,
-              month: month + 1,
-            },
-          })
-          if (summary) {
-            monthlyTipsTotal = Number(summary.totalAmount)
-            monthlyTipsDays = summary.daysWorked
-          }
-        }
+      if (v2Rows.length > 0) {
+        monthlyTipsTotal = v2Rows.reduce((s, r) => s + Number(r.amount), 0)
+        monthlyTipsDays = new Set(v2Rows.map((r) => toDateOnlyIso(r.date))).size
       }
     }
 

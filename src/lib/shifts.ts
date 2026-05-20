@@ -23,6 +23,11 @@ export interface ShiftApiRecord {
 
 const DISPLAY_PREFIX = 'display:'
 
+/** Parse YYYY-MM-DD as local noon to avoid UTC day rollback (e.g. Italy UTC+2) */
+export function dateFromIso(iso: string): Date {
+  return new Date(`${iso}T12:00:00`)
+}
+
 /** Encode calendar time label into DB status field */
 export function encodeShiftStatus(time: ShiftTimeLabel): string {
   if (time === 'RIPOSO') return 'rest'
@@ -45,7 +50,7 @@ export function parseTimeToBounds(
   time: ShiftTimeLabel,
   dateIso: string
 ): { startTime: Date; endTime: Date; status: string } {
-  const base = new Date(`${dateIso}T00:00:00`)
+  const base = dateFromIso(dateIso)
   if (time === 'RIPOSO') {
     return { startTime: base, endTime: base, status: 'rest' }
   }

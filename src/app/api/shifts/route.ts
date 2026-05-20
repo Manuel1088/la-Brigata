@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import {
+  dateFromIso,
   decodeShiftTime,
   getDateRange,
   parseTimeToBounds,
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Permessi insufficienti' }, { status: 403 })
     }
 
-    const rangeStart = new Date(`${rangeFrom}T00:00:00`)
+    const rangeStart = dateFromIso(rangeFrom)
     const rangeEnd = new Date(`${rangeTo}T23:59:59.999`)
 
     await prisma.$transaction(async (tx) => {
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
           return {
             userId: a.userId,
             restaurantId,
-            date: new Date(`${a.date}T00:00:00`),
+            date: dateFromIso(a.date),
             startTime,
             endTime,
             department: a.department,

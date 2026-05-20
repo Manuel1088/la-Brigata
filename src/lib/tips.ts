@@ -1,5 +1,5 @@
 import type { PaymentType, PrismaClient } from '@prisma/client'
-import { decodeShiftTime, toDateOnlyIso } from '@/lib/shifts'
+import { dateFromIso, decodeShiftTime, toDateOnlyIso } from '@/lib/shifts'
 
 export type TipAmountInput = {
   cash?: number
@@ -14,7 +14,7 @@ const PAYMENT_MAP: Record<'cash' | 'card' | 'foreign', PaymentType> = {
 }
 
 export function dayBounds(dateIso: string): { start: Date; end: Date } {
-  const start = new Date(`${dateIso}T00:00:00`)
+  const start = dateFromIso(dateIso)
   const end = new Date(`${dateIso}T23:59:59.999`)
   return { start, end }
 }
@@ -49,13 +49,23 @@ function isPresentShift(status: string, startTime: Date, endTime: Date): boolean
   return time !== 'RIPOSO' && time !== 'FERIE'
 }
 
-/** Ricalcola DailyTips + TipDistribution (+ V2 per location) per un giorno/ristorante */
+export type TipDistributionResult = {
+  totals: { cash: number; card: number; foreign: number; total: number } | null
+  distributions: Array<{
+    employeeId: string
+    employeeName: string
+    locationId: string
+    amount: number
+  }>
+  warning?: string
+}
+
+/** Ricalcola TipDistributionV2 per un giorno/ristorante */
 export async function recalculateDistributionsForDay(
   prisma: PrismaClient,
   restaurantId: string,
-  dateIso: string,
-  enteredByEmployeeId: string
-) {
+  dateIso: string
+): Promise<TipDistributionResult> {
   const { start, end } = dayBounds(dateIso)
 
   const entries = await prisma.tipEntry.findMany({
@@ -78,42 +88,32 @@ export async function recalculateDistributionsForDay(
 
   const totalTips = cashTips + cardTips + foreignCurrencyTips
 
-  const existingDaily = await prisma.dailyTips.findUnique({
-    where: { restaurantId_date: { restaurantId, date: start } },
-  })
+  const locationIds = [
+    ...new Set(
+      (
+        await prisma.restaurantLocation.findMany({
+          where: { restaurantId },
+          select: { id: true },
+        })
+      ).map((l) => l.id)
+    ),
+  ]
 
   if (totalTips <= 0) {
-    if (existingDaily) {
-      await prisma.tipDistribution.deleteMany({
-        where: { dailyTipsId: existingDaily.id },
+    if (locationIds.length > 0) {
+      await prisma.tipDistributionV2.deleteMany({
+        where: {
+          locationId: { in: locationIds },
+          date: { gte: start, lte: end },
+        },
       })
-      await prisma.dailyTips.delete({ where: { id: existingDaily.id } })
     }
-    await prisma.tipDistributionV2.deleteMany({
-      where: {
-        date: { gte: start, lte: end },
-        locationId: { in: [...new Set(entries.map((e) => e.locationId))] },
-      },
-    })
-    return { dailyTips: null, distributions: [], warning: 'Nessuna mancia per questo giorno' }
+    return {
+      totals: null,
+      distributions: [],
+      warning: 'Nessuna mancia per questo giorno',
+    }
   }
-
-  const dailyTips = await prisma.dailyTips.upsert({
-    where: { restaurantId_date: { restaurantId, date: start } },
-    create: {
-      restaurantId,
-      date: start,
-      cashTips,
-      cardTips,
-      foreignCurrencyTips,
-      enteredBy: enteredByEmployeeId,
-    },
-    update: {
-      cashTips,
-      cardTips,
-      foreignCurrencyTips,
-    },
-  })
 
   const shifts = await prisma.shift.findMany({
     where: {
@@ -141,7 +141,7 @@ export async function recalculateDistributionsForDay(
     },
     select: { id: true, name: true, score: true },
   })
-  const scoreByName = new Map(employees.map((e) => [e.name, e.score]))
+  const employeeByName = new Map(employees.map((e) => [e.name, e]))
 
   const users =
     presentUserIds.size > 0
@@ -152,42 +152,27 @@ export async function recalculateDistributionsForDay(
       : []
 
   const participants = users
-    .map((u) => ({
-      userId: u.id,
-      name: u.name,
-      score: Math.max(1, scoreByName.get(u.name) ?? 5),
-      employeeId: employees.find((e) => e.name === u.name)?.id,
-    }))
-    .filter((p) => p.score > 0)
+    .map((u) => {
+      const emp = employeeByName.get(u.name)
+      if (!emp) return null
+      return {
+        employeeId: emp.id,
+        name: u.name,
+        score: Math.max(1, emp.score),
+      }
+    })
+    .filter((p): p is NonNullable<typeof p> => p !== null)
 
   const totalPoints = participants.reduce((sum, p) => sum + p.score, 0)
 
-  await prisma.tipDistribution.deleteMany({
-    where: { dailyTipsId: dailyTips.id },
-  })
-
-  let distributions: Array<{ userId: string; amount: number }> = []
-
-  if (totalPoints > 0 && participants.length > 0) {
-    const rows = participants.map((p) => ({
-      dailyTipsId: dailyTips.id,
-      userId: p.userId,
-      amount: (totalTips * p.score) / totalPoints,
-    }))
-    await prisma.tipDistribution.createMany({ data: rows })
-    distributions = rows.map((r) => ({
-      userId: r.userId,
-      amount: Number(r.amount),
-    }))
-  }
-
-  // TipDistributionV2 per ogni location con mance quel giorno
   const byLocation = new Map<string, typeof entries>()
   for (const entry of entries) {
     const list = byLocation.get(entry.locationId) ?? []
     list.push(entry)
     byLocation.set(entry.locationId, list)
   }
+
+  const distributions: TipDistributionResult['distributions'] = []
 
   for (const [locationId, locEntries] of byLocation) {
     let locTotal = 0
@@ -205,7 +190,7 @@ export async function recalculateDistributionsForDay(
     if (locTotal <= 0 || totalPoints <= 0 || participants.length === 0) continue
 
     for (const p of participants) {
-      if (!p.employeeId) continue
+      const amount = (locTotal * p.score) / totalPoints
       await prisma.tipDistributionV2.create({
         data: {
           id: crypto.randomUUID(),
@@ -216,9 +201,15 @@ export async function recalculateDistributionsForDay(
           employeeScore: p.score,
           totalTips: locTotal,
           totalPoints,
-          amount: (locTotal * p.score) / totalPoints,
+          amount,
           isPresent: true,
         },
+      })
+      distributions.push({
+        employeeId: p.employeeId,
+        employeeName: p.name,
+        locationId,
+        amount,
       })
     }
   }
@@ -228,7 +219,11 @@ export async function recalculateDistributionsForDay(
       ? 'Mance salvate. Nessun turno lavorativo trovato: distribuzione non calcolata.'
       : undefined
 
-  return { dailyTips, distributions, warning }
+  return {
+    totals: { cash: cashTips, card: cardTips, foreign: foreignCurrencyTips, total: totalTips },
+    distributions,
+    warning,
+  }
 }
 
 export function buildTipEntryPayloads(

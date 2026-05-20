@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** POST /api/tips — salva TipEntry, aggiorna DailyTips, calcola distribuzioni */
+/** POST /api/tips — salva TipEntry e ricalcola TipDistributionV2 */
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -180,8 +180,7 @@ export async function POST(request: NextRequest) {
     const distributionResult = await recalculateDistributionsForDay(
       prisma,
       restaurantId,
-      date,
-      creatorEmployee.id
+      date
     )
 
     return NextResponse.json({
@@ -193,18 +192,7 @@ export async function POST(request: NextRequest) {
         location: e.location,
         date,
       })),
-      dailyTips: distributionResult.dailyTips
-        ? {
-            id: distributionResult.dailyTips.id,
-            cash: Number(distributionResult.dailyTips.cashTips),
-            card: Number(distributionResult.dailyTips.cardTips),
-            foreign: Number(distributionResult.dailyTips.foreignCurrencyTips),
-            total:
-              Number(distributionResult.dailyTips.cashTips) +
-              Number(distributionResult.dailyTips.cardTips) +
-              Number(distributionResult.dailyTips.foreignCurrencyTips),
-          }
-        : null,
+      totals: distributionResult.totals,
       distributions: distributionResult.distributions,
       warning: distributionResult.warning,
     })
