@@ -1,235 +1,222 @@
 'use client'
-import { useSession } from 'next-auth/react'
-import { useEffect, useMemo, useState } from 'react'
-import { useCompanyData } from '@/hooks/useCompanyData'
-import type { CompanyData } from '@/hooks/useCompanyData'
 
-// Definizione dei tipi
-type Employee = {
-  name: string
-  role: string
-  department: string
-}
+import { useCallback, useEffect, useState } from 'react'
 
-type TipEntry = {
+type TipEntryRow = {
   id: string
   date: string
   location: string
+  locationId: string
   type: 'cash' | 'card' | 'foreign'
   amount: number
+  notes?: string | null
   createdAt?: string
 }
 
+type DistributionRow = {
+  id: string
+  date: string
+  locationId: string
+  locationName: string
+  amount: number
+  employeeScore: number
+  totalTips: number
+  totalPoints: number
+  isPresent: boolean
+}
+
+type ByDayEmployee = {
+  date: string
+  amount: number
+  items: DistributionRow[]
+}
+
+type ByDayManager = {
+  date: string
+  amount: number
+  items: TipEntryRow[]
+}
+
+type EntriesResponse = {
+  view: 'manager' | 'employee'
+  month: number
+  year: number
+  monthLabel: string
+  byDay: ByDayEmployee[] | ByDayManager[]
+}
+
+const formatCurrency = (n: number) =>
+  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n)
+
+const typeLabel = (type: TipEntryRow['type']) =>
+  type === 'cash' ? 'Contanti' : type === 'card' ? 'Carta' : 'Monete estere'
+
+const typeColor = (type: TipEntryRow['type']) =>
+  type === 'cash'
+    ? 'text-green-700'
+    : type === 'card'
+      ? 'text-blue-700'
+      : 'text-purple-700'
+
 export default function TipsDaily() {
-  const { data: session } = useSession()
-  const [entries, setEntries] = useState<TipEntry[]>([])
-  const [tipsKey, setTipsKey] = useState<string>('')
-  const [waitingCtx, setWaitingCtx] = useState<boolean>(true)
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
-  const [editingId, setEditingId] = useState<string>('')
-  const [editMap, setEditMap] = useState<Record<string, TipEntry>>({})
+  const [currentMonth, setCurrentMonth] = useState(() => new Date())
+  const [data, setData] = useState<EntriesResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Risolvi chiave per ristorante e carica storico (senza fetch)
-  useEffect(() => {
-    const rid = session?.user?.restaurantId as string | undefined
-    if (rid) setTipsKey(`tipEntries_v1::${rid}`)
-    setWaitingCtx(false)
-  }, [session])
+  const year = currentMonth.getFullYear()
+  const month = currentMonth.getMonth()
 
-  useEffect(() => {
-    if (!tipsKey) return
-    const load = () => {
-      try {
-        const raw = localStorage.getItem(tipsKey)
-        const list: TipEntry[] = raw ? JSON.parse(raw) : []
-        list.sort((a, b) => {
-          const db = new Date(b.date).getTime()
-          const da = new Date(a.date).getTime()
-          if (db !== da) return db - da
-          const cb = b.createdAt ? new Date(b.createdAt).getTime() : 0
-          const ca = a.createdAt ? new Date(a.createdAt).getTime() : 0
-          return cb - ca
-        })
-        setEntries(list)
-      } catch { setEntries([]) }
-    }
-    load()
-    const onUpdate = () => load()
-    try { window.addEventListener('tip_entries_updated', onUpdate) } catch {}
-    try { window.addEventListener('storage', onUpdate) } catch {}
-    return () => {
-      try { window.removeEventListener('tip_entries_updated', onUpdate) } catch {}
-      try { window.removeEventListener('storage', onUpdate) } catch {}
-    }
-  }, [tipsKey])
-
-  // Carica sale esistenti per editing location, scoping per azienda (via hook)
-  const { data: companyData } = useCompanyData(session?.user?.id)
-  useEffect(() => {
-    let cancelled = false
-    const fiscal: string | undefined = (companyData as CompanyData | null | undefined)?.company?.fiscalCode
-    if (!fiscal) return
-    const key = `booking_areas_v1::${fiscal}`
-    const load = () => {
-      try {
-        const raw = localStorage.getItem(key)
-        const areas = (raw ? JSON.parse(raw) : []) as Array<{ id: string; name: string }>
-        const locs = (areas || []).map((a) => ({ id: a.id, name: a.name }))
-        if (!cancelled) setLocations(locs)
-      } catch { if (!cancelled) setLocations([]) }
-    }
-    load()
-    const onUpdate = () => load()
-    try { window.addEventListener('booking_areas_updated', onUpdate) } catch {}
-    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate) } catch {}; cancelled = true }
-  }, [companyData])
-
-  const startEdit = (e: TipEntry) => {
-    setEditingId(e.id)
-    setEditMap(prev => ({ ...prev, [e.id]: { ...e } }))
-  }
-
-  const cancelEdit = () => {
-    setEditingId('')
-  }
-
-  const saveEdit = (id: string) => {
-    const payload = editMap[id]
-    if (!payload) return
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
     try {
-      if (!tipsKey) return
-      const raw = localStorage.getItem(tipsKey)
-      const list: TipEntry[] = raw ? JSON.parse(raw) : []
-      const next = list.map(x => x.id === id ? {
-        ...x,
-        date: payload.date,
-        location: payload.location,
-        type: payload.type,
-        amount: Number(payload.amount) || 0,
-      } : x)
-      localStorage.setItem(tipsKey, JSON.stringify(next))
-      setEntries(next)
-      try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
-      setEditingId('')
-    } catch {}
-  }
+      const res = await fetch(`/api/tips/entries?year=${year}&month=${month}`, {
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error((body as { error?: string }).error || 'Errore caricamento')
+      }
+      setData((await res.json()) as EntriesResponse)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Errore caricamento')
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [year, month])
 
-  const removeEntry = (id: string) => {
-    try {
-      if (!tipsKey) return
-      const raw = localStorage.getItem(tipsKey)
-      const list: TipEntry[] = raw ? JSON.parse(raw) : []
-      const next = list.filter(x => x.id !== id)
-      localStorage.setItem(tipsKey, JSON.stringify(next))
-      setEntries(next)
-      try { window.dispatchEvent(new CustomEvent('tip_entries_updated')) } catch {}
-    } catch {}
-  }
+  useEffect(() => {
+    void load()
+  }, [load])
 
-  const groupedByDate = useMemo(() => {
-    const map = new Map<string, TipEntry[]>()
-    entries.forEach(e => {
-      const key = e.date
-      const arr = map.get(key) || []
-      arr.push(e)
-      map.set(key, arr)
+  const goToPreviousMonth = () => {
+    setCurrentMonth((prev) => {
+      const d = new Date(prev)
+      d.setMonth(prev.getMonth() - 1)
+      return d
     })
-    return Array.from(map.entries()).sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime())
-  }, [entries])
+  }
 
-  if (waitingCtx) return <div className="text-center py-8">Caricamento...</div>
+  const goToNextMonth = () => {
+    setCurrentMonth((prev) => {
+      const d = new Date(prev)
+      d.setMonth(prev.getMonth() + 1)
+      return d
+    })
+  }
+
+  if (loading) {
+    return <div className="text-center py-8 text-gray-600">Caricamento...</div>
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        {error}
+        <button type="button" onClick={() => void load()} className="block mt-2 text-sm underline">
+          Riprova
+        </button>
+      </div>
+    )
+  }
+
+  const byDay = data?.byDay ?? []
+  const isEmployee = data?.view === 'employee'
+  const title = isEmployee ? '📅 Le tue mance giornaliere' : '📊 Inserimenti mance del ristorante'
 
   return (
     <div className="space-y-6">
-      {/* Storico mance */}
       <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">📊 Storico Mance</h2>
+        <div className="px-6 py-4 border-b flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+            <p className="text-sm text-gray-500 mt-1 capitalize">{data?.monthLabel}</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={goToPreviousMonth}
+              className="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
+              aria-label="Mese precedente"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              onClick={goToNextMonth}
+              className="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
+              aria-label="Mese successivo"
+            >
+              →
+            </button>
+          </div>
         </div>
+
         <div className="p-6">
-          {entries.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">Nessuna mancia registrata</p>
+          {byDay.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">
+              {isEmployee
+                ? 'Nessuna distribuzione in questo mese'
+                : 'Nessuna mancia registrata in questo mese'}
+            </p>
           ) : (
             <div className="space-y-6">
-              {groupedByDate.map(([dateStr, list]) => {
-                const total = list.reduce((s, e) => s + (Number(e.amount) || 0), 0)
-                return (
-                  <div key={dateStr} className="border rounded-lg">
-                    <div className="px-4 py-3 border-b flex items-center justify-between bg-gray-50">
-                      <div className="font-medium">{new Date(dateStr).toLocaleDateString('it-IT')}</div>
-                      <div className="text-sm text-gray-700">Totale: <span className="font-semibold">€{total.toFixed(2)}</span></div>
-                    </div>
-                    <div className="p-4 space-y-2">
-                      {list.map(e => {
-                        const isEd = editingId === e.id
-                        const current = isEd ? (editMap[e.id] || e) : e
-                        return (
-                          <div key={e.id} className="flex items-center justify-between text-sm">
-                            {!isEd ? (
-                              <>
-                                <div className="flex items-center gap-3">
-                                  <span className="px-2 py-0.5 rounded-full text-white text-xs bg-gray-700">{e.location}</span>
-                                  <span className={e.type==='cash' ? 'text-green-700' : e.type==='card' ? 'text-blue-700' : 'text-purple-700'}>
-                                    {e.type === 'cash' ? 'Contanti' : e.type === 'card' ? 'Carta' : 'Monete Estere'}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="font-semibold">€{Number(e.amount).toFixed(2)}</div>
-                                  <button onClick={() => startEdit(e)} className="px-2 py-1 border rounded hover:bg-gray-50">Modifica</button>
-                                  <button onClick={() => removeEntry(e.id)} className="px-2 py-1 border rounded text-red-600 hover:bg-red-50">Cancella</button>
-                                </div>
-                              </>
-                            ) : (
-                              <div className="w-full grid md:grid-cols-5 gap-2 items-center">
-                                <div className="md:col-span-2">
-                                  <select
-                                    value={current.location}
-                                    onChange={(ev) => setEditMap(prev => ({ ...prev, [e.id]: { ...(prev[e.id] || e), location: ev.target.value } }))}
-                                    className="w-full px-2 py-1 border rounded"
-                                  >
-                                    {[{ id: current.location, name: current.location }, ...locations].reduce((acc, l) => {
-                                      // evita duplicati se il nome coincide
-                                      if (!acc.find(x => x.name === l.name)) acc.push(l)
-                                      return acc
-                                    }, [] as {id:string;name:string}[]).map(l => (
-                                      <option key={l.name} value={l.name}>{l.name}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div>
-                                  <select
-                                    value={current.type}
-                                    onChange={(ev) => setEditMap(prev => ({ ...prev, [e.id]: { ...(prev[e.id] || e), type: ev.target.value as TipEntry['type'] } }))}
-                                    className="w-full px-2 py-1 border rounded"
-                                  >
-                                    <option value="cash">Contanti</option>
-                                    <option value="card">Carta</option>
-                                    <option value="foreign">Monete Estere</option>
-                                  </select>
-                                </div>
-                                <div>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={current.amount}
-                                    onChange={(ev) => setEditMap(prev => ({ ...prev, [e.id]: { ...(prev[e.id] || e), amount: parseFloat(ev.target.value || '0') } }))}
-                                    className="w-full px-2 py-1 border rounded"
-                                  />
-                                </div>
-                                <div className="flex justify-end gap-2">
-                                  <button onClick={() => saveEdit(e.id)} className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">Salva</button>
-                                  <button onClick={cancelEdit} className="px-2 py-1 border rounded hover:bg-gray-50">Annulla</button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
+              {byDay.map((day) => (
+                <div key={day.date} className="border rounded-lg">
+                  <div className="px-4 py-3 border-b flex items-center justify-between bg-gray-50">
+                    <div className="font-medium">
+                      {new Date(day.date + 'T12:00:00').toLocaleDateString('it-IT', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
                       })}
                     </div>
+                    <div className="text-sm text-gray-700">
+                      Totale: <span className="font-semibold">{formatCurrency(day.amount)}</span>
+                    </div>
                   </div>
-                )
-              })}
+                  <div className="p-4 space-y-2">
+                    {isEmployee
+                      ? (day as ByDayEmployee).items.map((d) => (
+                          <div
+                            key={d.id}
+                            className="flex items-center justify-between text-sm py-2 border-b border-gray-100 last:border-0"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-gray-700 text-white">
+                                {d.locationName}
+                              </span>
+                              <span className="text-gray-500">
+                                Punti {d.employeeScore}/{d.totalPoints} · pool{' '}
+                                {formatCurrency(d.totalTips)}
+                              </span>
+                            </div>
+                            <div className="font-semibold text-gray-900">
+                              {formatCurrency(d.amount)}
+                            </div>
+                          </div>
+                        ))
+                      : (day as ByDayManager).items.map((e) => (
+                          <div
+                            key={e.id}
+                            className="flex items-center justify-between text-sm py-2 border-b border-gray-100 last:border-0"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-gray-700 text-white">
+                                {e.location}
+                              </span>
+                              <span className={typeColor(e.type)}>{typeLabel(e.type)}</span>
+                            </div>
+                            <div className="font-semibold text-gray-900">
+                              {formatCurrency(e.amount)}
+                            </div>
+                          </div>
+                        ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
