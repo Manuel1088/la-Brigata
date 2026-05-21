@@ -50,6 +50,34 @@ export function isPresentShift(status: string, startTime: Date, endTime: Date): 
   return time !== 'RIPOSO' && time !== 'FERIE'
 }
 
+/** Durata in ore da etichetta turno (es. "17:00-01:00", anche oltre mezzanotte e spezzati) */
+export function hoursFromShiftTimeLabel(time: string): number {
+  if (time === 'RIPOSO' || time === 'FERIE') return 0
+
+  const segments = time.split('/').map((s) => s.trim())
+  let totalMinutes = 0
+
+  for (const segment of segments) {
+    const match = segment.match(/^(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})$/)
+    if (!match) continue
+
+    const sh = Number(match[1])
+    const sm = Number(match[2])
+    const eh = Number(match[3])
+    const em = Number(match[4])
+    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) continue
+
+    let startMinutes = sh * 60 + sm
+    let endMinutes = eh * 60 + em
+    if (endMinutes <= startMinutes) {
+      endMinutes += 24 * 60
+    }
+    totalMinutes += endMinutes - startMinutes
+  }
+
+  return Math.round((totalMinutes / 60) * 10) / 10
+}
+
 /** Parse "HH:mm-HH:mm" (first segment if spezzato) into Date bounds on a given day */
 export function parseTimeToBounds(
   time: ShiftTimeLabel,

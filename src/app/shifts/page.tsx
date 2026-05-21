@@ -2,7 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getMonday, toDateOnlyIso } from '@/lib/shifts'
+import { getMonday, hoursFromShiftTimeLabel, toDateOnlyIso } from '@/lib/shifts'
 
 type ShiftRow = {
   id: string
@@ -13,19 +13,6 @@ type ShiftRow = {
 
 function isWorkingTime(time: string): boolean {
   return time !== 'RIPOSO' && time !== 'FERIE'
-}
-
-function hoursFromTimeLabel(time: string): number {
-  if (!isWorkingTime(time)) return 0
-  const segment = time.split('/')[0].trim()
-  const match = segment.match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/)
-  if (!match) return 0
-  const [, startStr, endStr] = match
-  const [sh, sm] = startStr.split(':').map(Number)
-  const [eh, em] = endStr.split(':').map(Number)
-  let hours = eh + em / 60 - (sh + sm / 60)
-  if (hours < 0) hours += 24
-  return Math.round(hours * 10) / 10
 }
 
 function displayLabel(time: string): string {
@@ -126,7 +113,7 @@ export default function ShiftsPage() {
       const shift = getShiftForDay(day)
       if (!shift || !isWorkingTime(shift.time)) continue
       workingDays += 1
-      totalHours += hoursFromTimeLabel(shift.time)
+      totalHours += hoursFromShiftTimeLabel(shift.time)
     }
     return {
       workingDays,
