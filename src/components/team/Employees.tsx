@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
@@ -80,7 +80,15 @@ export default function TeamEmployees() {
   const [sortBy, setSortBy] = useState<'name' | 'role' | 'department' | 'startDate'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  const { employees: employeesData } = useEmployeeContext()
+  const { employees: employeesData, mutate } = useEmployeeContext()
+
+  useEffect(() => {
+    const refresh = () => {
+      void mutate()
+    }
+    window.addEventListener('employees_updated', refresh)
+    return () => window.removeEventListener('employees_updated', refresh)
+  }, [mutate])
 
   // Filtra dipendenti REALI (escludi PROPRIETARIO non lavoratore e ADMIN)
   const actualEmployees = useMemo(() => {

@@ -1,15 +1,17 @@
 'use client'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import TeamEmployees from '@/components/team/Employees'
 import TeamAccess from '@/components/team/Access'
 
-export default function TeamPage() {
+function TeamPageContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState('employees')
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const { 
     canManageEmployees, 
     canAccessAdmin
@@ -19,6 +21,29 @@ export default function TeamPage() {
     if (status === 'loading') return
     if (!session) router.push('/login')
   }, [session, status, router])
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'employees' || tab === 'access') {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (searchParams.get('created') === '1') {
+      const name = searchParams.get('name')
+        ? decodeURIComponent(searchParams.get('name')!)
+        : 'Il dipendente'
+      const emailSent = searchParams.get('emailSent') === '1'
+      setSuccessMessage(
+        emailSent
+          ? `✅ ${name} creato con successo. Email di accesso inviata.`
+          : `✅ ${name} creato con successo. Password temporanea: Brigata2026!`
+      )
+      window.dispatchEvent(new CustomEvent('employees_updated'))
+      router.replace('/team?tab=employees')
+    }
+  }, [searchParams, router])
 
   const tabs = [
     { 
@@ -76,6 +101,18 @@ export default function TeamPage() {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {successMessage && (
+          <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-green-900 text-sm flex justify-between items-start gap-4">
+            <span>{successMessage}</span>
+            <button
+              type="button"
+              onClick={() => setSuccessMessage(null)}
+              className="text-green-700 hover:text-green-900 shrink-0"
+            >
+              ×
+            </button>
+          </div>
+        )}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
@@ -108,5 +145,19 @@ export default function TeamPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function TeamPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Caricamento...
+        </div>
+      }
+    >
+      <TeamPageContent />
+    </Suspense>
   )
 }
