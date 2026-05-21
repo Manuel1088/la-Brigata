@@ -8,39 +8,11 @@ import {
   resolveEmployeeForUser,
 } from '@/lib/tips'
 import { getTipsQuerySchema, postTipsBodySchema } from '@/lib/validations/tips'
-
-const MANAGER_ROLES = new Set([
-  'ADMIN',
-  'PROPRIETARIO',
-  'PROPRIETARIO_OPERATIVO',
-  'DIRETTORE',
-  'DIRETTORE_GENERALE',
-  'MANAGER',
-  'RESTAURANT_MANAGER',
-  'CASSIERE',
-  'RESPONSABILE_SALA',
-])
-
-async function assertRestaurantAccess(userId: string, restaurantId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { restaurantId: true, companyId: true, role: true },
-  })
-  if (!user) return false
-
-  if (user.restaurantId === restaurantId) return true
-
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { id: restaurantId },
-    select: { companyId: true },
-  })
-
-  return !!(
-    restaurant?.companyId &&
-    user.companyId === restaurant.companyId &&
-    MANAGER_ROLES.has(String(user.role))
-  )
-}
+import {
+  assertRestaurantAccess,
+  ensureRestaurantLocations,
+  MANAGER_ROLES,
+} from '@/lib/restaurantLocations'
 
 /** GET /api/tips?restaurantId= — location del ristorante */
 export async function GET(request: NextRequest) {
@@ -64,25 +36,32 @@ export async function GET(request: NextRequest) {
 
     const dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { restaurantId: true },
+      select: { restaurantId: true, role: true },
     })
 
     const restaurantId = parsed.data.restaurantId ?? dbUser?.restaurantId
     if (!restaurantId) {
-      return NextResponse.json({ error: 'restaurantId richiesto' }, { status: 400 })
+      return NextResponse.json(
+        {
+          error:
+            'Ristorante non configurato per il tuo account. Contatta l\'amministratore.',
+        },
+        { status: 400 }
+      )
     }
 
-    if (!(await assertRestaurantAccess(session.user.id, restaurantId))) {
+    const role = String(dbUser?.role ?? '')
+    const canReadLocations =
+      MANAGER_ROLES.has(role) ||
+      (await assertRestaurantAccess(prisma, session.user.id, restaurantId))
+
+    if (!canReadLocations) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
-    const locations = await prisma.restaurantLocation.findMany({
-      where: { restaurantId },
-      select: { id: true, name: true, address: true },
-      orderBy: { name: 'asc' },
-    })
+    const locations = await ensureRestaurantLocations(prisma, restaurantId)
 
-    return NextResponse.json({ locations })
+    return NextResponse.json({ restaurantId, locations })
   } catch (error) {
     console.error('GET /api/tips error:', error)
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
@@ -119,7 +98,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'restaurantId richiesto' }, { status: 400 })
     }
 
-    if (!(await assertRestaurantAccess(session.user.id, restaurantId))) {
+    if (!(await assertRestaurantAccess(prisma, session.user.id, restaurantId))) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 

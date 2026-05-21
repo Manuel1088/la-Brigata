@@ -60,6 +60,16 @@ export interface DashboardData {
     hasCompany: boolean
     hasRestaurant: boolean
   }
+  widgets: {
+    shiftsTodayCount: number
+    yesterdayTipsTotal: number
+    yesterdayTipsLabel: string
+    tipsView: 'restaurant' | 'personal'
+    bookingsTodayCount: number
+    weeklyEventsCount: number
+    hasBookings: boolean
+    hasEvents: boolean
+  }
   timestamp: string
 }
 
@@ -98,6 +108,16 @@ export function useDashboardData() {
       activeContracts: 0,
       hasCompany: false,
       hasRestaurant: false,
+    },
+    widgets: data?.widgets || {
+      shiftsTodayCount: 0,
+      yesterdayTipsTotal: 0,
+      yesterdayTipsLabel: 'Mance ieri',
+      tipsView: 'personal',
+      bookingsTodayCount: 0,
+      weeklyEventsCount: 0,
+      hasBookings: false,
+      hasEvents: false,
     },
     
     // Stati

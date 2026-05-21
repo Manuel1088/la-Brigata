@@ -26,44 +26,19 @@ interface DashboardAction {
   roles?: UserRole[]
 }
 
-interface TodayShift {
-  start: string
-  end: string
-  role?: string
-}
-
-interface StoredShift {
-  date: string
-  employeeId: string
-  start: string
-  end: string
-  role?: string
-}
-
-function isStoredShift(value: unknown): value is StoredShift {
-  if (!value || typeof value !== 'object') return false
-  const v = value as Record<string, unknown>
-  return (
-    typeof v.date === 'string' &&
-    typeof v.employeeId === 'string' &&
-    typeof v.start === 'string' &&
-    typeof v.end === 'string'
-  )
-}
-
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { userRole } = usePermissions()
   
   // ✅ NUOVO: Hook ottimizzato per dashboard (1 API invece di 4!)
-  const { 
-    company, 
+  const {
+    company,
     restaurant,
-    stats, // ✅ stats.totalEmployees è già un COUNT (numero)
+    stats,
+    widgets,
     pendingEmployments,
-    activeEmployments,
-    isLoading: isLoadingDashboard 
+    isLoading: isLoadingDashboard,
   } = useDashboardData()
   
   // States con valori di default sicuri
@@ -72,12 +47,6 @@ export default function DashboardPage() {
   const [todayTips, setTodayTips] = useState<number>(0)
   const [tipsLoading, setTipsLoading] = useState(true)
   const [tipsView, setTipsView] = useState<'restaurant' | 'personal'>('personal')
-  const [liveTips, setLiveTips] = useState<number>(0)
-  const [savingsFound, setSavingsFound] = useState<number>(1250)
-  const [todayShift, setTodayShift] = useState<TodayShift | null>(null)
-  const [bookingsToday, setBookingsToday] = useState<number>(12)
-  const [weeklyEvents, setWeeklyEvents] = useState<number>(3)
-
   // Redirect se non autenticato
   useEffect(() => {
     if (status === 'loading') return
@@ -85,25 +54,6 @@ export default function DashboardPage() {
       router.push('/login')
     }
   }, [session, status, router])
-
-  // AI Suggestions
-  const aiSuggestions = [
-    { 
-      icon: '🎯', 
-      text: 'Richiedi sabato libero (90% approvazione)', 
-      action: () => router.push('/leaves') 
-    },
-    { 
-      icon: '💼', 
-      text: 'Controlla nuove opportunità di carriera', 
-      action: () => router.push('/me') 
-    },
-    { 
-      icon: '📚', 
-      text: 'Corso disponibile: Servizio Avanzato', 
-      action: () => alert('Funzionalità in arrivo!') 
-    }
-  ]
 
   const isRestaurantTipsRole = (role: string | undefined): boolean => {
     const r = (role || '').toUpperCase()
@@ -179,73 +129,10 @@ export default function DashboardPage() {
     }
   }, [session?.user?.id, session?.user?.role])
 
-  // ✅ CORREZIONE: Carica turno di oggi
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('shifts_v1::restaurant_1')
-      if (!raw) return
-      
-      const parsed = JSON.parse(raw) as unknown
-      const shifts: StoredShift[] = Array.isArray(parsed) ? parsed.filter(isStoredShift) : []
-      if (shifts.length === 0) return
-      
-      const today = new Date().toISOString().split('T')[0]
-      const shift = shifts.find((s) => s.date === today && s.employeeId === (session?.user?.id || ''))
-      
-      setTodayShift(shift || null)
-    } catch (error) {
-      console.error('Error loading today shift:', error)
-      setTodayShift(null)
-    }
-  }, [session?.user?.id])
-
-  // ✅ CORREZIONE: Live tips solo se effettivamente in turno
-  useEffect(() => {
-    if (!todayShift) return
-    
-    // Verifica se siamo nell'orario del turno
-    const now = new Date()
-    const currentTime = now.getHours() * 60 + now.getMinutes()
-    
-    const [startH, startM] = todayShift.start.split(':').map(Number)
-    const [endH, endM] = todayShift.end.split(':').map(Number)
-    const shiftStart = startH * 60 + startM
-    const shiftEnd = endH * 60 + endM
-    
-    if (currentTime < shiftStart || currentTime > shiftEnd) {
-      setLiveTips(0)
-      return
-    }
-    
-    // Simula aggiornamento live tips
-    const tipTimer = setInterval(() => {
-      setLiveTips(prev => {
-        const newTip = prev + (Math.random() * 3)
-        return isNaN(newTip) ? 0 : newTip
-      })
-    }, 8000)
-    
-    return () => clearInterval(tipTimer)
-  }, [todayShift])
-
-  // Helper: Check if currently in shift
-  const isInShift = (): boolean => {
-    if (!todayShift) return false
-    
-    const now = new Date()
-    const currentTime = now.getHours() * 60 + now.getMinutes()
-    
-    try {
-      const [startH, startM] = todayShift.start.split(':').map(Number)
-      const [endH, endM] = todayShift.end.split(':').map(Number)
-      const shiftStart = startH * 60 + startM
-      const shiftEnd = endH * 60 + endM
-      
-      return currentTime >= shiftStart && currentTime <= shiftEnd
-    } catch {
-      return false
-    }
-  }
+  const isManagerOrAdmin =
+    userRole === UserRole.ADMIN ||
+    userRole === UserRole.MANAGER ||
+    isRestaurantTipsRole(session?.user?.role as string | undefined)
 
   // Helper: Get greeting
   const getGreeting = (): string => {
@@ -307,22 +194,6 @@ export default function DashboardPage() {
         UserRole.LAVAPIATTI
       ]
     },
-    {
-      id: 'employees',
-      icon: '👥',
-      label: 'Il Mio Team',
-      path: '/team',
-      color: COLORS.orange,
-      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
-    },
-    {
-      id: 'profile',
-      icon: '📊',
-      label: 'Profilo',
-      path: '/me',
-      color: COLORS.darkBlue,
-      // Mostra a tutti gli utenti
-    }
   ]
 
   // Filter actions based on user role
@@ -358,49 +229,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Savings Discovery - Immediate Value */}
-        {savingsFound > 0 && (
-          <div 
-            className="bg-green-50 border-2 border-green-500 rounded-2xl p-5 mb-6 cursor-pointer transition-transform hover:scale-[1.02]"
-            onClick={() => router.push('/buste-paga')}
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-bold text-green-800 mb-1">
-                  💡 Risparmio Scoperto!
-                </h3>
-                <p className="text-sm text-green-700">
-                  Analisi ultima busta paga
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-green-800">
-                  +€{savingsFound.toLocaleString()}
-                </div>
-                <p className="text-sm text-green-600">potenziale annuo</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* AI Suggestions */}
-        <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">🤖 Suggerimenti AI</h2>
-          <div className="space-y-3">
-            {aiSuggestions.map((suggestion, index) => (
-              <button
-                key={index}
-                onClick={suggestion.action}
-                className="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <span className="text-xl mr-3">{suggestion.icon}</span>
-                <span className="text-gray-700">{suggestion.text}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Main Actions Grid */}
+        {/* Azioni rapide + card operative */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {availableActions.map((action) => (
             <button
@@ -413,6 +242,51 @@ export default function DashboardPage() {
               <span className="font-semibold text-gray-800 text-center">{action.label}</span>
             </button>
           ))}
+
+          <div className="bg-white rounded-2xl p-6 shadow-md border-t-4 border-orange-500">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-sm text-gray-600">In turno oggi</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {isLoadingDashboard ? '…' : widgets.shiftsTodayCount}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">dipendenti presenti</p>
+              </div>
+              <span className="text-3xl">👥</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push('/team/turni')}
+              className="text-sm text-orange-600 font-semibold hover:underline"
+            >
+              Calendario turni →
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-md border-t-4 border-indigo-500">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-sm text-gray-600">{widgets.yesterdayTipsLabel}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {isLoadingDashboard ? '…' : formatCurrency(widgets.yesterdayTipsTotal)}
+                </p>
+              </div>
+              <span className="text-3xl">📆</span>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  widgets.tipsView === 'restaurant' || isManagerOrAdmin
+                    ? '/team/mance'
+                    : '/tips'
+                )
+              }
+              className="text-sm text-orange-600 font-semibold hover:underline"
+            >
+              Dettaglio mance →
+            </button>
+          </div>
         </div>
 
         {/* Quick Stats */}
@@ -454,57 +328,47 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Live Tips (only if in shift) - non mostrare per Proprietario/Admin */}
-          {isInShift() && userRole !== UserRole.PROPRIETARIO && userRole !== UserRole.ADMIN && (
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border-2 border-green-200">
+          {widgets.hasBookings && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-sm text-green-700 font-medium">Mance live oggi</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(liveTips)}
+                  <p className="text-sm text-gray-600">Prenotazioni oggi</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {widgets.bookingsTodayCount}
                   </p>
                 </div>
-                <div className="text-3xl animate-pulse">⚡</div>
+                <div className="text-3xl">📋</div>
               </div>
-              <p className="text-xs text-green-600">
-                Aggiornamento in tempo reale • Turno: {todayShift?.start} - {todayShift?.end}
-              </p>
+              <button
+                type="button"
+                onClick={() => router.push('/operations')}
+                className="text-sm text-orange-600 font-semibold hover:underline"
+              >
+                Gestisci →
+              </button>
             </div>
           )}
 
-          {/* Prenotazioni Oggi */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm text-gray-600">Prenotazioni oggi</p>
-                <p className="text-2xl font-bold text-gray-900">{bookingsToday}</p>
+          {widgets.hasEvents && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm text-gray-600">Eventi questa settimana</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {widgets.weeklyEventsCount}
+                  </p>
+                </div>
+                <div className="text-3xl">📅</div>
               </div>
-              <div className="text-3xl">📋</div>
+              <button
+                type="button"
+                onClick={() => router.push('/shifts')}
+                className="text-sm text-orange-600 font-semibold hover:underline"
+              >
+                Vedi calendario →
+              </button>
             </div>
-            <button
-              onClick={() => router.push('/operations')}
-              className="text-sm text-orange-600 font-semibold hover:underline"
-            >
-              Gestisci →
-            </button>
-          </div>
-
-          {/* Eventi Settimana */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm text-gray-600">Eventi questa settimana</p>
-                <p className="text-2xl font-bold text-gray-900">{weeklyEvents}</p>
-              </div>
-              <div className="text-3xl">📅</div>
-            </div>
-            <button
-              onClick={() => router.push('/shifts')}
-              className="text-sm text-orange-600 font-semibold hover:underline"
-            >
-              Vedi calendario →
-            </button>
-          </div>
+          )}
         </div>
 
         {/* ✅ DATI REALI DA API BATCH - Company & Team Info */}
@@ -574,28 +438,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Today's Shift Info */}
-        {todayShift && (
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-blue-900 mb-1">
-                  📍 Il Tuo Turno Oggi
-                </h3>
-                <p className="text-blue-700">
-                  {todayShift.start} - {todayShift.end}
-                  {todayShift.role && ` • ${todayShift.role}`}
-                </p>
-              </div>
-              <button
-                onClick={() => router.push('/shifts')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Dettagli
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

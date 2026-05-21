@@ -45,6 +45,11 @@ export function decodeShiftTime(status: string, startTime: Date, endTime: Date):
   return `${fmt(startTime)}-${fmt(endTime)}`
 }
 
+export function isPresentShift(status: string, startTime: Date, endTime: Date): boolean {
+  const time = decodeShiftTime(status, startTime, endTime)
+  return time !== 'RIPOSO' && time !== 'FERIE'
+}
+
 /** Parse "HH:mm-HH:mm" (first segment if spezzato) into Date bounds on a given day */
 export function parseTimeToBounds(
   time: ShiftTimeLabel,

@@ -1,9 +1,11 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { useDashboardData } from '@/hooks/useDashboardData'
 
 export default function TipsInsert() {
   const { data: session } = useSession()
+  const { restaurant } = useDashboardData()
 
   const [amountCash, setAmountCash] = useState('')
   const [amountCard, setAmountCard] = useState('')
@@ -16,23 +18,23 @@ export default function TipsInsert() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(true)
   const [message, setMessage] = useState('')
 
-  const restaurantId = session?.user?.restaurantId as string | undefined
+  const restaurantId =
+    (session?.user?.restaurantId as string | undefined) ?? restaurant?.id
 
   useEffect(() => {
-    if (!restaurantId) {
-      setLocations([])
-      setIsLoadingLocations(false)
-      return
-    }
+    if (!session?.user?.id) return
 
     let cancelled = false
     const load = async () => {
       setIsLoadingLocations(true)
       try {
-        const params = new URLSearchParams({ restaurantId })
-        const res = await fetch(`/api/tips?${params}`, { credentials: 'include' })
-        if (!res.ok) throw new Error('Failed to load locations')
-        const data = await res.json()
+        const params = restaurantId ? new URLSearchParams({ restaurantId }) : ''
+        const url = params ? `/api/tips?${params}` : '/api/tips'
+        const res = await fetch(url, { credentials: 'include' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error((data as { error?: string }).error || 'Caricamento location fallito')
+        }
         const locs = (data.locations ?? []) as Array<{ id: string; name: string }>
         if (!cancelled) {
           setLocations(locs)
@@ -40,16 +42,23 @@ export default function TipsInsert() {
             setSelectedLocation((prev) => prev || locs[0].id)
           }
         }
-      } catch {
-        if (!cancelled) setLocations([])
+      } catch (err) {
+        if (!cancelled) {
+          setLocations([])
+          const msg = err instanceof Error ? err.message : 'Errore caricamento'
+          setMessage(`❌ ${msg}`)
+          setTimeout(() => setMessage(''), 4000)
+        }
       } finally {
         if (!cancelled) setIsLoadingLocations(false)
       }
     }
 
     load()
-    return () => { cancelled = true }
-  }, [restaurantId])
+    return () => {
+      cancelled = true
+    }
+  }, [session?.user?.id, restaurantId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
