@@ -9,7 +9,20 @@ import {
   parseTimeToBounds,
   toDateOnlyIso,
 } from '@/lib/shifts'
+import { recalculateDistributionsForDay } from '@/lib/tips'
 import { getShiftsQuerySchema, postShiftsBodySchema } from '@/lib/validations/shifts'
+
+function eachDayIsoInRange(rangeFrom: string, rangeTo: string): string[] {
+  const dates: string[] = []
+  const start = dateFromIso(rangeFrom)
+  const end = dateFromIso(rangeTo)
+  const cur = new Date(start)
+  while (cur <= end) {
+    dates.push(toDateOnlyIso(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+  return dates
+}
 
 const MANAGER_ROLES = new Set([
   'ADMIN',
@@ -184,7 +197,36 @@ export async function POST(request: NextRequest) {
       })
     })
 
-    return NextResponse.json({ success: true, saved: assignments.length })
+    const tipEntriesInRange = await prisma.tipEntry.findMany({
+      where: {
+        restaurantId,
+        date: { gte: rangeStart, lte: rangeEnd },
+      },
+      select: { date: true },
+    })
+    const daysWithTips = new Set(
+      tipEntriesInRange.map((e) => toDateOnlyIso(e.date))
+    )
+
+    let distributionsRecalculated = 0
+    for (const dateIso of eachDayIsoInRange(rangeFrom, rangeTo)) {
+      if (!daysWithTips.has(dateIso)) continue
+      try {
+        await recalculateDistributionsForDay(prisma, restaurantId, dateIso)
+        distributionsRecalculated++
+      } catch (recalcErr) {
+        console.error(
+          `Ricalcolo mance fallito ${restaurantId} ${dateIso}:`,
+          recalcErr
+        )
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      saved: assignments.length,
+      distributionsRecalculated,
+    })
   } catch (error) {
     console.error('POST /api/shifts error:', error)
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
