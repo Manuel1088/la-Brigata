@@ -1,26 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import prisma from '@/lib/db'
+import { prisma } from '@/lib/db'
 
-export async function GET(req: NextRequest) {
+function isSystemAdmin(role: unknown, level?: unknown): boolean {
+  const r = String(role ?? '').toUpperCase()
+  if (r === 'ADMIN') return true
+  const lvl = Number(level)
+  return Number.isFinite(lvl) && lvl >= 11
+}
+
+/** GET /api/admin/users — ADMIN: tutti gli utenti (nessun filtro companyId/restaurantId) */
+export async function GET() {
   try {
-    // Verifica autenticazione
     const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
-    }
-    if (!session.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
     }
 
-    // Verifica ruolo ADMIN
-  const userRole = session.user.role
-    if (userRole !== 'ADMIN') {
+    if (!isSystemAdmin(session.user.role, session.user.level)) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
-    // Fetch tutti gli utenti dal database
     const users = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
@@ -32,63 +33,72 @@ export async function GET(req: NextRequest) {
         avatar: true,
         isActive: true,
         createdAt: true,
+        lastLogin: true,
+        companyId: true,
+        restaurantId: true,
+        department: true,
         company: {
-          select: {
-            name: true
-          }
+          select: { name: true },
         },
         restaurant: {
-          select: {
-            name: true
-          }
-        }
-      }
+          select: { name: true },
+        },
+      },
     })
 
-    // Mappa per Admin Panel
-    const usersFormatted = users.map(user => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      level: user.hierarchyLevel || 5,
-      avatar: user.avatar || '👤',
-      isActive: user.isActive,
-      lastLogin: user.createdAt, // TODO: implementare tracking lastLogin
-      createdAt: user.createdAt,
-      company: user.company?.name || '(Nessuna azienda)',
-      restaurant: user.restaurant?.name || '(Nessun ristorante)'
-    }))
+    const usersFormatted = users.map((user) => {
+      const restaurantName = user.restaurant?.name ?? null
+      const companyName = user.company?.name ?? null
+      const orgLabel = companyName
+        ? companyName
+        : restaurantName
+          ? `${restaurantName} (ristorante)`
+          : '(Nessuna azienda)'
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: String(user.role),
+        level: user.hierarchyLevel ?? 5,
+        avatar: user.avatar || '👤',
+        isActive: user.isActive,
+        lastLogin: user.lastLogin ?? user.createdAt,
+        createdAt: user.createdAt,
+        company: orgLabel,
+        restaurant: restaurantName,
+        companyId: user.companyId,
+        restaurantId: user.restaurantId,
+        department: user.department,
+      }
+    })
 
     return NextResponse.json({
       success: true,
       users: usersFormatted,
-      total: usersFormatted.length
+      total: usersFormatted.length,
     })
-
   } catch (error) {
     console.error('GET /api/admin/users error:', error)
-    return NextResponse.json({ 
-      error: 'Errore nel caricamento utenti',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Errore nel caricamento utenti',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
+/** PUT /api/admin/users — attiva/disattiva/elimina utente */
 export async function PUT(req: NextRequest) {
   try {
-    // Verifica autenticazione
     const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
-    }
-    if (!session.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
     }
 
-    // Verifica ruolo ADMIN
-  const userRole = session.user.role
-    if (userRole !== 'ADMIN') {
+    if (!isSystemAdmin(session.user.role, session.user.level)) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
@@ -96,7 +106,10 @@ export async function PUT(req: NextRequest) {
     const { userId, action } = body
 
     if (!userId || !action) {
-      return NextResponse.json({ error: 'UserId e action richiesti' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'UserId e action richiesti' },
+        { status: 400 }
+      )
     }
 
     let updatedUser
@@ -105,22 +118,21 @@ export async function PUT(req: NextRequest) {
       case 'activate':
         updatedUser = await prisma.user.update({
           where: { id: userId },
-          data: { isActive: true }
+          data: { isActive: true },
         })
         break
 
       case 'deactivate':
         updatedUser = await prisma.user.update({
           where: { id: userId },
-          data: { isActive: false }
+          data: { isActive: false },
         })
         break
 
       case 'delete':
-        // Soft delete (solo disattiva, non cancella dal DB)
         updatedUser = await prisma.user.update({
           where: { id: userId },
-          data: { isActive: false }
+          data: { isActive: false },
         })
         break
 
@@ -131,15 +143,16 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({
       success: true,
       user: updatedUser,
-      message: `Utente ${action === 'activate' ? 'attivato' : action === 'deactivate' ? 'disattivato' : 'eliminato'} con successo`
+      message: `Utente ${action === 'activate' ? 'attivato' : action === 'deactivate' ? 'disattivato' : 'eliminato'} con successo`,
     })
-
   } catch (error) {
     console.error('PUT /api/admin/users error:', error)
-    return NextResponse.json({ 
-      error: 'Errore nell\'operazione',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Errore nell'operazione",
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
-

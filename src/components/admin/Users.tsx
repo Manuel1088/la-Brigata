@@ -33,13 +33,12 @@ export default function AdminUsers() {
 
   const loadUsers = async () => {
     try {
-      // Fetch utenti reali dal database
-      const response = await fetch('/api/admin/users')
-      
-      if (response.ok) {
-        const data = await response.json()
-        
-        if (data.success && data.users) {
+      const response = await fetch('/api/admin/users', {
+        credentials: 'include',
+      })
+      const data = await response.json()
+
+      if (response.ok && data.success && Array.isArray(data.users)) {
           // Mappa date da string a Date
           type ApiUser = {
             id: string
@@ -66,11 +65,14 @@ export default function AdminUsers() {
             company: user.company
           }))
           setUsers(usersWithDates)
-        } else {
-          setUsers([])
-        }
       } else {
-        console.error('Errore nel caricamento utenti:', response.statusText)
+        console.error('Errore nel caricamento utenti:', data.error ?? response.statusText)
+        notifyCustom(
+          'ERROR',
+          'SYSTEM',
+          'Errore',
+          data.error ?? 'Impossibile caricare gli utenti'
+        )
         setUsers([])
       }
     } catch (error) {
@@ -96,8 +98,9 @@ export default function AdminUsers() {
       // Chiama API
       const response = await fetch('/api/admin/users', {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action })
+        body: JSON.stringify({ userId, action }),
       })
 
       if (response.ok) {
@@ -488,8 +491,16 @@ export default function AdminUsers() {
       {filteredUsers.length === 0 && (
         <div className="text-center py-8">
           <div className="text-4xl mb-2">👥</div>
-          <p className="text-gray-500">Nessun utente trovato</p>
-          <p className="text-sm text-gray-400 mt-1">Modifica i filtri per vedere più risultati</p>
+          <p className="text-gray-500">
+            {users.length === 0
+              ? 'Nessun utente nel sistema'
+              : 'Nessun utente trovato'}
+          </p>
+          {users.length > 0 && (
+            <p className="text-sm text-gray-400 mt-1">
+              Modifica i filtri per vedere più risultati
+            </p>
+          )}
         </div>
       )}
     </div>
