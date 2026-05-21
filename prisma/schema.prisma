@@ -9,13 +9,16 @@ datasource db {
 }
 
 model Restaurant {
-  id                 String               @id @default(cuid())
-  name               String
-  address            String?
-  phone              String?
-  companyId          String?              @map("company_id")
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  id                    String               @id @default(cuid())
+  name                  String
+  address               String?
+  phone                 String?
+  companyId             String?              @map("company_id")
+  stripeCustomerId      String?              @map("stripe_customer_id")
+  subscriptionStatus    SubscriptionStatus   @default(FREE) @map("subscription_status")
+  subscriptionPeriodEnd DateTime?            @map("subscription_period_end")
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
   Employee           Employee[]
   RestaurantLocation RestaurantLocation[]
   TipEntry           TipEntry[]
@@ -68,6 +71,9 @@ model User {
   weekendWork        Boolean?           @default(true) @map("weekend_work")
   maxConsecutiveDays Int?               @default(6) @map("max_consecutive_days")
   contractTypeEnum   ContractType?      @map("contract_type_enum")
+  stripeCustomerId           String?                  @map("stripe_customer_id")
+  employeeSubscriptionStatus EmployeeSubscriptionStatus @default(FREE) @map("employee_subscription_status")
+  employeeSubscriptionPeriodEnd DateTime?             @map("employee_subscription_period_end")
   auditLogs          AuditLog[]
   skills             EmployeeSkill[]
   leaveApprovals     LeaveApproval[]
@@ -634,6 +640,19 @@ enum PaymentType {
   CARD
   CASH
   FOREIGN
+}
+
+enum SubscriptionStatus {
+  FREE
+  BASIC
+  PRO
+  EXPIRED
+}
+
+enum EmployeeSubscriptionStatus {
+  FREE
+  PREMIUM
+  EXPIRED
 }
 
 enum EmploymentStatus {
