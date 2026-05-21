@@ -28,6 +28,7 @@ model Restaurant {
   leavePolicies      LeavePolicy[]
   events             RestaurantEvent[]
   shifts             Shift[]
+  shiftSwapRequests  ShiftSwapRequest[]
   tables             Table[]
   users              User[]
   company            Company?             @relation(fields: [companyId], references: [id])
@@ -83,6 +84,8 @@ model User {
   leaveRequests      LeaveRequest[]
   payrolls           Payroll[]
   shifts             Shift[]
+  swapRequestsMade   ShiftSwapRequest[] @relation("SwapRequester")
+  swapRequestsTarget ShiftSwapRequest[] @relation("SwapTarget")
   tipDistributions   TipDistribution[]
   userPermissions    UserPermission[]
   company            Company?           @relation("CompanyUsers", fields: [companyId], references: [id])
@@ -115,6 +118,29 @@ model Shift {
   @@index([userId, date])
   @@index([restaurantId, date])
   @@map("shifts")
+}
+
+model ShiftSwapRequest {
+  id               String     @id @default(cuid())
+  restaurantId     String     @map("restaurant_id")
+  requesterUserId  String     @map("requester_user_id")
+  targetUserId     String     @map("target_user_id")
+  requesterShiftId String?    @map("requester_shift_id")
+  targetShiftId    String?    @map("target_shift_id")
+  requesterDate    DateTime   @map("requester_date")
+  targetDate       DateTime   @map("target_date")
+  status           String     @default("PENDING")
+  notes            String?
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id])
+  requester        User       @relation("SwapRequester", fields: [requesterUserId], references: [id])
+  target           User       @relation("SwapTarget", fields: [targetUserId], references: [id])
+
+  @@index([restaurantId, status])
+  @@index([requesterUserId])
+  @@index([targetUserId])
+  @@map("shift_swap_requests")
 }
 
 model DailyTips {

@@ -46,7 +46,18 @@ export async function GET() {
 
     let leaves = 0
     let employments = 0
-    const swaps = 0
+    let swaps = 0
+
+    let restaurantIds: string[] | null = null
+    if (dbUser.restaurantId) {
+      restaurantIds = [dbUser.restaurantId]
+    } else if (dbUser.companyId && isManagerRole(role)) {
+      const restaurants = await prisma.restaurant.findMany({
+        where: { companyId: dbUser.companyId },
+        select: { id: true },
+      })
+      restaurantIds = restaurants.map((r) => r.id)
+    }
 
     if (canLeaves && dbUser.restaurantId) {
       leaves = await prisma.leaveRequest.count({
@@ -57,27 +68,22 @@ export async function GET() {
       })
     }
 
-    if (canStaff) {
-      let restaurantIds: string[] | null = null
+    if (canStaff && restaurantIds && restaurantIds.length > 0) {
+      employments = await prisma.employment.count({
+        where: {
+          status: 'PENDING',
+          restaurantId: { in: restaurantIds },
+        },
+      })
+    }
 
-      if (dbUser.restaurantId) {
-        restaurantIds = [dbUser.restaurantId]
-      } else if (dbUser.companyId && isManagerRole(role)) {
-        const restaurants = await prisma.restaurant.findMany({
-          where: { companyId: dbUser.companyId },
-          select: { id: true },
-        })
-        restaurantIds = restaurants.map((r) => r.id)
-      }
-
-      if (restaurantIds && restaurantIds.length > 0) {
-        employments = await prisma.employment.count({
-          where: {
-            status: 'PENDING',
-            restaurantId: { in: restaurantIds },
-          },
-        })
-      }
+    if (canStaff && restaurantIds && restaurantIds.length > 0) {
+      swaps = await prisma.shiftSwapRequest.count({
+        where: {
+          status: 'PENDING',
+          restaurantId: { in: restaurantIds },
+        },
+      })
     }
 
     const total = leaves + employments + swaps

@@ -11,11 +11,6 @@ import { type SimpleEmployee } from '@/lib/employees'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import { shiftsToGrid, toDateOnlyIso, type ShiftGridCell } from '@/lib/shifts'
 import type { ShiftAssignment } from '@/lib/validations/shifts'
-import {
-  loadSwapRequestsFromStorage,
-  saveSwapRequestsToStorage,
-  type StoredSwapRequest,
-} from '@/lib/shift-swap-storage'
 
 type CalendarEmployee = SimpleEmployee & { id: string }
 
@@ -33,6 +28,7 @@ export default function ShiftsCalendar() {
   const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
   const [swapTarget, setSwapTarget] = useState<{
     targetEmployee: string
+    targetUserId: string
     targetDepartment: string
     dayIndex: number
     dateISO: string
@@ -224,7 +220,13 @@ export default function ShiftsCalendar() {
 
     load()
     return () => { cancelled = true }
-  }, [currentWeek, viewMode, restaurantId, status, getWeekDates])
+  }, [currentWeek, viewMode, restaurantId, status, getWeekDates, swapVersion])
+
+  useEffect(() => {
+    const onSwapUpdated = () => setSwapVersion((v) => v + 1)
+    window.addEventListener('shift_swaps_updated', onSwapUpdated)
+    return () => window.removeEventListener('shift_swaps_updated', onSwapUpdated)
+  }, [])
 
   // ✅ Determina accesso utente
   useEffect(() => {
@@ -281,13 +283,18 @@ export default function ShiftsCalendar() {
       const currentShift = shifts[cellKey]
       
       if (currentShift && currentShift.time && currentShift.time !== 'RIPOSO' && currentShift.time !== 'FERIE') {
-        // Apri modal per richiesta swap
+        const targetEmp = employees.find((e) => e.name === employee)
+        if (!targetEmp?.id) {
+          notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', 'Collega non trovato')
+          return
+        }
         setSwapTarget({
           targetEmployee: employee,
+          targetUserId: targetEmp.id,
           targetDepartment: currentShift.department || 'sala',
           dayIndex,
           dateISO: getISOString(getWeekDates(currentWeek)[dayIndex]),
-          targetShiftTime: currentShift.time
+          targetShiftTime: currentShift.time,
         })
         setIsSwapModalOpen(true)
         return
@@ -400,33 +407,39 @@ export default function ShiftsCalendar() {
     }
   }
 
-  // ✅ Gestione swap
-  const handleSwapRequest = () => {
-    if (!swapTarget || !offeredShiftTime) return
-
-    const swapRequest: StoredSwapRequest = {
-      id: crypto.randomUUID(),
-      requesterId: session?.user?.id ?? '',
-      requesterName: userName,
-      requesterDepartment: userDepartment,
-      targetEmployeeName: swapTarget.targetEmployee,
-      targetDepartment: swapTarget.targetDepartment,
-      dayIndex: swapTarget.dayIndex,
-      dateISO: swapTarget.dateISO,
-      targetShiftTime: swapTarget.targetShiftTime,
-      offeredShiftTime,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-    }
+  const handleSwapRequest = async () => {
+    if (!swapTarget || !offeredShiftTime || !restaurantId) return
 
     try {
-      const existing = loadSwapRequestsFromStorage()
-      saveSwapRequestsToStorage([...existing, swapRequest])
+      const res = await fetch('/api/shifts/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          restaurantId,
+          targetUserId: swapTarget.targetUserId,
+          targetDate: swapTarget.dateISO,
+          requesterDate: swapTarget.dateISO,
+          targetShiftTime: swapTarget.targetShiftTime,
+          offeredShiftTime,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(
+          (err as { error?: string }).error || 'Invio richiesta fallito'
+        )
+      }
+
       window.dispatchEvent(new CustomEvent('approvals_updated'))
+      window.dispatchEvent(new CustomEvent('shift_swaps_updated'))
       notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', 'Richiesta inviata!')
       setSwapVersion((prev) => prev + 1)
-    } catch {
-      notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', "Errore nell'invio della richiesta")
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Errore nell'invio della richiesta"
+      notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', msg)
     }
 
     setIsSwapModalOpen(false)

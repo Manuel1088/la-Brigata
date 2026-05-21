@@ -12,7 +12,7 @@ export const prisma =
         url: process.env.DATABASE_URL,
       },
     },
-    log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
+    log: [],
   })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma

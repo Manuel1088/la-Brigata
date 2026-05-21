@@ -1,5 +1,7 @@
-/** Stati swap normalizzati in maiuscolo (localStorage fino a migrazione DB). */
+/** Stati swap normalizzati in maiuscolo. */
 export type SwapStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export type ShiftSwapStatus = SwapStatus
 
 export function normalizeSwapStatus(status: string | undefined | null): SwapStatus {
   const upper = (status ?? 'PENDING').toUpperCase()

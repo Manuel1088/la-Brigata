@@ -8,10 +8,7 @@ import ApprovalsSwaps from '@/components/approvals/Swaps'
 import ApprovalsEmployees from '@/components/approvals/Employees'
 import ApprovalsPayroll from '@/components/approvals/Payroll'
 import ApprovalsLeaves from '@/components/approvals/Leaves'
-import {
-  loadSwapRequestsFromStorage,
-  normalizeSwapStatus,
-} from '@/lib/shift-swap-storage'
+import { normalizeSwapStatus } from '@/lib/shift-swap-storage'
 
 export interface ApprovalItem {
   id: string
@@ -137,15 +134,28 @@ export default function ApprovalsPage() {
           }
         }
 
-        if (canShifts) {
-          const swapRequests = loadSwapRequestsFromStorage()
-          for (const req of swapRequests) {
-            const d = new Date(req.dateISO)
-            if (d.getFullYear() === year && d.getMonth() === month) {
-              const key = formatISO(d)
-              const status = normalizeSwapStatus(req.status)
-              if (status === 'PENDING') markPending(key)
-              else if (status === 'APPROVED') markApproved(key)
+        if (canShifts && session?.user?.restaurantId) {
+          const swapRes = await fetch(
+            `/api/shifts/swap?restaurantId=${encodeURIComponent(session.user.restaurantId)}`,
+            { credentials: 'include' }
+          )
+          if (swapRes.ok) {
+            const swapData = await swapRes.json()
+            const swapRequests = (swapData.swaps ?? []) as Array<{
+              dateISO?: string
+              targetDate?: string
+              status: string
+            }>
+            for (const req of swapRequests) {
+              const iso = req.dateISO ?? req.targetDate
+              if (!iso) continue
+              const d = new Date(iso)
+              if (d.getFullYear() === year && d.getMonth() === month) {
+                const key = formatISO(d)
+                const status = normalizeSwapStatus(req.status)
+                if (status === 'PENDING') markPending(key)
+                else if (status === 'APPROVED') markApproved(key)
+              }
             }
           }
         }
@@ -157,7 +167,7 @@ export default function ApprovalsPage() {
     }
 
     buildCalendar()
-  }, [currentMonth, canEmployees, canShifts])
+  }, [currentMonth, canEmployees, canShifts, session?.user?.restaurantId])
 
   useEffect(() => {
     if (status === 'loading') return
