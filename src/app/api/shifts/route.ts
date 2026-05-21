@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
       restaurantId: searchParams.get('restaurantId') ?? undefined,
       date: searchParams.get('date'),
       days: searchParams.get('days') ?? '7',
+      userId: searchParams.get('userId') ?? undefined,
     })
 
     if (!parsed.success) {
@@ -96,6 +97,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
+    const filterUserId = parsed.data.userId
+    if (
+      filterUserId &&
+      filterUserId !== session.user.id &&
+      !MANAGER_ROLES.has(String(access.user?.role))
+    ) {
+      return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
+    }
+
     const anchor = new Date(`${parsed.data.date}T12:00:00`)
     const { from, to, dates } = getDateRange(anchor, parsed.data.days)
 
@@ -103,6 +113,7 @@ export async function GET(request: NextRequest) {
       where: {
         restaurantId,
         date: { gte: from, lte: to },
+        ...(filterUserId ? { userId: filterUserId } : {}),
       },
       include: {
         user: { select: { id: true, name: true } },

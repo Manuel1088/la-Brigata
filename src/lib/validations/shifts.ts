@@ -20,6 +20,7 @@ export const getShiftsQuerySchema = z.object({
   restaurantId: z.string().min(1).optional(),
   date: dateIso,
   days: z.coerce.number().int().min(1).max(31).default(7),
+  userId: z.string().min(1).optional(),
 })
 
 export type PostShiftsBody = z.infer<typeof postShiftsBodySchema>

@@ -1,84 +1,139 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getMonday, toDateOnlyIso } from '@/lib/shifts'
 
-interface Shift {
+type ShiftRow = {
   id: string
   date: string
-  startTime: string
-  endTime: string
-  role: string
-  status: 'scheduled' | 'completed' | 'cancelled'
+  time: string
+  department: string
+}
+
+function isWorkingTime(time: string): boolean {
+  return time !== 'RIPOSO' && time !== 'FERIE'
+}
+
+function hoursFromTimeLabel(time: string): number {
+  if (!isWorkingTime(time)) return 0
+  const segment = time.split('/')[0].trim()
+  const match = segment.match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/)
+  if (!match) return 0
+  const [, startStr, endStr] = match
+  const [sh, sm] = startStr.split(':').map(Number)
+  const [eh, em] = endStr.split(':').map(Number)
+  let hours = eh + em / 60 - (sh + sm / 60)
+  if (hours < 0) hours += 24
+  return Math.round(hours * 10) / 10
+}
+
+function displayLabel(time: string): string {
+  if (time === 'RIPOSO') return 'Riposo'
+  if (time === 'FERIE') return 'Ferie'
+  return time
 }
 
 export default function ShiftsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [currentWeek, setCurrentWeek] = useState(new Date())
-  const [myShifts, setMyShifts] = useState<Shift[]>([])
+  const [myShifts, setMyShifts] = useState<ShiftRow[]>([])
+  const [loadingShifts, setLoadingShifts] = useState(true)
 
   useEffect(() => {
     if (status === 'loading') return
     if (!session) router.push('/login')
   }, [session, status, router])
 
-  useEffect(() => {
-    // Carica SOLO i turni del dipendente loggato
-    loadMyShifts()
-  }, [currentWeek])
-
-  const loadMyShifts = () => {
-    // TODO: Fetch da API /api/shifts/me
-    // Per ora mostra turni di esempio
-    const mockShifts: Shift[] = [
-      {
-        id: '1',
-        date: '2025-10-13',
-        startTime: '12:00',
-        endTime: '20:00',
-        role: 'Servizio Pranzo',
-        status: 'scheduled'
-      },
-      {
-        id: '2',
-        date: '2025-10-14',
-        startTime: '18:00',
-        endTime: '23:00',
-        role: 'Servizio Cena',
-        status: 'scheduled'
-      },
-      {
-        id: '3',
-        date: '2025-10-16',
-        startTime: '12:00',
-        endTime: '23:00',
-        role: 'Doppio Turno',
-        status: 'scheduled'
-      }
-    ]
-    setMyShifts(mockShifts)
-  }
-
-  const getWeekDays = () => {
-    const week = []
-    const start = new Date(currentWeek)
-    const dow = start.getDay() // 0=Dom, 1=Lun, ... 6=Sab
-    const delta = dow === 0 ? -6 : (1 - dow) // Se Domenica, vai al lunedì precedente
-    start.setDate(start.getDate() + delta)
-    
+  const getWeekDays = useCallback(() => {
+    const start = getMonday(currentWeek)
+    const week: Date[] = []
     for (let i = 0; i < 7; i++) {
       const day = new Date(start)
       day.setDate(start.getDate() + i)
       week.push(day)
     }
     return week
-  }
+  }, [currentWeek])
 
-  const getShiftForDay = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0]
-    return myShifts.find(s => s.date === dateStr)
-  }
+  const weekDays = useMemo(() => getWeekDays(), [getWeekDays])
+
+  const shiftsByDate = useMemo(() => {
+    const map = new Map<string, ShiftRow>()
+    for (const s of myShifts) {
+      map.set(s.date, s)
+    }
+    return map
+  }, [myShifts])
+
+  const loadMyShifts = useCallback(async () => {
+    const restaurantId = session?.user?.restaurantId
+    const userId = session?.user?.id
+    if (!restaurantId || !userId) {
+      setMyShifts([])
+      setLoadingShifts(false)
+      return
+    }
+
+    setLoadingShifts(true)
+    try {
+      const fromDate = toDateOnlyIso(weekDays[0])
+      const params = new URLSearchParams({
+        restaurantId,
+        date: fromDate,
+        days: '7',
+        userId,
+      })
+      const res = await fetch(`/api/shifts?${params}`, { credentials: 'include' })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Errore caricamento turni')
+      }
+      const rows = (data.shifts ?? []) as Array<{
+        id: string
+        date: string
+        time: string
+        department: string
+      }>
+      setMyShifts(
+        rows.map((r) => ({
+          id: r.id,
+          date: r.date,
+          time: r.time,
+          department: r.department,
+        }))
+      )
+    } catch (error) {
+      console.error('Errore caricamento turni:', error)
+      setMyShifts([])
+    } finally {
+      setLoadingShifts(false)
+    }
+  }, [session?.user?.restaurantId, session?.user?.id, weekDays])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    void loadMyShifts()
+  }, [status, loadMyShifts])
+
+  const getShiftForDay = (date: Date) => shiftsByDate.get(toDateOnlyIso(date))
+
+  const weekStats = useMemo(() => {
+    let workingDays = 0
+    let totalHours = 0
+    for (const day of weekDays) {
+      const shift = getShiftForDay(day)
+      if (!shift || !isWorkingTime(shift.time)) continue
+      workingDays += 1
+      totalHours += hoursFromTimeLabel(shift.time)
+    }
+    return {
+      workingDays,
+      totalHours: Math.round(totalHours * 10) / 10,
+      restDays: 7 - workingDays,
+    }
+  }, [weekDays, shiftsByDate])
 
   const goToPreviousWeek = () => {
     const newDate = new Date(currentWeek)
@@ -96,40 +151,42 @@ export default function ShiftsPage() {
     setCurrentWeek(new Date())
   }
 
-  const weekDays = getWeekDays()
   const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
-  const formatShort = (d: Date) => d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+  const formatShort = (d: Date) =>
+    d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
   const weekRangeLabel = `${formatShort(weekDays[0])} - ${formatShort(weekDays[6])}`
   const today = new Date()
-  const startOfWeek = new Date(weekDays[0]); startOfWeek.setHours(0,0,0,0)
-  const endOfWeek = new Date(weekDays[6]); endOfWeek.setHours(23,59,59,999)
-  const todayOnly = new Date(today); todayOnly.setHours(0,0,0,0)
+  const startOfWeek = new Date(weekDays[0])
+  startOfWeek.setHours(0, 0, 0, 0)
+  const endOfWeek = new Date(weekDays[6])
+  endOfWeek.setHours(23, 59, 59, 999)
+  const todayOnly = new Date(today)
+  todayOnly.setHours(0, 0, 0, 0)
   const isCurrentWeek = todayOnly >= startOfWeek && todayOnly <= endOfWeek
 
-  // Turni disponibili per reparto (catalogo sintetico)
   const deptShiftCatalog: Record<string, Array<{ name: string; time: string }>> = {
     cucina: [
       { name: 'Prep Mattino', time: '06:00-14:00' },
       { name: 'Servizio Giorno', time: '08:00-16:00' },
       { name: 'Servizio Sera', time: '15:00-23:00' },
-      { name: 'Spezzato Chef', time: '09:00-15:00 / 18:00-24:00' }
+      { name: 'Spezzato Chef', time: '09:00-15:00 / 18:00-24:00' },
     ],
     sala: [
       { name: 'Apertura', time: '07:00-15:00' },
       { name: 'Pranzo', time: '11:00-16:00' },
       { name: 'Cena', time: '17:00-01:00' },
-      { name: 'Spezzato Sala', time: '11:00-15:00 / 19:00-23:00' }
+      { name: 'Spezzato Sala', time: '11:00-15:00 / 19:00-23:00' },
     ],
     beverage: [
       { name: 'Apertura Bar', time: '07:00-15:00' },
       { name: 'Aperitivo', time: '17:00-21:00' },
       { name: 'Dopocena', time: '20:00-02:00' },
-      { name: 'Spezzato Bar', time: '07:00-11:00 / 17:00-01:00' }
+      { name: 'Spezzato Bar', time: '07:00-11:00 / 17:00-01:00' },
     ],
     accoglienza: [
       { name: 'Apertura Accoglienza', time: '10:00-16:00' },
-      { name: 'Serale Accoglienza', time: '18:00-24:00' }
-    ]
+      { name: 'Serale Accoglienza', time: '18:00-24:00' },
+    ],
   }
   const sessionDeptRaw = session?.user?.department || 'sala'
   const userDepartment = sessionDeptRaw === 'bar' ? 'beverage' : sessionDeptRaw
@@ -147,7 +204,6 @@ export default function ShiftsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-start space-x-4">
@@ -159,7 +215,9 @@ export default function ShiftsPage() {
             </button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">📅 I Miei Turni</h1>
-              <p className="text-gray-600 mt-2">Visualizza i tuoi turni lavorativi della settimana</p>
+              <p className="text-gray-600 mt-2">
+                Visualizza i tuoi turni lavorativi della settimana
+              </p>
             </div>
           </div>
         </div>
@@ -167,8 +225,6 @@ export default function ShiftsPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
-          
-          {/* Navigation Settimana */}
           <div className="bg-white rounded-lg shadow p-4 mb-6">
             <div className="relative flex items-center">
               <div className="flex items-center justify-start gap-2">
@@ -188,7 +244,11 @@ export default function ShiftsPage() {
                 </button>
               </div>
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className={`text-sm font-semibold ${isCurrentWeek ? 'text-red-600' : 'text-gray-700'}`}>{weekRangeLabel}</span>
+                <span
+                  className={`text-sm font-semibold ${isCurrentWeek ? 'text-red-600' : 'text-gray-700'}`}
+                >
+                  {weekRangeLabel}
+                </span>
               </div>
               <div className="absolute right-0 top-1/2 -translate-y-1/2">
                 <button
@@ -202,71 +262,87 @@ export default function ShiftsPage() {
             </div>
           </div>
 
-          {/* Calendario Settimanale Personale */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="grid grid-cols-7 gap-0">
-              {weekDays.map((day, index) => {
-                const shift = getShiftForDay(day)
-                const isToday = day.toDateString() === new Date().toDateString()
-                
-                return (
-                  <div
-                    key={index}
-                    className={`border-r border-b last:border-r-0`}
-                  >
-                    {/* Giorno Header */}
-                    <div className={`p-3 text-center border-b bg-gray-50`}>
-                      <div className="text-xs font-medium">{dayNames[index]}</div>
-                      <div className={`text-lg font-bold ${isToday ? 'text-red-600' : 'text-gray-900'}`}>
-                        {day.getDate()}
+            {loadingShifts ? (
+              <div className="p-8 text-center text-gray-500">
+                Caricamento turni...
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 gap-0">
+                {weekDays.map((day, index) => {
+                  const shift = getShiftForDay(day)
+                  const isToday =
+                    day.toDateString() === new Date().toDateString()
+                  const hasWork = shift && isWorkingTime(shift.time)
+
+                  return (
+                    <div
+                      key={index}
+                      className="border-r border-b last:border-r-0"
+                    >
+                      <div className="p-3 text-center border-b bg-gray-50">
+                        <div className="text-xs font-medium">{dayNames[index]}</div>
+                        <div
+                          className={`text-lg font-bold ${isToday ? 'text-red-600' : 'text-gray-900'}`}
+                        >
+                          {day.getDate()}
+                        </div>
+                      </div>
+
+                      <div className="p-3 min-h-[120px] flex items-center justify-center">
+                        {hasWork ? (
+                          <div className="text-center">
+                            <div className="text-sm font-semibold text-gray-900">
+                              {shift.time}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1 capitalize">
+                              {shift.department}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-400 text-center">
+                            {shift ? displayLabel(shift.time) : 'Riposo'}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    
-                    {/* Turno Content */}
-                    <div className="p-3 min-h-[120px] flex items-center justify-center">
-                      {shift ? (
-                        <div className="text-sm font-semibold text-gray-900 text-center">
-                          {shift.role}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400 text-center">Riposo</div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
-          
-          {/* Riepilogo Settimana */}
+
           <div className="mt-6 grid grid-cols-3 gap-4">
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-sm text-gray-600">Turni questa settimana</div>
-              <div className="text-2xl font-bold text-blue-600">{myShifts.length}</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {weekStats.workingDays}
+              </div>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-sm text-gray-600">Ore totali</div>
               <div className="text-2xl font-bold text-green-600">
-                {myShifts.reduce((total, shift) => {
-                  const start = parseInt(shift.startTime.split(':')[0])
-                  const end = parseInt(shift.endTime.split(':')[0])
-                  return total + (end > start ? end - start : 24 - start + end)
-                }, 0)}h
+                {weekStats.totalHours}h
               </div>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-sm text-gray-600">Giorni di riposo</div>
-              <div className="text-2xl font-bold text-purple-600">{7 - myShifts.length}</div>
+              <div className="text-2xl font-bold text-purple-600">
+                {weekStats.restDays}
+              </div>
             </div>
           </div>
- 
-          {/* Legenda ridotta: rimosse icone/pallini, resta solo catalogo turni */}
+
           <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="text-sm">
-              <div className="font-semibold text-blue-900 mb-1">Turni disponibili nel tuo reparto</div>
+              <div className="font-semibold text-blue-900 mb-1">
+                Turni disponibili nel tuo reparto
+              </div>
               <ul className="list-disc list-inside text-blue-800">
                 {deptShifts.map((s, idx) => (
-                  <li key={idx}>{s.name} — {s.time}</li>
+                  <li key={idx}>
+                    {s.name} — {s.time}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -276,5 +352,3 @@ export default function ShiftsPage() {
     </div>
   )
 }
-
-
