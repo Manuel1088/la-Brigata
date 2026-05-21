@@ -2,15 +2,13 @@
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
-import { 
+import {
   Notification,
-  getNotifications,
+  NotificationDto,
+  parseNotificationDto,
   getNotificationStats,
-  markAsRead,
-  markAllAsRead,
-  dismissNotification,
   NOTIFICATION_CATEGORIES,
-  formatTimestamp
+  formatTimestamp,
 } from '@/lib/notifications'
 
 export default function NotificationsPage() {
@@ -21,11 +19,23 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [stats, setStats] = useState(getNotificationStats())
 
-  const loadNotifications = useCallback(() => {
-    const userId = session?.user?.id
-    const allNotifications = getNotifications(userId)
-    setNotifications(allNotifications)
-    setStats(getNotificationStats(userId))
+  const loadNotifications = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications', { credentials: 'include' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      const rows = (data.notifications ?? []) as NotificationDto[]
+      const parsed = rows.map(parseNotificationDto)
+      const userId = session?.user?.id
+      const mine = userId
+        ? parsed.filter((n) => !n.userId || n.userId === userId)
+        : parsed
+      setNotifications(mine)
+      setStats(getNotificationStats(userId))
+    } catch {
+      setNotifications([])
+      setStats(getNotificationStats(session?.user?.id))
+    }
   }, [session])
 
   useEffect(() => {
@@ -37,22 +47,36 @@ export default function NotificationsPage() {
     loadNotifications()
   }, [session, status, router, loadNotifications])
 
-  const handleMarkAsRead = (notificationId: string) => {
-    markAsRead(notificationId)
-    loadNotifications()
+  const handleMarkAsRead = async (notificationId: string) => {
+    await fetch(`/api/notifications/${notificationId}`, {
+      method: 'PATCH',
+      credentials: 'include',
+    })
+    await loadNotifications()
+    window.dispatchEvent(new CustomEvent('notifications_updated'))
   }
 
-  const handleMarkAllAsRead = () => {
-    const userId = session?.user?.id
-    const count = markAllAsRead(userId)
-    if (count > 0) {
-      loadNotifications()
-    }
+  const handleMarkAllAsRead = async () => {
+    const unread = notifications.filter((n) => !n.isRead)
+    await Promise.all(
+      unread.map((n) =>
+        fetch(`/api/notifications/${n.id}`, {
+          method: 'PATCH',
+          credentials: 'include',
+        })
+      )
+    )
+    await loadNotifications()
+    window.dispatchEvent(new CustomEvent('notifications_updated'))
   }
 
-  const handleDismiss = (notificationId: string) => {
-    dismissNotification(notificationId)
-    loadNotifications()
+  const handleDismiss = async (notificationId: string) => {
+    await fetch(`/api/notifications/${notificationId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+    await loadNotifications()
+    window.dispatchEvent(new CustomEvent('notifications_updated'))
   }
 
   const handleFilterChange = (newFilter: string) => {

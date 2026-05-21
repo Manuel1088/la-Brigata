@@ -122,131 +122,32 @@ export const NOTIFICATION_CATEGORIES = {
   }
 }
 
-// Mock data per notifiche realistiche del ristorante
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'URGENT',
-    category: 'SHIFTS',
-    title: 'Turno scoperto - Stasera',
-    message: 'Anna si è ammalata. Turno 18:00-24:00 senza copertura',
-    timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minuti fa
-    isRead: false,
-    isUrgent: true,
-    actions: [
-      { label: 'Trova Sostituto', action: 'find_replacement', variant: 'primary', icon: '🔍' },
-      { label: 'Chiama Staff', action: 'call_staff', variant: 'secondary', icon: '📞' }
-    ],
-    metadata: { shiftId: 'shift_123', department: 'sala' }
-  },
-  {
-    id: '2',
-    type: 'ERROR',
-    category: 'SYSTEM',
-    title: 'Errore sincronizzazione POS',
-    message: 'POS sala disconnesso. Controllare connessione',
-    timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minuti fa
-    isRead: false,
-    isUrgent: false,
-    actions: [
-      { label: 'Riprova', action: 'retry_sync', variant: 'primary', icon: '🔄' },
-      { label: 'Supporto Tecnico', action: 'tech_support', variant: 'secondary', icon: '🛠️' }
-    ],
-    metadata: { posId: 'pos_sala_1', errorCode: 'CONN_001' }
-  },
-  {
-    id: '3',
-    type: 'WARNING',
-    category: 'LEAVES',
-    title: 'Richiesta ferie in attesa',
-    message: 'Marco Rossi: 5 giorni dal 15-25 Marzo',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 ore fa
-    isRead: false,
-    isUrgent: false,
-    actions: [
-      { label: 'Approva', action: 'approve_leave', variant: 'primary', icon: '✅' },
-      { label: 'Rifiuta', action: 'reject_leave', variant: 'danger', icon: '❌' },
-      { label: 'Dettagli', action: 'view_details', variant: 'secondary', icon: '👁️' }
-    ],
-    metadata: { requestId: 'leave_456', employeeId: 'emp_marco' }
-  },
-  {
-    id: '4',
-    type: 'SUCCESS',
-    category: 'TIPS',
-    title: 'Divisione mance completata',
-    message: '14 Gennaio: €247.50 divisi tra 8 dipendenti',
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 ore fa
-    isRead: true,
-    isUrgent: false,
-    actions: [
-      { label: 'Visualizza', action: 'view_tips', variant: 'primary', icon: '👁️' },
-      { label: 'Esporta PDF', action: 'export_pdf', variant: 'secondary', icon: '📄' }
-    ],
-    metadata: { date: '2024-01-14', totalAmount: 247.50, employeeCount: 8 }
-  },
-  {
-    id: '5',
-    type: 'INFO',
-    category: 'PERSONNEL',
-    title: 'Nuovo dipendente aggiunto',
-    message: 'Sofia Bianchi è stata aggiunta al team cucina',
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 ore fa
-    isRead: true,
-    isUrgent: false,
-    actions: [
-      { label: 'Visualizza Profilo', action: 'view_profile', variant: 'primary', icon: '👤' }
-    ],
-    metadata: { employeeId: 'emp_sofia', department: 'cucina' }
-  },
-  {
-    id: '6',
-    type: 'WARNING',
-    category: 'LEAVES',
-    title: 'Scadenza ferie prossima',
-    message: 'Giuseppe ha solo 3 giorni ferie rimanenti',
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 ore fa
-    isRead: false,
-    isUrgent: false,
-    actions: [
-      { label: 'Gestisci Saldi', action: 'manage_balance', variant: 'primary', icon: '💳' }
-    ],
-    metadata: { employeeId: 'emp_giuseppe', remainingDays: 3 }
-  },
-  {
-    id: '7',
-    type: 'URGENT',
-    category: 'ALERT',
-    title: 'Allarme sicurezza attivato',
-    message: 'Sensore movimento rilevato dopo chiusura',
-    timestamp: new Date(Date.now() - 1 * 60 * 1000), // 1 minuto fa
-    isRead: false,
-    isUrgent: true,
-    actions: [
-      { label: 'Controlla Telecamere', action: 'check_cameras', variant: 'primary', icon: '📹' },
-      { label: 'Chiama Sicurezza', action: 'call_security', variant: 'danger', icon: '🚨' }
-    ],
-    metadata: { sensorId: 'motion_001', location: 'ingresso_principale' }
-  },
-  {
-    id: '8',
-    type: 'SUCCESS',
-    category: 'SYSTEM',
-    title: 'Backup completato',
-    message: 'Backup automatico database completato con successo',
-    timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 ore fa
-    isRead: true,
-    isUrgent: false,
-    metadata: { backupSize: '2.3GB', duration: '15min' }
-  }
-]
+/** Store in-memory solo per notifiche create in sessione; la UI legge da GET /api/notifications */
+const notificationStore: Notification[] = []
 
-// Funzioni di utilità
+export type NotificationDto = Omit<Notification, 'timestamp'> & {
+  timestamp: string
+}
+
+export function parseNotificationDto(row: NotificationDto): Notification {
+  return {
+    ...row,
+    timestamp: new Date(row.timestamp),
+  }
+}
+
+export function serializeNotification(n: Notification): NotificationDto {
+  return {
+    ...n,
+    timestamp: n.timestamp.toISOString(),
+  }
+}
+
 export function getNotifications(userId?: string): Notification[] {
   if (userId) {
-    return mockNotifications.filter(n => !n.userId || n.userId === userId)
+    return notificationStore.filter((n) => !n.userId || n.userId === userId)
   }
-  return mockNotifications
+  return [...notificationStore]
 }
 
 export function getUnreadCount(userId?: string): number {
@@ -267,7 +168,7 @@ export function getNotificationsByType(type: NotificationType, userId?: string):
 
 // Funzioni per gestire le notifiche
 export function markAsRead(notificationId: string): boolean {
-  const notification = mockNotifications.find(n => n.id === notificationId)
+  const notification = notificationStore.find((n) => n.id === notificationId)
   if (notification) {
     notification.isRead = true
     return true
@@ -288,9 +189,9 @@ export function markAllAsRead(userId?: string): number {
 }
 
 export function dismissNotification(notificationId: string): boolean {
-  const index = mockNotifications.findIndex(n => n.id === notificationId)
+  const index = notificationStore.findIndex((n) => n.id === notificationId)
   if (index !== -1) {
-    mockNotifications.splice(index, 1)
+    notificationStore.splice(index, 1)
     return true
   }
   return false
@@ -305,7 +206,14 @@ export function createNotification(notification: Omit<Notification, 'id' | 'time
     isRead: false
   }
   
-  mockNotifications.unshift(newNotification) // Aggiungi all'inizio
+  notificationStore.unshift(newNotification)
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('notifications_updated'))
+    }
+  } catch {
+    /* ignore */
+  }
   
   // Auto-dismiss se configurato
   if (newNotification.autoDismiss && newNotification.dismissAfter) {

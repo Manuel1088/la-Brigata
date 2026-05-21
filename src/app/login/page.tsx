@@ -93,27 +93,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Account Admin */}
-          <div className="mt-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <div className="text-3xl">🛡️</div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-blue-900 mb-2">Account Super Admin</p>
-                <div className="bg-white rounded p-2 mb-2">
-                  <div className="text-xs text-gray-600">Email:</div>
-                  <div className="font-mono text-sm text-blue-600">admin@brigata.it</div>
-                </div>
-                <div className="bg-white rounded p-2">
-                  <div className="text-xs text-gray-600">Password:</div>
-                  <div className="font-mono text-sm text-blue-600">admin123</div>
-                </div>
-                <p className="text-xs text-blue-700 mt-2">
-                  Livello 11 - Accesso completo al sistema
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Info dipendenti database */}
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <p className="text-xs text-gray-600">

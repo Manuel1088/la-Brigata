@@ -1,6 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { getUnreadCount, getUrgentCount } from '@/lib/notifications'
+import { useState, useEffect, useCallback } from 'react'
 
 interface NotificationBadgeProps {
   userId?: string
@@ -8,23 +7,49 @@ interface NotificationBadgeProps {
   className?: string
 }
 
-export function NotificationBadge({ userId, onClick, className = '' }: NotificationBadgeProps) {
+export function NotificationBadge({
+  userId,
+  onClick,
+  className = '',
+}: NotificationBadgeProps) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [urgentCount, setUrgentCount] = useState(0)
 
-  useEffect(() => {
-    const updateCounts = () => {
-      setUnreadCount(getUnreadCount(userId))
-      setUrgentCount(getUrgentCount(userId))
+  const updateCounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications', { credentials: 'include' })
+      if (!res.ok) {
+        setUnreadCount(0)
+        setUrgentCount(0)
+        return
+      }
+      const data = await res.json()
+      const list = (data.notifications ?? []) as Array<{
+        userId?: string
+        isRead: boolean
+        isUrgent: boolean
+      }>
+      const mine = userId
+        ? list.filter((n) => !n.userId || n.userId === userId)
+        : list
+      setUnreadCount(mine.filter((n) => !n.isRead).length)
+      setUrgentCount(mine.filter((n) => n.isUrgent && !n.isRead).length)
+    } catch {
+      setUnreadCount(0)
+      setUrgentCount(0)
     }
-
-    updateCounts()
-    
-    // Aggiorna i conteggi ogni 30 secondi
-    const interval = setInterval(updateCounts, 30000)
-    
-    return () => clearInterval(interval)
   }, [userId])
+
+  useEffect(() => {
+    void updateCounts()
+    const interval = setInterval(() => void updateCounts(), 30000)
+    const onUpdate = () => void updateCounts()
+    window.addEventListener('notifications_updated', onUpdate)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('notifications_updated', onUpdate)
+    }
+  }, [updateCounts])
 
   return (
     <button
@@ -33,21 +58,19 @@ export function NotificationBadge({ userId, onClick, className = '' }: Notificat
       title={`${unreadCount} notifiche non lette${urgentCount > 0 ? `, ${urgentCount} urgenti` : ''}`}
     >
       <span className="text-2xl">🔔</span>
-      
-      {/* Badge conteggio */}
+
       {unreadCount > 0 && (
-        <span className={`absolute -top-1 -right-1 min-w-[20px] h-5 px-1 text-xs font-bold text-white rounded-full flex items-center justify-center ${
-          urgentCount > 0 
-            ? 'bg-red-500 animate-pulse' 
-            : 'bg-blue-500'
-        }`}>
+        <span
+          className={`absolute -top-1 -right-1 min-w-[20px] h-5 px-1 text-xs font-bold text-white rounded-full flex items-center justify-center ${
+            urgentCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
+          }`}
+        >
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
-      
-      {/* Indicatore urgente */}
+
       {urgentCount > 0 && unreadCount === 0 && (
-        <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+        <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
       )}
     </button>
   )
