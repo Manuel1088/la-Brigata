@@ -4,6 +4,7 @@ import type { PaymentType } from '@prisma/client'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import { toDateOnlyIso } from '@/lib/shifts'
+import { userCanDeleteTips, userCanEditTips } from '@/lib/tipAccess'
 import { getTipsEntriesQuerySchema } from '@/lib/validations/tips'
 
 const MANAGER_ROLES = new Set([
@@ -144,6 +145,12 @@ export async function GET(request: NextRequest) {
         }))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
+      const role = String(user.role ?? '')
+      const [canEditTips, canDeleteTips] = await Promise.all([
+        userCanEditTips(prisma, session.user.id, role, restaurantId),
+        userCanDeleteTips(prisma, session.user.id, role, restaurantId),
+      ])
+
       return NextResponse.json({
         view: 'manager' as const,
         month,
@@ -153,6 +160,7 @@ export async function GET(request: NextRequest) {
         entries,
         byDay,
         distributions: [],
+        capabilities: { canEditTips, canDeleteTips },
       })
     }
 

@@ -1,6 +1,8 @@
 // Sistema di Audit Trail per La Brigata
 // Traccia tutte le azioni degli utenti per sicurezza e compliance
 
+import { prisma } from '@/lib/db'
+
 export interface AuditLogEntry {
   id?: string
   userId: string
@@ -24,9 +26,24 @@ export async function logAuditAction(entry: AuditLogEntry): Promise<void> {
     timestamp: new Date()
   }
 
-  // In produzione, salvare nel database
   auditLogs.push(auditEntry)
-  
+
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: entry.userId,
+        action: entry.action,
+        resource: entry.resource,
+        resourceId: entry.resourceId ?? null,
+        details: entry.details ?? null,
+        ipAddress: entry.ipAddress ?? null,
+        userAgent: entry.userAgent ?? null,
+      },
+    })
+  } catch (err) {
+    console.error('Failed to persist audit log to database:', err)
+  }
+
   // Log anche in console per debug
   console.log('🔍 AUDIT LOG:', {
     user: entry.userId,

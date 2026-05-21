@@ -31,7 +31,14 @@ export async function GET(request: NextRequest) {
         isActive: true,
         NOT: { name: { equals: 'Cucina', mode: 'insensitive' } },
       },
-      select: { id: true, name: true, score: true },
+      select: {
+        id: true,
+        name: true,
+        score: true,
+        canInsertTips: true,
+        canEditTips: true,
+        canDeleteTips: true,
+      },
       orderBy: { name: 'asc' },
     })
 

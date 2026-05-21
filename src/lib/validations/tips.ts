@@ -32,4 +32,9 @@ export const getTipsSummaryQuerySchema = getTipsMyQuerySchema.extend({
   restaurantId: z.string().min(1).optional(),
 })
 
+export const patchTipEntrySchema = z.object({
+  amount: z.coerce.number().positive('Importo deve essere maggiore di zero'),
+})
+
 export type PostTipsBody = z.infer<typeof postTipsBodySchema>
+export type PatchTipEntryBody = z.infer<typeof patchTipEntrySchema>

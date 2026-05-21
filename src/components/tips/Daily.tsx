@@ -43,6 +43,7 @@ type EntriesResponse = {
   year: number
   monthLabel: string
   byDay: ByDayEmployee[] | ByDayManager[]
+  capabilities?: { canEditTips: boolean; canDeleteTips: boolean }
 }
 
 const formatCurrency = (n: number) =>
@@ -63,7 +64,81 @@ const toIsoDate = (d: Date) => {
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
 }
 
-function ManagerEntryRow({ entry }: { entry: TipEntryRow }) {
+function ManagerEntryRow({
+  entry,
+  canEdit,
+  canDelete,
+  onUpdated,
+  onDeleted,
+}: {
+  entry: TipEntryRow
+  canEdit: boolean
+  canDelete: boolean
+  onUpdated: (entry: TipEntryRow) => void
+  onDeleted: (id: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draftAmount, setDraftAmount] = useState(String(entry.amount))
+  const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!editing) setDraftAmount(String(entry.amount))
+  }, [entry.amount, editing])
+
+  const saveAmount = async () => {
+    const amount = parseFloat(draftAmount.replace(',', '.'))
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setActionError('Inserisci un importo valido maggiore di zero')
+      return
+    }
+    setBusy(true)
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/tips/${entry.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ amount }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error((body as { error?: string }).error || 'Salvataggio fallito')
+      }
+      const updated = (body as { entry: TipEntryRow }).entry
+      onUpdated(updated)
+      setEditing(false)
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Errore salvataggio')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    const ok = window.confirm(
+      `Eliminare l'inserimento di ${formatCurrency(entry.amount)} (${typeLabel(entry.type)}) per ${entry.location}?`
+    )
+    if (!ok) return
+    setBusy(true)
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/tips/${entry.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error((body as { error?: string }).error || 'Eliminazione fallita')
+      }
+      onDeleted(entry.id)
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Errore eliminazione')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="py-3 border-b border-gray-100 last:border-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -77,8 +152,67 @@ function ManagerEntryRow({ entry }: { entry: TipEntryRow }) {
             {typeLabel(entry.type)}
           </span>
         </div>
-        <div className="font-semibold text-gray-900 text-base shrink-0">
-          {formatCurrency(entry.amount)}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {editing ? (
+            <>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={draftAmount}
+                onChange={(e) => setDraftAmount(e.target.value)}
+                disabled={busy}
+                className="w-28 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                aria-label="Nuovo importo"
+              />
+              <button
+                type="button"
+                onClick={() => void saveAmount()}
+                disabled={busy}
+                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                Salva
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false)
+                  setDraftAmount(String(entry.amount))
+                  setActionError(null)
+                }}
+                disabled={busy}
+                className="px-2.5 py-1 text-xs font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Annulla
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-gray-900 text-base">
+                {formatCurrency(entry.amount)}
+              </span>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  disabled={busy}
+                  className="px-2.5 py-1 text-xs font-medium rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                >
+                  Modifica
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => void confirmDelete()}
+                  disabled={busy}
+                  className="px-2.5 py-1 text-xs font-medium rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  Elimina
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
       {entry.notes ? (
@@ -87,6 +221,7 @@ function ManagerEntryRow({ entry }: { entry: TipEntryRow }) {
           {entry.notes}
         </p>
       ) : null}
+      {actionError ? <p className="mt-2 text-sm text-red-600">{actionError}</p> : null}
     </div>
   )
 }
@@ -143,6 +278,40 @@ export default function TipsDaily() {
       setSelectedDay(toIsoDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)))
     }
   }, [data, isEmployee, year, month, managerDayDates.join(',')])
+
+  const canEditTips = data?.capabilities?.canEditTips ?? false
+  const canDeleteTips = data?.capabilities?.canDeleteTips ?? false
+
+  const handleEntryUpdated = useCallback(
+    (updated: TipEntryRow) => {
+      setData((prev) => {
+        if (!prev || prev.view !== 'manager') return prev
+        const byDay = (prev.byDay as ByDayManager[]).map((day) => {
+          const items = day.items.map((item) =>
+            item.id === updated.id ? { ...item, ...updated } : item
+          )
+          const amount = items.reduce((s, e) => s + e.amount, 0)
+          return { ...day, items, amount }
+        })
+        return { ...prev, byDay }
+      })
+    },
+    []
+  )
+
+  const handleEntryDeleted = useCallback((deletedId: string) => {
+    setData((prev) => {
+      if (!prev || prev.view !== 'manager') return prev
+      const byDay = (prev.byDay as ByDayManager[])
+        .map((day) => {
+          const items = day.items.filter((item) => item.id !== deletedId)
+          const amount = items.reduce((s, e) => s + e.amount, 0)
+          return { ...day, items, amount }
+        })
+        .filter((day) => day.items.length > 0)
+      return { ...prev, byDay }
+    })
+  }, [])
 
   const selectedDayEntries =
     managerByDay.find((d) => d.date === selectedDay)?.items ?? []
@@ -369,7 +538,14 @@ export default function TipsDaily() {
               </div>
               <div className="px-4 divide-y divide-gray-100">
                 {selectedDayEntries.map((entry) => (
-                  <ManagerEntryRow key={entry.id} entry={entry} />
+                  <ManagerEntryRow
+                    key={entry.id}
+                    entry={entry}
+                    canEdit={canEditTips}
+                    canDelete={canDeleteTips}
+                    onUpdated={handleEntryUpdated}
+                    onDeleted={handleEntryDeleted}
+                  />
                 ))}
               </div>
             </div>

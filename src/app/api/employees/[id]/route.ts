@@ -16,9 +16,21 @@ const MANAGER_ROLES = new Set([
   'RESPONSABILE_SALA',
 ])
 
-const patchEmployeeSchema = z.object({
-  score: z.number().int().min(1).max(10),
-})
+const patchEmployeeSchema = z
+  .object({
+    score: z.number().int().min(1).max(10).optional(),
+    canInsertTips: z.boolean().optional(),
+    canEditTips: z.boolean().optional(),
+    canDeleteTips: z.boolean().optional(),
+  })
+  .refine(
+    (data) =>
+      data.score !== undefined ||
+      data.canInsertTips !== undefined ||
+      data.canEditTips !== undefined ||
+      data.canDeleteTips !== undefined,
+    { message: 'Almeno un campo da aggiornare è richiesto' }
+  )
 
 async function canManageRestaurant(userId: string, restaurantId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
@@ -39,7 +51,7 @@ async function canManageRestaurant(userId: string, restaurantId: string): Promis
   )
 }
 
-/** PATCH /api/employees/[id] — aggiorna Employee.score (id = Employee.id) */
+/** PATCH /api/employees/[id] — aggiorna score e/o permessi mance (id = Employee.id) */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -74,19 +86,34 @@ export async function PATCH(
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
+    const data: {
+      score?: number
+      canInsertTips?: boolean
+      canEditTips?: boolean
+      canDeleteTips?: boolean
+      updatedAt: Date
+    } = { updatedAt: new Date() }
+    if (parsed.data.score !== undefined) data.score = parsed.data.score
+    if (parsed.data.canInsertTips !== undefined) data.canInsertTips = parsed.data.canInsertTips
+    if (parsed.data.canEditTips !== undefined) data.canEditTips = parsed.data.canEditTips
+    if (parsed.data.canDeleteTips !== undefined) data.canDeleteTips = parsed.data.canDeleteTips
+
     const updated = await prisma.employee.update({
       where: { id },
-      data: { score: parsed.data.score, updatedAt: new Date() },
-      select: { id: true, name: true, score: true },
+      data,
+      select: {
+        id: true,
+        name: true,
+        score: true,
+        canInsertTips: true,
+        canEditTips: true,
+        canDeleteTips: true,
+      },
     })
 
     return NextResponse.json({
       success: true,
-      employee: {
-        id: updated.id,
-        name: updated.name,
-        score: updated.score,
-      },
+      employee: updated,
     })
   } catch (error) {
     console.error('PATCH /api/employees/[id] error:', error)

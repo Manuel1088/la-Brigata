@@ -410,6 +410,8 @@ model Employee {
   role              EmployeeRole
   restaurantId      String
   canInsertTips     Boolean             @default(false)
+  canEditTips       Boolean             @default(false)
+  canDeleteTips     Boolean             @default(false)
   canViewAll        Boolean             @default(false)
   isActive          Boolean             @default(true)
   createdAt         DateTime            @default(now())
