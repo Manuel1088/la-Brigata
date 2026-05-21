@@ -587,14 +587,14 @@ enum ContractType {
 }
 
 enum CCNLLevel {
-  LIVELLO_1Q
-  LIVELLO_2Q
+  QA
+  QB
+  LIVELLO_1
+  LIVELLO_2
   LIVELLO_3
   LIVELLO_4
   LIVELLO_5
   LIVELLO_6
-  LIVELLO_7
-  LIVELLO_8
 }
 
 enum LeaveType {

@@ -1,16 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
+import { isManagerRole, MANAGER_ROLES } from '@/lib/roles'
 
-export const MANAGER_ROLES = new Set([
-  'ADMIN',
-  'PROPRIETARIO',
-  'PROPRIETARIO_OPERATIVO',
-  'DIRETTORE',
-  'DIRETTORE_GENERALE',
-  'MANAGER',
-  'RESTAURANT_MANAGER',
-  'CASSIERE',
-  'RESPONSABILE_SALA',
-])
+export { MANAGER_ROLES }
 
 const DEFAULT_LOCATION_NAMES = ['Mirabelle', 'Adele'] as const
 
@@ -69,7 +60,7 @@ export async function assertRestaurantAccess(
 
   if (user.restaurantId === restaurantId) return true
 
-  if (!MANAGER_ROLES.has(String(user.role))) return false
+  if (!isManagerRole(user.role)) return false
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { id: restaurantId },

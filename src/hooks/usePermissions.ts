@@ -1,6 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { hasAnyPermission, hasAllPermissions, canAccess, getUserPermissions, getPermissionsByCategory, PERMISSIONS } from '@/lib/permissions'
+import { canManageRestaurantStaff } from '@/lib/employee-create'
 
 export function usePermissions() {
   const { data: session } = useSession()
@@ -56,8 +57,13 @@ export function usePermissions() {
 
   // Controlli specifici per sezioni
   const canManageEmployees = (): boolean => {
-    // Richiede permessi gestionali reali (non solo view)
-    return canAny(['personale_create', 'personale_edit', 'personale_activate', 'personale_salary'])
+    if (canManageRestaurantStaff(userRole)) return true
+    return canAny([
+      'personale_create',
+      'personale_edit',
+      'personale_activate',
+      'personale_salary',
+    ])
   }
 
   const canManageTips = (): boolean => {
@@ -198,6 +204,15 @@ export function usePermissions() {
     
     // Controlli specifici - Settings
     canEditPersonal: () => can('edit_personal_info'),
-    canManageCompany: () => can('manage_company_settings')
+    canManageCompany: () => {
+      if (
+        upperRole === 'MANAGER' ||
+        upperRole === 'RESTAURANT_MANAGER' ||
+        upperRole === 'ASSISTANT_MANAGER'
+      ) {
+        return true
+      }
+      return can('manage_company_settings')
+    },
   }
 }

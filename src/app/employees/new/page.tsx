@@ -2,12 +2,12 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { usePermissions } from '@/hooks/usePermissions'
+import { canManageRestaurantStaff } from '@/lib/employee-create'
+import { CCNLLevel, CCNL_LEVEL_OPTIONS, getCcnlMonthlyBase } from '@/lib/ccnl'
 
 export default function NewEmployeePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { canManageEmployees } = usePermissions()
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -16,6 +16,7 @@ export default function NewEmployeePage() {
     phone: '',
     role: 'DIPENDENTE_SALA',
     department: 'sala' as 'cucina' | 'sala' | 'beverage' | 'accoglienza' | 'dirigenti',
+    ccnlLevel: CCNLLevel.LIVELLO_3 as string,
     hourlyRate: 12.0,
     contractType: 'full-time',
     startDate: new Date().toISOString().split('T')[0],
@@ -29,9 +30,12 @@ export default function NewEmployeePage() {
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!session) router.push('/login')
-    if (!canManageEmployees()) router.push('/team')
-  }, [session, status, router, canManageEmployees])
+    if (!session) {
+      router.push('/login')
+      return
+    }
+    if (!canManageRestaurantStaff(session.user?.role)) router.push('/team')
+  }, [session, status, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,6 +54,7 @@ export default function NewEmployeePage() {
           phone: formData.phone || undefined,
           role: formData.role,
           department: formData.department,
+          ccnlLevel: formData.ccnlLevel,
           hourlyRate: formData.hourlyRate,
           contractType: formData.contractType,
           startDate: formData.startDate,
@@ -244,6 +249,32 @@ export default function NewEmployeePage() {
                   {roles.map((role) => (
                     <option key={role} value={role}>
                       {role.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Livello CCNL *
+                </label>
+                <select
+                  value={formData.ccnlLevel}
+                  onChange={(e) => {
+                    const level = e.target.value
+                    setFormData((prev) => ({
+                      ...prev,
+                      ccnlLevel: level,
+                      hourlyRate: Math.round(
+                        (getCcnlMonthlyBase(level) / 160) * 100
+                      ) / 100,
+                    }))
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  {CCNL_LEVEL_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label} — min. €{opt.monthlyBase.toFixed(2)}/mese
                     </option>
                   ))}
                 </select>

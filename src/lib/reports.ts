@@ -1,17 +1,9 @@
 import type { PaymentType, PrismaClient } from '@prisma/client'
 import { toDateOnlyIso } from '@/lib/shifts'
 
-export const REPORTS_MANAGER_ROLES = new Set([
-  'ADMIN',
-  'PROPRIETARIO',
-  'PROPRIETARIO_OPERATIVO',
-  'DIRETTORE',
-  'DIRETTORE_GENERALE',
-  'MANAGER',
-  'RESTAURANT_MANAGER',
-  'CASSIERE',
-  'RESPONSABILE_SALA',
-])
+import { isManagerRole, REPORTS_MANAGER_ROLES } from '@/lib/roles'
+
+export { REPORTS_MANAGER_ROLES }
 
 export function monthBounds(year: number, month: number) {
   const start = new Date(year, month, 1)
@@ -59,7 +51,7 @@ export async function assertReportsAccess(
   if (!user) return false
 
   if (user.restaurantId === restaurantId) {
-    return REPORTS_MANAGER_ROLES.has(String(user.role))
+    return isManagerRole(user.role)
   }
 
   const restaurant = await prisma.restaurant.findUnique({
@@ -70,7 +62,7 @@ export async function assertReportsAccess(
   return !!(
     restaurant?.companyId &&
     user.companyId === restaurant.companyId &&
-    REPORTS_MANAGER_ROLES.has(String(user.role))
+    isManagerRole(user.role)
   )
 }
 

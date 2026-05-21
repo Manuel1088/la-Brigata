@@ -339,6 +339,13 @@ export const PERMISSIONS: Record<string, Permission> = {
     category: 'admin',
     level: 10
   },
+  ADMIN_ACCESS: {
+    id: 'admin_access',
+    name: 'Accesso amministrazione team',
+    description: 'Gestire accessi e permessi del personale del ristorante',
+    category: 'admin',
+    level: 8
+  },
   
   // 🛡️ SUPER ADMIN - Funzioni Esclusive (livello 11)
   SUPER_ADMIN_DELETE_COMPANY: {
@@ -445,7 +452,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'turni_view', 'turni_manage', 'turni_assign', 'turni_approve', 'turni_export',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_view_all', 'ferie_export', 'ferie_calendar', 'ferie_balance',
     'report_basic', 'report_advanced', 'report_financial', 'report_export', 'report_schedule',
-    'admin_audit',
+    'admin_audit', 'admin_access', 'manage_company_settings',
     'bookings_view','bookings_manage','areas_manage','customers_view','customers_manage'
   ],
   MANAGER: [
@@ -455,6 +462,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_view_all', 'ferie_export', 'ferie_calendar', 'ferie_balance',
     'payroll_view', 'payroll_scan', 'payroll_manage',
     'report_basic', 'report_advanced', 'report_export',
+    'admin_access', 'manage_company_settings',
     'bookings_view','bookings_manage','areas_manage','customers_view','customers_manage'
   ],
   RESPONSABILE_SALA: [

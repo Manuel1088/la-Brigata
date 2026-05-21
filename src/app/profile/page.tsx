@@ -5,16 +5,19 @@ import { useState, useEffect } from 'react'
 import type { EmployeeFull } from '@/lib/employees'
 import { useEmployees } from '@/hooks/useEmployees'
 
-// CCNL base mensile per livello (11/2027) per calcolo paga di default
-const CCNL_MONTHLY_BASE: Record<string, number> = {
-  QA: 2495.22, QB: 2310.11, A1: 2495.22, B2: 2310.11,
-  '1': 2152.32, '2': 1967.20, '3': 1855.32, '4': 1750.69,
-  '5': 1641.85, '6S': 1578.72, '6': 1556.35, '7': 1458.42
-}
+import {
+  CCNLLevel,
+  CCNL_LEVEL_OPTIONS,
+  formatCcnlLevelLabel,
+  getCcnlMonthlyBase,
+  isCcnlLevel,
+} from '@/lib/ccnl'
+
 const getBaseForLevel = (level?: number | string | null) => {
   if (!level && level !== 0) return 0
   const key = String(level).toUpperCase()
-  return CCNL_MONTHLY_BASE[key] || 0
+  if (isCcnlLevel(key)) return getCcnlMonthlyBase(key)
+  return 0
 }
 
 export default function ProfilePage() {
@@ -417,8 +420,28 @@ export default function ProfilePage() {
                     <div className="font-medium">{myEmployee.role?.replace(/_/g,' ') || '—'}</div>
                   </div>
                   <div>
-                    <span className="block text-gray-600 mb-1">Livello</span>
-                    <div className="font-medium">{myEmployee.level ?? '—'}</div>
+                    <span className="block text-gray-600 mb-1">Livello CCNL</span>
+                    <select
+                      disabled
+                      value={
+                        isCcnlLevel(String(myEmployee.level))
+                          ? String(myEmployee.level)
+                          : CCNLLevel.LIVELLO_3
+                      }
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 font-medium"
+                    >
+                      {CCNL_LEVEL_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label} — €{opt.monthlyBase.toFixed(2)}/mese
+                        </option>
+                      ))}
+                    </select>
+                    {!isCcnlLevel(String(myEmployee.level)) && myEmployee.level && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        Livello legacy: {String(myEmployee.level)} (
+                        {formatCcnlLevelLabel(CCNLLevel.LIVELLO_3)})
+                      </p>
+                    )}
                   </div>
                   <div>
                     <span className="block text-gray-600 mb-1">Contratto</span>

@@ -2,7 +2,13 @@ import type { LeaveType, PrismaClient } from '@prisma/client'
 import { dateFromIso, toDateOnlyIso } from '@/lib/shifts'
 import { SUPPORTED_LEAVE_TYPES } from '@/lib/validations/leaves'
 
-export const LEAVE_APPROVER_ROLES = new Set(['ADMIN', 'MANAGER'])
+export const LEAVE_APPROVER_ROLES = new Set([
+  'ADMIN',
+  'MANAGER',
+  'PROPRIETARIO',
+  'DIRETTORE',
+  'RESTAURANT_MANAGER',
+])
 
 export const LEAVE_TYPE_LABELS: Record<string, string> = {
   VACATION: 'Ferie',

@@ -8,17 +8,7 @@ import { toDateOnlyIso } from '@/lib/shifts'
 import { userCanDeleteTips, userCanEditTips } from '@/lib/tipAccess'
 import { getTipsEntriesQuerySchema } from '@/lib/validations/tips'
 
-const MANAGER_ROLES = new Set([
-  'ADMIN',
-  'PROPRIETARIO',
-  'PROPRIETARIO_OPERATIVO',
-  'DIRETTORE',
-  'DIRETTORE_GENERALE',
-  'MANAGER',
-  'RESTAURANT_MANAGER',
-  'CASSIERE',
-  'RESPONSABILE_SALA',
-])
+import { isManagerRole } from '@/lib/roles'
 
 function paymentTypeToUi(type: PaymentType): 'cash' | 'card' | 'foreign' {
   if (type === 'CASH') return 'cash'
@@ -43,7 +33,7 @@ async function assertRestaurantAccess(userId: string, restaurantId: string) {
   return !!(
     restaurant?.companyId &&
     user.companyId === restaurant.companyId &&
-    MANAGER_ROLES.has(String(user.role))
+    isManagerRole(user.role)
   )
 }
 
@@ -79,7 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     const restaurantId = parsed.data.restaurantId ?? user.restaurantId
-    const isManager = MANAGER_ROLES.has(String(user.role))
+    const isManager = isManagerRole(user.role)
 
     if (isManager && !(await assertRestaurantAccess(session.user.id, restaurantId))) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })

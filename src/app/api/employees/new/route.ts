@@ -14,6 +14,8 @@ import {
   toUserRole,
 } from '@/lib/employee-create'
 import { sendEmployeeWelcomeEmail } from '@/lib/employee-welcome-email'
+import { isCcnlLevel } from '@/lib/ccnl'
+import type { CCNLLevel } from '@prisma/client'
 import { z } from 'zod'
 
 const createEmployeeSchema = z.object({
@@ -23,6 +25,7 @@ const createEmployeeSchema = z.object({
   phone: z.string().optional(),
   role: z.string().min(1),
   department: z.enum(['cucina', 'sala', 'beverage', 'accoglienza', 'dirigenti']),
+  ccnlLevel: z.string().optional(),
   hourlyRate: z.number().min(0).optional(),
   contractType: z.string().optional(),
   startDate: z.string().optional(),
@@ -39,8 +42,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
     }
 
-    const actorRole = String(session.user.role ?? '')
-    if (actorRole !== 'ADMIN' && !canManageRestaurantStaff(actorRole)) {
+    const actorRole = session.user.role
+    if (!canManageRestaurantStaff(actorRole)) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
@@ -60,6 +63,7 @@ export async function POST(req: NextRequest) {
       phone,
       role: roleInput,
       department,
+      ccnlLevel: ccnlLevelInput,
       hourlyRate,
       contractType,
       startDate,
@@ -108,6 +112,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const ccnlLevel: CCNLLevel | undefined =
+      ccnlLevelInput && isCcnlLevel(ccnlLevelInput)
+        ? (ccnlLevelInput as CCNLLevel)
+        : undefined
+
     const userRole = toUserRole(roleInput)
     const employeeRole = toEmployeeRole(userRole, department)
     const hierarchyLevel = hierarchyLevelForUserRole(userRole)
@@ -134,6 +143,7 @@ export async function POST(req: NextRequest) {
           userType: 'EMPLOYEE',
           isActive: true,
           position: roleInput.replace(/_/g, ' '),
+          ccnlLevel: ccnlLevel ?? null,
         },
       })
 
@@ -153,6 +163,7 @@ export async function POST(req: NextRequest) {
           canEditTips: false,
           canDeleteTips: false,
           canViewAll: userRole === 'MANAGER',
+          ccnlLevel: ccnlLevel ?? null,
           updatedAt: new Date(),
           createdBy: session.user!.id,
         },

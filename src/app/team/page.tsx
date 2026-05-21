@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
+import { canManageRestaurantStaff } from '@/lib/employee-create'
 import TeamEmployees from '@/components/team/Employees'
 import TeamAccess from '@/components/team/Access'
 
@@ -12,10 +13,8 @@ function TeamPageContent() {
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState('employees')
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const { 
-    canManageEmployees, 
-    canAccessAdmin
-  } = usePermissions()
+  const { canAccessAdmin } = usePermissions()
+  const canManageTeam = canManageRestaurantStaff(session?.user?.role)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -51,7 +50,7 @@ function TeamPageContent() {
       label: 'Team', 
       icon: '👥', 
       component: TeamEmployees,
-      permission: canManageEmployees()
+      permission: canManageTeam
     },
     { 
       id: 'access', 
@@ -76,6 +75,27 @@ function TeamPageContent() {
         <div className="text-center">
           <div className="text-4xl mb-4">⏳</div>
           <div className="text-xl text-gray-700">Caricamento...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!canManageTeam && !canAccessAdmin()) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md px-6">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Accesso negato</h2>
+          <p className="text-gray-600 mb-4">
+            Solo titolari, direttori e manager possono gestire il team.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard')}
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+          >
+            Torna alla Dashboard
+          </button>
         </div>
       </div>
     )

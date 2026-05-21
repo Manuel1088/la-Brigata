@@ -2,7 +2,10 @@ import type { EmployeeRole, UserRole } from '@prisma/client'
 
 export const DEFAULT_EMPLOYEE_PASSWORD = 'Brigata2026!'
 
-const MANAGER_ROLES = new Set([
+import { isManagerRole, normalizeRole } from '@/lib/roles'
+
+/** @deprecated Usa MANAGER_ROLE_LIST da @/lib/roles */
+export const RESTAURANT_STAFF_MANAGER_ROLES = [
   'ADMIN',
   'PROPRIETARIO',
   'PROPRIETARIO_OPERATIVO',
@@ -10,12 +13,14 @@ const MANAGER_ROLES = new Set([
   'DIRETTORE_GENERALE',
   'MANAGER',
   'RESTAURANT_MANAGER',
-  'CASSIERE',
-  'RESPONSABILE_SALA',
-])
+] as const
+
+export function normalizeStaffRole(role: string | undefined | null): string {
+  return normalizeRole(role)
+}
 
 export function canManageRestaurantStaff(role: string | undefined | null): boolean {
-  return MANAGER_ROLES.has(String(role ?? ''))
+  return isManagerRole(role)
 }
 
 export function hierarchyLevelForUserRole(role: UserRole): number {

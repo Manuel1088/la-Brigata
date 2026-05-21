@@ -1,16 +1,184 @@
-export enum CCNLLevel {
-  LIVELLO_1Q = '1Q',
-  LIVELLO_2Q = '2Q',
-  LIVELLO_3 = '3',
-  LIVELLO_4 = '4',
-  LIVELLO_5 = '5',
-  LIVELLO_6 = '6',
-  LIVELLO_7 = '7',
-  LIVELLO_8 = '8',
-}
+/** Livelli CCNL Turismo — Pubblici Esercizi (allineati a schema Prisma). */
+export type CCNLLevel =
+  | 'QA'
+  | 'QB'
+  | 'LIVELLO_1'
+  | 'LIVELLO_2'
+  | 'LIVELLO_3'
+  | 'LIVELLO_4'
+  | 'LIVELLO_5'
+  | 'LIVELLO_6'
+
+export const CCNLLevel = {
+  QA: 'QA',
+  QB: 'QB',
+  LIVELLO_1: 'LIVELLO_1',
+  LIVELLO_2: 'LIVELLO_2',
+  LIVELLO_3: 'LIVELLO_3',
+  LIVELLO_4: 'LIVELLO_4',
+  LIVELLO_5: 'LIVELLO_5',
+  LIVELLO_6: 'LIVELLO_6',
+} as const
 
 export type CCCategory = 'QUADRI' | 'IMPIEGATI' | 'OPERAI'
 
+export interface CCNLLevelInfo {
+  level: CCNLLevel
+  category: CCCategory
+  code: string
+  title: string
+  description: string
+  typicalRoles: string[]
+  /** Retribuzione tabellare mensile lorda 2026 (€) */
+  monthlyBase2026: number
+  /** Gerarchia numerica (più alto = più senior) */
+  hierarchy: number
+  weeklyHours: number
+  overtimeRate: number
+  nightRate: number
+  holidayRate: number
+}
+
+/** Ordine dal livello più alto al più basso. */
+export const CCNL_LEVEL_ORDER: CCNLLevel[] = [
+  CCNLLevel.QA,
+  CCNLLevel.QB,
+  CCNLLevel.LIVELLO_1,
+  CCNLLevel.LIVELLO_2,
+  CCNLLevel.LIVELLO_3,
+  CCNLLevel.LIVELLO_4,
+  CCNLLevel.LIVELLO_5,
+  CCNLLevel.LIVELLO_6,
+]
+
+export const CCNL_LEVELS: Record<CCNLLevel, CCNLLevelInfo> = {
+  [CCNLLevel.QA]: {
+    level: CCNLLevel.QA,
+    category: 'QUADRI',
+    code: 'QA',
+    title: 'Quadro Superiore',
+    description: 'Direzione generale, P&L, strategia e governance',
+    typicalRoles: [
+      'Direttore generale',
+      'Direttore operativo',
+      'General manager',
+    ],
+    monthlyBase2026: 2874.0,
+    hierarchy: 8,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
+  [CCNLLevel.QB]: {
+    level: CCNLLevel.QB,
+    category: 'QUADRI',
+    code: 'QB',
+    title: 'Quadro',
+    description: 'Coordinamento reparti, responsabilità operative e commerciali',
+    typicalRoles: [
+      'Responsabile area',
+      'Responsabile reparto',
+      'Capo sala senior',
+    ],
+    monthlyBase2026: 2528.0,
+    hierarchy: 7,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
+  [CCNLLevel.LIVELLO_1]: {
+    level: CCNLLevel.LIVELLO_1,
+    category: 'IMPIEGATI',
+    code: '1',
+    title: 'Primo livello impiegati',
+    description: 'Maître, responsabile sala, coordinamento servizio qualificato',
+    typicalRoles: ['Maître', 'Responsabile sala', 'Sommelier senior'],
+    monthlyBase2026: 2189.0,
+    hierarchy: 6,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
+  [CCNLLevel.LIVELLO_2]: {
+    level: CCNLLevel.LIVELLO_2,
+    category: 'IMPIEGATI',
+    code: '2',
+    title: 'Secondo livello impiegati',
+    description: 'Cameriere specializzato, barman qualificato, chef de rang',
+    typicalRoles: [
+      'Cameriere specializzato',
+      'Barman qualificato',
+      'Chef de rang senior',
+    ],
+    monthlyBase2026: 2012.0,
+    hierarchy: 5,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
+  [CCNLLevel.LIVELLO_3]: {
+    level: CCNLLevel.LIVELLO_3,
+    category: 'IMPIEGATI',
+    code: '3',
+    title: 'Terzo livello impiegati',
+    description: 'Cameriere, barista, addetto sala con autonomia operativa',
+    typicalRoles: ['Cameriere', 'Barista', 'Addetto sala'],
+    monthlyBase2026: 1868.0,
+    hierarchy: 4,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
+  [CCNLLevel.LIVELLO_4]: {
+    level: CCNLLevel.LIVELLO_4,
+    category: 'OPERAI',
+    code: '4',
+    title: 'Quarto livello operai',
+    description: 'Cuoco specializzato, chef de partie, pizzaiolo qualificato',
+    typicalRoles: ['Cuoco specializzato', 'Chef de partie', 'Pizzaiolo'],
+    monthlyBase2026: 1725.0,
+    hierarchy: 3,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
+  [CCNLLevel.LIVELLO_5]: {
+    level: CCNLLevel.LIVELLO_5,
+    category: 'OPERAI',
+    code: '5',
+    title: 'Quinto livello operai',
+    description: 'Cuoco, aiuto cuoco, commis con competenze consolidate',
+    typicalRoles: ['Cuoco', 'Aiuto cuoco', 'Commis chef'],
+    monthlyBase2026: 1589.0,
+    hierarchy: 2,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
+  [CCNLLevel.LIVELLO_6]: {
+    level: CCNLLevel.LIVELLO_6,
+    category: 'OPERAI',
+    code: '6',
+    title: 'Sesto livello operai',
+    description: 'Mansioni di base: runner, lavapiatti, supporto generale',
+    typicalRoles: ['Runner', 'Lavapiatti', 'Addetto pulizie', 'Commis sala'],
+    monthlyBase2026: 1465.0,
+    hierarchy: 1,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
+}
+
+/** Compatibilità con componenti che usano CCNL_POSITIONS. */
 export interface CCNLPosition {
   level: CCNLLevel
   category: CCCategory
@@ -24,103 +192,58 @@ export interface CCNLPosition {
   holidayRate: number
 }
 
-export const CCNL_POSITIONS: Record<CCNLLevel, CCNLPosition> = {
-  [CCNLLevel.LIVELLO_1Q]: {
-    level: CCNLLevel.LIVELLO_1Q,
-    category: 'QUADRI',
-    title: 'Direttore Generale',
-    description: 'Direzione generale, coordinamento complessivo',
-    minSalary: 2800,
-    maxSalary: 3500,
-    weeklyHours: 40,
-    overtimeRate: 1.25,
-    nightRate: 1.2,
-    holidayRate: 1.5,
-  },
-  [CCNLLevel.LIVELLO_2Q]: {
-    level: CCNLLevel.LIVELLO_2Q,
-    category: 'QUADRI',
-    title: 'Responsabile Area',
-    description: 'Coordinamento settori, responsabilità operative',
-    minSalary: 2200,
-    maxSalary: 2800,
-    weeklyHours: 40,
-    overtimeRate: 1.25,
-    nightRate: 1.2,
-    holidayRate: 1.5,
-  },
-  [CCNLLevel.LIVELLO_3]: {
-    level: CCNLLevel.LIVELLO_3,
-    category: 'IMPIEGATI',
-    title: 'Responsabile Sala/Maître',
-    description: 'Coordinamento sala, supervisione servizio',
-    minSalary: 1800,
-    maxSalary: 2200,
-    weeklyHours: 40,
-    overtimeRate: 1.25,
-    nightRate: 1.2,
-    holidayRate: 1.5,
-  },
-  [CCNLLevel.LIVELLO_4]: {
-    level: CCNLLevel.LIVELLO_4,
-    category: 'IMPIEGATI',
-    title: 'Cameriere Specializzato',
-    description: 'Servizio qualificato, conoscenze tecniche',
-    minSalary: 1600,
-    maxSalary: 1900,
-    weeklyHours: 40,
-    overtimeRate: 1.25,
-    nightRate: 1.2,
-    holidayRate: 1.5,
-  },
-  [CCNLLevel.LIVELLO_5]: {
-    level: CCNLLevel.LIVELLO_5,
-    category: 'IMPIEGATI',
-    title: 'Cameriere/Barista',
-    description: 'Servizio standard, mansioni operative',
-    minSalary: 1400,
-    maxSalary: 1700,
-    weeklyHours: 40,
-    overtimeRate: 1.25,
-    nightRate: 1.2,
-    holidayRate: 1.5,
-  },
-  [CCNLLevel.LIVELLO_6]: {
-    level: CCNLLevel.LIVELLO_6,
-    category: 'OPERAI',
-    title: 'Cuoco Specializzato',
-    description: 'Preparazioni specializzate, competenze tecniche',
-    minSalary: 1500,
-    maxSalary: 1800,
-    weeklyHours: 40,
-    overtimeRate: 1.25,
-    nightRate: 1.2,
-    holidayRate: 1.5,
-  },
-  [CCNLLevel.LIVELLO_7]: {
-    level: CCNLLevel.LIVELLO_7,
-    category: 'OPERAI',
-    title: 'Cuoco/Aiuto Cuoco',
-    description: 'Preparazioni qualificate, supporto cucina',
-    minSalary: 1300,
-    maxSalary: 1600,
-    weeklyHours: 40,
-    overtimeRate: 1.25,
-    nightRate: 1.2,
-    holidayRate: 1.5,
-  },
-  [CCNLLevel.LIVELLO_8]: {
-    level: CCNLLevel.LIVELLO_8,
-    category: 'OPERAI',
-    title: 'Operaio Generico',
-    description: 'Mansioni di base, supporto generale',
-    minSalary: 1200,
-    maxSalary: 1400,
-    weeklyHours: 40,
-    overtimeRate: 1.25,
-    nightRate: 1.2,
-    holidayRate: 1.5,
-  },
+export const CCNL_POSITIONS: Record<CCNLLevel, CCNLPosition> = Object.fromEntries(
+  CCNL_LEVEL_ORDER.map((level) => {
+    const info = CCNL_LEVELS[level]
+    return [
+      level,
+      {
+        level: info.level,
+        category: info.category,
+        title: info.title,
+        description: info.description,
+        minSalary: info.monthlyBase2026,
+        maxSalary: Math.round(info.monthlyBase2026 * 1.08),
+        weeklyHours: info.weeklyHours,
+        overtimeRate: info.overtimeRate,
+        nightRate: info.nightRate,
+        holidayRate: info.holidayRate,
+      },
+    ]
+  })
+) as Record<CCNLLevel, CCNLPosition>
+
+export const CCNL_LEVEL_OPTIONS = CCNL_LEVEL_ORDER.map((level) => {
+  const info = CCNL_LEVELS[level]
+  return {
+    value: level,
+    label: `${info.code} — ${info.title}`,
+    monthlyBase: info.monthlyBase2026,
+  }
+})
+
+export function isCcnlLevel(value: string | null | undefined): value is CCNLLevel {
+  if (!value) return false
+  return value in CCNL_LEVELS
+}
+
+export function getCcnlHierarchy(level: CCNLLevel | string): number {
+  const key = String(level).toUpperCase() as CCNLLevel
+  return CCNL_LEVELS[key]?.hierarchy ?? 0
+}
+
+export function getCcnlMonthlyBase(level: CCNLLevel | string | null | undefined): number {
+  if (!level) return 0
+  const key = String(level).toUpperCase() as CCNLLevel
+  return CCNL_LEVELS[key]?.monthlyBase2026 ?? 0
+}
+
+export function formatCcnlLevelLabel(level: CCNLLevel | string | null | undefined): string {
+  if (!level) return '—'
+  const key = String(level).toUpperCase() as CCNLLevel
+  const info = CCNL_LEVELS[key]
+  if (!info) return String(level)
+  return `${info.code} — ${info.title}`
 }
 
 export class CCNLCalculator {
@@ -141,19 +264,15 @@ export class CCNLCalculator {
   }
 }
 
-
 // =====================
 // CCNL TURISMO - MANSIONI DETTAGLIATE
 // =====================
 
 export enum JobRole {
-  // QUADRI (1Q-2Q)
   DIRETTORE_GENERALE = 'DIRETTORE_GENERALE',
   DIRETTORE_OPERATIVO = 'DIRETTORE_OPERATIVO',
   RESPONSABILE_AREA = 'RESPONSABILE_AREA',
   RESPONSABILE_REPARTO = 'RESPONSABILE_REPARTO',
-
-  // IMPIEGATI (3-5)
   MAITRE = 'MAITRE',
   RESPONSABILE_SALA = 'RESPONSABILE_SALA',
   CHEF_DE_RANG_SENIOR = 'CHEF_DE_RANG_SENIOR',
@@ -164,8 +283,6 @@ export enum JobRole {
   CAMERIERE = 'CAMERIERE',
   BARISTA = 'BARISTA',
   ADDETTO_SALA = 'ADDETTO_SALA',
-
-  // OPERAI (6-8)
   CHEF_EXECUTIVE = 'CHEF_EXECUTIVE',
   SOUS_CHEF = 'SOUS_CHEF',
   CHEF_DE_PARTIE = 'CHEF_DE_PARTIE',
@@ -212,12 +329,10 @@ export interface JobDescription {
   }
 }
 
-// Nota: Partial per consentire completamenti progressivi del dataset
 export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
-  // ========== LIVELLO 1Q - QUADRI SUPERIORI ==========
   [JobRole.DIRETTORE_GENERALE]: {
     role: JobRole.DIRETTORE_GENERALE,
-    ccnlLevel: CCNLLevel.LIVELLO_1Q,
+    ccnlLevel: CCNLLevel.QA,
     department: Department.DIREZIONE,
     title: 'Direttore Generale',
     description: "Responsabilità complessiva dell'attività, definizione strategie, gestione P&L",
@@ -244,7 +359,7 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
 
   [JobRole.DIRETTORE_OPERATIVO]: {
     role: JobRole.DIRETTORE_OPERATIVO,
-    ccnlLevel: CCNLLevel.LIVELLO_1Q,
+    ccnlLevel: CCNLLevel.QA,
     department: Department.DIREZIONE,
     title: 'Direttore Operativo',
     description: 'Gestione operativa quotidiana, coordinamento tutti i reparti',
@@ -269,10 +384,9 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
     shiftCompatibility: { morning: true, afternoon: true, evening: true, night: false },
   },
 
-  // ========== LIVELLO 2Q - QUADRI INTERMEDI ==========
   [JobRole.RESPONSABILE_AREA]: {
     role: JobRole.RESPONSABILE_AREA,
-    ccnlLevel: CCNLLevel.LIVELLO_2Q,
+    ccnlLevel: CCNLLevel.QB,
     department: Department.SALA,
     title: 'Responsabile Area Sala',
     description: 'Coordinamento area sala, gestione team, obiettivi commerciali',
@@ -299,7 +413,7 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
 
   [JobRole.RESPONSABILE_REPARTO]: {
     role: JobRole.RESPONSABILE_REPARTO,
-    ccnlLevel: CCNLLevel.LIVELLO_2Q,
+    ccnlLevel: CCNLLevel.QB,
     department: Department.CUCINA,
     title: 'Responsabile Reparto Cucina',
     description: 'Coordinamento cucina, controllo costi, gestione brigade',
@@ -324,10 +438,9 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
     shiftCompatibility: { morning: true, afternoon: true, evening: true, night: false },
   },
 
-  // ========== LIVELLO 3 - IMPIEGATI SPECIALIZZATI ==========
   [JobRole.MAITRE]: {
     role: JobRole.MAITRE,
-    ccnlLevel: CCNLLevel.LIVELLO_3,
+    ccnlLevel: CCNLLevel.LIVELLO_1,
     department: Department.SALA,
     title: 'Maître de Salle',
     description: 'Supervisione servizio sala, accoglienza VIP, coordinamento squadre',
@@ -354,7 +467,7 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
 
   [JobRole.SOMMELIER]: {
     role: JobRole.SOMMELIER,
-    ccnlLevel: CCNLLevel.LIVELLO_3,
+    ccnlLevel: CCNLLevel.LIVELLO_1,
     department: Department.SALA,
     title: 'Sommelier',
     description: 'Gestione cantina, consulenza vini, formazione staff su beverage',
@@ -380,10 +493,9 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
     shiftCompatibility: { morning: false, afternoon: true, evening: true, night: false },
   },
 
-  // ========== LIVELLO 4 - IMPIEGATI QUALIFICATI ==========
   [JobRole.CAMERIERE_SPECIALIZZATO]: {
     role: JobRole.CAMERIERE_SPECIALIZZATO,
-    ccnlLevel: CCNLLevel.LIVELLO_4,
+    ccnlLevel: CCNLLevel.LIVELLO_2,
     department: Department.SALA,
     title: 'Cameriere Specializzato',
     description: 'Servizio qualificato, gestione tavoli VIP, competenze tecniche avanzate',
@@ -410,7 +522,7 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
 
   [JobRole.BARMAN_QUALIFICATO]: {
     role: JobRole.BARMAN_QUALIFICATO,
-    ccnlLevel: CCNLLevel.LIVELLO_4,
+    ccnlLevel: CCNLLevel.LIVELLO_2,
     department: Department.BAR,
     title: 'Barman Qualificato',
     description: 'Cocktail bar professionale, creazione drink, gestione banco bar',
@@ -435,10 +547,9 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
     shiftCompatibility: { morning: false, afternoon: true, evening: true, night: true },
   },
 
-  // ========== LIVELLO 5 - IMPIEGATI ==========
   [JobRole.CAMERIERE]: {
     role: JobRole.CAMERIERE,
-    ccnlLevel: CCNLLevel.LIVELLO_5,
+    ccnlLevel: CCNLLevel.LIVELLO_3,
     department: Department.SALA,
     title: 'Cameriere',
     description: 'Servizio sala standard, presa ordini, servizio tavoli',
@@ -465,7 +576,7 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
 
   [JobRole.BARISTA]: {
     role: JobRole.BARISTA,
-    ccnlLevel: CCNLLevel.LIVELLO_5,
+    ccnlLevel: CCNLLevel.LIVELLO_3,
     department: Department.BAR,
     title: 'Barista',
     description: 'Preparazione caffetteria, bevande base, servizio bar',
@@ -490,10 +601,9 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
     shiftCompatibility: { morning: true, afternoon: true, evening: true, night: false },
   },
 
-  // ========== LIVELLO 6 - OPERAI SPECIALIZZATI ==========
   [JobRole.CHEF_EXECUTIVE]: {
     role: JobRole.CHEF_EXECUTIVE,
-    ccnlLevel: CCNLLevel.LIVELLO_6,
+    ccnlLevel: CCNLLevel.LIVELLO_4,
     department: Department.CUCINA,
     title: 'Chef Executive',
     description: 'Direzione cucina, creazione menu, controllo qualità, gestione brigade',
@@ -520,7 +630,7 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
 
   [JobRole.PIZZAIOLO_SPECIALIZZATO]: {
     role: JobRole.PIZZAIOLO_SPECIALIZZATO,
-    ccnlLevel: CCNLLevel.LIVELLO_6,
+    ccnlLevel: CCNLLevel.LIVELLO_4,
     department: Department.PIZZERIA,
     title: 'Pizzaiolo Specializzato',
     description: 'Gestione completa pizzeria, creazione impasti, cottura professionale',
@@ -545,10 +655,9 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
     shiftCompatibility: { morning: false, afternoon: true, evening: true, night: true },
   },
 
-  // ========== LIVELLO 7 - OPERAI QUALIFICATI ==========
   [JobRole.CUOCO]: {
     role: JobRole.CUOCO,
-    ccnlLevel: CCNLLevel.LIVELLO_7,
+    ccnlLevel: CCNLLevel.LIVELLO_5,
     department: Department.CUCINA,
     title: 'Cuoco',
     description: 'Preparazioni culinarie, gestione postazione, supporto brigade',
@@ -573,10 +682,9 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
     shiftCompatibility: { morning: true, afternoon: true, evening: true, night: false },
   },
 
-  // ========== LIVELLO 8 - OPERAI COMUNI ==========
   [JobRole.LAVAPIATTI]: {
     role: JobRole.LAVAPIATTI,
-    ccnlLevel: CCNLLevel.LIVELLO_8,
+    ccnlLevel: CCNLLevel.LIVELLO_6,
     department: Department.CUCINA,
     title: 'Lavapiatti',
     description: 'Lavaggio stoviglie, pulizie cucina, supporto generale',
@@ -603,7 +711,7 @@ export const JOB_DESCRIPTIONS: Partial<Record<JobRole, JobDescription>> = {
 
   [JobRole.RUNNER]: {
     role: JobRole.RUNNER,
-    ccnlLevel: CCNLLevel.LIVELLO_8,
+    ccnlLevel: CCNLLevel.LIVELLO_6,
     department: Department.SALA,
     title: 'Runner/Porta Piatti',
     description: 'Trasporto piatti, supporto sala, pulizie generali',
@@ -672,5 +780,3 @@ export class JobMatcher {
     }
   }
 }
-
-

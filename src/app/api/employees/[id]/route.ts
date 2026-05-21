@@ -4,17 +4,7 @@ import { z } from 'zod'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 
-const MANAGER_ROLES = new Set([
-  'ADMIN',
-  'PROPRIETARIO',
-  'PROPRIETARIO_OPERATIVO',
-  'DIRETTORE',
-  'DIRETTORE_GENERALE',
-  'MANAGER',
-  'RESTAURANT_MANAGER',
-  'CASSIERE',
-  'RESPONSABILE_SALA',
-])
+import { isManagerRole } from '@/lib/roles'
 
 const patchEmployeeSchema = z
   .object({
@@ -39,7 +29,7 @@ async function canManageRestaurant(userId: string, restaurantId: string): Promis
   })
   if (!user) return false
   if (String(user.role) === 'ADMIN') return true
-  if (user.restaurantId === restaurantId) return MANAGER_ROLES.has(String(user.role))
+  if (user.restaurantId === restaurantId) return isManagerRole(user.role)
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { id: restaurantId },
@@ -48,7 +38,7 @@ async function canManageRestaurant(userId: string, restaurantId: string): Promis
   return !!(
     restaurant?.companyId &&
     user.companyId === restaurant.companyId &&
-    MANAGER_ROLES.has(String(user.role))
+    isManagerRole(user.role)
   )
 }
 

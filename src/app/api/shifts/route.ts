@@ -24,14 +24,7 @@ function eachDayIsoInRange(rangeFrom: string, rangeTo: string): string[] {
   return dates
 }
 
-const MANAGER_ROLES = new Set([
-  'ADMIN',
-  'PROPRIETARIO',
-  'PROPRIETARIO_OPERATIVO',
-  'DIRETTORE',
-  'DIRETTORE_GENERALE',
-  'MANAGER',
-])
+import { isManagerRole } from '@/lib/roles'
 
 async function resolveRestaurantAccess(userId: string, restaurantId: string) {
   const user = await prisma.user.findUnique({
@@ -52,7 +45,7 @@ async function resolveRestaurantAccess(userId: string, restaurantId: string) {
   if (
     restaurant?.companyId &&
     user.companyId === restaurant.companyId &&
-    MANAGER_ROLES.has(String(user.role))
+    isManagerRole(user.role)
   ) {
     return { allowed: true as const, user }
   }
@@ -101,7 +94,7 @@ export async function GET(request: NextRequest) {
     if (
       filterUserId &&
       filterUserId !== session.user.id &&
-      !MANAGER_ROLES.has(String(access.user?.role))
+      !isManagerRole(access.user?.role)
     ) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
@@ -172,7 +165,7 @@ export async function POST(request: NextRequest) {
     }
 
     const canEdit =
-      MANAGER_ROLES.has(String(access.user?.role)) ||
+      isManagerRole(access.user?.role) ||
       ['HEAD_CHEF', 'RESPONSABILE_SALA', 'CASSIERE'].includes(String(access.user?.role))
 
     if (!canEdit) {

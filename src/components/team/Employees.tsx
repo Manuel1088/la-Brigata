@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
@@ -203,7 +204,7 @@ export default function TeamEmployees() {
   }
 
   return (
-    <PermissionGuard permission="employees_view">
+    <PermissionGuard permission="personale_view">
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow p-6">
@@ -213,7 +214,14 @@ export default function TeamEmployees() {
               <p className="text-gray-600 mt-1">Gestisci il tuo team e i profili dipendenti</p>
             </div>
             
-            {/* Pulsante aggiunta dipendente (abilitabile in seguito) */}
+            {canManageEmployees() && (
+              <Link
+                href="/employees/new"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                ➕ Aggiungi Dipendente
+              </Link>
+            )}
           </div>
         </div>
 

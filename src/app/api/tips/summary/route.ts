@@ -6,17 +6,7 @@ import { prisma } from '@/lib/db'
 import { dateFromIso, toDateOnlyIso } from '@/lib/shifts'
 import { getTipsSummaryQuerySchema } from '@/lib/validations/tips'
 
-const MANAGER_ROLES = new Set([
-  'ADMIN',
-  'PROPRIETARIO',
-  'PROPRIETARIO_OPERATIVO',
-  'DIRETTORE',
-  'DIRETTORE_GENERALE',
-  'MANAGER',
-  'RESTAURANT_MANAGER',
-  'CASSIERE',
-  'RESPONSABILE_SALA',
-])
+import { isManagerRole } from '@/lib/roles'
 
 function sumByType(rows: Array<{ type: PaymentType; amount: unknown }>) {
   let cash = 0
@@ -38,7 +28,7 @@ async function assertRestaurantAccess(userId: string, restaurantId: string) {
   })
   if (!user) return false
 
-  if (user.restaurantId === restaurantId) return MANAGER_ROLES.has(String(user.role))
+  if (user.restaurantId === restaurantId) return isManagerRole(user.role)
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { id: restaurantId },
@@ -48,7 +38,7 @@ async function assertRestaurantAccess(userId: string, restaurantId: string) {
   return !!(
     restaurant?.companyId &&
     user.companyId === restaurant.companyId &&
-    MANAGER_ROLES.has(String(user.role))
+    isManagerRole(user.role)
   )
 }
 
@@ -83,7 +73,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Ristorante non configurato' }, { status: 400 })
     }
 
-    if (!MANAGER_ROLES.has(String(user.role))) {
+    if (!isManagerRole(user.role)) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
