@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { prisma } from '@/lib/db'
 import {
+  getStripe,
   planFromStripePriceId,
-  stripe,
   subscriptionPeriodEnd,
   type CheckoutPlanId,
 } from '@/lib/stripe'
@@ -70,7 +70,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       : session.subscription?.id
 
   if (subscriptionId) {
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
     periodEnd = subscriptionPeriodEnd(subscription)
   }
 
@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+    event = getStripe().webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
     return NextResponse.json({ error: 'Firma non valida' }, { status: 400 })

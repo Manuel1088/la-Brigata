@@ -67,7 +67,7 @@ export function hoursFromShiftTimeLabel(time: string): number {
     const em = Number(match[4])
     if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) continue
 
-    let startMinutes = sh * 60 + sm
+    const startMinutes = sh * 60 + sm
     let endMinutes = eh * 60 + em
     if (endMinutes <= startMinutes) {
       endMinutes += 24 * 60

@@ -14,7 +14,7 @@ import type { ShiftAssignment } from '@/lib/validations/shifts'
 
 type CalendarEmployee = SimpleEmployee & { id: string }
 
-interface ShiftCell extends ShiftGridCell {}
+type ShiftCell = ShiftGridCell
 
 export default function ShiftsCalendar() {
   const { data: session, status } = useSession()

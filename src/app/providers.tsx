@@ -6,14 +6,29 @@ import { SWRConfig } from 'swr'
 import { EmployeeProvider } from '@/contexts/EmployeeContext'
 import { RestaurantProvider } from '@/contexts/RestaurantContext'
 
+class FetchError extends Error {
+  info: unknown
+  status: number
+
+  constructor(message: string, status: number, info: unknown) {
+    super(message)
+    this.name = 'FetchError'
+    this.status = status
+    this.info = info
+  }
+}
+
 // Global fetcher with basic error handling
 const fetcher = async (url: string) => {
   const res = await fetch(url, { credentials: 'include' })
   if (!res.ok) {
-    const error: any = new Error('API Error')
-    try { error.info = await res.json() } catch { error.info = {} }
-    error.status = res.status
-    throw error
+    let info: unknown = {}
+    try {
+      info = await res.json()
+    } catch {
+      info = {}
+    }
+    throw new FetchError('API Error', res.status, info)
   }
   return res.json()
 }

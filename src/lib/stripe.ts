@@ -1,9 +1,19 @@
 import Stripe from 'stripe'
 import type { SubscriptionStatus } from '@prisma/client'
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  typescript: true,
-})
+let stripeClient: Stripe | null = null
+
+/** Client Stripe singleton — inizializzato al primo utilizzo (non al import del modulo). */
+export function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY non configurata')
+  }
+  if (!stripeClient) {
+    stripeClient = new Stripe(key, { typescript: true })
+  }
+  return stripeClient
+}
 
 export type CheckoutPlanId = 'PREMIUM' | 'BASIC' | 'PRO'
 export type CheckoutScope = 'employee' | 'restaurant'

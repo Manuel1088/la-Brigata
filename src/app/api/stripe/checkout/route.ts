@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 import { canManageBilling } from '@/lib/roles'
 import {
   checkoutScopeForPlan,
-  stripe,
+  getStripe,
   stripePriceIdForPlan,
   type BillingInterval,
   type CheckoutPlanId,
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
 
     const baseUrl =
       process.env.NEXTAUTH_URL?.replace(/\/$/, '') ?? 'http://localhost:3000'
+    const stripe = getStripe()
 
     if (scope === 'employee') {
       const user = await prisma.user.findUnique({
