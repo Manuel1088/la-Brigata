@@ -1,6 +1,5 @@
 import Stripe from 'stripe'
 import type { SubscriptionStatus } from '@prisma/client'
-import { normalizeRole } from '@/lib/roles'
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
   typescript: true,
@@ -11,25 +10,6 @@ export type CheckoutScope = 'employee' | 'restaurant'
 export type BillingInterval = 'monthly' | 'annual'
 
 export type PaidRestaurantPlan = 'BASIC' | 'PRO'
-
-/** Ruoli che possono acquistare piani ristorante (Prenotazioni / Intelligence). */
-export const BILLING_MANAGER_ROLE_LIST = [
-  'ADMIN',
-  'PROPRIETARIO',
-  'PROPRIETARIO_OPERATIVO',
-  'DIRETTORE',
-  'DIRETTORE_GENERALE',
-  'VICE_DIRETTORE',
-  'MANAGER',
-  'RESTAURANT_MANAGER',
-  'ASSISTANT_MANAGER',
-] as const
-
-export const BILLING_MANAGER_ROLES = new Set<string>(BILLING_MANAGER_ROLE_LIST)
-
-export function canManageBilling(role: string | undefined | null): boolean {
-  return BILLING_MANAGER_ROLES.has(normalizeRole(role))
-}
 
 export function checkoutScopeForPlan(plan: CheckoutPlanId): CheckoutScope {
   return plan === 'PREMIUM' ? 'employee' : 'restaurant'

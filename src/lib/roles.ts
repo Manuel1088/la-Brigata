@@ -30,3 +30,24 @@ export function normalizeRole(role: string | undefined | null): string {
 export function isManagerRole(role: string | undefined | null): boolean {
   return MANAGER_ROLES.has(normalizeRole(role))
 }
+
+/** Ruoli che possono acquistare piani ristorante (Prenotazioni / Intelligence). */
+export const BILLING_MANAGER_ROLE_LIST = [
+  'ADMIN',
+  'PROPRIETARIO',
+  'PROPRIETARIO_OPERATIVO',
+  'DIRETTORE',
+  'DIRETTORE_GENERALE',
+  'VICE_DIRETTORE',
+  'MANAGER',
+  'RESTAURANT_MANAGER',
+  'ASSISTANT_MANAGER',
+] as const
+
+export type BillingManagerRole = (typeof BILLING_MANAGER_ROLE_LIST)[number]
+
+export const BILLING_MANAGER_ROLES = new Set<string>(BILLING_MANAGER_ROLE_LIST)
+
+export function canManageBilling(role: string | undefined | null): boolean {
+  return BILLING_MANAGER_ROLES.has(normalizeRole(role))
+}

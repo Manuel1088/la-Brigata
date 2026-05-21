@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
-import { canManageBilling } from '@/lib/stripe'
+import { canManageBilling } from '@/lib/roles'
 
 /** GET /api/stripe/subscription — piani ristorante + dipendente */
 export async function GET() {

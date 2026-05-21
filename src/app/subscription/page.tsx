@@ -13,7 +13,7 @@ import {
   type BillingInterval,
   type CheckoutPlanId,
 } from '@/lib/subscription-plans'
-import { canManageBilling } from '@/lib/stripe'
+import { canManageBilling } from '@/lib/roles'
 
 interface ColorClasses {
   bg: string
