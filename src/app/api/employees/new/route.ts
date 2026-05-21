@@ -15,6 +15,7 @@ import {
 } from '@/lib/employee-create'
 import { sendEmployeeWelcomeEmail } from '@/lib/employee-welcome-email'
 import { isCcnlLevel } from '@/lib/ccnl'
+import { normalizeDepartmentInput } from '@/lib/restaurant-roles'
 import type { CCNLLevel } from '@prisma/client'
 import { z } from 'zod'
 
@@ -24,14 +25,23 @@ const createEmployeeSchema = z.object({
   email: z.string().email('Email non valida'),
   phone: z.string().optional(),
   role: z.string().min(1),
-  department: z.enum(['cucina', 'sala', 'beverage', 'accoglienza', 'dirigenti']),
+  position: z.string().optional(),
+  department: z.enum([
+    'cucina',
+    'sala',
+    'bar',
+    'sommellerie',
+    'accoglienza',
+    'gestione',
+    'beverage',
+    'dirigenti',
+  ]),
   ccnlLevel: z.string().optional(),
   hourlyRate: z.number().min(0).optional(),
   contractType: z.string().optional(),
   startDate: z.string().optional(),
   skills: z.array(z.string()).optional(),
   notes: z.string().optional(),
-  restaurantId: z.string().optional(),
 })
 
 /** POST /api/employees/new — crea User + Employee collegati */
@@ -62,6 +72,7 @@ export async function POST(req: NextRequest) {
       email,
       phone,
       role: roleInput,
+      position: positionLabel,
       department,
       ccnlLevel: ccnlLevelInput,
       hourlyRate,
@@ -69,11 +80,9 @@ export async function POST(req: NextRequest) {
       startDate,
       skills,
       notes,
-      restaurantId: bodyRestaurantId,
     } = parsed.data
 
-    const restaurantId =
-      bodyRestaurantId ?? session.user.restaurantId ?? undefined
+    const restaurantId = session.user.restaurantId ?? undefined
     if (!restaurantId) {
       return NextResponse.json(
         { error: 'Ristorante non associato alla sessione' },
@@ -117,8 +126,9 @@ export async function POST(req: NextRequest) {
         ? (ccnlLevelInput as CCNLLevel)
         : undefined
 
+    const storedDepartment = normalizeDepartmentInput(department)
     const userRole = toUserRole(roleInput)
-    const employeeRole = toEmployeeRole(userRole, department)
+    const employeeRole = toEmployeeRole(userRole, storedDepartment)
     const hierarchyLevel = hierarchyLevelForUserRole(userRole)
     const hashedPassword = await hash(DEFAULT_EMPLOYEE_PASSWORD, 12)
     const employeeId = buildEmployeeId(fullName)
@@ -134,7 +144,7 @@ export async function POST(req: NextRequest) {
           hierarchyLevel,
           restaurantId,
           companyId: restaurant.companyId,
-          department,
+          department: storedDepartment,
           phone: phone?.trim() || null,
           hourlyRate: hourlyRate ?? null,
           contractType: contractType ?? 'full-time',
@@ -142,7 +152,7 @@ export async function POST(req: NextRequest) {
           notes: notes?.trim() || null,
           userType: 'EMPLOYEE',
           isActive: true,
-          position: roleInput.replace(/_/g, ' '),
+          position: positionLabel?.trim() || roleInput.replace(/_/g, ' '),
           ccnlLevel: ccnlLevel ?? null,
         },
       })
@@ -175,7 +185,7 @@ export async function POST(req: NextRequest) {
           restaurantId,
           status: 'ACTIVE',
           role: userRole,
-          department,
+          department: storedDepartment,
           startDate: parsedStartDate,
           reviewedAt: new Date(),
           reviewedBy: session.user!.id,

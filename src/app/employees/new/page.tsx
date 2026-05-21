@@ -1,32 +1,73 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { canManageRestaurantStaff } from '@/lib/employee-create'
-import { CCNLLevel, CCNL_LEVEL_OPTIONS, getCcnlMonthlyBase } from '@/lib/ccnl'
+import { CCNL_LEVEL_OPTIONS, getCcnlMonthlyBase } from '@/lib/ccnl'
+import {
+  departmentToStorage,
+  getDefaultRoleForDepartment,
+  getRolesForDepartment,
+  roleOptionKey,
+  suggestedCcnlForRole,
+  type RestaurantDepartment,
+  RESTAURANT_DEPARTMENTS,
+} from '@/lib/restaurant-roles'
+
+function hourlyFromCcnl(level: string): number {
+  return Math.round((getCcnlMonthlyBase(level) / 160) * 100) / 100
+}
 
 export default function NewEmployeePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  const [formData, setFormData] = useState({
+  const initialDept: RestaurantDepartment = 'sala'
+  const initialRole = getDefaultRoleForDepartment(initialDept)
+
+  const [formData, setFormData] = useState<{
+    firstName: string
+    lastName: string
+    email: string
+    phone: string
+    department: RestaurantDepartment
+    roleKey: string
+    ccnlLevel: string
+    hourlyRate: number
+    contractType: string
+    startDate: string
+    skills: string[]
+    notes: string
+  }>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    role: 'DIPENDENTE_SALA',
-    department: 'sala' as 'cucina' | 'sala' | 'beverage' | 'accoglienza' | 'dirigenti',
-    ccnlLevel: CCNLLevel.LIVELLO_3 as string,
-    hourlyRate: 12.0,
+    department: initialDept,
+    roleKey: roleOptionKey(initialRole),
+    ccnlLevel: initialRole.suggestedCcnl,
+    hourlyRate: hourlyFromCcnl(initialRole.suggestedCcnl),
     contractType: 'full-time',
     startDate: new Date().toISOString().split('T')[0],
-    skills: [] as string[],
+    skills: [],
     notes: '',
   })
 
   const [newSkill, setNewSkill] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const rolesForDepartment = useMemo(
+    () => getRolesForDepartment(formData.department),
+    [formData.department]
+  )
+
+  const selectedRole = useMemo(
+    () =>
+      rolesForDepartment.find((r) => roleOptionKey(r) === formData.roleKey) ??
+      rolesForDepartment[0],
+    [rolesForDepartment, formData.roleKey]
+  )
 
   useEffect(() => {
     if (status === 'loading') return
@@ -37,10 +78,39 @@ export default function NewEmployeePage() {
     if (!canManageRestaurantStaff(session.user?.role)) router.push('/team')
   }, [session, status, router])
 
+  const handleDepartmentChange = (department: RestaurantDepartment) => {
+    const defaultRole = getDefaultRoleForDepartment(department)
+    const ccnl = defaultRole.suggestedCcnl
+    setFormData((prev) => ({
+      ...prev,
+      department,
+      roleKey: roleOptionKey(defaultRole),
+      ccnlLevel: ccnl,
+      hourlyRate: hourlyFromCcnl(ccnl),
+    }))
+  }
+
+  const handleRoleChange = (roleKey: string) => {
+    const ccnl = suggestedCcnlForRole(formData.department, roleKey)
+    setFormData((prev) => ({
+      ...prev,
+      roleKey,
+      ccnlLevel: ccnl,
+      hourlyRate: hourlyFromCcnl(ccnl),
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
+
+    const role = selectedRole?.value
+    if (!role) {
+      setError('Seleziona un ruolo valido')
+      setSubmitting(false)
+      return
+    }
 
     try {
       const res = await fetch('/api/employees/new', {
@@ -52,7 +122,8 @@ export default function NewEmployeePage() {
           lastName: formData.lastName,
           email: formData.email,
           phone: formData.phone || undefined,
-          role: formData.role,
+          role,
+          position: selectedRole.label,
           department: formData.department,
           ccnlLevel: formData.ccnlLevel,
           hourlyRate: formData.hourlyRate,
@@ -101,19 +172,6 @@ export default function NewEmployeePage() {
     }))
   }
 
-  const roles = [
-    'EXECUTIVE_CHEF',
-    'SOUS_CHEF',
-    'CHEF_DE_PARTIE',
-    'CHEF',
-    'CAPO_PARTITA',
-    'RESPONSABILE_SALA',
-    'DIPENDENTE_SALA',
-    'DIPENDENTE_BAR',
-    'CASSIERE',
-    'MANAGER',
-  ]
-
   if (status === 'loading' || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -121,6 +179,10 @@ export default function NewEmployeePage() {
       </div>
     )
   }
+
+  const restaurantName =
+    (session.user as { restaurantName?: string } | undefined)?.restaurantName ??
+    null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -133,7 +195,15 @@ export default function NewEmployeePage() {
             >
               ←
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">👥 Nuovo Dipendente</h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">👥 Nuovo Dipendente</h1>
+              {restaurantName && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Ristorante: <span className="font-medium text-gray-700">{restaurantName}</span>
+                  {' '}(assegnato automaticamente dal tuo account)
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -148,7 +218,8 @@ export default function NewEmployeePage() {
 
           <p className="text-sm text-gray-600 mb-6">
             Verrà creato un account con password temporanea{' '}
-            <strong>Brigata2026!</strong> (da cambiare al primo accesso).
+            <strong>Brigata2026!</strong> (da cambiare al primo accesso). Il dipendente
+            verrà associato al tuo ristorante senza bisogno di codici fiscali o ID manuali.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -221,18 +292,15 @@ export default function NewEmployeePage() {
                 <select
                   value={formData.department}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      department: e.target.value as typeof formData.department,
-                    }))
+                    handleDepartmentChange(e.target.value as RestaurantDepartment)
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="sala">Sala</option>
-                  <option value="cucina">Cucina</option>
-                  <option value="beverage">Beverage</option>
-                  <option value="accoglienza">Accoglienza</option>
-                  <option value="dirigenti">Dirigenti</option>
+                  {RESTAURANT_DEPARTMENTS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.icon} {d.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -240,22 +308,29 @@ export default function NewEmployeePage() {
                   Ruolo *
                 </label>
                 <select
-                  value={formData.role}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, role: e.target.value }))
-                  }
+                  value={formData.roleKey}
+                  onChange={(e) => handleRoleChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 >
-                  {roles.map((role) => (
-                    <option key={role} value={role}>
-                      {role.replace(/_/g, ' ')}
+                  {rolesForDepartment.map((r) => (
+                    <option key={roleOptionKey(r)} value={roleOptionKey(r)}>
+                      {r.label}
                     </option>
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Livello CCNL *
+                  {selectedRole && (
+                    <span className="ml-1 text-xs font-normal text-blue-600">
+                      (suggerito per {selectedRole.label})
+                    </span>
+                  )}
                 </label>
                 <select
                   value={formData.ccnlLevel}
@@ -264,9 +339,7 @@ export default function NewEmployeePage() {
                     setFormData((prev) => ({
                       ...prev,
                       ccnlLevel: level,
-                      hourlyRate: Math.round(
-                        (getCcnlMonthlyBase(level) / 160) * 100
-                      ) / 100,
+                      hourlyRate: hourlyFromCcnl(level),
                     }))
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -279,9 +352,6 @@ export default function NewEmployeePage() {
                   ))}
                 </select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tariffa oraria (€)
@@ -300,6 +370,9 @@ export default function NewEmployeePage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tipo contratto
@@ -318,21 +391,20 @@ export default function NewEmployeePage() {
                   <option value="part-time">Part-time</option>
                 </select>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data inizio
-              </label>
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, startDate: e.target.value }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data inizio
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, startDate: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
             </div>
 
             <div>
