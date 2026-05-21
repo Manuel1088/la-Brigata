@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { usePermissions } from '@/hooks/usePermissions'
-import { addOrUpdateCustomerFromBooking } from '@/lib/customers'
 import { useCompanyData } from '@/hooks/useCompanyData'
 
 interface Booking {
@@ -91,6 +90,7 @@ export default function OperationsBookings() {
   })
 
   const { data: companyData } = useCompanyData(session?.user?.id)
+  const restaurantId = session?.user?.restaurantId as string | undefined
 
   // Carica aree di prenotazione
   useEffect(() => {
@@ -118,20 +118,31 @@ export default function OperationsBookings() {
     return () => { try { window.removeEventListener('booking_areas_updated', onUpdate) } catch {}; cancelled = true }
   }, [selectedArea, companyData])
 
-  // Carica prenotazioni
+  // Carica prenotazioni da API
   useEffect(() => {
-    const loadBookings = () => {
+    const loadBookings = async () => {
+      if (!restaurantId || !selectedDate) {
+        setBookings([])
+        return
+      }
       try {
-        const key = `bookings_v1::${selectedDate}::${selectedArea}`
-        const raw = localStorage.getItem(key)
-        const bookingsData = raw ? JSON.parse(raw) : []
-        setBookings(bookingsData)
+        const params = new URLSearchParams({
+          restaurantId,
+          date: selectedDate,
+        })
+        if (selectedArea) params.set('area', selectedArea)
+        const res = await fetch(`/api/bookings?${params}`, {
+          credentials: 'include',
+        })
+        if (!res.ok) throw new Error('Caricamento prenotazioni fallito')
+        const data = await res.json()
+        setBookings((data.bookings ?? []) as Booking[])
       } catch {
         setBookings([])
       }
     }
     loadBookings()
-  }, [selectedDate, selectedArea])
+  }, [selectedDate, selectedArea, restaurantId])
 
   // Carica passanti
   useEffect(() => {
@@ -145,20 +156,61 @@ export default function OperationsBookings() {
     }
   }, [selectedDate, selectedArea])
 
-  // Carica tavoli
+  // Carica tavoli da API (migra da localStorage se DB vuoto)
   useEffect(() => {
-    const loadTables = () => {
+    const loadTables = async () => {
+      if (!restaurantId) {
+        setTables([])
+        return
+      }
       try {
-        const key = `tables_v1::${selectedArea}`
-        const raw = localStorage.getItem(key)
-        const tablesData = raw ? JSON.parse(raw) : []
-        setTables(tablesData)
+        const res = await fetch(
+          `/api/tables?restaurantId=${encodeURIComponent(restaurantId)}`,
+          { credentials: 'include' }
+        )
+        if (!res.ok) throw new Error('Caricamento tavoli fallito')
+        const data = await res.json()
+        let list = (data.tables ?? []) as Table[]
+
+        if (list.length === 0 && selectedArea) {
+          try {
+            const raw = localStorage.getItem(`tables_v1::${selectedArea}`)
+            const localTables = raw ? (JSON.parse(raw) as Table[]) : []
+            for (const t of localTables) {
+              await fetch('/api/tables', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  restaurantId,
+                  tableNumber: t.tableNumber,
+                  seats: t.seats,
+                  status: t.status || 'available',
+                }),
+              })
+            }
+            if (localTables.length > 0) {
+              const res2 = await fetch(
+                `/api/tables?restaurantId=${encodeURIComponent(restaurantId)}`,
+                { credentials: 'include' }
+              )
+              if (res2.ok) {
+                const data2 = await res2.json()
+                list = (data2.tables ?? []) as Table[]
+              }
+            }
+          } catch {
+            /* ignore migration errors */
+          }
+        }
+
+        setTables(list)
       } catch {
         setTables([])
       }
     }
     loadTables()
-  }, [selectedArea])
+  }, [selectedArea, restaurantId])
 
   // Carica layout tavoli
   useEffect(() => {
@@ -175,55 +227,78 @@ export default function OperationsBookings() {
     loadTableLayout()
   }, [selectedArea])
 
+  const reloadBookings = async () => {
+    if (!restaurantId || !selectedDate) return
+    const params = new URLSearchParams({
+      restaurantId,
+      date: selectedDate,
+    })
+    if (selectedArea) params.set('area', selectedArea)
+    const res = await fetch(`/api/bookings?${params}`, { credentials: 'include' })
+    if (res.ok) {
+      const data = await res.json()
+      setBookings((data.bookings ?? []) as Booking[])
+    }
+  }
+
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!restaurantId) {
+      setMessage('❌ Ristorante non configurato')
+      return
+    }
     setIsLoading(true)
 
     try {
-      const booking: Booking = {
-        id: editingBooking?.id || crypto.randomUUID(),
+      const payload = {
+        restaurantId,
+        date: selectedDate,
+        time: selectedTime,
         customerName: bookingForm.customerName,
         customerPhone: bookingForm.customerPhone,
         customerEmail: bookingForm.customerEmail || undefined,
-        date: selectedDate,
-        time: selectedTime,
         partySize: bookingForm.partySize,
         tableNumber: bookingForm.tableNumber,
+        area: selectedArea || undefined,
         status: 'confirmed',
         notes: bookingForm.notes,
-        createdAt: editingBooking?.createdAt || new Date().toISOString()
       }
 
-      // Salva prenotazione
-      const key = `bookings_v1::${selectedDate}::${selectedArea}`
-      const existingBookings = bookings.filter(b => b.id !== booking.id)
-      const updatedBookings = [...existingBookings, booking]
-      localStorage.setItem(key, JSON.stringify(updatedBookings))
-      setBookings(updatedBookings)
+      const res = editingBooking
+        ? await fetch(`/api/bookings/${editingBooking.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          })
+        : await fetch('/api/bookings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          })
 
-      // Aggiorna cliente
-      await addOrUpdateCustomerFromBooking({
-        id: booking.id,
-        customerName: booking.customerName,
-        customerPhone: booking.customerPhone,
-        customerEmail: booking.customerEmail,
-        date: booking.date,
-        time: booking.time,
-        partySize: booking.partySize,
-        status: booking.status,
-        notes: booking.notes
-      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || 'Salvataggio fallito')
+      }
 
-      setMessage(editingBooking ? '✅ Prenotazione aggiornata!' : '✅ Prenotazione creata!')
+      await reloadBookings()
+      window.dispatchEvent(new CustomEvent('customers_updated'))
+
+      setMessage(
+        editingBooking ? '✅ Prenotazione aggiornata!' : '✅ Prenotazione creata!'
+      )
       setTimeout(() => {
         setMessage('')
         setShowBookingModal(false)
         setEditingBooking(null)
         resetForm()
       }, 2000)
-
     } catch (error) {
-      setMessage('❌ Errore nel salvataggio')
+      const msg =
+        error instanceof Error ? error.message : 'Errore nel salvataggio'
+      setMessage(`❌ ${msg}`)
       setTimeout(() => setMessage(''), 3000)
     } finally {
       setIsLoading(false)
@@ -256,14 +331,20 @@ export default function OperationsBookings() {
     setShowBookingModal(true)
   }
 
-  const handleDeleteBooking = (bookingId: string) => {
-    if (confirm('Sei sicuro di voler eliminare questa prenotazione?')) {
-      const key = `bookings_v1::${selectedDate}::${selectedArea}`
-      const updatedBookings = bookings.filter(b => b.id !== bookingId)
-      localStorage.setItem(key, JSON.stringify(updatedBookings))
-      setBookings(updatedBookings)
+  const handleDeleteBooking = async (bookingId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questa prenotazione?')) return
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Eliminazione fallita')
+      await reloadBookings()
       setMessage('✅ Prenotazione eliminata!')
       setTimeout(() => setMessage(''), 2000)
+    } catch {
+      setMessage('❌ Errore nell\'eliminazione')
+      setTimeout(() => setMessage(''), 3000)
     }
   }
 

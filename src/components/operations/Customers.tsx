@@ -1,10 +1,13 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { getCustomers, saveCustomers, Customer } from '@/lib/customers'
+import { useCallback, useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import type { Customer } from '@/lib/customers'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { usePermissions } from '@/hooks/usePermissions'
 
 export default function OperationsCustomers() {
+  const { data: session } = useSession()
+  const restaurantId = session?.user?.restaurantId as string | undefined
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selected, setSelected] = useState<Customer | null>(null)
   const [isEditing, setIsEditing] = useState<boolean>(false)
@@ -35,66 +38,99 @@ export default function OperationsCustomers() {
 
   const { can } = usePermissions()
 
+  const loadCustomers = useCallback(async () => {
+    if (!restaurantId) {
+      setCustomers([])
+      return
+    }
+    try {
+      const params = new URLSearchParams({ restaurantId })
+      const res = await fetch(`/api/customers?${params}`, {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Caricamento fallito')
+      const data = await res.json()
+      setCustomers((data.customers ?? []) as Customer[])
+    } catch {
+      setCustomers([])
+    }
+  }, [restaurantId])
+
   useEffect(() => {
-    const load = () => setCustomers(getCustomers())
-    load()
-    const h = () => load()
+    loadCustomers()
+    const h = () => loadCustomers()
     window.addEventListener('customers_updated', h)
     return () => window.removeEventListener('customers_updated', h)
-  }, [])
+  }, [loadCustomers])
 
-  const deleteCustomer = (id: string) => {
-    if (confirm('Sei sicuro di voler eliminare questo cliente?')) {
-      const next = customers.filter(c => c.id !== id)
-      setCustomers(next)
-      try { saveCustomers(next) } catch {}
+  const deleteCustomer = async (id: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questo cliente?')) return
+    try {
+      const res = await fetch(`/api/customers/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Eliminazione fallita')
+      await loadCustomers()
       setSelected(null)
+    } catch {
+      alert('Errore nell\'eliminazione del cliente')
     }
   }
 
-  const saveCustomerEdit = () => {
+  const saveCustomerEdit = async () => {
     if (!selected) return
-    const updated = customers.map(c => 
-      c.id === selected.id 
-        ? { ...c, ...editForm }
-        : c
-    )
-    setCustomers(updated)
-    saveCustomers(updated)
-    setIsEditing(false)
-    setSelected({ ...selected, ...editForm })
+    try {
+      const res = await fetch(`/api/customers/${selected.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(editForm),
+      })
+      if (!res.ok) throw new Error('Salvataggio fallito')
+      const data = await res.json()
+      const updated = data.customer as Customer
+      setIsEditing(false)
+      setSelected(updated)
+      await loadCustomers()
+    } catch {
+      alert('Errore nel salvataggio')
+    }
   }
 
-  const addNewCustomer = () => {
-    const customer: Customer = {
-      id: crypto.randomUUID(),
-      name: newCustomer.name,
-      phone: newCustomer.phone,
-      email: newCustomer.email || undefined,
-      allergies: newCustomer.allergies,
-      recurrences: newCustomer.recurrences,
-      preferences: newCustomer.preferences,
-      notes: newCustomer.notes,
-      totalBookings: 0,
-      totalGuests: 0,
-      lastVisitDate: new Date().toISOString().split('T')[0],
-      lunchCount: 0,
-      dinnerCount: 0
+  const addNewCustomer = async () => {
+    if (!restaurantId) return
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          restaurantId,
+          name: newCustomer.name,
+          phone: newCustomer.phone,
+          email: newCustomer.email || undefined,
+          allergies: newCustomer.allergies,
+          recurrences: newCustomer.recurrences,
+          preferences: newCustomer.preferences,
+          notes: newCustomer.notes,
+        }),
+      })
+      if (!res.ok) throw new Error('Creazione fallita')
+      await loadCustomers()
+      setShowAddModal(false)
+      setNewCustomer({
+        name: '',
+        phone: '',
+        email: '',
+        allergies: '',
+        recurrences: '',
+        preferences: '',
+        notes: '',
+      })
+    } catch {
+      alert('Errore nella creazione del cliente')
     }
-    
-    const updated = [...customers, customer]
-    setCustomers(updated)
-    saveCustomers(updated)
-    setShowAddModal(false)
-    setNewCustomer({
-      name: '',
-      phone: '',
-      email: '',
-      allergies: '',
-      recurrences: '',
-      preferences: '',
-      notes: ''
-    })
   }
 
   // Filtra e ordina clienti
