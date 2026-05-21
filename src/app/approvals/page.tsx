@@ -34,10 +34,10 @@ interface ApprovalMetadata {
   [key: string]: unknown
 }
 
-interface LeaveRequestLocal {
+type LeaveRequestApi = {
   startDate: string
   endDate: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  status: string
 }
 
 interface SwapRequestLocal {
@@ -96,61 +96,77 @@ export default function ApprovalsPage() {
   }
 
   useEffect(() => {
-    try {
-      const year = currentMonth.getFullYear()
-      const month = currentMonth.getMonth()
-      const totalDays = daysInMonth(year, month)
-      const statuses: Record<string, 'pending' | 'approved' | null> = {}
+    const buildCalendar = async () => {
+      try {
+        const year = currentMonth.getFullYear()
+        const month = currentMonth.getMonth()
+        const totalDays = daysInMonth(year, month)
+        const statuses: Record<string, 'pending' | 'approved' | null> = {}
 
-      // Prepara set per velocità
-      const markPending = (iso: string) => {
-        statuses[iso] = 'pending'
-      }
-      const markApproved = (iso: string) => {
-        if (!statuses[iso]) statuses[iso] = 'approved'
-      }
+        const markPending = (iso: string) => {
+          statuses[iso] = 'pending'
+        }
+        const markApproved = (iso: string) => {
+          if (!statuses[iso]) statuses[iso] = 'approved'
+        }
 
-      // Inizializza tutti i giorni del mese a null
-      for (let day = 1; day <= totalDays; day++) {
-        const d = new Date(year, month, day)
-        statuses[formatISO(d)] = null
-      }
+        for (let day = 1; day <= totalDays; day++) {
+          const d = new Date(year, month, day)
+          statuses[formatISO(d)] = null
+        }
 
-      // Integra Ferie/Permessi
-      if (canEmployees) {
-        const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]') as LeaveRequestLocal[]
-        for (const req of leaveRequests) {
-          const start = new Date(req.startDate)
-          const end = new Date(req.endDate)
-          // Itera sui giorni del range che cadono nel mese corrente
-          for (let day = 1; day <= totalDays; day++) {
-            const d = new Date(year, month, day)
-            if (d >= new Date(start.getFullYear(), start.getMonth(), start.getDate()) && d <= new Date(end.getFullYear(), end.getMonth(), end.getDate())) {
+        if (canEmployees) {
+          const res = await fetch(
+            `/api/leaves?month=${month}&year=${year}&includeBalances=false`
+          )
+          if (res.ok) {
+            const data = await res.json()
+            const leaveRequests = (data.requests ?? []) as LeaveRequestApi[]
+            for (const req of leaveRequests) {
+              const start = new Date(req.startDate)
+              const end = new Date(req.endDate)
+              for (let day = 1; day <= totalDays; day++) {
+                const d = new Date(year, month, day)
+                if (
+                  d >=
+                    new Date(
+                      start.getFullYear(),
+                      start.getMonth(),
+                      start.getDate()
+                    ) &&
+                  d <=
+                    new Date(end.getFullYear(), end.getMonth(), end.getDate())
+                ) {
+                  const key = formatISO(d)
+                  if (req.status === 'PENDING') markPending(key)
+                  else if (req.status === 'APPROVED') markApproved(key)
+                }
+              }
+            }
+          }
+        }
+
+        if (canShifts) {
+          const swapRequests = JSON.parse(
+            localStorage.getItem('shift_swap_requests_v1') || '[]'
+          ) as SwapRequestLocal[]
+          for (const req of swapRequests) {
+            const d = new Date(req.dateISO)
+            if (d.getFullYear() === year && d.getMonth() === month) {
               const key = formatISO(d)
               if (req.status === 'PENDING') markPending(key)
               else if (req.status === 'APPROVED') markApproved(key)
             }
           }
         }
-      }
 
-      // Integra Cambi Turno
-      if (canShifts) {
-        const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]') as SwapRequestLocal[]
-        for (const req of swapRequests) {
-          const d = new Date(req.dateISO)
-          if (d.getFullYear() === year && d.getMonth() === month) {
-            const key = formatISO(d)
-            if (req.status === 'PENDING') markPending(key)
-            else if (req.status === 'APPROVED') markApproved(key)
-          }
-        }
+        setDayStatuses(statuses)
+      } catch {
+        setDayStatuses({})
       }
-
-      setDayStatuses(statuses)
-    } catch {
-      setDayStatuses({})
     }
+
+    buildCalendar()
   }, [currentMonth, canEmployees, canShifts])
 
   useEffect(() => {
@@ -168,50 +184,66 @@ export default function ApprovalsPage() {
 
   // Calcola conteggio approvazioni in sospeso
   useEffect(() => {
-    const calculatePendingCount = () => {
+    const calculatePendingCount = async () => {
       let count = 0
-      let swaps = 0, employees = 0, payroll = 0, leaves = 0
-      
+      let swaps = 0,
+        employees = 0,
+        payroll = 0,
+        leaves = 0
+
       try {
-        // Conteggio richieste swap turni
         if (canShifts) {
-          const swapRequests = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]') as SwapRequestLocal[]
+          const swapRequests = JSON.parse(
+            localStorage.getItem('shift_swap_requests_v1') || '[]'
+          ) as SwapRequestLocal[]
           swaps = swapRequests.filter((req) => req.status === 'PENDING').length
           count += swaps
         }
-        
-        // Conteggio richieste dipendenti
+
         if (canEmployees) {
-          const employeeRequests = JSON.parse(localStorage.getItem('employee_requests') || '[]') as EmployeeRequestLocal[]
-          employees = employeeRequests.filter((req) => req.status === 'pending').length
+          const employeeRequests = JSON.parse(
+            localStorage.getItem('employee_requests') || '[]'
+          ) as EmployeeRequestLocal[]
+          employees = employeeRequests.filter(
+            (req) => req.status === 'pending'
+          ).length
           count += employees
         }
-        
-        // Conteggio richieste payroll
+
         if (canPayroll) {
-          const payrollRequests = JSON.parse(localStorage.getItem('payroll_requests') || '[]') as PayrollRequestLocal[]
-          payroll = payrollRequests.filter((req) => req.status === 'pending').length
+          const payrollRequests = JSON.parse(
+            localStorage.getItem('payroll_requests') || '[]'
+          ) as PayrollRequestLocal[]
+          payroll = payrollRequests.filter(
+            (req) => req.status === 'pending'
+          ).length
           count += payroll
         }
 
-        // Conteggio richieste ferie/permessi
         if (canEmployees) {
-          const leaveRequests = JSON.parse(localStorage.getItem('leave_requests') || '[]') as LeaveRequestLocal[]
-          leaves = leaveRequests.filter((req) => req.status === 'PENDING').length
-          count += leaves
+          const leavesRes = await fetch(
+            '/api/leaves?status=PENDING&includeBalances=false'
+          )
+          if (leavesRes.ok) {
+            const leavesData = await leavesRes.json()
+            leaves =
+              leavesData.meta?.count ?? leavesData.requests?.length ?? 0
+            count += leaves
+          }
         }
       } catch (error) {
         console.error('Errore nel calcolo approvazioni:', error)
       }
-      
+
       setPendingCount(count)
       setCounts({ swaps, employees, payroll, leaves })
     }
-    
+
     calculatePendingCount()
-    
-    // Listener per aggiornamenti
-    const handleUpdate = () => calculatePendingCount()
+
+    const handleUpdate = () => {
+      calculatePendingCount()
+    }
     window.addEventListener('approvals_updated', handleUpdate)
     window.addEventListener('shift_swaps_updated', handleUpdate)
     window.addEventListener('leave_system_updated', handleUpdate)

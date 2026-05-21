@@ -36,19 +36,21 @@ export default function Sidebar() {
 
   // Load pending approvals count for managers
   useEffect(() => {
-    const calculatePendingApprovals = () => {
+    const calculatePendingApprovals = async () => {
       if (!canManageEmployees()) {
         setPendingApprovals(0)
         return
       }
-      
+
       let count = 0
-      
+
       try {
-        // Conteggio richieste ferie
-        const leaveRequests = (JSON.parse(localStorage.getItem('leave_requests') || '[]') as PendingItem[])
-        count += leaveRequests.filter((req) => req.status === 'PENDING').length
-        
+        const leavesRes = await fetch('/api/leaves?status=PENDING&includeBalances=false')
+        if (leavesRes.ok) {
+          const leavesData = await leavesRes.json()
+          count += leavesData.meta?.count ?? leavesData.requests?.length ?? 0
+        }
+
         // Conteggio richieste swap turni
         const swapRequests = (JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]') as PendingItem[])
         count += swapRequests.filter((req) => req.status === 'PENDING').length

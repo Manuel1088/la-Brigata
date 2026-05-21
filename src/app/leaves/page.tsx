@@ -3,15 +3,26 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactElement } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
-import { getLeaveBalances, type LeaveBalance } from '@/lib/leaveSystem'
+import { LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS } from '@/lib/leaves'
 
-// Stati richiesta ferie (solo locale, non esportato)
-enum LeaveStatus {
-  SUBMITTED = 'SUBMITTED',
-  MANAGER_MODIFIED = 'MANAGER_MODIFIED',
-  EMPLOYEE_COUNTER = 'EMPLOYEE_COUNTER',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED'
+type LeaveBalance = {
+  type: string
+  total: number
+  used: number
+  remaining: number
+  percentage: number
+}
+
+type LeaveRequestRow = {
+  id: string
+  userId: string
+  type: string
+  startDate: string
+  endDate: string
+  reason: string | null
+  status: string
+  createdAt: string
+  rejectionReason: string | null
 }
 
 export default function LeavesPage() {
@@ -23,7 +34,8 @@ export default function LeavesPage() {
   const [activeView, setActiveView] = useState('my-requests')
   const [form, setForm] = useState<{ type: string; startDate: string; endDate: string; reason: string }>({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
   const userId: string = session?.user?.id || ''
-  const department = session?.user?.department || ''
+  const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   // Calendario
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState<Date>(() => {
@@ -42,52 +54,37 @@ export default function LeavesPage() {
     const jsDay = d.getDay() // 0=Sun..6=Sat
     return (jsDay + 6) % 7 // 0=Mon..6=Sun
   }
-  interface LeaveRequestLocal {
-    id: string
-    userId: string
-    department?: string
-    type: string
-    startDate: string
-    endDate: string
-    reason?: string
-    status: 'PENDING' | 'APPROVED' | 'REJECTED'
-    createdAt: string
-  }
-  const [myRequests, setMyRequests] = useState<LeaveRequestLocal[]>([])
+  const [myRequests, setMyRequests] = useState<LeaveRequestRow[]>([])
   const [balances, setBalances] = useState<LeaveBalance[]>([])
 
-  // Load personal requests safely (no state updates during render)
-  useEffect(() => {
-    const loadMine = () => {
-      try {
-        const all = JSON.parse(localStorage.getItem('leave_requests') || '[]') as LeaveRequestLocal[]
-        const mine = all.filter((r) => r.userId === userId)
-        setMyRequests(mine)
-      } catch {
-        setMyRequests([])
-      }
+  const loadMine = async () => {
+    if (!userId) {
+      setMyRequests([])
+      setBalances([])
+      return
     }
-    if (userId) loadMine()
-    const onUpdate = () => loadMine()
-    window.addEventListener('leave_system_updated', onUpdate)
-    return () => window.removeEventListener('leave_system_updated', onUpdate)
-  }, [userId])
+    setLoading(true)
+    try {
+      const res = await fetch('/api/leaves?includeBalances=true')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setMyRequests((data.requests ?? []) as LeaveRequestRow[])
+      setBalances((data.balances ?? []) as LeaveBalance[])
+    } catch {
+      setMyRequests([])
+      setBalances([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  // Carica saldi Ferie/ROL e ascolta aggiornamenti
   useEffect(() => {
-    const loadBalances = () => {
-      if (!userId) { setBalances([]); return }
-      try {
-        const b = getLeaveBalances(userId)
-        setBalances(b)
-      } catch {
-        setBalances([])
-      }
+    loadMine()
+    const onUpdate = () => {
+      loadMine()
     }
-    loadBalances()
-    const onBalances = () => loadBalances()
-    window.addEventListener('leave_balances_updated', onBalances)
-    return () => window.removeEventListener('leave_balances_updated', onBalances)
+    window.addEventListener('approvals_updated', onUpdate)
+    return () => window.removeEventListener('approvals_updated', onUpdate)
   }, [userId])
 
   // Costruisce stato giorni del mese corrente in base alle MIE richieste
@@ -104,6 +101,7 @@ export default function LeavesPage() {
       }
       // Integra solo le richieste dell'utente corrente
       for (const req of myRequests) {
+        if (req.status === 'CANCELLED' || req.status === 'REJECTED') continue
         const start = new Date(req.startDate)
         const end = new Date(req.endDate)
         for (let day = 1; day <= totalDays; day++) {
@@ -317,17 +315,8 @@ export default function LeavesPage() {
                       >
                       <option value="VACATION">Ferie</option>
                       <option value="ROL">ROL</option>
-                      <option value="PAID_LEAVE">Permesso Retribuito</option>
-                      <option value="UNPAID_LEAVE">Permesso Non Retribuito</option>
+                      <option value="PAID_LEAVE">Permesso retribuito</option>
                       <option value="SICK_LEAVE">Malattia</option>
-                      <option value="PARENTAL_LEAVE">Congedo Parentale</option>
-                      <option value="STUDY_LEAVE">Permesso Studio</option>
-                      <option value="UNION_LEAVE">Permesso Sindacale</option>
-                      <option value="MARRIAGE_LEAVE">Congedo Matrimonio</option>
-                      <option value="BEREAVEMENT_LEAVE">Lutto</option>
-                      <option value="BLOOD_DONATION">Donazione Sangue</option>
-                      <option value="MEDICAL_VISIT">Visita Medica</option>
-                      <option value="UNION_ASSEMBLY">Assemblea Sindacale</option>
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
                         <svg className="w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -352,23 +341,41 @@ export default function LeavesPage() {
                 <div className="flex gap-2 justify-end mt-4">
                   <button onClick={() => setForm({ type: 'VACATION', startDate: '', endDate: '', reason: '' })} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Annulla</button>
                   <button
-                    onClick={() => {
-                      if (!form.startDate || !form.endDate) { alert('Seleziona date'); return }
-                      const list = JSON.parse(localStorage.getItem('leave_requests') || '[]') as LeaveRequestLocal[]
-                      const newReq: LeaveRequestLocal = {
-                        id: crypto.randomUUID(), userId: userId, department, type: form.type, startDate: form.startDate, endDate: form.endDate, reason: form.reason,
-                        status: 'PENDING', createdAt: new Date().toISOString()
+                    disabled={submitting}
+                    onClick={async () => {
+                      if (!form.startDate || !form.endDate) {
+                        alert('Seleziona date')
+                        return
                       }
-                      list.push(newReq)
-                      localStorage.setItem('leave_requests', JSON.stringify(list))
-                      window.dispatchEvent(new CustomEvent('leave_system_updated'))
-                      // ricarica lista
-                      try { setMyRequests(list.filter((r) => r.userId === userId)) } catch {}
-                      setForm({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
+                      setSubmitting(true)
+                      try {
+                        const res = await fetch('/api/leaves', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            type: form.type,
+                            startDate: form.startDate,
+                            endDate: form.endDate,
+                            reason: form.reason || undefined,
+                          }),
+                        })
+                        const data = await res.json()
+                        if (!res.ok) {
+                          alert(data.error || 'Invio non riuscito')
+                          return
+                        }
+                        await loadMine()
+                        setForm({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
+                        window.dispatchEvent(new CustomEvent('approvals_updated'))
+                      } catch {
+                        alert('Errore di rete')
+                      } finally {
+                        setSubmitting(false)
+                      }
                     }}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                   >
-                    Invia
+                    {submitting ? 'Invio...' : 'Invia'}
                   </button>
                 </div>
             </div>
@@ -378,19 +385,74 @@ export default function LeavesPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 Le Tue Richieste</h3>
               
               <div className="space-y-4">
-                {(!myRequests || myRequests.length === 0) ? (
+                {loading ? (
+                  <div className="text-sm text-gray-500">Caricamento...</div>
+                ) : !myRequests || myRequests.length === 0 ? (
                   <div className="text-sm text-gray-500">Nessuna richiesta inviata.</div>
                 ) : (
-                  myRequests.slice().reverse().map((req) => (
+                  myRequests
+                    .slice()
+                    .reverse()
+                    .map((req) => (
                     <div key={req.id} className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-start gap-3">
                         <div>
-                          <div className="text-sm text-gray-600">{req.type}</div>
-                          <div className="font-semibold">{new Date(req.startDate).toLocaleDateString('it-IT')} - {new Date(req.endDate).toLocaleDateString('it-IT')}</div>
+                          <div className="text-sm text-gray-600">
+                            {LEAVE_TYPE_LABELS[req.type] ?? req.type}
+                          </div>
+                          <div className="font-semibold">
+                            {new Date(req.startDate).toLocaleDateString('it-IT')} -{' '}
+                            {new Date(req.endDate).toLocaleDateString('it-IT')}
+                          </div>
+                          {req.reason && (
+                            <div className="text-sm text-gray-600 mt-1">{req.reason}</div>
+                          )}
+                          {req.rejectionReason && req.status === 'REJECTED' && (
+                            <div className="text-sm text-red-600 mt-1">
+                              Motivo rifiuto: {req.rejectionReason}
+                            </div>
+                          )}
                         </div>
-                        <span className={`text-xs px-2 py-1 rounded-full ${req.status === 'PENDING' ? 'bg-blue-100 text-blue-800' : req.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {req.status}
-                        </span>
+                        <div className="flex flex-col items-end gap-2">
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full ${
+                              req.status === 'PENDING'
+                                ? 'bg-blue-100 text-blue-800'
+                                : req.status === 'APPROVED'
+                                  ? 'bg-green-100 text-green-800'
+                                  : req.status === 'CANCELLED'
+                                    ? 'bg-gray-100 text-gray-700'
+                                    : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {LEAVE_STATUS_LABELS[req.status] ?? req.status}
+                          </span>
+                          {req.status === 'PENDING' && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!confirm('Annullare questa richiesta?')) return
+                                try {
+                                  const res = await fetch(`/api/leaves/${req.id}`, {
+                                    method: 'DELETE',
+                                  })
+                                  const data = await res.json()
+                                  if (!res.ok) {
+                                    alert(data.error || 'Annullamento non riuscito')
+                                    return
+                                  }
+                                  await loadMine()
+                                  window.dispatchEvent(new CustomEvent('approvals_updated'))
+                                } catch {
+                                  alert('Errore di rete')
+                                }
+                              }}
+                              className="text-xs text-red-600 hover:text-red-800 font-medium"
+                            >
+                              Annulla
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
