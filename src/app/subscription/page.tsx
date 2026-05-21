@@ -389,28 +389,6 @@ function SubscriptionPageContent() {
           Le funzioni base (mance, turni, ferie) sono sempre gratuite per te e il
           tuo team — nessuna carta richiesta.
         </p>
-
-        <div className="mt-8 bg-white rounded-2xl shadow p-8">
-          <h2 className="text-lg font-bold text-gray-900 mb-3 text-center">
-            Come funziona
-          </h2>
-          <ul className="text-sm text-gray-600 space-y-2 max-w-xl mx-auto">
-            <li>
-              • <strong>Premium Dipendente</strong> (€2,99/mese): ogni persona può
-              abbonarsi per strumenti personali.
-            </li>
-            <li>
-              • <strong>Prenotazioni</strong> (€29/mese) e{' '}
-              <strong>Intelligence</strong> (€59/mese): solo Manager o Titolare
-              possono acquistare per il ristorante.
-            </li>
-            <li>
-              • Piano annuale: −{Math.round(ANNUAL_DISCOUNT * 100)}% sul totale
-              rispetto a 12 rinnovi mensili.
-            </li>
-            <li>• Pagamento sicuro tramite Stripe Checkout.</li>
-          </ul>
-        </div>
       </main>
     </div>
   )
