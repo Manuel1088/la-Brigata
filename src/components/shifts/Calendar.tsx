@@ -23,7 +23,6 @@ export default function ShiftsCalendar() {
   const [selectedDepartment, setSelectedDepartment] = useState<'direzione'|'cucina'|'sala'|'beverage'|'accoglienza'>('sala')
   const [viewMode, setViewMode] = useState<'week' | 'twoWeeks' | 'month'>('week')
   const [isGenerating, setIsGenerating] = useState(false)
-  const { generateSchedule } = useAutoScheduler()
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{name: string, dayIndex: number, isEdit?: boolean} | null>(null)
   const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
@@ -161,6 +160,7 @@ export default function ShiftsCalendar() {
   }, [])
 
   const restaurantId = session?.user?.restaurantId as string | undefined
+  const { generateSchedule } = useAutoScheduler(restaurantId)
 
   const getWeekDates = useCallback((date: Date) => {
     const start = new Date(date)
@@ -436,8 +436,7 @@ export default function ShiftsCalendar() {
       const result = await generateSchedule(getWeekDates(currentWeek)[0])
       if (result.success && result.schedule) {
         setShifts(result.schedule)
-        void saveShifts(result.schedule)
-        notifyCustom('SUCCESS','SHIFTS','Auto-scheduler','Turni generati automaticamente!')
+        notifyCustom('SUCCESS','SHIFTS','Auto-scheduler','Turni generati e salvati su database!')
       } else {
         notifyCustom('ERROR','SHIFTS','Auto-scheduler','Errore nella generazione automatica')
       }

@@ -1,7 +1,83 @@
 // lib/autoScheduler.ts
-import { getEmployeesClient, type SimpleEmployee } from '@/lib/employees'
-import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
+import type { SimpleEmployee } from '@/lib/employees'
+import { getLeaveRequests } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
+import { getMonday, shiftsToGrid, toDateOnlyIso, type ShiftApiRecord } from '@/lib/shifts'
+import type { ShiftAssignment } from '@/lib/validations/shifts'
+
+export type SchedulerEmployee = SimpleEmployee & { id: string }
+
+const WEEKS_TO_ANALYZE = 12
+
+const EXCLUDED_ROLES = new Set(['PROPRIETARIO', 'ADMIN'])
+
+type DeptKey = 'cucina' | 'sala' | 'beverage' | 'accoglienza'
+
+function normalizeDepartment(dept: string | undefined): DeptKey {
+  if (dept === 'cucina' || dept === 'sala' || dept === 'accoglienza') return dept
+  if (dept === 'beverage' || dept === 'bar') return 'beverage'
+  return 'sala'
+}
+
+function departmentForApi(dept: string): ShiftAssignment['department'] {
+  if (dept === 'direzione') return 'sala'
+  if (dept === 'bar') return 'beverage'
+  if (dept === 'cucina' || dept === 'sala' || dept === 'beverage' || dept === 'accoglienza') {
+    return dept
+  }
+  return 'sala'
+}
+
+async function fetchEmployeesForRestaurant(
+  restaurantId: string
+): Promise<SchedulerEmployee[]> {
+  const params = new URLSearchParams({ restaurantId, active: 'true' })
+  const res = await fetch(`/api/employees?${params}`, { credentials: 'include' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error((body as { error?: string }).error || 'Caricamento dipendenti fallito')
+  }
+  const data = (await res.json()) as {
+    employees?: Array<{ id: string; name: string; role: string; department?: string }>
+  }
+  return (data.employees ?? [])
+    .filter((e) => !EXCLUDED_ROLES.has(String(e.role)))
+    .map((e) => ({
+      id: e.id,
+      name: e.name,
+      role: e.role,
+      department: normalizeDepartment(e.department),
+    }))
+}
+
+async function fetchWeekShiftsFromApi(
+  restaurantId: string,
+  weekStart: Date,
+  nameByUserId: Map<string, string>
+): Promise<Record<string, ShiftCell> | null> {
+  const iso = toDateOnlyIso(weekStart)
+  const weekDates = weekDatesFromMonday(weekStart)
+  const params = new URLSearchParams({
+    restaurantId,
+    date: iso,
+    days: '7',
+  })
+  const res = await fetch(`/api/shifts?${params}`, { credentials: 'include' })
+  if (!res.ok) return null
+  const data = (await res.json()) as { shifts?: ShiftApiRecord[] }
+  return shiftsToGrid(data.shifts ?? [], weekDates, nameByUserId) as Record<string, ShiftCell>
+}
+
+function weekDatesFromMonday(weekStart: Date): Date[] {
+  const start = getMonday(weekStart)
+  const dates: Date[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    dates.push(d)
+  }
+  return dates
+}
 
 interface ShiftCell {
   employee: string
@@ -45,12 +121,14 @@ interface DepartmentRequirements {
 }
 
 export class AutoScheduler {
-  private employees: SimpleEmployee[]
+  private readonly restaurantId: string
+  private employees: SchedulerEmployee[] = []
   private constraints: SchedulingConstraints
-  private historicalData: Map<string, HistoricalPattern>
+  private historicalData: Map<string, HistoricalPattern> = new Map()
+  private historicalWeeksCache: Map<string, Record<string, ShiftCell>> = new Map()
   
-  constructor() {
-    this.employees = getEmployeesClient()
+  constructor(restaurantId: string) {
+    this.restaurantId = restaurantId
     this.constraints = {
       hardConstraints: {
         maxWeeklyHours: 48,
@@ -65,16 +143,47 @@ export class AutoScheduler {
         minimizeChanges: false
       }
     }
-    this.historicalData = new Map()
+  }
+
+  /** Carica dipendenti e storico turni da API */
+  async initialize(): Promise<void> {
+    this.employees = await fetchEmployeesForRestaurant(this.restaurantId)
+    await this.loadHistoricalWeeks()
+  }
+
+  private async loadHistoricalWeeks(): Promise<void> {
+    this.historicalWeeksCache.clear()
+    const nameByUserId = new Map(this.employees.map((e) => [e.id, e.name]))
+    const anchorMonday = this.getWeekStart(new Date())
+
+    const weekStarts = Array.from({ length: WEEKS_TO_ANALYZE }, (_, week) => {
+      const ws = new Date(anchorMonday)
+      ws.setDate(ws.getDate() - week * 7)
+      return ws
+    })
+
+    const results = await Promise.all(
+      weekStarts.map((weekStart) =>
+        fetchWeekShiftsFromApi(this.restaurantId, weekStart, nameByUserId)
+      )
+    )
+
+    weekStarts.forEach((weekStart, i) => {
+      const grid = results[i]
+      if (grid) {
+        this.historicalWeeksCache.set(this.toISODate(weekStart), grid)
+      }
+    })
   }
 
   /**
    * Analizza i turni delle ultime 12 settimane per identificare pattern (inclusi riposi)
    */
-  analyzeHistoricalPatterns(): Map<string, HistoricalPattern> {
+  async analyzeHistoricalPatterns(): Promise<Map<string, HistoricalPattern>> {
+    if (this.historicalWeeksCache.size === 0) {
+      await this.loadHistoricalWeeks()
+    }
     const patterns = new Map<string, HistoricalPattern>()
-    const weeksToAnalyze = 12
-    
     this.employees.forEach(employee => {
       const pattern: HistoricalPattern = {
         employee: employee.name,
@@ -97,10 +206,9 @@ export class AutoScheduler {
       const restCounter: { [day: number]: number } = {}
       const shiftCounter: { [day: number]: { [shift: string]: number } } = {}
       
-      // Analizza ultime 12 settimane
-      for (let week = 0; week < weeksToAnalyze; week++) {
+      for (let week = 0; week < WEEKS_TO_ANALYZE; week++) {
         const weekStart = this.getWeekStart(new Date())
-        weekStart.setDate(weekStart.getDate() - (week * 7))
+        weekStart.setDate(weekStart.getDate() - week * 7)
         
         const weekShifts = this.loadWeekShifts(weekStart)
         if (!weekShifts) continue
@@ -202,9 +310,13 @@ export class AutoScheduler {
   async generateWeekSchedule(weekStart: Date): Promise<{ [key: string]: ShiftCell }> {
     console.log('🤖 Avvio auto-scheduling per settimana:', this.toISODate(weekStart))
     
+    if (this.employees.length === 0) {
+      await this.initialize()
+    }
+
     // 1. Analizza pattern storici
     if (this.historicalData.size === 0) {
-      this.analyzeHistoricalPatterns()
+      await this.analyzeHistoricalPatterns()
     }
     
     // 2. Raccoglie vincoli della settimana
@@ -222,8 +334,63 @@ export class AutoScheduler {
     // 6. Verifica finale compliance CCNL
     const validatedSchedule = this.validateAndFix(optimizedSchedule, weekStart)
     
-    console.log('✅ Auto-scheduling completato')
+    await this.persistWeekSchedule(validatedSchedule, weekStart)
+    
+    console.log('✅ Auto-scheduling completato e salvato su database')
     return validatedSchedule
+  }
+
+  private scheduleToAssignments(
+    schedule: Record<string, ShiftCell>,
+    weekDates: Date[]
+  ): ShiftAssignment[] {
+    const byName = new Map(this.employees.map((e) => [e.name, e]))
+    const assignments: ShiftAssignment[] = []
+
+    for (const [key, cell] of Object.entries(schedule)) {
+      if (!cell.time) continue
+      const lastDash = key.lastIndexOf('-')
+      if (lastDash === -1) continue
+      const name = key.slice(0, lastDash)
+      const dayIndex = parseInt(key.slice(lastDash + 1), 10)
+      const emp = byName.get(name)
+      const date = weekDates[dayIndex]
+      if (!emp || !date || Number.isNaN(dayIndex)) continue
+
+      assignments.push({
+        userId: emp.id,
+        date: toDateOnlyIso(date),
+        department: departmentForApi(cell.department || emp.department),
+        time: cell.time,
+      })
+    }
+
+    return assignments
+  }
+
+  private async persistWeekSchedule(
+    schedule: Record<string, ShiftCell>,
+    weekStart: Date
+  ): Promise<void> {
+    const weekDates = weekDatesFromMonday(weekStart)
+    const assignments = this.scheduleToAssignments(schedule, weekDates)
+
+    const res = await fetch('/api/shifts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        restaurantId: this.restaurantId,
+        rangeFrom: toDateOnlyIso(weekDates[0]),
+        rangeTo: toDateOnlyIso(weekDates[weekDates.length - 1]),
+        assignments,
+      }),
+    })
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error((body as { error?: string }).error || 'Salvataggio turni fallito')
+    }
   }
 
   /**
@@ -242,35 +409,22 @@ export class AutoScheduler {
       specialEvents: this.getSpecialEvents(weekStart)
     }
     
-    // Raccoglie ferie/permessi approvati
     this.employees.forEach(employee => {
-      const userIdMap: Record<string, string> = {
-        'Giuseppe Chef': '1',
-        'Maria Cameriera': '2',
-        'Luca Barista': '3',
-        'Anna Sous Chef': '4',
-        'Marco Cameriere': '5',
-        'Sofia Cassiera': '6'
+      const leaves = getLeaveRequests(employee.id)
+        .filter((req) => req.status === 'APPROVED')
+        .filter((req) =>
+          this.dateRangeOverlaps(req.startDate, req.endDate, weekStart, this.getWeekEnd(weekStart))
+        )
+
+      if (leaves.length > 0) {
+        const leaveDays: string[] = []
+        leaves.forEach((leave) => {
+          const days = this.getDaysInRange(leave.startDate, leave.endDate, weekStart)
+          leaveDays.push(...days)
+        })
+        constraints.leaves.set(employee.name, leaveDays)
       }
-      
-      const userId = userIdMap[employee.name]
-      if (userId) {
-        const leaves = getLeaveRequests(userId)
-          .filter(req => req.status === 'APPROVED')
-          .filter(req => this.dateRangeOverlaps(
-            req.startDate, req.endDate, weekStart, this.getWeekEnd(weekStart)
-          ))
-        
-        if (leaves.length > 0) {
-          const leaveDays: string[] = []
-          leaves.forEach(leave => {
-            const days = this.getDaysInRange(leave.startDate, leave.endDate, weekStart)
-            leaveDays.push(...days)
-          })
-          constraints.leaves.set(employee.name, leaveDays)
-        }
-      }
-      
+
       // Raccoglie giorni fissi di riposo
       const restRule = getRestRuleFor(employee.name)
       if (restRule?.fixedDayIndices) {
@@ -973,13 +1127,7 @@ export class AutoScheduler {
   }
 
   private loadWeekShifts(weekStart: Date): { [key: string]: ShiftCell } | null {
-    try {
-      const key = `shifts_${this.toISODate(weekStart)}`
-      const raw = localStorage.getItem(key)
-      return raw ? JSON.parse(raw) : null
-    } catch {
-      return null
-    }
+    return this.historicalWeeksCache.get(this.toISODate(weekStart)) ?? null
   }
 
   private getDepartmentShifts(department: string): string[] {
@@ -1075,17 +1223,24 @@ export class AutoScheduler {
   }
 }
 
-// Funzione di utilità per inizializzare l'auto-scheduler
-export const createAutoScheduler = (): AutoScheduler => {
-  return new AutoScheduler()
+export async function createAutoScheduler(restaurantId: string): Promise<AutoScheduler> {
+  const scheduler = new AutoScheduler(restaurantId)
+  await scheduler.initialize()
+  return scheduler
 }
 
-// Hook per integrazione React
-export const useAutoScheduler = () => {
-  const scheduler = createAutoScheduler()
-  
+/** Hook per integrazione React — richiede restaurantId dalla sessione */
+export function useAutoScheduler(restaurantId?: string) {
   const generateSchedule = async (weekStart: Date) => {
+    if (!restaurantId) {
+      return {
+        success: false,
+        schedule: null,
+        error: new Error('Ristorante non configurato per la sessione'),
+      }
+    }
     try {
+      const scheduler = await createAutoScheduler(restaurantId)
       const schedule = await scheduler.generateWeekSchedule(weekStart)
       return { success: true, schedule, error: null }
     } catch (error) {
@@ -1093,13 +1248,15 @@ export const useAutoScheduler = () => {
       return { success: false, schedule: null, error: error as Error }
     }
   }
-  
-  const analyzePatterns = () => {
+
+  const analyzePatterns = async () => {
+    if (!restaurantId) return new Map<string, HistoricalPattern>()
+    const scheduler = await createAutoScheduler(restaurantId)
     return scheduler.analyzeHistoricalPatterns()
   }
-  
+
   return {
     generateSchedule,
-    analyzePatterns
+    analyzePatterns,
   }
 }
