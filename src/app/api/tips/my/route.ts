@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
+import { resolveEmployeeForUser } from '@/lib/tips'
 import { toDateOnlyIso } from '@/lib/shifts'
 import { getTipsMyQuerySchema } from '@/lib/validations/tips'
 
@@ -45,10 +46,18 @@ export async function GET(request: NextRequest) {
       year: 'numeric',
     })
 
-    const employee = await prisma.employee.findFirst({
-      where: { name: user.name, restaurantId: user.restaurantId },
-      select: { id: true, name: true, score: true },
-    })
+    const employeeRecord = await resolveEmployeeForUser(
+      prisma,
+      user.id,
+      user.restaurantId
+    )
+    const employee = employeeRecord
+      ? {
+          id: employeeRecord.id,
+          name: employeeRecord.name,
+          score: employeeRecord.score,
+        }
+      : null
 
     if (!employee) {
       return NextResponse.json({

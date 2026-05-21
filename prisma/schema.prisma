@@ -82,6 +82,7 @@ model User {
   informalCompany    InformalCompany?   @relation("InformalCompanyUsers", fields: [informalCompanyId], references: [id])
   restaurant         Restaurant         @relation(fields: [restaurantId], references: [id])
   employments        Employment[]       @relation("UserEmployments")
+  linkedEmployees    Employee[]         @relation("UserEmployee")
 
   @@index([companyId])
   @@index([companyId, isActive])
@@ -409,6 +410,7 @@ model Employee {
   ccnlLevel         CCNLLevel?
   role              EmployeeRole
   restaurantId      String
+  userId            String?             @map("user_id")
   canInsertTips     Boolean             @default(false)
   canEditTips       Boolean             @default(false)
   canDeleteTips     Boolean             @default(false)
@@ -418,9 +420,13 @@ model Employee {
   updatedAt         DateTime
   createdBy         String?
   restaurants       Restaurant          @relation(fields: [restaurantId], references: [id])
+  user              User?               @relation("UserEmployee", fields: [userId], references: [id])
   TipDistributionV2 TipDistributionV2[]
   TipEntry          TipEntry[]
   UserSession       UserSession[]
+
+  @@index([userId])
+  @@index([restaurantId, userId])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
+import { resolveEmployeeForUser } from '@/lib/tips'
 import { dateFromIso, isPresentShift, toDateOnlyIso } from '@/lib/shifts'
 
 // ✅ BATCH API: UN'UNICA CHIAMATA INVECE DI 4
@@ -204,10 +205,11 @@ export async function GET(request: NextRequest) {
               return rows.reduce((s, r) => s + Number(r.amount), 0)
             }
 
-            const employee = await prisma.employee.findFirst({
-              where: { name: session.user.name ?? '', restaurantId },
-              select: { id: true },
-            })
+            const employee = await resolveEmployeeForUser(
+              prisma,
+              userId,
+              restaurantId
+            )
             if (!employee) return 0
 
             const rows = await prisma.tipDistributionV2.findMany({

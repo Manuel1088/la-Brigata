@@ -19,11 +19,17 @@ export function dayBounds(dateIso: string): { start: Date; end: Date } {
   return { start, end }
 }
 
+/** Risolve il profilo Employee collegato a un User (userId FK, poi fallback nome/email). */
 export async function resolveEmployeeForUser(
   prisma: PrismaClient,
   userId: string,
   restaurantId: string
 ) {
+  const byUserId = await prisma.employee.findFirst({
+    where: { userId, restaurantId },
+  })
+  if (byUserId) return byUserId
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { name: true, email: true },
@@ -139,8 +145,13 @@ export async function recalculateDistributionsForDay(
       isActive: true,
       NOT: { name: { equals: 'Cucina', mode: 'insensitive' } },
     },
-    select: { id: true, name: true, score: true },
+    select: { id: true, name: true, score: true, userId: true },
   })
+  const employeeByUserId = new Map(
+    employees
+      .filter((e): e is typeof e & { userId: string } => !!e.userId)
+      .map((e) => [e.userId, e])
+  )
   const employeeByName = new Map(employees.map((e) => [e.name, e]))
 
   const users =
@@ -153,11 +164,11 @@ export async function recalculateDistributionsForDay(
 
   const participants = users
     .map((u) => {
-      const emp = employeeByName.get(u.name)
+      const emp = employeeByUserId.get(u.id) ?? employeeByName.get(u.name)
       if (!emp) return null
       return {
         employeeId: emp.id,
-        name: u.name,
+        name: emp.name,
         score: Math.max(1, emp.score),
       }
     })

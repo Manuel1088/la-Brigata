@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import type { PaymentType } from '@prisma/client'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
+import { resolveEmployeeForUser } from '@/lib/tips'
 import { toDateOnlyIso } from '@/lib/shifts'
 import { userCanDeleteTips, userCanEditTips } from '@/lib/tipAccess'
 import { getTipsEntriesQuerySchema } from '@/lib/validations/tips'
@@ -164,10 +165,14 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const employee = await prisma.employee.findFirst({
-      where: { name: user.name, restaurantId },
-      select: { id: true, name: true },
-    })
+    const employeeRecord = await resolveEmployeeForUser(
+      prisma,
+      session.user.id,
+      restaurantId
+    )
+    const employee = employeeRecord
+      ? { id: employeeRecord.id, name: employeeRecord.name }
+      : null
 
     if (!employee) {
       return NextResponse.json({

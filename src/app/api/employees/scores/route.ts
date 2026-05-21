@@ -75,6 +75,7 @@ export async function GET(request: NextRequest) {
           : { restaurantId: scope.restaurantId, ...ACTIVE_EMPLOYEE_FILTER },
       select: {
         id: true,
+        userId: true,
         name: true,
         score: true,
         restaurantId: true,
@@ -82,6 +83,7 @@ export async function GET(request: NextRequest) {
         canEditTips: true,
         canDeleteTips: true,
         restaurants: { select: { name: true } },
+        user: { select: { id: true, email: true, name: true } },
       },
       orderBy: [{ restaurants: { name: 'asc' } }, { name: 'asc' }],
     })
@@ -92,10 +94,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       employees: employees.map((e) => ({
         id: e.id,
+        userId: e.userId,
         name: e.name,
         score: e.score,
         restaurantId: e.restaurantId,
         restaurantName: e.restaurants.name,
+        userLinked: !!e.userId,
+        userEmail: e.user?.email ?? null,
+        userName: e.user?.name ?? null,
         canInsertTips: e.canInsertTips,
         canEditTips: e.canEditTips,
         canDeleteTips: e.canDeleteTips,

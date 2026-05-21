@@ -6,10 +6,14 @@ import { useAudit } from '@/hooks/useAudit'
 
 type EmployeeTipsPermissions = {
   id: string
+  userId: string | null
   name: string
   score: number
   restaurantId?: string
   restaurantName?: string
+  userLinked?: boolean
+  userEmail?: string | null
+  userName?: string | null
   canInsertTips: boolean
   canEditTips: boolean
   canDeleteTips: boolean
@@ -251,7 +255,14 @@ export default function AdminPermissions() {
                   <tr key={emp.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{emp.name}</div>
-                      <div className="text-xs text-gray-500">Punteggio: {emp.score}</div>
+                      <div className="text-xs text-gray-500">
+                        Punteggio: {emp.score}
+                        {emp.userLinked ? (
+                          <span className="ml-2 text-green-700">· collegato a User</span>
+                        ) : (
+                          <span className="ml-2 text-amber-700">· User non collegato</span>
+                        )}
+                      </div>
                     </td>
                     {scopeLabel.startsWith('Tutti') && (
                       <td className="px-4 py-3 text-sm text-gray-600">

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
+import { resolveEmployeeForUser } from '@/lib/tips'
 import { decodeShiftTime, toDateOnlyIso } from '@/lib/shifts'
 
 function getMonday(date: Date): Date {
@@ -14,14 +15,11 @@ function getMonday(date: Date): Date {
 }
 
 async function getMonthlyTipsFromV2(
-  userName: string,
+  userId: string,
   restaurantId: string,
   referenceDate: Date
 ) {
-  const employee = await prisma.employee.findFirst({
-    where: { name: userName, restaurantId },
-    select: { id: true },
-  })
+  const employee = await resolveEmployeeForUser(prisma, userId, restaurantId)
 
   if (!employee) {
     return { total: 0, daysWithTips: 0 }
@@ -124,7 +122,7 @@ export async function GET() {
     const month = today.getMonth()
     const monthLabel = today.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
     const { total: monthlyTipsTotal, daysWithTips: monthlyTipsDays } =
-      await getMonthlyTipsFromV2(user.name, user.restaurantId, today)
+      await getMonthlyTipsFromV2(user.id, user.restaurantId, today)
 
     return NextResponse.json({
       user: {
