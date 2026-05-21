@@ -1,377 +1,256 @@
 'use client'
-import { useSession } from 'next-auth/react'
-import { useEffect, useState, useMemo } from 'react'
-import { useCompanyData } from '@/hooks/useCompanyData'
-import { useEmployeeContext } from '@/contexts/EmployeeContext'
-import MonthlyTipsSummary from '@/components/MonthlyTipsSummary'
 
-interface TipDistribution {
-  employeeName: string
-  amount: number
-  role: string
-  department: string
-  hoursWorked: number
-}
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-interface DailyTip {
-  id: string
-  date: string
-  totalTips: number
-  distributions: TipDistribution[]
-}
-
-type TipEntry = {
-  date: string
-  type: 'cash' | 'card' | 'foreign'
-  amount: number
-}
-
-type PointsType = { [key: string]: number }
-type RestDaysType = { [key: string]: [string, string?] }
-
-// Utility sicura per sommare numeri
-const safeSum = (value: unknown): number => {
-  const num = Number(value)
-  return isNaN(num) ? 0 : num
-}
-
-// Formattazione valuta sicura
-const formatCurrency = (amount: number | undefined): string => {
-  if (typeof amount !== 'number' || isNaN(amount)) return '€0,00'
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(amount)
-}
-
-// Calcolo presenza dipendente
-const calculateEmployeePresence = (
-  employee: { name: string },
-  dateStr: string,
-  restDays: RestDaysType,
-  weeklySchedule: Record<string, { time?: string }>,
-  dayIndex: number
-): boolean => {
-  const key = `${employee.name}-${dayIndex}`
-  const shift = weeklySchedule[key]
-  
-  if (shift && typeof shift.time === 'string') {
-    return shift.time !== 'RIPOSO' && shift.time !== 'FERIE'
+type TipsMyResponse = {
+  employee: { id: string; name: string; score: number } | null
+  month: number
+  year: number
+  monthLabel: string
+  summary: {
+    total: number
+    daysWithTips: number
+    averageDaily: number
   }
-  
-  const dayIdx = new Date(dateStr).getDay()
-  const dayMap = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab']
-  const dayStr = dayMap[dayIdx]
-  const r = restDays[employee.name] || []
-  
-  return !(r[0] === dayStr || r[1] === dayStr)
+  byDay: Array<{
+    date: string
+    amount: number
+    locations: Array<{ locationId: string; locationName: string; amount: number }>
+  }>
+  byLocation: Array<{ locationId: string; locationName: string; total: number }>
 }
 
-// Helpers per gestione date
-const getWeekStart = (d: Date): Date => {
-  const x = new Date(d)
-  const day = x.getDay()
-  const diff = (day === 0 ? -6 : 1) - day
-  x.setHours(0, 0, 0, 0)
-  x.setDate(x.getDate() + diff)
-  return x
-}
-
-const toISODate = (d: Date): string => {
-  const z = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
-}
-
-const getDayIndexFromDate = (dateStr: string, weekStart: Date): number => {
-  const target = new Date(dateStr)
-  const diffTime = target.getTime() - weekStart.getTime()
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24))
-}
-
-export default function TipsOverview() {
-  const { data: session } = useSession()
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [expandedType, setExpandedType] = useState<'cash' | 'card' | 'foreign' | null>(null)
-
-  // Tip entries per ristorante loggato
-  const [tipEntries, setTipEntries] = useState<TipEntry[]>([])
-  const [tipsKey, setTipsKey] = useState<string>('')
-  const [waitingCtx, setWaitingCtx] = useState<boolean>(true)
-  
-  // Company data via shared hook
-  const { data: companyData, error: companyError } = useCompanyData(session?.user?.id)
-
-  // Setup chiave localStorage
-  useEffect(() => {
-    if (!session) return
-    if (companyError) {
-      setWaitingCtx(false)
-      return
-    }
-    if (!companyData) return
-
-    try {
-      const rid = session?.user?.restaurantId as string | undefined
-      if (rid) {
-        setTipsKey(`tipEntries_v1::${rid}`)
-      } else {
-        const cd = companyData as unknown as { company?: { restaurants?: Array<{ id?: string }> } }
-        const firstRest = cd.company?.restaurants?.[0]?.id as string | undefined
-        if (firstRest) setTipsKey(`tipEntries_v1::${firstRest}`)
-      }
-    } finally {
-      setWaitingCtx(false)
-    }
-  }, [session, companyData, companyError])
-
-  // Carica entries da localStorage
-  useEffect(() => {
-    if (!tipsKey) return
-    try {
-      const raw = localStorage.getItem(tipsKey)
-      setTipEntries(raw ? JSON.parse(raw) : [])
-    } catch {
-      setTipEntries([])
-    }
-  }, [tipsKey])
-
-  // Dipendenti via SWR - FILTRA dipendenti REALI
-  const { employees: employeesData, isLoading } = useEmployeeContext()
-  type EmployeeLite = { name: string; role: string; department?: string }
-  const employees: EmployeeLite[] = useMemo(() =>
-    (employeesData || [])
-      .filter((e) => {
-        const role = (e as { role?: string }).role || ''
-        return role !== 'PROPRIETARIO' && role !== 'ADMIN'
-      })
-      .map((e) => ({
-        name: (e as { name: string }).name,
-        role: (e as { role: string }).role,
-        department: (e as { department?: string }).department || 'sala'
-      })),
-    [employeesData]
+const formatCurrency = (amount: number): string =>
+  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(
+    Number.isFinite(amount) ? amount : 0
   )
 
-  // Funzioni navigazione mese
+export default function TipsOverview() {
+  const [currentMonth, setCurrentMonth] = useState(() => new Date())
+  const [data, setData] = useState<TipsMyResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [expandedDate, setExpandedDate] = useState<string | null>(null)
+
+  const year = currentMonth.getFullYear()
+  const month = currentMonth.getMonth()
+
+  const loadTips = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/tips/my?year=${year}&month=${month}`, {
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error((body as { error?: string }).error || 'Errore caricamento mance')
+      }
+      const json = (await res.json()) as TipsMyResponse
+      setData(json)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Errore caricamento')
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [year, month])
+
+  useEffect(() => {
+    void loadTips()
+  }, [loadTips])
+
   const goToPreviousMonth = () => {
-    setCurrentMonth(prev => {
-      const newDate = new Date(prev)
-      newDate.setMonth(prev.getMonth() - 1)
-      return newDate
+    setCurrentMonth((prev) => {
+      const d = new Date(prev)
+      d.setMonth(prev.getMonth() - 1)
+      return d
     })
+    setExpandedDate(null)
   }
 
   const goToNextMonth = () => {
-    setCurrentMonth(prev => {
-      const newDate = new Date(prev)
-      newDate.setMonth(prev.getMonth() + 1)
-      return newDate
+    setCurrentMonth((prev) => {
+      const d = new Date(prev)
+      d.setMonth(prev.getMonth() + 1)
+      return d
     })
+    setExpandedDate(null)
   }
 
-  // Filtra entries del mese corrente
-  const monthEntries = useMemo(() => 
-    tipEntries.filter(e => {
-      const d = new Date(e.date)
-      return d.getFullYear() === currentMonth.getFullYear() && 
-             d.getMonth() === currentMonth.getMonth()
-    }),
-    [tipEntries, currentMonth]
+  const monthName = useMemo(
+    () =>
+      currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }),
+    [currentMonth]
   )
-  
-  // Calcolo totali per tipologia con logica presenza
-  const monthTotalsByType = useMemo(() => {
-    // Carica configurazioni
-    let employeePointsByName: PointsType = {}
-    let restDaysByName: RestDaysType = {}
-    
-    try {
-      const ep = localStorage.getItem('employeePoints')
-      employeePointsByName = ep ? JSON.parse(ep) : {}
-    } catch {}
-    
-    try {
-      const rd = localStorage.getItem('employeeRestDays')
-      restDaysByName = rd ? JSON.parse(rd) : {}
-    } catch {}
-    
-    // Raggruppa entries per data
-    const byDate = new Map<string, { cash: number; card: number; foreign: number }>()
-    monthEntries.forEach(e => {
-      const key = e.date
-      const t = byDate.get(key) || { cash: 0, card: 0, foreign: 0 }
-      const amt = safeSum(e.amount)
-      
-      if (e.type === 'cash') t.cash += amt
-      else if (e.type === 'card') t.card += amt
-      else if (e.type === 'foreign') t.foreign += amt
-      
-      byDate.set(key, t)
-    })
 
-    const result = { cash: 0, card: 0, foreign: 0 }
-    
-    byDate.forEach((totals, dateStr) => {
-      // Determina presenze per questo giorno
-      const weekStart = getWeekStart(new Date(dateStr))
-      const weekKey = `shifts_${toISODate(weekStart)}`
-      
-      let weeklySchedule: Record<string, { time?: string }> = {}
-      try {
-        const raw = localStorage.getItem(weekKey)
-        weeklySchedule = raw ? JSON.parse(raw) : {}
-      } catch {}
-      
-      const dayIndex = getDayIndexFromDate(dateStr, weekStart)
-      
-      // Filtra dipendenti presenti
-      const present = employees.filter(emp => 
-        calculateEmployeePresence(emp, dateStr, restDaysByName, weeklySchedule, dayIndex)
-      )
-      
-      const totalPoints = present.reduce(
-        (sum, emp) => sum + safeSum(employeePointsByName[emp.name] || 0), 
-        0
-      )
-      
-      // Aggiungi solo se ci sono dipendenti presenti con punti
-      if (totalPoints > 0) {
-        result.cash += totals.cash
-        result.card += totals.card
-        result.foreign += totals.foreign
-      }
-    })
-    
-    return result
-  }, [monthEntries, employees])
+  const now = new Date()
+  const isCurrentMonth =
+    now.getFullYear() === currentMonth.getFullYear() &&
+    now.getMonth() === currentMonth.getMonth()
 
-  if (waitingCtx || isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="text-4xl mb-4">💰</div>
-          <div className="text-xl text-gray-700">Caricamento...</div>
+          <div className="text-xl text-gray-700">Caricamento mance...</div>
         </div>
       </div>
     )
   }
 
-  const monthName = currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
-  const now = new Date()
-  const isCurrentMonth = now.getFullYear() === currentMonth.getFullYear() && 
-                         now.getMonth() === currentMonth.getMonth()
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        {error}
+        <button
+          type="button"
+          onClick={() => void loadTips()}
+          className="block mt-2 text-sm underline"
+        >
+          Riprova
+        </button>
+      </div>
+    )
+  }
+
+  const summary = data?.summary ?? { total: 0, daysWithTips: 0, averageDaily: 0 }
+  const byDay = data?.byDay ?? []
+  const byLocation = data?.byLocation ?? []
 
   return (
     <div className="space-y-6">
-      {/* Month Navigator */}
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="grid grid-cols-3 items-center">
           <div className="text-left text-sm text-gray-700">mese</div>
           <div className="text-center">
-            <h2 className={`text-2xl font-semibold capitalize mb-1 ${
-              isCurrentMonth ? 'text-red-600' : 'text-gray-900'
-            }`}>
-              {monthName}
+            <h2
+              className={`text-2xl font-semibold capitalize mb-1 ${
+                isCurrentMonth ? 'text-red-600' : 'text-gray-900'
+              }`}
+            >
+              {data?.monthLabel ?? monthName}
             </h2>
           </div>
           <div className="flex justify-end space-x-2">
             <button
+              type="button"
               onClick={goToPreviousMonth}
               className="flex items-center px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
               aria-label="Mese precedente"
-              title="Mese precedente"
             >
               <span className="text-xl">←</span>
             </button>
             <button
+              type="button"
               onClick={goToNextMonth}
               className="flex items-center px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
               aria-label="Mese successivo"
-              title="Mese successivo"
             >
               <span className="text-xl">→</span>
             </button>
           </div>
         </div>
-        
-        {/* 3 riquadri totali per tipologia */}
+
+        {!data?.employee && (
+          <p className="mt-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Nessun profilo Employee collegato al tuo account. Le mance compaiono quando nome utente e
+            dipendente coincidono.
+          </p>
+        )}
+
         <div className="mt-4 grid md:grid-cols-3 gap-4">
-          <div 
-            className="p-3 rounded-lg border bg-green-50 text-center cursor-pointer hover:shadow-md transition"
-            onClick={() => setExpandedType(prev => prev === 'cash' ? null : 'cash')}
-          >
-            <div className="text-sm text-gray-600 mb-1">💵 Contanti</div>
-            <div className="text-xl font-semibold text-green-700">
-              {formatCurrency(monthTotalsByType.cash)}
+          <div className="p-4 rounded-lg border bg-orange-50 text-center">
+            <div className="text-sm text-gray-600 mb-1">Totale mese</div>
+            <div className="text-2xl font-bold text-orange-700">
+              {formatCurrency(summary.total)}
             </div>
           </div>
-          
-          <div 
-            className="p-3 rounded-lg border bg-blue-50 text-center cursor-pointer hover:shadow-md transition"
-            onClick={() => setExpandedType(prev => prev === 'card' ? null : 'card')}
-          >
-            <div className="text-sm text-gray-600 mb-1">💳 Carta</div>
-            <div className="text-xl font-semibold text-blue-700">
-              {formatCurrency(monthTotalsByType.card)}
-            </div>
+          <div className="p-4 rounded-lg border bg-green-50 text-center">
+            <div className="text-sm text-gray-600 mb-1">Giorni con mance</div>
+            <div className="text-2xl font-bold text-green-700">{summary.daysWithTips}</div>
           </div>
-          
-          <div 
-            className="p-3 rounded-lg border bg-purple-50 text-center cursor-pointer hover:shadow-md transition"
-            onClick={() => setExpandedType(prev => prev === 'foreign' ? null : 'foreign')}
-          >
-            <div className="text-sm text-gray-600 mb-1">🌍 Monete Estere</div>
-            <div className="text-xl font-semibold text-purple-700">
-              {formatCurrency(monthTotalsByType.foreign)}
+          <div className="p-4 rounded-lg border bg-blue-50 text-center">
+            <div className="text-sm text-gray-600 mb-1">Media giornaliera</div>
+            <div className="text-2xl font-bold text-blue-700">
+              {formatCurrency(summary.averageDaily)}
             </div>
           </div>
         </div>
 
-        {/* Dettaglio espanso per tipologia selezionata */}
-        {expandedType && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-semibold text-gray-900">
-                Dettaglio {
-                  expandedType === 'cash' ? 'Contanti 💵' : 
-                  expandedType === 'card' ? 'Carta 💳' : 
-                  'Monete Estere 🌍'
-                }
-              </h3>
-              <button
-                onClick={() => setExpandedType(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {monthEntries
-                .filter(e => e.type === expandedType)
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                .map((entry, idx) => (
-                  <div key={idx} className="flex justify-between items-center py-2 px-3 bg-white rounded">
-                    <span className="text-sm text-gray-600">
-                      {new Date(entry.date).toLocaleDateString('it-IT')}
-                    </span>
-                    <span className="font-medium">{formatCurrency(entry.amount)}</span>
-                  </div>
-                ))
-              }
-              
-              {monthEntries.filter(e => e.type === expandedType).length === 0 && (
-                <p className="text-center text-gray-500 py-4">
-                  Nessuna transazione trovata
-                </p>
-              )}
+        {byLocation.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Per location</h3>
+            <div className="flex flex-wrap gap-2">
+              {byLocation.map((loc) => (
+                <span
+                  key={loc.locationId}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full text-sm"
+                >
+                  <span className="text-gray-600">{loc.locationName}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(loc.total)}</span>
+                </span>
+              ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Riepilogo Mensile */}
-      <MonthlyTipsSummary />
+      <div className="bg-white rounded-lg shadow">
+        <div className="px-6 py-4 border-b">
+          <h3 className="text-lg font-semibold text-gray-900">Dettaglio giornaliero</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Quote da TipDistributionV2 (punteggio × mance del giorno / punti totali)
+          </p>
+        </div>
+
+        {byDay.length === 0 ? (
+          <p className="px-6 py-8 text-center text-gray-500">Nessuna mancia distribuita in questo mese</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {byDay.map((day) => {
+              const isOpen = expandedDate === day.date
+              return (
+                <li key={day.date}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedDate(isOpen ? null : day.date)}
+                    className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition text-left"
+                  >
+                    <span className="text-gray-800 font-medium">
+                      {new Date(day.date + 'T12:00:00').toLocaleDateString('it-IT', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900">
+                        {formatCurrency(day.amount)}
+                      </span>
+                      <span className="text-gray-400">{isOpen ? '▲' : '▼'}</span>
+                    </span>
+                  </button>
+                  {isOpen && day.locations.length > 0 && (
+                    <div className="px-6 pb-4 space-y-2">
+                      {day.locations.map((loc) => (
+                        <div
+                          key={`${day.date}-${loc.locationId}`}
+                          className="flex justify-between text-sm py-2 px-3 bg-gray-50 rounded"
+                        >
+                          <span className="text-gray-600">{loc.locationName}</span>
+                          <span className="font-medium">{formatCurrency(loc.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }

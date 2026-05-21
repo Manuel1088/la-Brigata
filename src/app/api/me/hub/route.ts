@@ -13,6 +13,43 @@ function getMonday(date: Date): Date {
   return start
 }
 
+async function getMonthlyTipsFromV2(
+  userName: string,
+  restaurantId: string,
+  referenceDate: Date
+) {
+  const employee = await prisma.employee.findFirst({
+    where: { name: userName, restaurantId },
+    select: { id: true },
+  })
+
+  if (!employee) {
+    return { total: 0, daysWithTips: 0 }
+  }
+
+  const year = referenceDate.getFullYear()
+  const month = referenceDate.getMonth()
+  const monthStart = new Date(year, month, 1)
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999)
+
+  const rows = await prisma.tipDistributionV2.findMany({
+    where: {
+      employeeId: employee.id,
+      date: { gte: monthStart, lte: monthEnd },
+    },
+    select: { amount: true, date: true },
+  })
+
+  if (rows.length === 0) {
+    return { total: 0, daysWithTips: 0 }
+  }
+
+  return {
+    total: rows.reduce((s, r) => s + Number(r.amount), 0),
+    daysWithTips: new Set(rows.map((r) => toDateOnlyIso(r.date))).size,
+  }
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -85,32 +122,9 @@ export async function GET() {
 
     const year = today.getFullYear()
     const month = today.getMonth()
-    const monthStart = new Date(year, month, 1)
-    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999)
     const monthLabel = today.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
-
-    let monthlyTipsTotal = 0
-    let monthlyTipsDays = 0
-
-    const employee = await prisma.employee.findFirst({
-      where: { name: user.name, restaurantId: user.restaurantId },
-      select: { id: true },
-    })
-
-    if (employee) {
-      const v2Rows = await prisma.tipDistributionV2.findMany({
-        where: {
-          employeeId: employee.id,
-          date: { gte: monthStart, lte: monthEnd },
-        },
-        select: { amount: true, date: true },
-      })
-
-      if (v2Rows.length > 0) {
-        monthlyTipsTotal = v2Rows.reduce((s, r) => s + Number(r.amount), 0)
-        monthlyTipsDays = new Set(v2Rows.map((r) => toDateOnlyIso(r.date))).size
-      }
-    }
+    const { total: monthlyTipsTotal, daysWithTips: monthlyTipsDays } =
+      await getMonthlyTipsFromV2(user.name, user.restaurantId, today)
 
     return NextResponse.json({
       user: {

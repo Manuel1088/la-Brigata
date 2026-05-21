@@ -18,4 +18,10 @@ export const getTipsQuerySchema = z.object({
   restaurantId: z.string().min(1).optional(),
 })
 
+/** month: 0–11 (come Date.getMonth()), year: es. 2026 */
+export const getTipsMyQuerySchema = z.object({
+  month: z.coerce.number().int().min(0).max(11).optional(),
+  year: z.coerce.number().int().min(2020).max(2100).optional(),
+})
+
 export type PostTipsBody = z.infer<typeof postTipsBodySchema>
