@@ -201,7 +201,7 @@ export default function TipsOverview() {
         <div className="px-6 py-4 border-b">
           <h3 className="text-lg font-semibold text-gray-900">Dettaglio giornaliero</h3>
           <p className="text-sm text-gray-500 mt-1">
-            Quote da TipDistributionV2 (punteggio × mance del giorno / punti totali)
+            Le tue quote giornaliere per location
           </p>
         </div>
 
