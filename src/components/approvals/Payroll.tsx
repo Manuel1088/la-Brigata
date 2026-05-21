@@ -52,97 +52,29 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
     }
   }, [])
 
+  const DEMO_PAYROLL_IDS = new Set([
+    'pay_req_1',
+    'pay_req_2',
+    'pay_req_3',
+    'pay_req_4',
+  ])
+
   const loadRequests = () => {
     try {
       const raw = localStorage.getItem('payroll_requests')
-      if (raw) {
-        setRequests(JSON.parse(raw))
-      } else {
-        // Dati di esempio per demo
-        const mockRequests: PayrollRequest[] = [
-          {
-            id: 'pay_req_1',
-            type: 'bonus',
-            employeeName: 'Giuseppe Rossi',
-            employeeId: 'emp_123',
-            department: 'cucina',
-            amount: 500.00,
-            description: 'Bonus performance Q4 2024',
-            reason: 'Performance eccellente nel quarto trimestre',
-            period: '2024-Q4',
-            requestedBy: 'Marco Verdi',
-            status: 'PENDING',
-            createdAt: new Date().toISOString(),
-            metadata: {
-              performanceScore: 9.8,
-              targetAchieved: 120,
-              category: 'performance'
-            }
-          },
-          {
-            id: 'pay_req_2',
-            type: 'overtime',
-            employeeName: 'Anna Bianchi',
-            employeeId: 'emp_456',
-            department: 'sala',
-            amount: 180.00,
-            description: 'Ore straordinarie Dicembre 2024',
-            reason: 'Ore extra per eventi natalizi',
-            period: '2024-12',
-            requestedBy: 'Luigi Neri',
-            status: 'PENDING',
-            createdAt: new Date(Date.now() - 86400000).toISOString(),
-            metadata: {
-              hoursWorked: 12,
-              hourlyRate: 15.00,
-              dates: ['2024-12-20', '2024-12-21', '2024-12-22']
-            }
-          },
-          {
-            id: 'pay_req_3',
-            type: 'expense_reimbursement',
-            employeeName: 'Mario Blu',
-            employeeId: 'emp_789',
-            department: 'bar',
-            amount: 85.50,
-            description: 'Rimborso spese formazione',
-            reason: 'Corso di mixologia avanzata',
-            period: '2024-12',
-            requestedBy: 'Sofia Verde',
-            status: 'PENDING',
-            createdAt: new Date(Date.now() - 172800000).toISOString(),
-            metadata: {
-              receiptUrl: 'receipt_123.pdf',
-              category: 'training',
-              certification: 'Advanced Mixology'
-            }
-          },
-          {
-            id: 'pay_req_4',
-            type: 'salary_adjustment',
-            employeeName: 'Elena Rosa',
-            employeeId: 'emp_101',
-            department: 'sala',
-            amount: 320.00,
-            description: 'Aumento stipendio mensile',
-            reason: 'Promozione a Responsabile Sala',
-            period: '2025-01',
-            requestedBy: 'Paolo Giallo',
-            status: 'PENDING',
-            createdAt: new Date(Date.now() - 259200000).toISOString(),
-            metadata: {
-              oldSalary: 2200.00,
-              newSalary: 2520.00,
-              effectiveDate: '2025-01-01'
-            }
-          }
-        ]
-        
-        setRequests(mockRequests)
-        localStorage.setItem('payroll_requests', JSON.stringify(mockRequests))
+      if (!raw) {
+        setRequests([])
+        return
       }
+      const parsed = JSON.parse(raw) as PayrollRequest[]
+      const cleaned = parsed.filter((r) => !DEMO_PAYROLL_IDS.has(r.id))
+      if (cleaned.length !== parsed.length) {
+        localStorage.setItem('payroll_requests', JSON.stringify(cleaned))
+      }
+      setRequests(cleaned)
     } catch (error) {
       console.error('Errore nel caricamento richieste payroll:', error)
+      setRequests([])
     }
   }
 
@@ -417,8 +349,16 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
         {filteredRequests.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-4xl mb-2">💰</div>
-            <p className="text-gray-500">Nessuna richiesta trovata</p>
-            <p className="text-sm text-gray-400 mt-1">Modifica i filtri per vedere più risultati</p>
+            <p className="text-gray-500">
+              {requests.length === 0
+                ? 'Nessuna richiesta in attesa'
+                : 'Nessuna richiesta trovata'}
+            </p>
+            {requests.length > 0 && (
+              <p className="text-sm text-gray-400 mt-1">
+                Modifica i filtri per vedere più risultati
+              </p>
+            )}
           </div>
         ) : (
           filteredRequests.map(request => (

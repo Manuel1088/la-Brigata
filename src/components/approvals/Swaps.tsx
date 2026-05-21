@@ -292,8 +292,16 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
         {filteredRequests.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-4xl mb-2">🔄</div>
-            <p className="text-gray-500">Nessuna richiesta trovata</p>
-            <p className="text-sm text-gray-400 mt-1">Modifica i filtri per vedere più risultati</p>
+            <p className="text-gray-500">
+              {swapRequests.length === 0
+                ? 'Nessuna richiesta in attesa'
+                : 'Nessuna richiesta trovata'}
+            </p>
+            {swapRequests.length > 0 && (
+              <p className="text-sm text-gray-400 mt-1">
+                Modifica i filtri per vedere più risultati
+              </p>
+            )}
           </div>
         ) : (
           filteredRequests.map(request => (
