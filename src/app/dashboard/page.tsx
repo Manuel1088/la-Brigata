@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { UserRole } from '@/types/roles'
-import { formatCurrency, safeSum } from '@/lib/formatNumber'
+import { formatCurrency } from '@/lib/formatNumber'
 import { useDashboardData } from '@/hooks/useDashboardData'
 
 // Color Palette La Brigata
@@ -32,23 +32,12 @@ interface TodayShift {
   role?: string
 }
 
-interface TipEntry {
-  date: string
-  amount: number
-}
-
 interface StoredShift {
   date: string
   employeeId: string
   start: string
   end: string
   role?: string
-}
-
-function isTipEntry(value: unknown): value is TipEntry {
-  if (!value || typeof value !== 'object') return false
-  const v = value as Record<string, unknown>
-  return typeof v.date === 'string' && typeof v.amount === 'number'
 }
 
 function isStoredShift(value: unknown): value is StoredShift {
@@ -79,6 +68,8 @@ export default function DashboardPage() {
   
   // States con valori di default sicuri
   const [monthlyTips, setMonthlyTips] = useState<number>(0)
+  const [monthlyTipsDays, setMonthlyTipsDays] = useState<number>(0)
+  const [tipsLoading, setTipsLoading] = useState(true)
   const [liveTips, setLiveTips] = useState<number>(0)
   const [savingsFound, setSavingsFound] = useState<number>(1250)
   const [todayShift, setTodayShift] = useState<TodayShift | null>(null)
@@ -112,45 +103,50 @@ export default function DashboardPage() {
     }
   ]
 
-  // ✅ CORREZIONE: Calcolo mance mensili con validazione completa
+  // Mance mensili da TipDistributionV2 (GET /api/tips/my)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('tipEntries_v1::restaurant_1')
-      if (!raw) {
-        setMonthlyTips(0)
-        return
-      }
-      
-      const parsed = JSON.parse(raw) as unknown
-      const entries: TipEntry[] = Array.isArray(parsed) ? parsed.filter(isTipEntry) : []
-      
-      // Validazione formato array
-      if (!Array.isArray(entries)) {
-        console.warn('Invalid tips format in localStorage')
-        setMonthlyTips(0)
-        return
-      }
-      
-      const currentMonth = new Date()
-      const monthTotal = entries
-        .filter((e) => {
-          try {
-            const d = new Date(e.date)
-            return d.getFullYear() === currentMonth.getFullYear() && d.getMonth() === currentMonth.getMonth()
-          } catch {
-            return false
+    if (!session?.user?.id) return
+
+    let cancelled = false
+
+    const loadMonthlyTips = async () => {
+      setTipsLoading(true)
+      try {
+        const now = new Date()
+        const res = await fetch(
+          `/api/tips/my?year=${now.getFullYear()}&month=${now.getMonth()}`,
+          { credentials: 'include' }
+        )
+        if (!res.ok) {
+          if (!cancelled) {
+            setMonthlyTips(0)
+            setMonthlyTipsDays(0)
           }
-        })
-        .reduce((sum, e) => safeSum(sum, e.amount), 0)
-      
-      // ✅ Validazione finale prima di settare
-      setMonthlyTips(monthTotal)
-      
-    } catch (error) {
-      console.error('Error calculating monthly tips:', error)
-      setMonthlyTips(0)
+          return
+        }
+        const data = (await res.json()) as {
+          summary?: { total?: number; daysWithTips?: number }
+        }
+        if (!cancelled) {
+          setMonthlyTips(Number(data.summary?.total ?? 0))
+          setMonthlyTipsDays(Number(data.summary?.daysWithTips ?? 0))
+        }
+      } catch (error) {
+        console.error('Error loading monthly tips:', error)
+        if (!cancelled) {
+          setMonthlyTips(0)
+          setMonthlyTipsDays(0)
+        }
+      } finally {
+        if (!cancelled) setTipsLoading(false)
+      }
     }
-  }, [])
+
+    void loadMonthlyTips()
+    return () => {
+      cancelled = true
+    }
+  }, [session?.user?.id])
 
   // ✅ CORREZIONE: Carica turno di oggi
   useEffect(() => {
@@ -397,8 +393,13 @@ export default function DashboardPage() {
               <div>
                 <p className="text-sm text-gray-600">Mance questo mese</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(monthlyTips)}
+                  {tipsLoading ? '…' : formatCurrency(monthlyTips)}
                 </p>
+                {!tipsLoading && monthlyTipsDays > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {monthlyTipsDays} giorn{monthlyTipsDays === 1 ? 'o' : 'i'} con mance
+                  </p>
+                )}
               </div>
               <div className="text-3xl">💰</div>
             </div>
