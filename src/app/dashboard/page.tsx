@@ -69,7 +69,9 @@ export default function DashboardPage() {
   // States con valori di default sicuri
   const [monthlyTips, setMonthlyTips] = useState<number>(0)
   const [monthlyTipsDays, setMonthlyTipsDays] = useState<number>(0)
+  const [todayTips, setTodayTips] = useState<number>(0)
   const [tipsLoading, setTipsLoading] = useState(true)
+  const [tipsView, setTipsView] = useState<'restaurant' | 'personal'>('personal')
   const [liveTips, setLiveTips] = useState<number>(0)
   const [savingsFound, setSavingsFound] = useState<number>(1250)
   const [todayShift, setTodayShift] = useState<TodayShift | null>(null)
@@ -103,39 +105,68 @@ export default function DashboardPage() {
     }
   ]
 
-  // Mance mensili da TipDistributionV2 (GET /api/tips/my)
+  const isRestaurantTipsRole = (role: string | undefined): boolean => {
+    const r = (role || '').toUpperCase()
+    return r === 'ADMIN' || r === 'MANAGER'
+  }
+
+  // Manager/Admin: TipEntry ristorante (/api/tips/summary). Dipendente: quota V2 (/api/tips/my)
   useEffect(() => {
     if (!session?.user?.id) return
 
     let cancelled = false
+    const role = session.user.role as string | undefined
+    const restaurantView = isRestaurantTipsRole(role)
 
     const loadMonthlyTips = async () => {
       setTipsLoading(true)
       try {
         const now = new Date()
-        const res = await fetch(
-          `/api/tips/my?year=${now.getFullYear()}&month=${now.getMonth()}`,
-          { credentials: 'include' }
-        )
+        const params = `year=${now.getFullYear()}&month=${now.getMonth()}`
+        const url = restaurantView ? `/api/tips/summary?${params}` : `/api/tips/my?${params}`
+
+        const res = await fetch(url, { credentials: 'include' })
         if (!res.ok) {
           if (!cancelled) {
             setMonthlyTips(0)
             setMonthlyTipsDays(0)
+            setTodayTips(0)
+            setTipsView(restaurantView ? 'restaurant' : 'personal')
           }
           return
         }
-        const data = (await res.json()) as {
-          summary?: { total?: number; daysWithTips?: number }
-        }
-        if (!cancelled) {
-          setMonthlyTips(Number(data.summary?.total ?? 0))
-          setMonthlyTipsDays(Number(data.summary?.daysWithTips ?? 0))
+
+        if (restaurantView) {
+          const data = (await res.json()) as {
+            summary?: {
+              monthTotal?: number
+              monthDaysWithTips?: number
+              todayTotal?: number
+            }
+          }
+          if (!cancelled) {
+            setTipsView('restaurant')
+            setMonthlyTips(Number(data.summary?.monthTotal ?? 0))
+            setMonthlyTipsDays(Number(data.summary?.monthDaysWithTips ?? 0))
+            setTodayTips(Number(data.summary?.todayTotal ?? 0))
+          }
+        } else {
+          const data = (await res.json()) as {
+            summary?: { total?: number; daysWithTips?: number }
+          }
+          if (!cancelled) {
+            setTipsView('personal')
+            setMonthlyTips(Number(data.summary?.total ?? 0))
+            setMonthlyTipsDays(Number(data.summary?.daysWithTips ?? 0))
+            setTodayTips(0)
+          }
         }
       } catch (error) {
         console.error('Error loading monthly tips:', error)
         if (!cancelled) {
           setMonthlyTips(0)
           setMonthlyTipsDays(0)
+          setTodayTips(0)
         }
       } finally {
         if (!cancelled) setTipsLoading(false)
@@ -146,7 +177,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [session?.user?.id])
+  }, [session?.user?.id, session?.user?.role])
 
   // ✅ CORREZIONE: Carica turno di oggi
   useEffect(() => {
@@ -391,20 +422,32 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-sm text-gray-600">Mance questo mese</p>
+                <p className="text-sm text-gray-600">
+                  {tipsView === 'restaurant'
+                    ? 'Mance ristorante (mese)'
+                    : 'Le tue mance (mese)'}
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {tipsLoading ? '…' : formatCurrency(monthlyTips)}
                 </p>
+                {!tipsLoading && tipsView === 'restaurant' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Oggi: {formatCurrency(todayTips)}
+                  </p>
+                )}
                 {!tipsLoading && monthlyTipsDays > 0 && (
                   <p className="text-xs text-gray-500 mt-1">
-                    {monthlyTipsDays} giorn{monthlyTipsDays === 1 ? 'o' : 'i'} con mance
+                    {monthlyTipsDays} giorn{monthlyTipsDays === 1 ? 'o' : 'i'} con{' '}
+                    {tipsView === 'restaurant' ? 'inserimenti' : 'mance'}
                   </p>
                 )}
               </div>
               <div className="text-3xl">💰</div>
             </div>
-            <button 
-              onClick={() => router.push('/tips')}
+            <button
+              onClick={() =>
+                router.push(tipsView === 'restaurant' ? '/team/mance' : '/tips')
+              }
               className="text-sm text-orange-600 font-semibold hover:underline"
             >
               Vedi dettagli →

@@ -28,4 +28,8 @@ export const getTipsEntriesQuerySchema = getTipsMyQuerySchema.extend({
   restaurantId: z.string().min(1).optional(),
 })
 
+export const getTipsSummaryQuerySchema = getTipsMyQuerySchema.extend({
+  restaurantId: z.string().min(1).optional(),
+})
+
 export type PostTipsBody = z.infer<typeof postTipsBodySchema>
