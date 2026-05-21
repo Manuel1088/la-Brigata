@@ -1,50 +1,39 @@
-export type PlanScope = 'all' | 'employee' | 'restaurant'
+export type PlanScope = 'employee' | 'restaurant'
 
 export type CheckoutPlanId = 'PREMIUM' | 'BASIC' | 'PRO'
 
+export type BillingInterval = 'monthly' | 'annual'
+
+/** Sconto sul totale annuale rispetto a 12 mesi interi */
+export const ANNUAL_DISCOUNT = 0.2
+
 export interface SubscriptionPlanDefinition {
-  id: 'FREE' | CheckoutPlanId
+  id: CheckoutPlanId
   name: string
-  price: number | null
+  subtitle: string
+  monthlyPrice: number
   currency: string
-  billing: string
   icon: string
   color: string
   description: string
   scope: PlanScope
   audience: string
+  recommended?: boolean
   features: { icon: string; text: string; highlight?: boolean }[]
 }
 
-export const SUBSCRIPTION_PLANS: SubscriptionPlanDefinition[] = [
-  {
-    id: 'FREE',
-    name: 'Free',
-    price: 0,
-    currency: '€',
-    billing: 'sempre',
-    icon: '🌱',
-    color: 'green',
-    description: 'Per tutti, senza costi',
-    scope: 'all',
-    audience: 'Ristorante',
-    features: [
-      { icon: '💰', text: 'Mance, turni, ferie base' },
-      { icon: '👥', text: 'Max 10 dipendenti per ristorante' },
-      { icon: '✅', text: 'Funzioni essenziali incluse' },
-    ],
-  },
+export const PAID_SUBSCRIPTION_PLANS: SubscriptionPlanDefinition[] = [
   {
     id: 'PREMIUM',
     name: 'Premium Dipendente',
-    price: 2.99,
+    subtitle: 'Strumenti personali',
+    monthlyPrice: 2.99,
     currency: '€',
-    billing: 'mese',
     icon: '⭐',
     color: 'blue',
-    description: 'Strumenti personali avanzati',
+    description: 'Busta paga, 730 e export per ogni membro del team',
     scope: 'employee',
-    audience: 'Personale',
+    audience: 'Tutti',
     features: [
       { icon: '📋', text: 'Analisi busta paga con CCNL', highlight: true },
       { icon: '🧾', text: 'Simulatore 730 per dichiarare le mance' },
@@ -54,38 +43,55 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlanDefinition[] = [
   },
   {
     id: 'BASIC',
-    name: 'Basic Ristorante',
-    price: 29,
+    name: 'Prenotazioni',
+    subtitle: 'Basic',
+    monthlyPrice: 29,
     currency: '€',
-    billing: 'mese',
-    icon: '⚡',
+    icon: '📅',
     color: 'orange',
-    description: 'Gestione team senza limiti',
+    description: 'Gestione prenotazioni e sala per il ristorante',
     scope: 'restaurant',
     audience: 'Manager / Titolare',
     features: [
-      { icon: '👥', text: 'Dipendenti illimitati', highlight: true },
-      { icon: '📊', text: 'Report avanzati' },
-      { icon: '📈', text: 'Analytics' },
-      { icon: '💰', text: 'Tutto il piano Free ristorante' },
+      { icon: '📅', text: 'Prenotazioni e walk-in', highlight: true },
+      { icon: '🪑', text: 'Gestione sale e tavoli' },
+      { icon: '👥', text: 'Dipendenti illimitati' },
+      { icon: '📊', text: 'Report e analytics base' },
     ],
   },
   {
     id: 'PRO',
-    name: 'Pro Ristorante',
-    price: 59,
+    name: 'Intelligence',
+    subtitle: 'Pro',
+    monthlyPrice: 59,
     currency: '€',
-    billing: 'mese',
     icon: '🏆',
     color: 'purple',
-    description: 'Multi-sede e automazioni',
+    description: 'Automazioni, multi-sede e insight avanzati',
     scope: 'restaurant',
     audience: 'Manager / Titolare',
+    recommended: true,
     features: [
-      { icon: '✨', text: 'Tutto Basic Ristorante', highlight: true },
+      { icon: '✨', text: 'Tutto il piano Prenotazioni', highlight: true },
+      { icon: '🤖', text: 'Auto-scheduler e previsioni AI' },
       { icon: '🏢', text: 'Multi-location' },
-      { icon: '🤖', text: 'Auto-scheduler AI' },
       { icon: '🔌', text: 'Integrazioni API' },
     ],
   },
 ]
+
+export function annualTotal(monthlyPrice: number): number {
+  return Math.round(monthlyPrice * 12 * (1 - ANNUAL_DISCOUNT) * 100) / 100
+}
+
+/** Prezzo mensile equivalente con fatturazione annuale (−20%) */
+export function annualMonthlyEquivalent(monthlyPrice: number): number {
+  return Math.round(monthlyPrice * (1 - ANNUAL_DISCOUNT) * 100) / 100
+}
+
+export function formatPrice(amount: number): string {
+  return amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)
+}
+
+/** @deprecated Usa PAID_SUBSCRIPTION_PLANS */
+export const SUBSCRIPTION_PLANS = PAID_SUBSCRIPTION_PLANS

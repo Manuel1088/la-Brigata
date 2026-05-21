@@ -7,6 +7,7 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
 
 export type CheckoutPlanId = 'PREMIUM' | 'BASIC' | 'PRO'
 export type CheckoutScope = 'employee' | 'restaurant'
+export type BillingInterval = 'monthly' | 'annual'
 
 export type PaidRestaurantPlan = 'BASIC' | 'PRO'
 
@@ -27,12 +28,32 @@ export function checkoutScopeForPlan(plan: CheckoutPlanId): CheckoutScope {
   return plan === 'PREMIUM' ? 'employee' : 'restaurant'
 }
 
-export function stripePriceIdForPlan(plan: CheckoutPlanId): string | null {
+export function stripePriceIdForPlan(
+  plan: CheckoutPlanId,
+  interval: BillingInterval = 'monthly'
+): string | null {
+  const annual = interval === 'annual'
   if (plan === 'PREMIUM') {
-    return process.env.STRIPE_PRICE_ID_PREMIUM_EMPLOYEE ?? null
+    return annual
+      ? process.env.STRIPE_PRICE_ID_PREMIUM_EMPLOYEE_ANNUAL ??
+          process.env.STRIPE_PRICE_ID_PREMIUM_EMPLOYEE ??
+          null
+      : process.env.STRIPE_PRICE_ID_PREMIUM_EMPLOYEE ?? null
   }
-  if (plan === 'BASIC') return process.env.STRIPE_PRICE_ID_BASIC ?? null
-  if (plan === 'PRO') return process.env.STRIPE_PRICE_ID_PRO ?? null
+  if (plan === 'BASIC') {
+    return annual
+      ? process.env.STRIPE_PRICE_ID_BASIC_ANNUAL ??
+          process.env.STRIPE_PRICE_ID_BASIC ??
+          null
+      : process.env.STRIPE_PRICE_ID_BASIC ?? null
+  }
+  if (plan === 'PRO') {
+    return annual
+      ? process.env.STRIPE_PRICE_ID_PRO_ANNUAL ??
+          process.env.STRIPE_PRICE_ID_PRO ??
+          null
+      : process.env.STRIPE_PRICE_ID_PRO ?? null
+  }
   return null
 }
 
@@ -40,8 +61,13 @@ export function planFromStripePriceId(
   priceId: string
 ): CheckoutPlanId | null {
   if (priceId === process.env.STRIPE_PRICE_ID_PREMIUM_EMPLOYEE) return 'PREMIUM'
+  if (priceId === process.env.STRIPE_PRICE_ID_PREMIUM_EMPLOYEE_ANNUAL) {
+    return 'PREMIUM'
+  }
   if (priceId === process.env.STRIPE_PRICE_ID_BASIC) return 'BASIC'
+  if (priceId === process.env.STRIPE_PRICE_ID_BASIC_ANNUAL) return 'BASIC'
   if (priceId === process.env.STRIPE_PRICE_ID_PRO) return 'PRO'
+  if (priceId === process.env.STRIPE_PRICE_ID_PRO_ANNUAL) return 'PRO'
   return null
 }
 

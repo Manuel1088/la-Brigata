@@ -7,6 +7,7 @@ import {
   checkoutScopeForPlan,
   stripe,
   stripePriceIdForPlan,
+  type BillingInterval,
   type CheckoutPlanId,
 } from '@/lib/stripe'
 
@@ -20,6 +21,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const plan = body?.plan as CheckoutPlanId
+    const interval: BillingInterval =
+      body?.interval === 'annual' ? 'annual' : 'monthly'
 
     if (plan !== 'PREMIUM' && plan !== 'BASIC' && plan !== 'PRO') {
       return NextResponse.json(
@@ -40,7 +43,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const priceId = stripePriceIdForPlan(plan)
+    const priceId = stripePriceIdForPlan(plan, interval)
     if (!priceId) {
       return NextResponse.json(
         { error: 'Configurazione Stripe incompleta (price id)' },

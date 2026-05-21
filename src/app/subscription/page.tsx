@@ -5,7 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import type { SubscriptionStatus } from '@prisma/client'
 import {
-  SUBSCRIPTION_PLANS,
+  ANNUAL_DISCOUNT,
+  PAID_SUBSCRIPTION_PLANS,
+  annualMonthlyEquivalent,
+  annualTotal,
+  formatPrice,
+  type BillingInterval,
   type CheckoutPlanId,
 } from '@/lib/subscription-plans'
 
@@ -13,6 +18,7 @@ interface ColorClasses {
   bg: string
   border: string
   button: string
+  ring?: string
 }
 
 type EmployeePlanStatus = 'FREE' | 'PREMIUM' | 'EXPIRED'
@@ -22,6 +28,8 @@ function SubscriptionPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const [billingInterval, setBillingInterval] =
+    useState<BillingInterval>('monthly')
   const [restaurantPlan, setRestaurantPlan] =
     useState<SubscriptionStatus>('FREE')
   const [employeePlan, setEmployeePlan] = useState<EmployeePlanStatus>('FREE')
@@ -87,14 +95,15 @@ function SubscriptionPageContent() {
   }, [searchParams, loadSubscription])
 
   const handleSubscribe = async (planId: CheckoutPlanId) => {
-    setCheckoutLoading(planId)
+    const loadingKey = `${planId}-${billingInterval}`
+    setCheckoutLoading(loadingKey)
     setToast(null)
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planId }),
+        body: JSON.stringify({ plan: planId, interval: billingInterval }),
       })
       const data = await res.json()
 
@@ -112,13 +121,8 @@ function SubscriptionPageContent() {
     }
   }
 
-  const getColorClasses = (color: string): ColorClasses => {
+  const getColorClasses = (color: string, recommended?: boolean): ColorClasses => {
     const colors: Record<string, ColorClasses> = {
-      green: {
-        bg: 'bg-green-50',
-        border: 'border-green-200',
-        button: 'bg-green-600 hover:bg-green-700',
-      },
       blue: {
         bg: 'bg-blue-50',
         border: 'border-blue-200',
@@ -131,28 +135,21 @@ function SubscriptionPageContent() {
       },
       purple: {
         bg: 'bg-purple-50',
-        border: 'border-purple-200',
+        border: 'border-purple-300',
         button: 'bg-purple-600 hover:bg-purple-700',
+        ring: recommended ? 'ring-2 ring-purple-400 ring-offset-2' : undefined,
       },
     }
-    return colors[color] ?? colors.green
+    return colors[color] ?? colors.blue
   }
 
-  const isPlanActive = (planId: (typeof SUBSCRIPTION_PLANS)[number]['id']) => {
-    if (planId === 'FREE') {
-      return restaurantPlan === 'FREE' || restaurantPlan === 'EXPIRED'
-    }
-    if (planId === 'PREMIUM') {
-      return employeePlan === 'PREMIUM'
-    }
-    if (planId === 'BASIC' || planId === 'PRO') {
-      return restaurantPlan === planId
-    }
+  const isPlanActive = (planId: CheckoutPlanId) => {
+    if (planId === 'PREMIUM') return employeePlan === 'PREMIUM'
+    if (planId === 'BASIC' || planId === 'PRO') return restaurantPlan === planId
     return false
   }
 
-  const canSubscribe = (planId: (typeof SUBSCRIPTION_PLANS)[number]['id']) => {
-    if (planId === 'FREE') return false
+  const canSubscribe = (planId: CheckoutPlanId) => {
     if (planId === 'PREMIUM') return true
     return canManageBilling
   }
@@ -193,8 +190,8 @@ function SubscriptionPageContent() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">💳 Abbonamenti</h1>
               <p className="text-gray-600 mt-2">
-                Free per tutti · Premium personale · Piani ristorante per il
-                team
+                Scegli un piano premium — mance, turni e ferie restano sempre
+                gratuiti
               </p>
               {restaurantName && (
                 <p className="text-sm text-gray-500 mt-1">
@@ -212,7 +209,7 @@ function SubscriptionPageContent() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {toast && (
           <div className="mb-6 rounded-lg bg-white border border-orange-200 px-4 py-3 text-gray-800 shadow-sm">
             {toast}
@@ -221,52 +218,112 @@ function SubscriptionPageContent() {
 
         {(restaurantPlan === 'EXPIRED' || employeePlan === 'EXPIRED') && (
           <div className="mb-6 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-amber-900">
-            Un abbonamento è scaduto. Scegli un piano a pagamento per
-            riattivare le funzioni premium.
+            Un abbonamento è scaduto. Scegli un piano a pagamento per riattivare
+            le funzioni premium.
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {SUBSCRIPTION_PLANS.map((plan) => {
-            const colors = getColorClasses(plan.color)
+        {/* Toggle mensile / annuale */}
+        <div className="flex flex-col items-center mb-10">
+          <div className="inline-flex items-center gap-3 bg-white rounded-full p-1.5 shadow-md border border-gray-200">
+            <button
+              type="button"
+              onClick={() => setBillingInterval('monthly')}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition ${
+                billingInterval === 'monthly'
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Mensile
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingInterval('annual')}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition flex items-center gap-2 ${
+                billingInterval === 'annual'
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Annuale
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  billingInterval === 'annual'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-green-100 text-green-800'
+                }`}
+              >
+                −{Math.round(ANNUAL_DISCOUNT * 100)}%
+              </span>
+            </button>
+          </div>
+          {billingInterval === 'annual' && (
+            <p className="text-sm text-gray-600 mt-3 text-center">
+              Risparmia il {Math.round(ANNUAL_DISCOUNT * 100)}% rispetto a 12
+              mesi singoli
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {PAID_SUBSCRIPTION_PLANS.map((plan) => {
+            const colors = getColorClasses(plan.color, plan.recommended)
             const active = isPlanActive(plan.id)
             const showSubscribe = canSubscribe(plan.id)
-            const isFree = plan.id === 'FREE'
+            const loadingKey = `${plan.id}-${billingInterval}`
+            const isLoading = checkoutLoading === loadingKey
+
+            const displayMonthly =
+              billingInterval === 'monthly'
+                ? plan.monthlyPrice
+                : annualMonthlyEquivalent(plan.monthlyPrice)
+            const displayAnnualTotal = annualTotal(plan.monthlyPrice)
 
             return (
               <div
                 key={plan.id}
-                className={`bg-white rounded-2xl shadow-xl border-2 ${colors.border} overflow-hidden flex flex-col ${
-                  plan.id === 'PRO' ? 'ring-2 ring-purple-200' : ''
+                className={`relative bg-white rounded-2xl shadow-xl border-2 ${colors.border} overflow-hidden flex flex-col ${colors.ring ?? ''} ${
+                  plan.recommended ? 'md:scale-[1.02] md:-mt-1' : ''
                 }`}
               >
-                <div className={`${colors.bg} p-5 text-center`}>
+                {plan.recommended && (
+                  <div className="absolute top-0 left-0 right-0 bg-purple-600 text-white text-center text-xs font-bold py-1.5 tracking-wide">
+                    CONSIGLIATO
+                  </div>
+                )}
+
+                <div
+                  className={`${colors.bg} p-6 text-center ${plan.recommended ? 'pt-9' : ''}`}
+                >
                   <span className="inline-block text-xs font-medium text-gray-600 bg-white/80 px-2 py-0.5 rounded-full mb-2">
                     {plan.audience}
                   </span>
                   <div className="text-5xl mb-2">{plan.icon}</div>
-                  <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
-                  <p className="text-xs text-gray-600 mt-1">{plan.description}</p>
-                  <div className="mt-3">
-                    {plan.price === 0 ? (
-                      <span className="text-3xl font-bold text-gray-900">
-                        Gratis
-                      </span>
-                    ) : (
-                      <>
-                        <span className="text-3xl font-bold text-gray-900">
-                          {plan.currency}
-                          {plan.price}
-                        </span>
-                        <span className="text-gray-600 text-sm">
-                          /{plan.billing}
-                        </span>
-                      </>
+                  <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
+                  {plan.subtitle && plan.subtitle !== plan.name && (
+                    <p className="text-xs text-gray-500 uppercase tracking-wide mt-0.5">
+                      {plan.subtitle}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-600 mt-2">{plan.description}</p>
+
+                  <div className="mt-4">
+                    <span className="text-4xl font-bold text-gray-900">
+                      {plan.currency}
+                      {formatPrice(displayMonthly)}
+                    </span>
+                    <span className="text-gray-600 text-sm">/mese</span>
+                    {billingInterval === 'annual' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {plan.currency}
+                        {formatPrice(displayAnnualTotal)} fatturati all&apos;anno
+                      </p>
                     )}
                   </div>
                 </div>
 
-                <div className="p-5 space-y-2 flex-1">
+                <div className="p-6 space-y-2.5 flex-1">
                   {plan.features.map((feature, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <span className="text-base flex-shrink-0">
@@ -283,44 +340,39 @@ function SubscriptionPageContent() {
                   ))}
                 </div>
 
-                <div className="p-5 pt-0">
-                  {isFree ? (
-                    <button
-                      disabled
-                      className="w-full py-3 rounded-lg font-semibold text-white bg-gray-400 cursor-not-allowed"
-                    >
-                      {active ? '✓ Piano base attivo' : 'Sempre incluso'}
-                    </button>
-                  ) : !showSubscribe ? (
+                <div className="p-6 pt-0">
+                  {!showSubscribe ? (
                     <button
                       disabled
                       className="w-full py-3 rounded-lg font-semibold text-gray-500 bg-gray-100 cursor-not-allowed text-sm"
-                      title="Solo Manager, Titolare o Admin"
+                      title="Solo Manager o Titolare"
                     >
                       Solo Manager / Titolare
                     </button>
                   ) : (
                     <button
-                      onClick={() => handleSubscribe(plan.id as CheckoutPlanId)}
+                      onClick={() => handleSubscribe(plan.id)}
                       disabled={active || checkoutLoading !== null}
                       className={`w-full py-3 rounded-lg font-semibold text-white transition ${
                         active
                           ? 'bg-gray-400 cursor-not-allowed'
-                          : checkoutLoading === plan.id
+                          : isLoading
                             ? 'bg-gray-400 cursor-wait'
                             : colors.button
                       }`}
                     >
-                      {checkoutLoading === plan.id
+                      {isLoading
                         ? 'Reindirizzamento...'
                         : active
                           ? '✓ Piano attivo'
-                          : 'Abbonati'}
+                          : billingInterval === 'annual'
+                            ? 'Abbonati (annuale)'
+                            : 'Abbonati'}
                     </button>
                   )}
                   {plan.scope === 'employee' && (
                     <p className="text-center text-xs text-gray-500 mt-2">
-                      Acquistabile da tutti
+                      Acquistabile da tutti i dipendenti
                     </p>
                   )}
                 </div>
@@ -329,22 +381,28 @@ function SubscriptionPageContent() {
           })}
         </div>
 
-        <div className="mt-12 bg-white rounded-2xl shadow p-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
+        <p className="mt-12 text-center text-sm text-gray-600 max-w-2xl mx-auto leading-relaxed px-4">
+          Le funzioni base (mance, turni, ferie) sono sempre gratuite per te e il
+          tuo team — nessuna carta richiesta.
+        </p>
+
+        <div className="mt-8 bg-white rounded-2xl shadow p-8">
+          <h2 className="text-lg font-bold text-gray-900 mb-3 text-center">
             Come funziona
           </h2>
-          <ul className="text-sm text-gray-600 space-y-2 max-w-2xl mx-auto">
+          <ul className="text-sm text-gray-600 space-y-2 max-w-xl mx-auto">
             <li>
-              • <strong>Free</strong>: ogni ristorante parte gratis (max 10
-              dipendenti).
+              • <strong>Premium Dipendente</strong> (€2,99/mese): ogni persona può
+              abbonarsi per strumenti personali.
             </li>
             <li>
-              • <strong>Premium Dipendente</strong>: ogni persona può
-              abbonarsi per strumenti personali (busta paga, 730, export PDF).
+              • <strong>Prenotazioni</strong> (€29/mese) e{' '}
+              <strong>Intelligence</strong> (€59/mese): solo Manager o Titolare
+              possono acquistare per il ristorante.
             </li>
             <li>
-              • <strong>Basic / Pro Ristorante</strong>: solo chi gestisce il
-              locale può acquistare per tutto il team.
+              • Piano annuale: −{Math.round(ANNUAL_DISCOUNT * 100)}% sul totale
+              rispetto a 12 rinnovi mensili.
             </li>
             <li>• Pagamento sicuro tramite Stripe Checkout.</li>
           </ul>
