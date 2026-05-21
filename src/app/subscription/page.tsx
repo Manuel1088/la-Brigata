@@ -13,6 +13,7 @@ import {
   type BillingInterval,
   type CheckoutPlanId,
 } from '@/lib/subscription-plans'
+import { canManageBilling } from '@/lib/stripe'
 
 interface ColorClasses {
   bg: string
@@ -38,7 +39,7 @@ function SubscriptionPageContent() {
   )
   const [employeePeriodEnd, setEmployeePeriodEnd] = useState<Date | null>(null)
   const [restaurantName, setRestaurantName] = useState<string | null>(null)
-  const [canManageBilling, setCanManageBilling] = useState(false)
+  const [canManageBillingFromApi, setCanManageBillingFromApi] = useState(false)
   const [loading, setLoading] = useState(true)
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -61,7 +62,7 @@ function SubscriptionPageContent() {
         setEmployeePeriodEnd(
           data.employee?.periodEnd ? new Date(data.employee.periodEnd) : null
         )
-        setCanManageBilling(Boolean(data.canManageBilling))
+        setCanManageBillingFromApi(Boolean(data.canManageBilling))
       }
     } catch (error) {
       console.error('Error loading subscription:', error)
@@ -149,9 +150,12 @@ function SubscriptionPageContent() {
     return false
   }
 
+  const billingAllowed =
+    canManageBilling(session?.user?.role) || canManageBillingFromApi
+
   const canSubscribe = (planId: CheckoutPlanId) => {
     if (planId === 'PREMIUM') return true
-    return canManageBilling
+    return billingAllowed
   }
 
   const formatDate = (d: Date | null) =>
