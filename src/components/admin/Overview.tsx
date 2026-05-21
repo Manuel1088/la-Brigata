@@ -7,7 +7,7 @@ interface RecentUser { id: string; name: string; email: string; role: string; co
 interface AdminStats {
   totalUsers: number
   activeUsers: number
-  activeCompanies: number
+  activeRestaurants: number
   totalCompanies: number
   pendingCandidates: number
   totalRestaurants: number
@@ -35,7 +35,7 @@ export default function AdminOverview() {
             users: { total: number; active: number; growth: string }
             companies: { total: number; active: number; growth: string }
             candidates: { pending: number }
-            restaurants: { total: number }
+            restaurants: { total: number; active: number }
           }
           recent: { companies: RecentCompany[]; users: RecentUser[] }
         }
@@ -45,7 +45,7 @@ export default function AdminOverview() {
           setStats({
             totalUsers: data.stats.users.total,
             activeUsers: data.stats.users.active,
-            activeCompanies: data.stats.companies.active,
+            activeRestaurants: data.stats.restaurants.active,
             totalCompanies: data.stats.companies.total,
             pendingCandidates: data.stats.candidates.pending,
             totalRestaurants: data.stats.restaurants.total,
@@ -166,9 +166,9 @@ export default function AdminOverview() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-2xl font-bold text-green-600">
-                {stats?.activeCompanies || 0}
+                {stats?.activeRestaurants ?? stats?.totalRestaurants ?? 0}
               </div>
-              <div className="text-sm text-green-700">Aziende Attive</div>
+              <div className="text-sm text-green-700">Ristoranti Attivi</div>
             </div>
             <div className="text-3xl text-green-500">🏢</div>
           </div>

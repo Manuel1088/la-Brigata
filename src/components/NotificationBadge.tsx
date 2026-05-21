@@ -24,6 +24,13 @@ export function NotificationBadge({
         return
       }
       const data = await res.json()
+      if (typeof data.meta?.unread === 'number') {
+        setUnreadCount(data.meta.unread)
+        setUrgentCount(
+          typeof data.meta?.urgent === 'number' ? data.meta.urgent : 0
+        )
+        return
+      }
       const list = (data.notifications ?? []) as Array<{
         userId?: string
         isRead: boolean

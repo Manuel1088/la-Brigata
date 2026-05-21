@@ -108,6 +108,8 @@ export async function GET(req: NextRequest) {
         },
         restaurants: {
           total: totalRestaurants,
+          /** Ristoranti registrati (include quelli senza company, es. Mirabelle) */
+          active: totalRestaurants,
           avgPerCompany: totalCompanies > 0 ? (totalRestaurants / totalCompanies).toFixed(1) : '0'
         },
         users: {

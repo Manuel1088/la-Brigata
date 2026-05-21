@@ -8,7 +8,6 @@ import { UserRole } from '@/types/roles'
 import { PendingEmploymentsBadge } from './PendingEmploymentsBadge'
 import { RestaurantSelector } from './RestaurantSelector'
 import { NotificationCenter } from './NotificationCenter'
-import { getNotifications, type NotificationCategory } from '@/lib/notifications'
 
 export default function TopBar() {
   const { data: session, status } = useSession()
@@ -18,44 +17,42 @@ export default function TopBar() {
   const [pendingNotifications, setPendingNotifications] = useState(0)
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false)
 
-  // Calculate pending notifications (filtered by role and department)
+  // Contatore allineato a GET /api/notifications (stessa fonte del pannello)
   useEffect(() => {
-    const calculatePendingNotifications = () => {
+    const calculatePendingNotifications = async () => {
       try {
+        const res = await fetch('/api/notifications', { credentials: 'include' })
+        if (!res.ok) {
+          setPendingNotifications(0)
+          return
+        }
+        const data = await res.json()
+        if (typeof data.meta?.unread === 'number') {
+          setPendingNotifications(data.meta.unread)
+          return
+        }
         const uid = session?.user?.id
-        const dept = String(session?.user?.department || '').toLowerCase()
-        const role = String(userRole || '').toUpperCase()
-        const all = getNotifications(uid)
-        const filtered = all.filter(n => {
-          if (n.userId && uid && n.userId !== uid) return false
-          if (['PROPRIETARIO','MANAGER','DIRETTORE','ADMIN'].includes(role)) {
-            if (n.category === 'SHIFTS' && n.metadata?.department) {
-              return String(n.metadata.department).toLowerCase() === dept
-            }
-            return true
-          }
-          const allowed: NotificationCategory[] = ['LEAVES','SHIFTS','TIPS','MESSAGES']
-          if (!allowed.includes(n.category)) return false
-          if (n.metadata?.department) {
-            return String(n.metadata.department).toLowerCase() === dept
-          }
-          return true
-        })
-        const unread = filtered.filter(n => !n.isRead).length
-        setPendingNotifications(unread)
-      } catch (error) {
+        const list = (data.notifications ?? []) as Array<{
+          userId?: string
+          isRead: boolean
+        }>
+        const mine = uid
+          ? list.filter((n) => !n.userId || n.userId === uid)
+          : list
+        setPendingNotifications(mine.filter((n) => !n.isRead).length)
+      } catch {
         setPendingNotifications(0)
       }
     }
 
-    calculatePendingNotifications()
+    void calculatePendingNotifications()
 
-    const handleUpdate = () => calculatePendingNotifications()
+    const handleUpdate = () => void calculatePendingNotifications()
     window.addEventListener('notifications_updated', handleUpdate)
     return () => {
       window.removeEventListener('notifications_updated', handleUpdate)
     }
-  }, [session?.user, userRole])
+  }, [session?.user?.id])
 
   // Don't show topbar on login/register pages
   if (pathname === '/login' || pathname === '/register' || !session) {
