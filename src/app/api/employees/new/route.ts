@@ -16,33 +16,72 @@ import {
 import { sendEmployeeWelcomeEmail } from '@/lib/employee-welcome-email'
 import { isCcnlLevel } from '@/lib/ccnl'
 import { normalizeDepartmentInput } from '@/lib/restaurant-roles'
-import type { CCNLLevel } from '@prisma/client'
+import type { CCNLLevel, ContractType } from '@prisma/client'
 import { z } from 'zod'
+import {
+  mapToContractTypeEnum,
+  requiresContractEndDate,
+  type ContractDuration,
+  type WorkSchedule,
+} from '@/lib/employee-contract'
 
-const createEmployeeSchema = z.object({
-  firstName: z.string().min(1, 'Nome richiesto'),
-  lastName: z.string().min(1, 'Cognome richiesto'),
-  email: z.string().email('Email non valida'),
-  phone: z.string().optional(),
-  role: z.string().min(1),
-  position: z.string().optional(),
-  department: z.enum([
-    'cucina',
-    'sala',
-    'bar',
-    'sommellerie',
-    'accoglienza',
-    'gestione',
-    'beverage',
-    'dirigenti',
-  ]),
-  ccnlLevel: z.string().optional(),
-  hourlyRate: z.number().min(0).optional(),
-  contractType: z.string().optional(),
-  startDate: z.string().optional(),
-  skills: z.array(z.string()).optional(),
-  notes: z.string().optional(),
-})
+const createEmployeeSchema = z
+  .object({
+    firstName: z.string().min(1, 'Nome richiesto'),
+    lastName: z.string().min(1, 'Cognome richiesto'),
+    email: z.string().email('Email non valida'),
+    phone: z.string().optional(),
+    role: z.string().min(1),
+    position: z.string().optional(),
+    department: z.enum([
+      'cucina',
+      'sala',
+      'bar',
+      'sommellerie',
+      'accoglienza',
+      'gestione',
+      'beverage',
+      'dirigenti',
+    ]),
+    ccnlLevel: z.string().optional(),
+    hourlyRate: z.number().min(0).optional(),
+    expenseAllowance: z.number().min(0).optional(),
+    workSchedule: z.enum(['full-time', 'part-time', 'stage', 'apprendistato']),
+    contractDuration: z.enum(['indeterminato', 'determinato']).optional(),
+    startDate: z.string().optional(),
+    contractEndDate: z.string().optional(),
+    skills: z.array(z.string()).optional(),
+    notes: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const duration = (data.contractDuration ?? 'indeterminato') as ContractDuration
+    const schedule = data.workSchedule as WorkSchedule
+    if (requiresContractEndDate(schedule, duration) && !data.contractEndDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Data fine contratto obbligatoria',
+        path: ['contractEndDate'],
+      })
+    }
+    if (schedule === 'stage' && (data.expenseAllowance == null || data.expenseAllowance < 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Rimborso spese obbligatorio per stage/tirocinio',
+        path: ['expenseAllowance'],
+      })
+    }
+    if (data.contractEndDate && data.startDate) {
+      const start = new Date(data.startDate)
+      const end = new Date(data.contractEndDate)
+      if (end < start) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'La data fine deve essere successiva alla data inizio',
+          path: ['contractEndDate'],
+        })
+      }
+    }
+  })
 
 /** POST /api/employees/new — crea User + Employee collegati */
 export async function POST(req: NextRequest) {
@@ -76,8 +115,11 @@ export async function POST(req: NextRequest) {
       department,
       ccnlLevel: ccnlLevelInput,
       hourlyRate,
-      contractType,
+      expenseAllowance,
+      workSchedule,
+      contractDuration,
       startDate,
+      contractEndDate,
       skills,
       notes,
     } = parsed.data
@@ -122,9 +164,11 @@ export async function POST(req: NextRequest) {
     }
 
     const ccnlLevel: CCNLLevel | undefined =
-      ccnlLevelInput && isCcnlLevel(ccnlLevelInput)
-        ? (ccnlLevelInput as CCNLLevel)
-        : undefined
+      workSchedule === 'apprendistato'
+        ? 'LIVELLO_6'
+        : ccnlLevelInput && isCcnlLevel(ccnlLevelInput)
+          ? (ccnlLevelInput as CCNLLevel)
+          : undefined
 
     const storedDepartment = normalizeDepartmentInput(department)
     const userRole = toUserRole(roleInput)
@@ -133,6 +177,12 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await hash(DEFAULT_EMPLOYEE_PASSWORD, 12)
     const employeeId = buildEmployeeId(fullName)
     const parsedStartDate = startDate ? new Date(startDate) : new Date()
+    const parsedContractEndDate = contractEndDate ? new Date(contractEndDate) : null
+    const duration = (contractDuration ?? 'indeterminato') as ContractDuration
+    const contractTypeEnum = mapToContractTypeEnum(
+      workSchedule as WorkSchedule,
+      duration
+    ) as ContractType | null
 
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -146,8 +196,14 @@ export async function POST(req: NextRequest) {
           companyId: restaurant.companyId,
           department: storedDepartment,
           phone: phone?.trim() || null,
-          hourlyRate: hourlyRate ?? null,
-          contractType: contractType ?? 'full-time',
+          hourlyRate: workSchedule === 'stage' ? null : (hourlyRate ?? null),
+          baseSalary:
+            workSchedule === 'stage' && expenseAllowance != null
+              ? expenseAllowance
+              : null,
+          contractType: workSchedule,
+          contractTypeEnum,
+          contractEndDate: parsedContractEndDate,
           startDate: parsedStartDate,
           notes: notes?.trim() || null,
           userType: 'EMPLOYEE',

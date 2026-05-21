@@ -57,6 +57,7 @@ model User {
   phone              String?
   hourlyRate         Decimal?           @map("hourly_rate")
   contractType       String?            @map("contract_type")
+  contractEndDate    DateTime?          @map("contract_end_date")
   startDate          DateTime?          @map("start_date")
   avatar             String?            @default("👤")
   ccnlLevel          CCNLLevel?         @map("ccnl_level")
@@ -584,6 +585,10 @@ enum ContractType {
   FULL_TIME
   PART_TIME
   STAGIONALE
+  INDETERMINATO
+  DETERMINATO
+  STAGE
+  APPRENDISTATO
 }
 
 enum CCNLLevel {

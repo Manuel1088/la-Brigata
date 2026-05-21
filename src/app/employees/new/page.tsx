@@ -3,9 +3,21 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { canManageRestaurantStaff } from '@/lib/employee-create'
-import { CCNL_LEVEL_OPTIONS, getCcnlMonthlyBase } from '@/lib/ccnl'
+import { CCNLLevel, CCNL_LEVEL_OPTIONS, getCcnlMonthlyBase } from '@/lib/ccnl'
 import {
-  departmentToStorage,
+  CONTRACT_DURATION_OPTIONS,
+  WORK_SCHEDULE_OPTIONS,
+  contractEndDateLabel,
+  isCcnlLocked,
+  lockedCcnlLevel,
+  requiresContractEndDate,
+  showsContractDuration,
+  showsExpenseAllowance,
+  showsHourlyRate,
+  type ContractDuration,
+  type WorkSchedule,
+} from '@/lib/employee-contract'
+import {
   getDefaultRoleForDepartment,
   getRolesForDepartment,
   roleOptionKey,
@@ -34,8 +46,11 @@ export default function NewEmployeePage() {
     roleKey: string
     ccnlLevel: string
     hourlyRate: number
-    contractType: string
+    expenseAllowance: number
+    workSchedule: WorkSchedule
+    contractDuration: ContractDuration
     startDate: string
+    contractEndDate: string
     skills: string[]
     notes: string
   }>({
@@ -47,8 +62,11 @@ export default function NewEmployeePage() {
     roleKey: roleOptionKey(initialRole),
     ccnlLevel: initialRole.suggestedCcnl,
     hourlyRate: hourlyFromCcnl(initialRole.suggestedCcnl),
-    contractType: 'full-time',
+    expenseAllowance: 500,
+    workSchedule: 'full-time',
+    contractDuration: 'indeterminato',
     startDate: new Date().toISOString().split('T')[0],
+    contractEndDate: '',
     skills: [],
     notes: '',
   })
@@ -69,6 +87,15 @@ export default function NewEmployeePage() {
     [rolesForDepartment, formData.roleKey]
   )
 
+  const showDuration = showsContractDuration(formData.workSchedule)
+  const showEndDate = requiresContractEndDate(
+    formData.workSchedule,
+    formData.contractDuration
+  )
+  const showExpense = showsExpenseAllowance(formData.workSchedule)
+  const showHourly = showsHourlyRate(formData.workSchedule)
+  const ccnlLocked = isCcnlLocked(formData.workSchedule)
+
   useEffect(() => {
     if (status === 'loading') return
     if (!session) {
@@ -80,7 +107,7 @@ export default function NewEmployeePage() {
 
   const handleDepartmentChange = (department: RestaurantDepartment) => {
     const defaultRole = getDefaultRoleForDepartment(department)
-    const ccnl = defaultRole.suggestedCcnl
+    const ccnl = ccnlLocked ? lockedCcnlLevel() : defaultRole.suggestedCcnl
     setFormData((prev) => ({
       ...prev,
       department,
@@ -91,6 +118,7 @@ export default function NewEmployeePage() {
   }
 
   const handleRoleChange = (roleKey: string) => {
+    if (ccnlLocked) return
     const ccnl = suggestedCcnlForRole(formData.department, roleKey)
     setFormData((prev) => ({
       ...prev,
@@ -100,9 +128,65 @@ export default function NewEmployeePage() {
     }))
   }
 
+  const handleWorkScheduleChange = (workSchedule: WorkSchedule) => {
+    setFormData((prev) => {
+      const isEmployeeSchedule =
+        workSchedule === 'full-time' || workSchedule === 'part-time'
+      const duration: ContractDuration = isEmployeeSchedule
+        ? prev.contractDuration
+        : 'indeterminato'
+      const endDate =
+        isEmployeeSchedule && duration === 'indeterminato'
+          ? ''
+          : prev.contractEndDate
+
+      return {
+        ...prev,
+        workSchedule,
+        contractDuration: duration,
+        contractEndDate: endDate,
+        ...(workSchedule === 'apprendistato'
+          ? {
+              ccnlLevel: lockedCcnlLevel(),
+              hourlyRate: hourlyFromCcnl(lockedCcnlLevel()),
+            }
+          : {}),
+      }
+    })
+  }
+
+  const handleContractDurationChange = (contractDuration: ContractDuration) => {
+    setFormData((prev) => ({
+      ...prev,
+      contractDuration,
+      contractEndDate: contractDuration === 'indeterminato' ? '' : prev.contractEndDate,
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (
+      requiresContractEndDate(formData.workSchedule, formData.contractDuration) &&
+      !formData.contractEndDate
+    ) {
+      setError('Inserisci la data fine contratto')
+      return
+    }
+    if (showExpense && formData.expenseAllowance <= 0) {
+      setError('Inserisci il rimborso spese per lo stage')
+      return
+    }
+    if (
+      formData.contractEndDate &&
+      formData.startDate &&
+      formData.contractEndDate < formData.startDate
+    ) {
+      setError('La data fine deve essere successiva alla data inizio')
+      return
+    }
+
     setSubmitting(true)
 
     const role = selectedRole?.value
@@ -126,9 +210,12 @@ export default function NewEmployeePage() {
           position: selectedRole.label,
           department: formData.department,
           ccnlLevel: formData.ccnlLevel,
-          hourlyRate: formData.hourlyRate,
-          contractType: formData.contractType,
+          hourlyRate: showHourly ? formData.hourlyRate : undefined,
+          expenseAllowance: showExpense ? formData.expenseAllowance : undefined,
+          workSchedule: formData.workSchedule,
+          contractDuration: showDuration ? formData.contractDuration : undefined,
           startDate: formData.startDate,
+          contractEndDate: showEndDate ? formData.contractEndDate : undefined,
           skills: formData.skills,
           notes: formData.notes || undefined,
         }),
@@ -326,14 +413,19 @@ export default function NewEmployeePage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Livello CCNL *
-                  {selectedRole && (
+                  {ccnlLocked ? (
+                    <span className="ml-1 text-xs font-normal text-amber-600">
+                      (bloccato per apprendistato)
+                    </span>
+                  ) : selectedRole ? (
                     <span className="ml-1 text-xs font-normal text-blue-600">
                       (suggerito per {selectedRole.label})
                     </span>
-                  )}
+                  ) : null}
                 </label>
                 <select
                   value={formData.ccnlLevel}
+                  disabled={ccnlLocked}
                   onChange={(e) => {
                     const level = e.target.value
                     setFormData((prev) => ({
@@ -342,7 +434,7 @@ export default function NewEmployeePage() {
                       hourlyRate: hourlyFromCcnl(level),
                     }))
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-600"
                   required
                 >
                   {CCNL_LEVEL_OPTIONS.map((opt) => (
@@ -352,58 +444,135 @@ export default function NewEmployeePage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tariffa oraria (€)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.hourlyRate}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      hourlyRate: parseFloat(e.target.value) || 0,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {showHourly && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tariffa oraria (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.hourlyRate}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        hourlyRate: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+              {showExpense && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Rimborso spese (€/mese) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.expenseAllowance}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        expenseAllowance: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo contratto
-                </label>
-                <select
-                  value={formData.contractType}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      contractType: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="full-time">Full-time</option>
-                  <option value="part-time">Part-time</option>
-                </select>
+            <div className="rounded-lg border border-gray-200 p-4 space-y-4 bg-gray-50">
+              <h3 className="text-sm font-semibold text-gray-900">Contratto</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo impiego *
+                  </label>
+                  <select
+                    value={formData.workSchedule}
+                    onChange={(e) =>
+                      handleWorkScheduleChange(e.target.value as WorkSchedule)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    {WORK_SCHEDULE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {showDuration && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Durata contratto *
+                    </label>
+                    <select
+                      value={formData.contractDuration}
+                      onChange={(e) =>
+                        handleContractDurationChange(
+                          e.target.value as ContractDuration
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {CONTRACT_DURATION_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Data inizio
-                </label>
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, startDate: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Data inizio *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, startDate: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    required
+                  />
+                </div>
+
+                {showEndDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {contractEndDateLabel(
+                        formData.workSchedule,
+                        formData.contractDuration
+                      )}
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.contractEndDate}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          contractEndDate: e.target.value,
+                        }))
+                      }
+                      min={formData.startDate}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      required
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
