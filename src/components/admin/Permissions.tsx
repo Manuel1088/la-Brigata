@@ -8,6 +8,8 @@ type EmployeeTipsPermissions = {
   id: string
   name: string
   score: number
+  restaurantId?: string
+  restaurantName?: string
   canInsertTips: boolean
   canEditTips: boolean
   canDeleteTips: boolean
@@ -59,39 +61,52 @@ export default function AdminPermissions() {
   const { data: session } = useSession()
   const { notifyCustom } = useNotifications()
   const { logReadAction } = useAudit()
-  const restaurantId = session?.user?.restaurantId as string | undefined
+  const sessionRestaurantId = session?.user?.restaurantId as string | undefined
+  const isAdmin = (session?.user?.role as string | undefined) === 'ADMIN'
 
   const [employees, setEmployees] = useState<EmployeeTipsPermissions[]>([])
+  const [scopeLabel, setScopeLabel] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
   const loadEmployees = useCallback(async () => {
-    if (!restaurantId) {
-      setEmployees([])
-      setLoading(false)
-      return
-    }
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/scores?restaurantId=${restaurantId}`, {
+      const params = sessionRestaurantId
+        ? new URLSearchParams({ restaurantId: sessionRestaurantId })
+        : new URLSearchParams()
+      const res = await fetch(`/api/employees/scores?${params}`, {
         credentials: 'include',
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error((body as { error?: string }).error || 'Caricamento fallito')
       }
-      const data = (await res.json()) as { employees: EmployeeTipsPermissions[] }
+      const data = (await res.json()) as {
+        employees: EmployeeTipsPermissions[]
+        scope?: 'all' | 'restaurant'
+        restaurantId?: string | null
+      }
       setEmployees(data.employees ?? [])
+      if (data.scope === 'all') {
+        setScopeLabel('Tutti i ristoranti (vista amministratore)')
+      } else if (data.restaurantId) {
+        const sample = data.employees?.[0]?.restaurantName
+        setScopeLabel(sample ? `Ristorante: ${sample}` : `Ristorante ID: ${data.restaurantId}`)
+      } else {
+        setScopeLabel('')
+      }
       logReadAction('employee_tip_permissions')
     } catch (error) {
       console.error('Errore caricamento permessi mance:', error)
       notifyCustom('ERROR', 'SYSTEM', 'Permessi', 'Errore nel caricamento dipendenti')
       setEmployees([])
+      setScopeLabel('')
     } finally {
       setLoading(false)
     }
-  }, [restaurantId, notifyCustom, logReadAction])
+  }, [sessionRestaurantId, notifyCustom, logReadAction])
 
   useEffect(() => {
     void loadEmployees()
@@ -146,14 +161,6 @@ export default function AdminPermissions() {
     )
   }
 
-  if (!restaurantId) {
-    return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-yellow-800">
-        Ristorante non configurato per la sessione. Impossibile gestire i permessi mance.
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
@@ -163,6 +170,17 @@ export default function AdminPermissions() {
           eliminare mance. Per gli altri utenti valgono i flag su <code>Employee</code> configurati
           qui sotto.
         </p>
+        {scopeLabel ? (
+          <p className="mt-2 text-blue-800">
+            <span className="font-medium">Ambito:</span> {scopeLabel}
+            {isAdmin && !sessionRestaurantId ? (
+              <span className="block text-xs mt-1 text-blue-700">
+                La sessione ADMIN non ha un ristorante assegnato: vengono elencati tutti i
+                dipendenti attivi.
+              </span>
+            ) : null}
+          </p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -203,6 +221,11 @@ export default function AdminPermissions() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Dipendente
                 </th>
+                {scopeLabel.startsWith('Tutti') && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Ristorante
+                  </th>
+                )}
                 {TIP_PERMISSIONS.map((p) => (
                   <th
                     key={p.key}
@@ -216,7 +239,10 @@ export default function AdminPermissions() {
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={scopeLabel.startsWith('Tutti') ? 5 : 4}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
                     Nessun dipendente trovato
                   </td>
                 </tr>
@@ -227,6 +253,11 @@ export default function AdminPermissions() {
                       <div className="font-medium text-gray-900">{emp.name}</div>
                       <div className="text-xs text-gray-500">Punteggio: {emp.score}</div>
                     </td>
+                    {scopeLabel.startsWith('Tutti') && (
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {emp.restaurantName ?? '—'}
+                      </td>
+                    )}
                     {TIP_PERMISSIONS.map((perm) => (
                       <td key={perm.key} className="px-4 py-3 text-center">
                         <label className="inline-flex items-center cursor-pointer">

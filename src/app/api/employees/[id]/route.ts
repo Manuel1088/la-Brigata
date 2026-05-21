@@ -38,6 +38,7 @@ async function canManageRestaurant(userId: string, restaurantId: string): Promis
     select: { restaurantId: true, companyId: true, role: true },
   })
   if (!user) return false
+  if (String(user.role) === 'ADMIN') return true
   if (user.restaurantId === restaurantId) return MANAGER_ROLES.has(String(user.role))
 
   const restaurant = await prisma.restaurant.findUnique({
