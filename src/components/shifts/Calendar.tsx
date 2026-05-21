@@ -11,6 +11,11 @@ import { type SimpleEmployee } from '@/lib/employees'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import { shiftsToGrid, toDateOnlyIso, type ShiftGridCell } from '@/lib/shifts'
 import type { ShiftAssignment } from '@/lib/validations/shifts'
+import {
+  loadSwapRequestsFromStorage,
+  saveSwapRequestsToStorage,
+  type StoredSwapRequest,
+} from '@/lib/shift-swap-storage'
 
 type CalendarEmployee = SimpleEmployee & { id: string }
 
@@ -399,29 +404,29 @@ export default function ShiftsCalendar() {
   const handleSwapRequest = () => {
     if (!swapTarget || !offeredShiftTime) return
 
-    const swapRequest = {
+    const swapRequest: StoredSwapRequest = {
       id: crypto.randomUUID(),
-      requester: userName,
-      targetEmployee: swapTarget.targetEmployee,
+      requesterId: session?.user?.id ?? '',
+      requesterName: userName,
+      requesterDepartment: userDepartment,
+      targetEmployeeName: swapTarget.targetEmployee,
       targetDepartment: swapTarget.targetDepartment,
       dayIndex: swapTarget.dayIndex,
       dateISO: swapTarget.dateISO,
       targetShiftTime: swapTarget.targetShiftTime,
-      offeredShiftTime: offeredShiftTime,
-      status: 'pending',
-      createdAt: new Date().toISOString()
+      offeredShiftTime,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
     }
 
-    // Salva richiesta swap
     try {
-      const existing = JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]')
-      existing.push(swapRequest)
-      localStorage.setItem('shift_swap_requests_v1', JSON.stringify(existing))
-      
-      notifyCustom('SUCCESS','SHIFTS','Cambio turno','Richiesta inviata!')
-      setSwapVersion(prev => prev + 1)
-    } catch (error) {
-      notifyCustom('ERROR','SHIFTS','Cambio turno','Errore nell\'invio della richiesta')
+      const existing = loadSwapRequestsFromStorage()
+      saveSwapRequestsToStorage([...existing, swapRequest])
+      window.dispatchEvent(new CustomEvent('approvals_updated'))
+      notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', 'Richiesta inviata!')
+      setSwapVersion((prev) => prev + 1)
+    } catch {
+      notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', "Errore nell'invio della richiesta")
     }
 
     setIsSwapModalOpen(false)

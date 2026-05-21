@@ -8,6 +8,10 @@ import ApprovalsSwaps from '@/components/approvals/Swaps'
 import ApprovalsEmployees from '@/components/approvals/Employees'
 import ApprovalsPayroll from '@/components/approvals/Payroll'
 import ApprovalsLeaves from '@/components/approvals/Leaves'
+import {
+  loadSwapRequestsFromStorage,
+  normalizeSwapStatus,
+} from '@/lib/shift-swap-storage'
 
 export interface ApprovalItem {
   id: string
@@ -38,19 +42,6 @@ type LeaveRequestApi = {
   startDate: string
   endDate: string
   status: string
-}
-
-interface SwapRequestLocal {
-  dateISO: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-}
-
-interface EmployeeRequestLocal {
-  status: 'pending' | 'approved' | 'rejected'
-}
-
-interface PayrollRequestLocal {
-  status: 'pending' | 'approved' | 'rejected'
 }
 
 export default function ApprovalsPage() {
@@ -147,15 +138,14 @@ export default function ApprovalsPage() {
         }
 
         if (canShifts) {
-          const swapRequests = JSON.parse(
-            localStorage.getItem('shift_swap_requests_v1') || '[]'
-          ) as SwapRequestLocal[]
+          const swapRequests = loadSwapRequestsFromStorage()
           for (const req of swapRequests) {
             const d = new Date(req.dateISO)
             if (d.getFullYear() === year && d.getMonth() === month) {
               const key = formatISO(d)
-              if (req.status === 'PENDING') markPending(key)
-              else if (req.status === 'APPROVED') markApproved(key)
+              const status = normalizeSwapStatus(req.status)
+              if (status === 'PENDING') markPending(key)
+              else if (status === 'APPROVED') markApproved(key)
             }
           }
         }
@@ -182,72 +172,47 @@ export default function ApprovalsPage() {
     }
   }, [searchParams])
 
-  // Calcola conteggio approvazioni in sospeso
+  // Conteggi da API aggregata (DB)
   useEffect(() => {
-    const calculatePendingCount = async () => {
+    const loadPendingCounts = async () => {
+      let swaps = 0
+      let employees = 0
+      const payroll = 0
+      let leaves = 0
       let count = 0
-      let swaps = 0,
-        employees = 0,
-        payroll = 0,
-        leaves = 0
 
       try {
-        if (canShifts) {
-          const swapRequests = JSON.parse(
-            localStorage.getItem('shift_swap_requests_v1') || '[]'
-          ) as SwapRequestLocal[]
-          swaps = swapRequests.filter((req) => req.status === 'PENDING').length
-          count += swaps
-        }
-
-        if (canEmployees) {
-          const employeeRequests = JSON.parse(
-            localStorage.getItem('employee_requests') || '[]'
-          ) as EmployeeRequestLocal[]
-          employees = employeeRequests.filter(
-            (req) => req.status === 'pending'
-          ).length
-          count += employees
-        }
-
-        if (canPayroll) {
-          const payrollRequests = JSON.parse(
-            localStorage.getItem('payroll_requests') || '[]'
-          ) as PayrollRequestLocal[]
-          payroll = payrollRequests.filter(
-            (req) => req.status === 'pending'
-          ).length
-          count += payroll
-        }
-
-        if (canEmployees) {
-          const leavesRes = await fetch(
-            '/api/leaves?status=PENDING&includeBalances=false'
-          )
-          if (leavesRes.ok) {
-            const leavesData = await leavesRes.json()
-            leaves =
-              leavesData.meta?.count ?? leavesData.requests?.length ?? 0
-            count += leaves
+        const res = await fetch('/api/approvals/pending-count', {
+          credentials: 'include',
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (canEmployees) {
+            leaves = typeof data.leaves === 'number' ? data.leaves : 0
+            employees =
+              typeof data.employments === 'number' ? data.employments : 0
+            count += leaves + employees
+          }
+          if (canShifts) {
+            swaps = typeof data.swaps === 'number' ? data.swaps : 0
+            count += swaps
           }
         }
       } catch (error) {
-        console.error('Errore nel calcolo approvazioni:', error)
+        console.error('Errore nel caricamento conteggi approvazioni:', error)
       }
 
       setPendingCount(count)
       setCounts({ swaps, employees, payroll, leaves })
     }
 
-    calculatePendingCount()
+    loadPendingCounts()
 
-    const handleUpdate = () => {
-      calculatePendingCount()
-    }
+    const handleUpdate = () => loadPendingCounts()
     window.addEventListener('approvals_updated', handleUpdate)
     window.addEventListener('shift_swaps_updated', handleUpdate)
     window.addEventListener('leave_system_updated', handleUpdate)
-    
+
     return () => {
       window.removeEventListener('approvals_updated', handleUpdate)
       window.removeEventListener('shift_swaps_updated', handleUpdate)

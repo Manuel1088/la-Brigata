@@ -22,9 +22,6 @@ interface MenuSection {
   roles?: UserRole[]
 }
 
-type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
-interface PendingItem { status: ApprovalStatus }
-
 export default function Sidebar() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -34,57 +31,43 @@ export default function Sidebar() {
   const [isHovered, setIsHovered] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
 
-  // Load pending approvals count for managers
+  // Conteggio approvazioni da API aggregata (DB)
   useEffect(() => {
-    const calculatePendingApprovals = async () => {
+    const loadPendingApprovals = async () => {
       if (!canManageEmployees()) {
         setPendingApprovals(0)
         return
       }
 
-      let count = 0
-
       try {
-        const leavesRes = await fetch('/api/leaves?status=PENDING&includeBalances=false')
-        if (leavesRes.ok) {
-          const leavesData = await leavesRes.json()
-          count += leavesData.meta?.count ?? leavesData.requests?.length ?? 0
+        const res = await fetch('/api/approvals/pending-count', {
+          credentials: 'include',
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setPendingApprovals(typeof data.total === 'number' ? data.total : 0)
+        } else {
+          setPendingApprovals(0)
         }
-
-        // Conteggio richieste swap turni
-        const swapRequests = (JSON.parse(localStorage.getItem('shift_swap_requests_v1') || '[]') as PendingItem[])
-        count += swapRequests.filter((req) => req.status === 'PENDING').length
-        
-        // Conteggio richieste dipendenti
-        const employeeRequests = (JSON.parse(localStorage.getItem('employee_requests') || '[]') as PendingItem[])
-        count += employeeRequests.filter((req) => req.status === 'PENDING').length
-        
-        // Conteggio richieste payroll
-        const payrollRequests = (JSON.parse(localStorage.getItem('payroll_requests') || '[]') as PendingItem[])
-        count += payrollRequests.filter((req) => req.status === 'PENDING').length
       } catch (error) {
-        console.error('Errore nel calcolo approvazioni:', error)
+        console.error('Errore nel caricamento approvazioni:', error)
+        setPendingApprovals(0)
       }
-      
-      setPendingApprovals(count)
     }
-    
-    calculatePendingApprovals()
-    
-    // Listener per aggiornamenti
-    const handleUpdate = () => calculatePendingApprovals()
+
+    loadPendingApprovals()
+
+    const handleUpdate = () => loadPendingApprovals()
     window.addEventListener('approvals_updated', handleUpdate)
     window.addEventListener('leave_system_updated', handleUpdate)
     window.addEventListener('shift_swaps_updated', handleUpdate)
     window.addEventListener('employee_requests_updated', handleUpdate)
-    window.addEventListener('payroll_requests_updated', handleUpdate)
-    
+
     return () => {
       window.removeEventListener('approvals_updated', handleUpdate)
       window.removeEventListener('leave_system_updated', handleUpdate)
       window.removeEventListener('shift_swaps_updated', handleUpdate)
       window.removeEventListener('employee_requests_updated', handleUpdate)
-      window.removeEventListener('payroll_requests_updated', handleUpdate)
     }
   }, [canManageEmployees])
 

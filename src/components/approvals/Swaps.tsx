@@ -3,24 +3,13 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useAudit } from '@/hooks/useAudit'
+import {
+  loadSwapRequestsFromStorage,
+  saveSwapRequestsToStorage,
+  type StoredSwapRequest,
+} from '@/lib/shift-swap-storage'
 
-interface SwapRequest {
-  id: string
-  dateISO: string
-  dayIndex: number
-  targetEmployeeName: string
-  targetDepartment: string
-  targetShiftTime: string
-  requesterId: string
-  requesterName: string
-  requesterDepartment: string
-  offeredShiftTime: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-  createdAt: string
-  decidedBy?: string
-  decidedAt?: string
-  reason?: string
-}
+type SwapRequest = StoredSwapRequest
 
 interface Props {
   onUpdate: () => void
@@ -50,10 +39,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
 
   const loadSwapRequests = () => {
     try {
-      const raw = localStorage.getItem('shift_swap_requests_v1')
-      if (raw) {
-        setSwapRequests(JSON.parse(raw))
-      }
+      setSwapRequests(loadSwapRequestsFromStorage())
     } catch (error) {
       console.error('Errore nel caricamento richieste swap:', error)
     }
@@ -61,9 +47,9 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
 
   const saveSwapRequests = (requests: SwapRequest[]) => {
     try {
-      localStorage.setItem('shift_swap_requests_v1', JSON.stringify(requests))
+      saveSwapRequestsToStorage(requests)
       setSwapRequests(requests)
-      window.dispatchEvent(new CustomEvent('shift_swaps_updated'))
+      window.dispatchEvent(new CustomEvent('approvals_updated'))
     } catch (error) {
       console.error('Errore nel salvataggio richieste swap:', error)
     }

@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useAudit } from '@/hooks/useAudit'
 
 interface AuditLog {
   id: string
@@ -21,8 +20,29 @@ interface AuditStats {
   recentActivity: AuditLog[]
 }
 
+function buildStatsFromLogs(normalizedLogs: AuditLog[]): AuditStats {
+  const today = new Date()
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const logsToday = normalizedLogs.filter((l) => l.timestamp >= todayStart).length
+  const actionCounts: Record<string, number> = {}
+  for (const log of normalizedLogs) {
+    actionCounts[log.action] = (actionCounts[log.action] || 0) + 1
+  }
+  const topActions = Object.entries(actionCounts)
+    .map(([action, count]) => ({ action, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+
+  return {
+    totalLogs: normalizedLogs.length,
+    todayLogs: logsToday,
+    uniqueUsers: new Set(normalizedLogs.map((l) => l.userId)).size,
+    topActions,
+    recentActivity: normalizedLogs.slice(0, 10),
+  }
+}
+
 export default function AdminAudit() {
-  const { getLogs, getStats } = useAudit()
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [stats, setStats] = useState<AuditStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -37,12 +57,13 @@ export default function AdminAudit() {
 
   async function loadAuditData() {
     try {
-      const [logsData, statsData] = await Promise.all([
-        getLogs({ limit: 100 }),
-        getStats()
-      ])
-      
-      // Normalizza logs per soddisfare AuditLog
+      const res = await fetch('/api/audit/logs?limit=100', {
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        throw new Error(`Audit API ${res.status}`)
+      }
+      const data = await res.json()
       type UnknownLog = {
         id?: unknown
         action?: unknown
@@ -55,41 +76,30 @@ export default function AdminAudit() {
         ipAddress?: unknown
         userAgent?: unknown
       }
-      const normalizedLogs: AuditLog[] = (logsData as UnknownLog[]).map((l) => ({
+      const rows = (data.logs ?? []) as UnknownLog[]
+      const normalizedLogs: AuditLog[] = rows.map((l) => ({
         id: String(l.id ?? ''),
         action: String(l.action ?? ''),
         user: String((l.user ?? l.userName) ?? 'Sconosciuto'),
         userId: String(l.userId ?? ''),
-        timestamp: new Date((l.timestamp as string | number | Date | undefined) ?? (l.createdAt as string | number | Date | undefined) ?? Date.now()),
-        details: (typeof l.details === 'object' && l.details !== null ? l.details : {}) as Record<string, unknown>,
+        timestamp: new Date(
+          (l.timestamp as string | number | Date | undefined) ??
+            (l.createdAt as string | number | Date | undefined) ??
+            Date.now()
+        ),
+        details:
+          typeof l.details === 'object' && l.details !== null
+            ? (l.details as Record<string, unknown>)
+            : {},
         ipAddress: typeof l.ipAddress === 'string' ? l.ipAddress : undefined,
-        userAgent: typeof l.userAgent === 'string' ? l.userAgent : undefined
+        userAgent: typeof l.userAgent === 'string' ? l.userAgent : undefined,
       }))
       setLogs(normalizedLogs)
-
-      // Adatta stats minime richieste dall'interfaccia
-      const sd = statsData as unknown
-      const totalLogs = typeof (sd as Record<string, unknown>)?.totalLogs === 'number' ? (sd as Record<string, unknown>).totalLogs as number : (normalizedLogs?.length ?? 0)
-      const logsToday = typeof (sd as Record<string, unknown>)?.logsToday === 'number' ? (sd as Record<string, unknown>).logsToday as number : 0
-      const uniqueUsers = typeof (sd as Record<string, unknown>)?.uniqueUsers === 'number' ? (sd as Record<string, unknown>).uniqueUsers as number : new Set(normalizedLogs.map(l => l.userId)).size
-      const topActionsRaw = (sd as Record<string, unknown>)?.topActions
-      const topActions = Array.isArray(topActionsRaw)
-        ? topActionsRaw.filter((a: unknown): a is { action: string; count: number } => {
-            if (!a || typeof a !== 'object') return false
-            const obj = a as Record<string, unknown>
-            return typeof obj.action === 'string' && typeof obj.count === 'number'
-          })
-        : []
-      const adaptedStats: AuditStats = {
-        totalLogs,
-        todayLogs: logsToday,
-        uniqueUsers,
-        topActions,
-        recentActivity: normalizedLogs.slice(0, 10)
-      }
-      setStats(adaptedStats)
+      setStats(buildStatsFromLogs(normalizedLogs))
     } catch (error) {
       console.error('Errore nel caricamento audit:', error)
+      setLogs([])
+      setStats(null)
     } finally {
       setLoading(false)
     }
