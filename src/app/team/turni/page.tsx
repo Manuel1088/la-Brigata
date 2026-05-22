@@ -1,14 +1,19 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import ShiftsCalendar from '@/components/shifts/Calendar'
+import { getShiftDepartmentsForRole } from '@/lib/shift-department-access'
 
 export default function TeamTurniPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { canManageEmployees } = usePermissions()
+  const { canManageEmployees, userRole } = usePermissions()
+  const allowedDepartments = useMemo(
+    () => getShiftDepartmentsForRole(userRole),
+    [userRole]
+  )
 
   useEffect(() => {
     if (status === 'loading') return
@@ -58,7 +63,7 @@ export default function TeamTurniPage() {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
           {/* Calendario Team Completo */}
-          <ShiftsCalendar />
+          <ShiftsCalendar allowedDepartments={allowedDepartments} />
           
           {/* Legenda */}
           <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">

@@ -543,6 +543,7 @@ ROLE_PERMISSIONS['CHEF'] = ROLE_PERMISSIONS['HEAD_CHEF']
 ROLE_PERMISSIONS['CAPO_PARTITA'] = ROLE_PERMISSIONS['HEAD_CHEF']
 ROLE_PERMISSIONS['PIZZAIOLO_SPECIALIZZATO'] = ROLE_PERMISSIONS['HEAD_CHEF']
 ROLE_PERMISSIONS['MAITRE'] = ROLE_PERMISSIONS['RESPONSABILE_SALA']
+ROLE_PERMISSIONS['CAPO_PASTICCERE'] = ROLE_PERMISSIONS['HEAD_CHEF']
 ROLE_PERMISSIONS['SOMMELIER'] = ROLE_PERMISSIONS['HEAD_SOMMELIER']
 ROLE_PERMISSIONS['BARMAN_SENIOR'] = ROLE_PERMISSIONS['HEAD_BARMAN']
 ROLE_PERMISSIONS['CAMERIERE_SENIOR'] = ROLE_PERMISSIONS['DIPENDENTE']
@@ -740,12 +741,16 @@ export function canAccess(
   return hasPermission(userRole, permission, ccnlLevel)
 }
 
+const TEAM_GESTIONE_SIDEBAR_ROLES = new Set(['MAITRE', 'RESTAURANT_MANAGER'])
+
 /** Sidebar / sezioni UI */
 export function canSeeTeamSection(
   ccnlLevel?: string | null,
   userRole?: string | null
 ): boolean {
-  if (normalizeRole(userRole ?? '') === 'ADMIN') return false
+  const role = normalizeRole(userRole ?? '')
+  if (role === 'ADMIN') return false
+  if (TEAM_GESTIONE_SIDEBAR_ROLES.has(role)) return true
   return ccnlMeetsMinimum(ccnlLevel, CCNLLevel.LIVELLO_2)
 }
 
@@ -753,7 +758,9 @@ export function canSeeGestioneSection(
   ccnlLevel?: string | null,
   userRole?: string | null
 ): boolean {
-  if (normalizeRole(userRole ?? '') === 'ADMIN') return false
+  const role = normalizeRole(userRole ?? '')
+  if (role === 'ADMIN') return false
+  if (TEAM_GESTIONE_SIDEBAR_ROLES.has(role)) return true
   return ccnlMeetsMinimum(ccnlLevel, CCNLLevel.LIVELLO_1)
 }
 

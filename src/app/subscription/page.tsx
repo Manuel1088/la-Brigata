@@ -167,6 +167,17 @@ function SubscriptionPageContent() {
         })
       : null
 
+  const formatPlanPrice = (amount: number) =>
+    amount.toLocaleString('it-IT', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+
+  const annualSavings = (monthlyPrice: number) => {
+    const fullYear = monthlyPrice * 12
+    return Math.round((fullYear - annualTotal(monthlyPrice)) * 100) / 100
+  }
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -278,12 +289,6 @@ function SubscriptionPageContent() {
             const loadingKey = `${plan.id}-${billingInterval}`
             const isLoading = checkoutLoading === loadingKey
 
-            const displayMonthly =
-              billingInterval === 'monthly'
-                ? plan.monthlyPrice
-                : annualMonthlyEquivalent(plan.monthlyPrice)
-            const displayAnnualTotal = annualTotal(plan.monthlyPrice)
-
             return (
               <div
                 key={plan.id}
@@ -313,16 +318,32 @@ function SubscriptionPageContent() {
                   <p className="text-sm text-gray-600 mt-2">{plan.description}</p>
 
                   <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900">
-                      {plan.currency}
-                      {formatPrice(displayMonthly)}
-                    </span>
-                    <span className="text-gray-600 text-sm">/mese</span>
-                    {billingInterval === 'annual' && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {plan.currency}
-                        {formatPrice(displayAnnualTotal)} fatturati all&apos;anno
-                      </p>
+                    {billingInterval === 'monthly' ? (
+                      <>
+                        <span className="text-4xl font-bold text-gray-900">
+                          {plan.currency}
+                          {formatPrice(plan.monthlyPrice)}
+                        </span>
+                        <span className="text-gray-600 text-sm">/mese</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-4xl font-bold text-gray-900">
+                          {plan.currency}
+                          {formatPlanPrice(
+                            annualMonthlyEquivalent(plan.monthlyPrice)
+                          )}
+                        </span>
+                        <span className="text-gray-600 text-sm">/mese</span>
+                        <p className="text-xs text-gray-500 mt-1">
+                          fatturato {plan.currency}
+                          {formatPlanPrice(annualTotal(plan.monthlyPrice))}/anno
+                        </p>
+                        <p className="text-xs text-green-700 font-medium mt-0.5">
+                          Risparmi {plan.currency}
+                          {formatPlanPrice(annualSavings(plan.monthlyPrice))}
+                        </p>
+                      </>
                     )}
                   </div>
                 </div>

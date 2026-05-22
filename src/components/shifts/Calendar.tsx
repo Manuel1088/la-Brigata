@@ -11,16 +11,30 @@ import { type SimpleEmployee } from '@/lib/employees'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import { shiftsToGrid, toDateOnlyIso, type ShiftGridCell } from '@/lib/shifts'
 import type { ShiftAssignment } from '@/lib/validations/shifts'
+import {
+  resolveVisibleShiftDepartments,
+  SHIFT_DEPARTMENT_LABELS,
+  type ShiftCalendarDepartment,
+} from '@/lib/shift-department-access'
 
-type CalendarEmployee = SimpleEmployee & { id: string }
+type CalendarEmployee = Omit<SimpleEmployee, 'department'> & {
+  id: string
+  department: ShiftCalendarDepartment
+}
 
 type ShiftCell = ShiftGridCell
 
-export default function ShiftsCalendar() {
+type ShiftsCalendarProps = {
+  /** Se impostato, limita i reparti visibili (da pagina team turni). */
+  allowedDepartments?: ShiftCalendarDepartment[] | null
+}
+
+export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarProps = {}) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [currentWeek, setCurrentWeek] = useState(new Date())
-  const [selectedDepartment, setSelectedDepartment] = useState<'direzione'|'cucina'|'sala'|'beverage'|'accoglienza'>('sala')
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<ShiftCalendarDepartment>('sala')
   const [viewMode, setViewMode] = useState<'week' | 'twoWeeks' | 'month'>('week')
   const [isGenerating, setIsGenerating] = useState(false)
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
@@ -93,17 +107,38 @@ export default function ShiftsCalendar() {
       { id: 'serale_accoglienza', name: '🌙 Serale Accoglienza', time: '18:00-24:00', description: 'Serale con gestione ingressi' },
       { id: 'riposo', name: '😴 Riposo', time: 'RIPOSO', description: 'Giorno di riposo programmato' },
       { id: 'personalizzato', name: '⚙️ Personalizzato', time: 'custom', description: 'Inserisci orario manualmente' }
-    ]
+    ],
+    pasticceria: [
+      { id: 'prep_pasticceria', name: '🌄 Prep Pasticceria', time: '06:00-14:00', description: 'Preparazione pasticceria' },
+      { id: 'pasticcere_giorno', name: '☀️ Servizio Giorno', time: '08:00-16:00', description: 'Produzione diurna' },
+      { id: 'pasticcere_sera', name: '🌙 Servizio Sera', time: '15:00-23:00', description: 'Chiusura pasticceria' },
+      { id: 'riposo', name: '😴 Riposo', time: 'RIPOSO', description: 'Giorno di riposo programmato' },
+      { id: 'personalizzato', name: '⚙️ Personalizzato', time: 'custom', description: 'Inserisci orario manualmente' }
+    ],
   }), [])
 
   // ✅ Configurazione riposi memoizzata
   type DeptConfig = { mode: 'fixed' | 'rotating'; weeklyRestDays: 1 | 2; baseStartDate?: string; rotateDirection?: 'forward'|'backward' }
-  const [deptConfigs, setDeptConfigs] = useState<Record<'cucina'|'sala'|'beverage'|'accoglienza', DeptConfig>>({
+  const [deptConfigs, setDeptConfigs] = useState<
+    Record<'cucina' | 'pasticceria' | 'sala' | 'beverage' | 'accoglienza', DeptConfig>
+  >({
     cucina: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
+    pasticceria: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
     sala: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
     beverage: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
-    accoglienza: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' }
+    accoglienza: { mode: 'fixed', weeklyRestDays: 1, baseStartDate: '2025-01-06', rotateDirection: 'forward' },
   })
+
+  const visibleDepartments = useMemo(
+    () => resolveVisibleShiftDepartments(userRole, allowedDepartments),
+    [userRole, allowedDepartments]
+  )
+
+  useEffect(() => {
+    if (!visibleDepartments.includes(selectedDepartment)) {
+      setSelectedDepartment(visibleDepartments[0] ?? 'sala')
+    }
+  }, [visibleDepartments, selectedDepartment])
 
   // ✅ Carica dipendenti OPERATIVI (esclusi proprietari non lavoratori)
   useEffect(() => {
@@ -124,10 +159,12 @@ export default function ShiftsCalendar() {
         // - Tutti gli altri ruoli operativi
       })
       
-      const normalize = (d?: string): 'cucina'|'sala'|'beverage'|'accoglienza' => {
+      const normalize = (d?: string): ShiftCalendarDepartment => {
         if (d === 'bar' || d === 'beverage') return 'beverage'
         if (d === 'accoglienza') return 'accoglienza'
         if (d === 'cucina') return 'cucina'
+        if (d === 'pasticceria') return 'pasticceria'
+        if (d === 'dirigenti' || d === 'direzione') return 'direzione'
         return 'sala'
       }
       setEmployees(operativeEmployees.map((e) => ({
@@ -236,17 +273,32 @@ export default function ShiftsCalendar() {
     const userDept = session.user?.department || 'sala'
     setUserDepartment(userDept)
     
-    if (['PROPRIETARIO', 'DIRETTORE', 'MANAGER', 'ADMIN'].includes(role)) {
+    const roleDeptFilter = resolveVisibleShiftDepartments(role, allowedDepartments)
+    const restrictedDepts =
+      roleDeptFilter.length < 6 && !roleDeptFilter.includes('direzione')
+
+    if (['PROPRIETARIO', 'DIRETTORE', 'MANAGER', 'FB_MANAGER', 'ADMIN'].includes(role)) {
       setAccessScope('all')
       setAccessCanEdit(true)
-    } else if (['HEAD_CHEF', 'RESPONSABILE_SALA', 'CASSIERE'].includes(role)) {
-      setAccessScope('department')
+    } else if (
+      restrictedDepts ||
+      [
+        'HEAD_CHEF',
+        'EXECUTIVE_CHEF',
+        'CAPO_PASTICCERE',
+        'MAITRE',
+        'RESTAURANT_MANAGER',
+        'RESPONSABILE_SALA',
+        'CASSIERE',
+      ].includes(role)
+    ) {
+      setAccessScope('all')
       setAccessCanEdit(true)
     } else {
       setAccessScope('own')
       setAccessCanEdit(false)
     }
-  }, [session])
+  }, [session, allowedDepartments])
 
   // ✅ Helper functions
   
@@ -305,6 +357,14 @@ export default function ShiftsCalendar() {
     if (accessScope === 'department') {
       const emp = employees.find(e => e.name === employee)
       if (emp?.department !== userDepartment) return
+    }
+
+    const empForScope = employees.find((e) => e.name === employee)
+    if (
+      empForScope?.department &&
+      !visibleDepartments.includes(empForScope.department as ShiftCalendarDepartment)
+    ) {
+      return
     }
 
     // ✅ Determina il dipartimento corretto per il dipendente
@@ -478,7 +538,6 @@ export default function ShiftsCalendar() {
   }, [employees, selectedDepartment])
 
   const weekDates = getWeekDates(currentWeek)
-  const departments = ['direzione', 'cucina', 'sala', 'beverage', 'accoglienza']
 
   return (
     <div className="space-y-6">
@@ -548,57 +607,24 @@ export default function ShiftsCalendar() {
         {/* Pulsanti Reparto e Azioni */}
         <div className="flex items-center justify-between gap-4">
           {/* Pulsanti Reparto */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedDepartment('direzione')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                selectedDepartment === 'direzione'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              👔 Dirigenti
-            </button>
-            <button
-              onClick={() => setSelectedDepartment('cucina')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                selectedDepartment === 'cucina'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🍳 Cucina
-            </button>
-            <button
-              onClick={() => setSelectedDepartment('sala')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                selectedDepartment === 'sala'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🍽️ Sala
-            </button>
-            <button
-              onClick={() => setSelectedDepartment('beverage')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                selectedDepartment === 'beverage'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🍷 Beverage
-            </button>
-            <button
-              onClick={() => setSelectedDepartment('accoglienza')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                selectedDepartment === 'accoglienza'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🛎️ Accoglienza
-            </button>
+          <div className="flex flex-wrap gap-2">
+            {visibleDepartments.map((dept) => {
+              const meta = SHIFT_DEPARTMENT_LABELS[dept]
+              return (
+                <button
+                  key={dept}
+                  type="button"
+                  onClick={() => setSelectedDepartment(dept)}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    selectedDepartment === dept
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {meta.icon} {meta.label}
+                </button>
+              )
+            })}
           </div>
           
           {/* Azioni */}
@@ -680,7 +706,9 @@ export default function ShiftsCalendar() {
 
       {/* Legenda turni per reparto selezionato */}
       <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="text-sm font-semibold text-blue-900 mb-1">Turni disponibili — {selectedDepartment === 'direzione' ? 'Direzione' : selectedDepartment.charAt(0).toUpperCase() + selectedDepartment.slice(1)}</div>
+        <div className="text-sm font-semibold text-blue-900 mb-1">
+          Turni disponibili — {SHIFT_DEPARTMENT_LABELS[selectedDepartment].label}
+        </div>
         <ul className="list-disc list-inside text-sm text-blue-800">
           {(
             departmentShifts[selectedDepartment as keyof typeof departmentShifts]
