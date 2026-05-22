@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useNotifications } from '@/hooks/useNotifications'
+import { formatEuro } from '@/lib/utils'
 
 interface AnalyticsData {
   id: string
@@ -46,7 +47,7 @@ export default function ReportsAnalytics() {
           category: 'predictions',
           title: 'Previsione Prossimo Mese',
           description: 'Stima del fatturato per novembre basata sui trend',
-          value: '€47,200',
+          value: formatEuro(47200),
           change: 4.9,
           period: '2024-11',
           details: {
@@ -78,7 +79,7 @@ export default function ReportsAnalytics() {
           category: 'insights',
           title: 'Ottimizzazione Menu',
           description: 'Analisi delle performance dei piatti e raccomandazioni',
-          value: '€2,400',
+          value: formatEuro(2400),
           change: 15.2,
           period: '2024-10',
           details: {
@@ -288,11 +289,11 @@ export default function ReportsAnalytics() {
               {item.category === 'trends' && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="text-center">
-                    <div className="text-lg font-bold text-blue-600">€{item.details.currentMonth?.toLocaleString()}</div>
+                    <div className="text-lg font-bold text-blue-600">{formatEuro(Number(item.details.currentMonth ?? 0))}</div>
                     <div className="text-sm text-gray-600">Mese Corrente</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold text-green-600">€{item.details.previousMonth?.toLocaleString()}</div>
+                    <div className="text-lg font-bold text-green-600">{formatEuro(Number(item.details.previousMonth ?? 0))}</div>
                     <div className="text-sm text-gray-600">Mese Precedente</div>
                   </div>
                   <div className="text-center">
@@ -336,7 +337,7 @@ export default function ReportsAnalytics() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Aumento Potenziale:</span>
-                    <span className="font-medium">€{item.details.potentialIncrease}</span>
+                    <span className="font-medium">{formatEuro(Number(item.details.potentialIncrease ?? 0))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Top Performers:</span>

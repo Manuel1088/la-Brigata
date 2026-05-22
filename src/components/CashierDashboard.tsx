@@ -1,7 +1,8 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { formatCurrency, safeSum } from '@/lib/formatNumber'
+import { safeSum } from '@/lib/formatNumber'
+import { formatEuro } from '@/lib/utils'
 
 interface CashierDashboardProps {
   userId: string
@@ -232,14 +233,14 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-3xl mb-4">💰</div>
           <h3 className="text-lg font-semibold mb-2">Mance di Oggi</h3>
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(getTodayTips())}</p>
+          <p className="text-2xl font-bold text-green-600">{formatEuro(getTodayTips())}</p>
           <p className="text-sm text-gray-500">Totale giornaliero</p>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-3xl mb-4">📊</div>
           <h3 className="text-lg font-semibold mb-2">Totale Settimana</h3>
-          <p className="text-2xl font-bold text-blue-600">{formatCurrency(getTotalTips())}</p>
+          <p className="text-2xl font-bold text-blue-600">{formatEuro(getTotalTips())}</p>
           <p className="text-sm text-gray-500">Ultimi 7 giorni</p>
         </div>
         
@@ -270,13 +271,13 @@ export default function CashierDashboard({ userId, userName }: CashierDashboardP
                 <div className="flex-1">
                   <p className="font-medium">{formatDate(tip.date)}</p>
                   <p className="text-sm text-gray-600">
-                    Contanti: {formatCurrency(tip.cashTips)} | 
-                    Carta: {formatCurrency(tip.cardTips)} | 
-                    Estere: {formatCurrency(tip.foreignCurrencyTips)}
+                    Contanti: {formatEuro(tip.cashTips)} | 
+                    Carta: {formatEuro(tip.cardTips)} | 
+                    Estere: {formatEuro(tip.foreignCurrencyTips)}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="font-semibold text-green-600">{formatCurrency(tip.total)}</span>
+                  <span className="font-semibold text-green-600">{formatEuro(tip.total)}</span>
                   <button 
                     onClick={() => handleEditTip(tip)}
                     className="text-blue-600 hover:text-blue-800 text-sm p-1"

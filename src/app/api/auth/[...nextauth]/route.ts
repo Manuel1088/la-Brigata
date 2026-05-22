@@ -74,6 +74,7 @@ export const authOptions: AuthOptions = {
               informalCompanyId: (dbUser as unknown as { informalCompanyId?: string | null }).informalCompanyId ?? null,
               restaurantId: dbUser.restaurantId,
               department: dbUser.department ?? undefined,
+              position: dbUser.position ?? undefined,
             } as unknown as User
               await logLogin((user as unknown as { id: string }).id)
             return user
@@ -190,6 +191,10 @@ export const authOptions: AuthOptions = {
       if (user && 'department' in user) {
         (token as { department?: string }).department = (user as { department?: string }).department;
       }
+      if (user && 'position' in user) {
+        (token as { position?: string | null }).position =
+          (user as { position?: string | null }).position ?? null;
+      }
       
       // Ricarica i dati dal database ogni volta per avere sempre i dati freschi
       // (o almeno quando c'è un update trigger)
@@ -207,6 +212,7 @@ export const authOptions: AuthOptions = {
             token.avatar = (dbUser as unknown as { avatar?: string }).avatar ?? '👤'
             ;(token as { restaurantId?: string }).restaurantId = dbUser.restaurantId
             ;(token as { department?: string | null }).department = dbUser.department
+            ;(token as { position?: string | null }).position = dbUser.position
           }
         } catch (e) {
           console.error('Error refreshing user data in JWT:', e)
@@ -229,6 +235,7 @@ export const authOptions: AuthOptions = {
         session.user.informalCompanyId = token.informalCompanyId as string | null | undefined;
         session.user.restaurantId = (token as { restaurantId?: string }).restaurantId;
         session.user.department = (token as { department?: string }).department;
+        session.user.position = (token as { position?: string | null }).position ?? null;
       }
       return session;
     }

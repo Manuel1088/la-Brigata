@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { formatEuro } from '@/lib/utils'
 
 interface EmployeeDashboardProps {
   userId: string
@@ -148,7 +149,7 @@ export default function EmployeeDashboard({ userId, userName }: EmployeeDashboar
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-3xl mb-4">💰</div>
           <h3 className="text-lg font-semibold mb-2">Mance di Questo Mese</h3>
-          <p className="text-2xl font-bold text-green-600">€{tipData.thisMonth}</p>
+          <p className="text-2xl font-bold text-green-600">{formatEuro(tipData.thisMonth)}</p>
           <p className="text-sm text-gray-500">+12% vs mese scorso</p>
         </div>
         
@@ -205,20 +206,20 @@ export default function EmployeeDashboard({ userId, userName }: EmployeeDashboar
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Oggi</span>
-              <span className="font-semibold">€{tipData.today}</span>
+              <span className="font-semibold">{formatEuro(tipData.today)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Questa Settimana</span>
-              <span className="font-semibold">€{tipData.thisWeek}</span>
+              <span className="font-semibold">{formatEuro(tipData.thisWeek)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Questo Mese</span>
-              <span className="font-semibold text-green-600">€{tipData.thisMonth}</span>
+              <span className="font-semibold text-green-600">{formatEuro(tipData.thisMonth)}</span>
             </div>
             <div className="border-t pt-3">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Media Giornaliera</span>
-                <span className="font-semibold">€{tipData.dailyAverage}</span>
+                <span className="font-semibold">{formatEuro(tipData.dailyAverage)}</span>
               </div>
             </div>
           </div>

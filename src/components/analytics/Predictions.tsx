@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useNotifications } from '@/hooks/useNotifications'
+import { formatEuro } from '@/lib/utils'
 
 export default function AnalyticsPredictions() {
   const { notifyCustom } = useNotifications()
@@ -31,7 +32,7 @@ export default function AnalyticsPredictions() {
         
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 bg-purple-50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">€47,200</div>
+            <div className="text-2xl font-bold text-purple-600">{formatEuro(47200)}</div>
             <div className="text-purple-800">Previsione Novembre</div>
           </div>
           <div className="p-4 bg-blue-50 rounded-lg">

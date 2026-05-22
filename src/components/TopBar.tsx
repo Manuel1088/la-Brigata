@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { UserRole } from '@/types/roles'
+import { userDisplayTitle } from '@/lib/user-role-display'
+import { isAuthPath } from '@/lib/utils'
 import { PendingEmploymentsBadge } from './PendingEmploymentsBadge'
 import { RestaurantSelector } from './RestaurantSelector'
 import { NotificationCenter } from './NotificationCenter'
@@ -54,8 +56,8 @@ export default function TopBar() {
     }
   }, [session?.user?.id])
 
-  // Don't show topbar on login/register pages
-  if (pathname === '/login' || pathname === '/register' || !session) {
+  // Don't show topbar on login/register or without active session
+  if (isAuthPath(pathname) || status !== 'authenticated' || !session) {
     return null
   }
 
@@ -187,10 +189,10 @@ export default function TopBar() {
                     {session?.user?.name || 'Utente'}
                   </p>
                   <p className="text-xs text-gray-600">
-                    {userRole === UserRole.ADMIN ? 'Amministratore' :
-                     userRole === UserRole.PROPRIETARIO ? 'Proprietario' :
-                     userRole === UserRole.MANAGER ? 'Manager' :
-                     userRole === UserRole.DIRETTORE ? 'Direttore' : 'Dipendente'}
+                    {userDisplayTitle(
+                      session?.user?.position,
+                      session?.user?.role ?? String(userRole)
+                    )}
                   </p>
                 </div>
               </button>

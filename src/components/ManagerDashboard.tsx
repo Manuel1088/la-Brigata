@@ -1,7 +1,8 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { formatCurrency, safeSum, safeAverage } from '@/lib/formatNumber'
+import { safeSum, safeAverage } from '@/lib/formatNumber'
+import { formatEuro } from '@/lib/utils'
 
 interface ManagerDashboardProps {
   userId: string
@@ -292,7 +293,7 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-3xl mb-4">💰</div>
           <h3 className="text-lg font-semibold mb-2">Mance Oggi</h3>
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(getTotalTips())}</p>
+          <p className="text-2xl font-bold text-green-600">{formatEuro(getTotalTips())}</p>
           <p className="text-sm text-gray-500">Totale giornaliero</p>
         </div>
         
@@ -423,17 +424,17 @@ export default function ManagerDashboard({ userId, userName, userRole }: Manager
         <div className="grid md:grid-cols-3 gap-6">
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <h4 className="font-semibold text-gray-700 mb-2">Giornaliero</h4>
-            <p className="text-2xl font-bold text-green-600">{formatCurrency(getTotalTips())}</p>
+            <p className="text-2xl font-bold text-green-600">{formatEuro(getTotalTips())}</p>
             <p className="text-sm text-gray-500">Oggi</p>
           </div>
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <h4 className="font-semibold text-gray-700 mb-2">Mensile</h4>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrency(getMonthlyTipsEstimate())}</p>
+            <p className="text-2xl font-bold text-blue-600">{formatEuro(getMonthlyTipsEstimate())}</p>
             <p className="text-sm text-gray-500">Stima mensile</p>
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-lg">
             <h4 className="font-semibold text-gray-700 mb-2">Per Dipendente</h4>
-            <p className="text-2xl font-bold text-purple-600">{formatCurrency(getAverageTipsPerEmployee())}</p>
+            <p className="text-2xl font-bold text-purple-600">{formatEuro(getAverageTipsPerEmployee())}</p>
             <p className="text-sm text-gray-500">Media giornaliera</p>
           </div>
         </div>

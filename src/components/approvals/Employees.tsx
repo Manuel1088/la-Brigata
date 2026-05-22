@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useAudit } from '@/hooks/useAudit'
+import { formatEuro } from '@/lib/utils'
 
 interface EmployeeRequest {
   id: string
@@ -233,14 +234,6 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
     return new Date(dateString).toLocaleDateString('it-IT')
   }
 
-  const formatCurrency = (amount: number) => {
-    if (isNaN(amount)) return '€0,00'
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount)
-  }
-
   const stats = {
     total: requests.length,
     pending: requests.filter(r => r.status === 'PENDING').length,
@@ -335,7 +328,7 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
                         </div>
                         <div>
                           <span className="text-gray-600">Stipendio:</span>
-                          <div className="font-medium">{formatCurrency(request.newSalary || 0)}/ora</div>
+                          <div className="font-medium">{formatEuro(request.newSalary || 0)}/ora</div>
                         </div>
                       </div>
                     </div>
@@ -361,11 +354,11 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Da:</span>
-                          <div className="font-medium">{formatCurrency(request.currentSalary || 0)}/ora</div>
+                          <div className="font-medium">{formatEuro(request.currentSalary || 0)}/ora</div>
                         </div>
                         <div>
                           <span className="text-gray-600">A:</span>
-                          <div className="font-medium">{formatCurrency(request.newSalary || 0)}/ora</div>
+                          <div className="font-medium">{formatEuro(request.newSalary || 0)}/ora</div>
                         </div>
                       </div>
                     </div>

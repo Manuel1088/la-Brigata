@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { formatCurrency } from '@/lib/formatNumber'
 import { useEmployments } from '@/hooks/useEmployments'
 
 interface PendingRequest {

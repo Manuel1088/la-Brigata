@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { formatEuro } from '@/lib/utils'
 import {
   CCNLLevel,
   CCNL_LEVEL_OPTIONS,
@@ -27,7 +28,7 @@ export default function CCNLManagement() {
           >
             {CCNL_LEVEL_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label} — €{opt.monthlyBase.toFixed(2)}/mese
+                {opt.label} — {formatEuro(opt.monthlyBase)}/mese
               </option>
             ))}
           </select>
@@ -44,7 +45,7 @@ export default function CCNLManagement() {
             <div className="flex justify-between">
               <dt className="text-gray-500">Retribuzione minima 2026</dt>
               <dd className="font-medium">
-                €{getCcnlMonthlyBase(selectedLevel).toFixed(2)}
+                {formatEuro(getCcnlMonthlyBase(selectedLevel))}
               </dd>
             </div>
             <div className="flex justify-between">

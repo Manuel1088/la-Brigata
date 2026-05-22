@@ -14,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { formatEuro } from '@/lib/utils'
 
 type TipsReport = {
   year: number
@@ -74,13 +75,6 @@ export default function AnalyticsDashboard() {
   useEffect(() => {
     void loadDashboardMetrics()
   }, [loadDashboardMetrics])
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR',
-      maximumFractionDigits: 0,
-    }).format(value)
 
   const pieData = useMemo(() => {
     if (!report) return []
@@ -184,14 +178,14 @@ export default function AnalyticsDashboard() {
             <div className="bg-white rounded-lg shadow p-5 border-l-4 border-green-500">
               <div className="text-sm text-gray-600">Totale mance</div>
               <div className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(report.totals.total)}
+                {formatEuro(report.totals.total)}
               </div>
               <div className="text-xs text-gray-500 mt-1">{report.monthLabel}</div>
             </div>
             <div className="bg-white rounded-lg shadow p-5 border-l-4 border-blue-500">
               <div className="text-sm text-gray-600">Media giornaliera</div>
               <div className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(report.stats.dailyAverage)}
+                {formatEuro(report.stats.dailyAverage)}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 {report.stats.daysWithTips} giorni con mance
@@ -201,7 +195,7 @@ export default function AnalyticsDashboard() {
               <div className="text-sm text-gray-600">Giorno migliore</div>
               <div className="text-2xl font-bold text-gray-900 mt-1">
                 {report.stats.bestDay
-                  ? formatCurrency(report.stats.bestDay.amount)
+                  ? formatEuro(report.stats.bestDay.amount)
                   : '—'}
               </div>
               <div className="text-xs text-gray-500 mt-1">
@@ -246,11 +240,11 @@ export default function AnalyticsDashboard() {
                     />
                     <YAxis
                       tick={{ fontSize: 11 }}
-                      tickFormatter={(v) => `€${v}`}
+                      tickFormatter={(v) => formatEuro(Number(v))}
                     />
                     <Tooltip
                       formatter={(value) =>
-                        formatCurrency(Number(value ?? 0))
+                        formatEuro(Number(value ?? 0))
                       }
                       labelFormatter={(_, payload) => {
                         const p = payload?.[0]?.payload as { date?: string }
@@ -299,7 +293,7 @@ export default function AnalyticsDashboard() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value) => formatCurrency(Number(value ?? 0))}
+                      formatter={(value) => formatEuro(Number(value ?? 0))}
                     />
                     <Legend />
                   </PieChart>

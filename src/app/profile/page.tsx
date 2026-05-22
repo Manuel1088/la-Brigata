@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { EmployeeFull } from '@/lib/employees'
+import { formatEuro } from '@/lib/utils'
 import { useEmployees } from '@/hooks/useEmployees'
 
 import {
@@ -432,7 +433,7 @@ export default function ProfilePage() {
                     >
                       {CCNL_LEVEL_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
-                          {opt.label} — €{opt.monthlyBase.toFixed(2)}/mese
+                          {opt.label} — {formatEuro(opt.monthlyBase)}/mese
                         </option>
                       ))}
                     </select>
@@ -457,7 +458,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <span className="block text-gray-600 mb-1">Paga base</span>
-                    <div className="font-medium">€{(myEmployee.baseSalary ? myEmployee.baseSalary : getBaseForLevel(myEmployee.level)).toFixed(2)}</div>
+                    <div className="font-medium">{formatEuro(myEmployee.baseSalary ? myEmployee.baseSalary : getBaseForLevel(myEmployee.level))}</div>
                   </div>
                   <div>
                     <span className="block text-gray-600 mb-1">Reparto</span>

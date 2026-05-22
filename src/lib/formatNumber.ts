@@ -1,3 +1,5 @@
+import { formatEuro } from '@/lib/utils'
+
 /**
  * Utility per formattazione sicura dei numeri
  * Previene errori NaN e gestisce tutti i casi edge
@@ -79,6 +81,7 @@ export const formatPercentage = (
  * @param options - Opzioni di formattazione
  * @returns Stringa formattata come valuta
  */
+/** @deprecated Preferire formatEuro da @/lib/utils per valori in EUR */
 export const formatCurrency = (
   value: number | string | undefined | null,
   options: {
@@ -87,12 +90,23 @@ export const formatCurrency = (
     fallback?: string
   } = {}
 ): string => {
-  const { currency = 'EUR', decimals = 2, fallback = '€0.00' } = options
+  const { currency = 'EUR', decimals = 2, fallback = '€0' } = options
+
+  if (currency === 'EUR') {
+    const n =
+      value == null || value === ''
+        ? NaN
+        : typeof value === 'string'
+          ? Number(value)
+          : value
+    if (!Number.isFinite(n)) return fallback
+    return formatEuro(n)
+  }
 
   const formatted = formatNumber(value, { decimals, fallback: '0' })
   if (formatted === '0') return fallback
 
-  return `${currency === 'EUR' ? '€' : currency}${formatted}`
+  return `${currency}${formatted}`
 }
 
 /**

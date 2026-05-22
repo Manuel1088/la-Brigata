@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { formatCurrency } from '@/lib/formatNumber'
+import { formatEuro } from '@/lib/utils'
 import { shiftHubLabel } from '@/lib/shifts'
 
 interface HubShift {
@@ -150,7 +150,7 @@ export default function MeHubPage() {
                 <div>
                   <p className="text-sm text-gray-500">Mance · {data.monthlyTips.monthLabel}</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">
-                    {formatCurrency(data.monthlyTips.total)}
+                    {formatEuro(data.monthlyTips.total)}
                   </p>
                   {data.monthlyTips.daysWithTips > 0 && (
                     <p className="text-xs text-gray-500 mt-1">

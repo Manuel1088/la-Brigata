@@ -1,3 +1,5 @@
+import { formatEuro } from '@/lib/utils'
+
 // Sistema di Notifiche Enterprise per La Brigata
 // 5 tipologie, 7 categorie, notifiche interattive
 
@@ -300,7 +302,7 @@ export function createTipsCompletedNotification(amount: number, employeeCount: n
     type: 'SUCCESS',
     category: 'TIPS',
     title: 'Divisione mance completata',
-    message: `${date}: €${amount.toFixed(2)} divisi tra ${employeeCount} dipendenti`,
+    message: `${date}: ${formatEuro(amount)} divisi tra ${employeeCount} dipendenti`,
     isUrgent: false,
     actions: [
       { label: 'Visualizza', action: 'view_tips', variant: 'primary', icon: '👁️' },

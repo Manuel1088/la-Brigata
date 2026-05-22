@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { canManageRestaurantStaff } from '@/lib/employee-create'
+import { formatEuro } from '@/lib/utils'
 import { CCNLLevel, CCNL_LEVEL_OPTIONS, getCcnlMonthlyBase } from '@/lib/ccnl'
 import {
   CONTRACT_DURATION_OPTIONS,
@@ -440,7 +441,7 @@ export default function NewEmployeePage() {
                 >
                   {CCNL_LEVEL_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
-                      {opt.label} — min. €{opt.monthlyBase.toFixed(2)}/mese
+                      {opt.label} — min. {formatEuro(opt.monthlyBase)}/mese
                     </option>
                   ))}
                 </select>

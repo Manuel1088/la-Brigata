@@ -2,7 +2,8 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 // Accesso consentito a tutti gli utenti autenticati
-import { formatCurrency, safeSum } from '@/lib/formatNumber'
+import { safeSum } from '@/lib/formatNumber'
+import { formatEuro } from '@/lib/utils'
 
 interface PayrollAnalysis {
   employeeName: string
@@ -359,19 +360,19 @@ export default function PayrollSection() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-blue-50 rounded-lg p-4 text-center">
                       <div className="text-2xl font-bold text-blue-600">
-                        {formatCurrency(analysis.grossSalary)}
+                        {formatEuro(analysis.grossSalary)}
                       </div>
                       <div className="text-sm text-blue-700">Stipendio Lordo</div>
                     </div>
                     <div className="bg-red-50 rounded-lg p-4 text-center">
                       <div className="text-2xl font-bold text-red-600">
-                        -{formatCurrency(calculateTotalDeductions(analysis.deductions))}
+                        -{formatEuro(calculateTotalDeductions(analysis.deductions))}
                       </div>
                       <div className="text-sm text-red-700">Detrazioni</div>
                     </div>
                     <div className="bg-green-50 rounded-lg p-4 text-center">
                       <div className="text-2xl font-bold text-green-600">
-                        {formatCurrency(analysis.netSalary)}
+                        {formatEuro(analysis.netSalary)}
                       </div>
                       <div className="text-sm text-green-700">Stipendio Netto</div>
                     </div>
@@ -390,7 +391,7 @@ export default function PayrollSection() {
                               <div className="text-sm text-gray-600">{deduction.description}</div>
                             </div>
                             <div className="font-semibold text-red-600">
-                              -{formatCurrency(deduction.amount)}
+                              -{formatEuro(deduction.amount)}
                             </div>
                           </div>
                         ))}
@@ -408,7 +409,7 @@ export default function PayrollSection() {
                               <div className="text-sm text-gray-600">{bonus.description}</div>
                             </div>
                             <div className="font-semibold text-green-600">
-                              +{formatCurrency(bonus.amount)}
+                              +{formatEuro(bonus.amount)}
                             </div>
                           </div>
                         ))}
@@ -449,7 +450,7 @@ export default function PayrollSection() {
                               <div className="text-sm text-blue-700 mt-1">{rec.description}</div>
                               {rec.potentialSavings && (
                                 <div className="text-sm font-medium text-green-600 mt-1">
-                                  Potenziale risparmio: {formatCurrency(rec.potentialSavings)}
+                                  Potenziale risparmio: {formatEuro(rec.potentialSavings)}
                                 </div>
                               )}
                             </div>
@@ -483,7 +484,7 @@ export default function PayrollSection() {
                         </div>
                         <div className="text-right">
                           <div className="font-semibold text-gray-900">
-                            {formatCurrency(item.netSalary)}
+                            {formatEuro(item.netSalary)}
                           </div>
                           <div className="text-sm text-gray-600">Netto</div>
                         </div>
@@ -492,18 +493,18 @@ export default function PayrollSection() {
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Lordo:</span>
-                          <div className="font-medium">{formatCurrency(item.grossSalary)}</div>
+                          <div className="font-medium">{formatEuro(item.grossSalary)}</div>
                         </div>
                         <div>
                           <span className="text-gray-600">Detrazioni:</span>
                           <div className="font-medium text-red-600">
-                            -{formatCurrency(calculateTotalDeductions(item.deductions))}
+                            -{formatEuro(calculateTotalDeductions(item.deductions))}
                           </div>
                         </div>
                         <div>
                           <span className="text-gray-600">Bonus:</span>
                           <div className="font-medium text-green-600">
-                            +{formatCurrency(calculateTotalBonuses(item.bonuses))}
+                            +{formatEuro(calculateTotalBonuses(item.bonuses))}
                           </div>
                         </div>
                       </div>

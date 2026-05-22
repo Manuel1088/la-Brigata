@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNotifications } from '@/hooks/useNotifications'
+import { formatEuro } from '@/lib/utils'
 
 type TipsReport = {
   year: number
@@ -53,14 +54,6 @@ export default function ReportsFinancial() {
   useEffect(() => {
     void loadFinancialReports()
   }, [loadFinancialReports])
-
-  const formatCurrency = (amount: number | undefined) => {
-    if (typeof amount !== 'number' || isNaN(amount)) return '€0,00'
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(amount)
-  }
 
   const trendLabel = useMemo(() => {
     if (!report) return ''
@@ -157,7 +150,7 @@ export default function ReportsFinancial() {
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold">
-              {formatCurrency(report.totals.total)}
+              {formatEuro(report.totals.total)}
             </div>
             <div className="text-green-100">Totale mese</div>
           </div>
@@ -173,19 +166,19 @@ export default function ReportsFinancial() {
             <div className="flex justify-between">
               <span className="text-gray-600">Carta</span>
               <span className="font-medium">
-                {formatCurrency(report.totals.byType.card)}
+                {formatEuro(report.totals.byType.card)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Contanti</span>
               <span className="font-medium">
-                {formatCurrency(report.totals.byType.cash)}
+                {formatEuro(report.totals.byType.cash)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Valuta estera</span>
               <span className="font-medium">
-                {formatCurrency(report.totals.byType.foreign)}
+                {formatEuro(report.totals.byType.foreign)}
               </span>
             </div>
           </div>
@@ -197,7 +190,7 @@ export default function ReportsFinancial() {
             <div className="flex justify-between">
               <span className="text-gray-600">Media giornaliera</span>
               <span className="font-medium">
-                {formatCurrency(report.stats.dailyAverage)}
+                {formatEuro(report.stats.dailyAverage)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -208,14 +201,14 @@ export default function ReportsFinancial() {
               <span className="text-gray-600">Giorno migliore</span>
               <span className="font-medium">
                 {report.stats.bestDay
-                  ? `${new Date(report.stats.bestDay.date).toLocaleDateString('it-IT')} (${formatCurrency(report.stats.bestDay.amount)})`
+                  ? `${new Date(report.stats.bestDay.date).toLocaleDateString('it-IT')} (${formatEuro(report.stats.bestDay.amount)})`
                   : '—'}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Mese precedente</span>
               <span className="font-medium">
-                {formatCurrency(report.comparison.previousMonth.total)}
+                {formatEuro(report.comparison.previousMonth.total)}
               </span>
             </div>
           </div>
@@ -234,7 +227,7 @@ export default function ReportsFinancial() {
                 className="flex justify-between border-b border-gray-100 pb-2 last:border-0"
               >
                 <span className="text-gray-700">{loc.locationName}</span>
-                <span className="font-medium">{formatCurrency(loc.total)}</span>
+                <span className="font-medium">{formatEuro(loc.total)}</span>
               </div>
             ))}
           </div>

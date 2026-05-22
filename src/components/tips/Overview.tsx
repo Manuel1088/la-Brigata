@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { formatEuro } from '@/lib/utils'
 
 type TipsMyResponse = {
   employee: { id: string; name: string; score: number } | null
@@ -19,11 +20,6 @@ type TipsMyResponse = {
   }>
   byLocation: Array<{ locationId: string; locationName: string; total: number }>
 }
-
-const formatCurrency = (amount: number): string =>
-  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(
-    Number.isFinite(amount) ? amount : 0
-  )
 
 export default function TipsOverview() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date())
@@ -164,7 +160,7 @@ export default function TipsOverview() {
           <div className="p-4 rounded-lg border bg-orange-50 text-center">
             <div className="text-sm text-gray-600 mb-1">Totale mese</div>
             <div className="text-2xl font-bold text-orange-700">
-              {formatCurrency(summary.total)}
+              {formatEuro(summary.total)}
             </div>
           </div>
           <div className="p-4 rounded-lg border bg-green-50 text-center">
@@ -174,7 +170,7 @@ export default function TipsOverview() {
           <div className="p-4 rounded-lg border bg-blue-50 text-center">
             <div className="text-sm text-gray-600 mb-1">Media giornaliera</div>
             <div className="text-2xl font-bold text-blue-700">
-              {formatCurrency(summary.averageDaily)}
+              {formatEuro(summary.averageDaily)}
             </div>
           </div>
         </div>
@@ -189,7 +185,7 @@ export default function TipsOverview() {
                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full text-sm"
                 >
                   <span className="text-gray-600">{loc.locationName}</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(loc.total)}</span>
+                  <span className="font-semibold text-gray-900">{formatEuro(loc.total)}</span>
                 </span>
               ))}
             </div>
@@ -227,7 +223,7 @@ export default function TipsOverview() {
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="font-semibold text-gray-900">
-                        {formatCurrency(day.amount)}
+                        {formatEuro(day.amount)}
                       </span>
                       <span className="text-gray-400">{isOpen ? '▲' : '▼'}</span>
                     </span>
@@ -240,7 +236,7 @@ export default function TipsOverview() {
                           className="flex justify-between text-sm py-2 px-3 bg-gray-50 rounded"
                         >
                           <span className="text-gray-600">{loc.locationName}</span>
-                          <span className="font-medium">{formatCurrency(loc.amount)}</span>
+                          <span className="font-medium">{formatEuro(loc.amount)}</span>
                         </div>
                       ))}
                     </div>

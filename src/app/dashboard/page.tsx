@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { usePermissions } from '@/hooks/usePermissions'
 import { UserRole } from '@/types/roles'
-import { formatCurrency } from '@/lib/formatNumber'
+import { formatEuro } from '@/lib/utils'
 import { shiftHubLabel } from '@/lib/shifts'
 import { useDashboardData } from '@/hooks/useDashboardData'
 
@@ -21,11 +21,91 @@ interface MeHubData {
   todayShift: HubShift | null
 }
 
+type LeaveBalance = {
+  type: string
+  total: number
+  used: number
+  remaining: number
+  percentage: number
+}
+
+type LeaveRequestRow = {
+  id: string
+  type: string
+  startDate: string
+  endDate: string
+  status: string
+}
+
+type LeavesHubData = {
+  balances?: LeaveBalance[]
+  requests?: LeaveRequestRow[]
+}
+
 const hubFetcher = (url: string) =>
   fetch(url, { credentials: 'include' }).then((res) => {
     if (!res.ok) throw new Error('Failed to load hub')
     return res.json() as Promise<MeHubData>
   })
+
+const leavesFetcher = (url: string) =>
+  fetch(url, { credentials: 'include' }).then((res) => {
+    if (!res.ok) throw new Error('Failed to load leaves')
+    return res.json() as Promise<LeavesHubData>
+  })
+
+function formatLeaveRange(startDate: string, endDate: string): string {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
+  const startLabel = start.toLocaleDateString('it-IT', opts)
+  const endLabel = end.toLocaleDateString('it-IT', opts)
+  if (startDate.slice(0, 10) === endDate.slice(0, 10)) return startLabel
+  return `${startLabel} – ${endLabel}`
+}
+
+function leaveSummary(
+  type: 'VACATION' | 'ROL',
+  balances: LeaveBalance[],
+  requests: LeaveRequestRow[]
+) {
+  const balance = balances.find((b) => b.type === type)
+  const remaining = balance?.remaining ?? 0
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const futureApproved = requests
+    .filter(
+      (r) =>
+        r.type === type &&
+        r.status === 'APPROVED' &&
+        new Date(r.endDate) >= today
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    )
+
+  const pendingCount = requests.filter(
+    (r) => r.type === type && r.status === 'PENDING'
+  ).length
+
+  const remainingLabel =
+    type === 'VACATION'
+      ? remaining === 1
+        ? '1 giorno residuo'
+        : `${remaining} giorni residui`
+      : remaining === 1
+        ? '1 ora residua'
+        : `${remaining} ore residue`
+
+  return {
+    remaining,
+    remainingLabel,
+    futureApproved,
+    pendingCount,
+  }
+}
 
 // Color Palette La Brigata
 const COLORS = {
@@ -63,7 +143,6 @@ export default function DashboardPage() {
   // States con valori di default sicuri
   const [monthlyTips, setMonthlyTips] = useState<number>(0)
   const [monthlyTipsDays, setMonthlyTipsDays] = useState<number>(0)
-  const [todayTips, setTodayTips] = useState<number>(0)
   const [tipsLoading, setTipsLoading] = useState(true)
   const [tipsView, setTipsView] = useState<'restaurant' | 'personal'>('personal')
   // Redirect se non autenticato
@@ -99,7 +178,6 @@ export default function DashboardPage() {
           if (!cancelled) {
             setMonthlyTips(0)
             setMonthlyTipsDays(0)
-            setTodayTips(0)
             setTipsView(restaurantView ? 'restaurant' : 'personal')
           }
           return
@@ -117,7 +195,6 @@ export default function DashboardPage() {
             setTipsView('restaurant')
             setMonthlyTips(Number(data.summary?.monthTotal ?? 0))
             setMonthlyTipsDays(Number(data.summary?.monthDaysWithTips ?? 0))
-            setTodayTips(Number(data.summary?.todayTotal ?? 0))
           }
         } else {
           const data = (await res.json()) as {
@@ -127,7 +204,6 @@ export default function DashboardPage() {
             setTipsView('personal')
             setMonthlyTips(Number(data.summary?.total ?? 0))
             setMonthlyTipsDays(Number(data.summary?.daysWithTips ?? 0))
-            setTodayTips(0)
           }
         }
       } catch (error) {
@@ -135,7 +211,6 @@ export default function DashboardPage() {
         if (!cancelled) {
           setMonthlyTips(0)
           setMonthlyTipsDays(0)
-          setTodayTips(0)
         }
       } finally {
         if (!cancelled) setTipsLoading(false)
@@ -159,7 +234,19 @@ export default function DashboardPage() {
     hubFetcher,
     { revalidateOnFocus: true }
   )
+  const { data: leavesData, isLoading: leavesLoading } = useSWR<LeavesHubData>(
+    showPersonalShift && status === 'authenticated'
+      ? '/api/leaves?includeBalances=true'
+      : null,
+    leavesFetcher,
+    { revalidateOnFocus: true }
+  )
   const todayShift = shiftHubLabel(hubData?.todayShift ?? null)
+
+  const leaveBalances = leavesData?.balances ?? []
+  const leaveRequests = leavesData?.requests ?? []
+  const vacationSummary = leaveSummary('VACATION', leaveBalances, leaveRequests)
+  const rolSummary = leaveSummary('ROL', leaveBalances, leaveRequests)
 
   // Helper: Get greeting
   const getGreeting = (): string => {
@@ -242,6 +329,13 @@ export default function DashboardPage() {
 
   if (!session) return null
 
+  const statCardClass =
+    'bg-white rounded-2xl p-4 shadow-sm h-full flex flex-col'
+  const statLinkClass =
+    'text-sm text-orange-600 font-semibold hover:underline mt-auto pt-2 inline-block self-start'
+  const employeeCardsGridClass =
+    'grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 items-stretch'
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -256,179 +350,272 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Azioni rapide + card operative */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {availableActions.map((action) => (
-            <button
-              key={action.id}
-              onClick={() => router.push(action.path)}
-              className="bg-white rounded-2xl p-6 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-xl shadow-md flex flex-col items-center gap-2"
-              style={{ borderTop: `4px solid ${action.color}` }}
-            >
-              <span className="text-3xl">{action.icon}</span>
-              <span className="font-semibold text-gray-800 text-center">{action.label}</span>
-            </button>
-          ))}
+        {/* Azioni rapide */}
+        {availableActions.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 max-w-md">
+            {availableActions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                onClick={() => router.push(action.path)}
+                className="bg-white rounded-2xl p-5 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-md flex flex-col items-center gap-2"
+                style={{ borderTop: `4px solid ${action.color}` }}
+              >
+                <span className="text-2xl">{action.icon}</span>
+                <span className="font-semibold text-gray-800 text-center text-sm">
+                  {action.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
-          {showPersonalShift ? (
+        {showPersonalShift ? (
+          <div className={employeeCardsGridClass}>
+            {/* Riga 1: Turno + Prenotazioni + vuoto */}
             <div
-              className={`rounded-2xl p-6 shadow-md text-white ${
-                todayShift.tone === 'work'
-                  ? 'bg-gradient-to-br from-orange-500 to-red-500 border-t-4 border-orange-300'
-                  : todayShift.tone === 'leave'
-                    ? 'bg-gradient-to-br from-purple-500 to-indigo-600 border-t-4 border-purple-300'
-                    : 'bg-gradient-to-br from-gray-500 to-gray-600 border-t-4 border-gray-400'
-              }`}
+              className={`col-span-1 ${statCardClass} border-t-4 border-orange-500`}
             >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="text-sm font-medium opacity-90">Il tuo turno oggi</p>
-                  <p className="text-2xl font-bold mt-1">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-gray-600">Il tuo turno oggi</p>
+                  <p className="text-lg font-bold text-gray-900 mt-0.5 leading-tight">
                     {hubLoading ? '…' : todayShift.title}
                   </p>
-                  <p className="text-sm opacity-90 mt-1">
-                    {hubLoading ? '' : todayShift.subtitle}
-                  </p>
+                  {!hubLoading && todayShift.subtitle ? (
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                      {todayShift.subtitle}
+                    </p>
+                  ) : null}
                 </div>
-                <span className="text-3xl">📅</span>
+                <span className="text-xl shrink-0">📅</span>
               </div>
               <button
                 type="button"
                 onClick={() => router.push('/shifts')}
-                className="text-sm font-semibold hover:underline opacity-90"
+                className={statLinkClass}
               >
                 I miei turni →
               </button>
             </div>
-          ) : (
-            <div className="bg-white rounded-2xl p-6 shadow-md border-t-4 border-orange-500">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="text-sm text-gray-600">In turno oggi</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {isLoadingDashboard ? '…' : widgets.shiftsTodayCount}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">dipendenti presenti</p>
-                </div>
-                <span className="text-3xl">👥</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push('/team/turni')}
-                className="text-sm text-orange-600 font-semibold hover:underline"
-              >
-                Calendario turni →
-              </button>
-            </div>
-          )}
 
-          <div className="bg-white rounded-2xl p-6 shadow-md border-t-4 border-indigo-500">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-sm text-gray-600">{widgets.yesterdayTipsLabel}</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {isLoadingDashboard ? '…' : formatCurrency(widgets.yesterdayTipsTotal)}
-                </p>
-              </div>
-              <span className="text-3xl">📆</span>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                router.push(
-                  widgets.tipsView === 'restaurant' || isManagerOrAdmin
-                    ? '/team/mance'
-                    : '/tips'
-                )
-              }
-              className="text-sm text-orange-600 font-semibold hover:underline"
-            >
-              Dettaglio mance →
-            </button>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          
-          {/* Tips This Month */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm text-gray-600">
-                  {tipsView === 'restaurant'
-                    ? 'Mance ristorante (mese)'
-                    : 'Le tue mance (mese)'}
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {tipsLoading ? '…' : formatCurrency(monthlyTips)}
-                </p>
-                {!tipsLoading && tipsView === 'restaurant' && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Oggi: {formatCurrency(todayTips)}
-                  </p>
-                )}
-                {!tipsLoading && monthlyTipsDays > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {monthlyTipsDays} giorn{monthlyTipsDays === 1 ? 'o' : 'i'} con{' '}
-                    {tipsView === 'restaurant' ? 'inserimenti' : 'mance'}
-                  </p>
-                )}
-              </div>
-              <div className="text-3xl">💰</div>
-            </div>
-            <button
-              onClick={() =>
-                router.push(tipsView === 'restaurant' ? '/team/mance' : '/tips')
-              }
-              className="text-sm text-orange-600 font-semibold hover:underline"
-            >
-              Vedi dettagli →
-            </button>
-          </div>
-
-          {widgets.hasBookings && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
+            <div className={`col-span-1 ${statCardClass} border-t-4 border-indigo-400`}>
+              <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm text-gray-600">Prenotazioni oggi</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {widgets.bookingsTodayCount}
+                  <p className="text-lg font-bold text-gray-900">
+                    {isLoadingDashboard ? '…' : widgets.bookingsTodayCount}
                   </p>
                 </div>
-                <div className="text-3xl">📋</div>
+                <span className="text-xl shrink-0">📋</span>
               </div>
               <button
                 type="button"
                 onClick={() => router.push('/operations')}
-                className="text-sm text-orange-600 font-semibold hover:underline"
+                className={statLinkClass}
               >
                 Gestisci →
               </button>
             </div>
-          )}
+            <div className="hidden md:block md:col-span-1" aria-hidden />
 
-          {widgets.hasEvents && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
+            {/* Riga 2: Ferie + ROL + vuoto */}
+            <div className={`col-span-1 ${statCardClass} border-t-4 border-blue-400`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-600">Ferie</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {leavesLoading ? '…' : vacationSummary.remainingLabel}
+                  </p>
+                  {!leavesLoading && vacationSummary.pendingCount > 0 && (
+                    <p className="text-xs text-amber-700">
+                      {vacationSummary.pendingCount} in attesa
+                    </p>
+                  )}
+                  {!leavesLoading &&
+                    vacationSummary.pendingCount === 0 &&
+                    vacationSummary.futureApproved.length > 0 && (
+                      <p className="text-xs text-gray-500 truncate">
+                        {vacationSummary.futureApproved
+                          .slice(0, 1)
+                          .map((r) => formatLeaveRange(r.startDate, r.endDate))
+                          .join('')}
+                      </p>
+                    )}
+                </div>
+                <span className="text-xl shrink-0">🏖️</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push('/leaves')}
+                className={statLinkClass}
+              >
+                Ferie →
+              </button>
+            </div>
+
+            <div className={`col-span-1 ${statCardClass} border-t-4 border-emerald-400`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-600">Rol</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {leavesLoading ? '…' : rolSummary.remainingLabel}
+                  </p>
+                  {!leavesLoading && rolSummary.pendingCount > 0 && (
+                    <p className="text-xs text-amber-700">
+                      {rolSummary.pendingCount} in attesa
+                    </p>
+                  )}
+                  {!leavesLoading &&
+                    rolSummary.pendingCount === 0 &&
+                    rolSummary.futureApproved.length > 0 && (
+                      <p className="text-xs text-gray-500 truncate">
+                        {rolSummary.futureApproved
+                          .slice(0, 1)
+                          .map((r) => formatLeaveRange(r.startDate, r.endDate))
+                          .join('')}
+                      </p>
+                    )}
+                </div>
+                <span className="text-xl shrink-0">⏰</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push('/leaves')}
+                className={statLinkClass}
+              >
+                Rol →
+              </button>
+            </div>
+            <div className="hidden md:block md:col-span-1" aria-hidden />
+
+            {/* Riga 3: Mance + vuoto (2 colonne) */}
+            <div className={`col-span-1 ${statCardClass} border-t-4 border-amber-400`}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm text-gray-600">
+                    {tipsView === 'restaurant'
+                      ? 'Mance ristorante (mese)'
+                      : 'Le tue mance (mese)'}
+                  </p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {tipsLoading ? '…' : formatEuro(monthlyTips)}
+                  </p>
+                  {!tipsLoading && monthlyTipsDays > 0 && (
+                    <p className="text-xs text-gray-500">
+                      {monthlyTipsDays} giorn{monthlyTipsDays === 1 ? 'o' : 'i'} con{' '}
+                      {tipsView === 'restaurant' ? 'inserimenti' : 'mance'}
+                    </p>
+                  )}
+                </div>
+                <span className="text-xl shrink-0">💰</span>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(tipsView === 'restaurant' ? '/team/mance' : '/tips')
+                }
+                className={statLinkClass}
+              >
+                Vedi dettagli →
+              </button>
+            </div>
+            <div className="hidden md:block md:col-span-2" aria-hidden />
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 items-stretch">
+              <div className={`${statCardClass} border-t-4 border-orange-500 shadow-md`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm text-gray-600">In turno oggi</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {isLoadingDashboard ? '…' : widgets.shiftsTodayCount}
+                    </p>
+                    <p className="text-xs text-gray-500">dipendenti presenti</p>
+                  </div>
+                  <span className="text-xl shrink-0">👥</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push('/team/turni')}
+                  className={statLinkClass}
+                >
+                  Calendario turni →
+                </button>
+              </div>
+
+              <div className={`${statCardClass} border-t-4 border-indigo-400`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm text-gray-600">Prenotazioni oggi</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {isLoadingDashboard ? '…' : widgets.bookingsTodayCount}
+                    </p>
+                  </div>
+                  <span className="text-xl shrink-0">📋</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push('/operations')}
+                  className={statLinkClass}
+                >
+                  Gestisci →
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <div className={`${statCardClass} border-t-4 border-amber-400`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm text-gray-600">Mance ristorante (mese)</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {tipsLoading ? '…' : formatEuro(monthlyTips)}
+                    </p>
+                    {!tipsLoading && monthlyTipsDays > 0 && (
+                      <p className="text-xs text-gray-500">
+                        {monthlyTipsDays} giorn{monthlyTipsDays === 1 ? 'o' : 'i'} con
+                        inserimenti
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-xl shrink-0">💰</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push('/team/mance')}
+                  className={statLinkClass}
+                >
+                  Vedi dettagli →
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {widgets.hasEvents && (
+          <div className="mb-8">
+            <div className={statCardClass}>
+              <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm text-gray-600">Eventi questa settimana</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-lg font-bold text-gray-900">
                     {widgets.weeklyEventsCount}
                   </p>
                 </div>
-                <div className="text-3xl">📅</div>
+                <span className="text-xl shrink-0">📅</span>
               </div>
               <button
                 type="button"
                 onClick={() => router.push('/shifts')}
-                className="text-sm text-orange-600 font-semibold hover:underline"
+                className={statLinkClass}
               >
                 Vedi calendario →
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ✅ DATI REALI DA API BATCH - Company & Team Info */}
         {!isLoadingDashboard && (company || stats.totalEmployees > 0 || pendingEmployments.length > 0) && (

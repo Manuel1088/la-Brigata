@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { formatEuro } from '@/lib/utils'
 
 type TipEntryRow = {
   id: string
@@ -45,9 +46,6 @@ type EntriesResponse = {
   byDay: ByDayEmployee[] | ByDayManager[]
   capabilities?: { canEditTips: boolean; canDeleteTips: boolean }
 }
-
-const formatCurrency = (n: number) =>
-  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n)
 
 const typeLabel = (type: TipEntryRow['type']) =>
   type === 'cash' ? 'Contanti' : type === 'card' ? 'Carta' : 'Monete estere'
@@ -117,7 +115,7 @@ function ManagerEntryRow({
 
   const confirmDelete = async () => {
     const ok = window.confirm(
-      `Eliminare l'inserimento di ${formatCurrency(entry.amount)} (${typeLabel(entry.type)}) per ${entry.location}?`
+      `Eliminare l'inserimento di ${formatEuro(entry.amount)} (${typeLabel(entry.type)}) per ${entry.location}?`
     )
     if (!ok) return
     setBusy(true)
@@ -189,7 +187,7 @@ function ManagerEntryRow({
           ) : (
             <>
               <span className="font-semibold text-gray-900 text-base">
-                {formatCurrency(entry.amount)}
+                {formatEuro(entry.amount)}
               </span>
               {canEdit && (
                 <button
@@ -408,7 +406,7 @@ export default function TipsDaily() {
                       </div>
                       <div className="text-sm text-gray-700">
                         Totale:{' '}
-                        <span className="font-semibold">{formatCurrency(day.amount)}</span>
+                        <span className="font-semibold">{formatEuro(day.amount)}</span>
                       </div>
                     </div>
                     <div className="p-4 space-y-2">
@@ -423,11 +421,11 @@ export default function TipsDaily() {
                             </span>
                             <span className="text-gray-500">
                               Punti {d.employeeScore}/{d.totalPoints} · pool{' '}
-                              {formatCurrency(d.totalTips)}
+                              {formatEuro(d.totalTips)}
                             </span>
                           </div>
                           <div className="font-semibold text-gray-900">
-                            {formatCurrency(d.amount)}
+                            {formatEuro(d.amount)}
                           </div>
                         </div>
                       ))}
@@ -499,7 +497,7 @@ export default function TipsDaily() {
           </div>
           <div className="text-sm text-gray-700">
             Totale giorno:{' '}
-            <span className="font-semibold text-gray-900">{formatCurrency(selectedDayTotal)}</span>
+            <span className="font-semibold text-gray-900">{formatEuro(selectedDayTotal)}</span>
             {selectedDayEntries.length > 0 && (
               <span className="text-gray-500 ml-2">
                 · {selectedDayEntries.length} inseriment

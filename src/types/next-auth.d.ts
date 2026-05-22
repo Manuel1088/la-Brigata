@@ -10,6 +10,7 @@ declare module 'next-auth' {
     ccnlLevel?: CCNLLevel | string | null
     avatar?: string
     department?: string
+    position?: string | null
     companyId?: string
     restaurantId?: string
     phone?: string
@@ -22,6 +23,7 @@ declare module 'next-auth' {
       ccnlLevel?: CCNLLevel | string | null
       avatar: string
       department?: string
+      position?: string | null
       companyId?: string
       restaurantId?: string
       phone?: string
@@ -42,6 +44,7 @@ declare module 'next-auth/jwt' {
     informalCompanyId?: string | null
     restaurantId?: string
     department?: string
+    position?: string | null
   }
 }
 

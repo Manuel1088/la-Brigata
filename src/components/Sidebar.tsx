@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { UserRole } from '@/types/roles'
+import { isAuthPath } from '@/lib/utils'
 
 interface MenuItem {
   icon: string
@@ -76,8 +77,8 @@ export default function Sidebar() {
     }
   }, [canManageEmployees])
 
-  // Don't show sidebar on login/register pages
-  if (pathname === '/login' || pathname === '/register' || !session) {
+  // Don't show sidebar on login/register or without active session
+  if (isAuthPath(pathname) || status !== 'authenticated' || !session) {
     return null
   }
 

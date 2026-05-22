@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useAudit } from '@/hooks/useAudit'
+import { formatEuro } from '@/lib/utils'
 
 interface PayrollRequest {
   id: string
@@ -235,14 +236,6 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
     return new Date(dateString).toLocaleDateString('it-IT')
   }
 
-  const formatCurrency = (amount: number) => {
-    if (isNaN(amount)) return '€0,00'
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount)
-  }
-
   const stats = {
     total: requests.length,
     pending: requests.filter(r => r.status === 'PENDING').length,
@@ -273,11 +266,11 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
           <div className="text-sm text-red-700">Rifiutate</div>
         </div>
         <div className="bg-purple-50 rounded-lg p-4 text-center">
-          <div className="text-lg font-bold text-purple-600">{formatCurrency(stats.totalAmount)}</div>
+          <div className="text-lg font-bold text-purple-600">{formatEuro(stats.totalAmount)}</div>
           <div className="text-sm text-purple-700">Totale</div>
         </div>
         <div className="bg-orange-50 rounded-lg p-4 text-center">
-          <div className="text-lg font-bold text-orange-600">{formatCurrency(stats.pendingAmount)}</div>
+          <div className="text-lg font-bold text-orange-600">{formatEuro(stats.pendingAmount)}</div>
           <div className="text-sm text-orange-700">In Attesa</div>
         </div>
       </div>
@@ -379,7 +372,7 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm mb-3">
                     <div>
                       <span className="text-gray-600">Importo:</span>
-                      <div className="font-medium text-lg">{formatCurrency(request.amount)}</div>
+                      <div className="font-medium text-lg">{formatEuro(request.amount)}</div>
                     </div>
                     <div>
                       <span className="text-gray-600">Reparto:</span>
@@ -422,7 +415,7 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
                         </div>
                         <div>
                           <span className="text-gray-600">Tariffa oraria:</span>
-                          <div className="font-medium">{(() => { const m = (request.metadata && typeof request.metadata === 'object' ? request.metadata as Record<string, unknown> : {}); const v = typeof m.hourlyRate === 'number' ? m.hourlyRate : Number(m.hourlyRate ?? 0); return formatCurrency(v) })()}</div>
+                          <div className="font-medium">{(() => { const m = (request.metadata && typeof request.metadata === 'object' ? request.metadata as Record<string, unknown> : {}); const v = typeof m.hourlyRate === 'number' ? m.hourlyRate : Number(m.hourlyRate ?? 0); return formatEuro(v) })()}</div>
                         </div>
                         <div>
                           <span className="text-gray-600">Date:</span>

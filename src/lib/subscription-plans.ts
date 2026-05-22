@@ -1,3 +1,5 @@
+import { formatEuro } from '@/lib/utils'
+
 export type PlanScope = 'employee' | 'restaurant'
 
 export type CheckoutPlanId = 'PREMIUM' | 'BASIC' | 'PRO'
@@ -90,7 +92,7 @@ export function annualMonthlyEquivalent(monthlyPrice: number): number {
 }
 
 export function formatPrice(amount: number): string {
-  return amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)
+  return formatEuro(amount).replace(/^€/, '')
 }
 
 /** @deprecated Usa PAID_SUBSCRIPTION_PLANS */

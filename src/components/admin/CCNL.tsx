@@ -6,6 +6,7 @@ import {
   formatCcnlLevelLabel,
   type CCNLLevel,
 } from '@/lib/ccnl'
+import { formatEuro } from '@/lib/utils'
 
 export default function AdminCCNL() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -145,9 +146,7 @@ export default function AdminCCNL() {
                     </ul>
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">
-                    €{row.monthlyBase2026.toLocaleString('it-IT', {
-                      minimumFractionDigits: 2,
-                    })}
+                    {formatEuro(row.monthlyBase2026)}
                   </td>
                   <td className="px-4 py-3 text-center text-sm text-gray-600">
                     {row.hierarchy}

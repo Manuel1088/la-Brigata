@@ -1,10 +1,11 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useEffect } from 'react'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
+import { isAuthPath } from '@/lib/utils'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -13,15 +14,21 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const pathname = usePathname()
+  const authPage = isAuthPath(pathname)
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!session) {
+    if (!session && !authPage) {
       router.push('/login')
     }
-  }, [session, status, router])
+  }, [session, status, router, authPage])
 
-  // Show loading state
+  // Login/register: mai sidebar, topbar o offset layout
+  if (authPage) {
+    return <>{children}</>
+  }
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -33,24 +40,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
     )
   }
 
-  // Don't show layout for login/register pages
   if (!session) {
     return <>{children}</>
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top Bar - Fixed at top */}
       <TopBar />
-      
-      {/* Main Layout */}
+
       <div className="flex pt-16">
-        {/* Sidebar - Fixed */}
         <div className="fixed left-0 top-16 bottom-0 z-40">
           <Sidebar />
         </div>
-        
-        {/* Main Content - Scrollable with sidebar offset */}
+
         <main className="flex-1 overflow-auto" style={{ marginLeft: '250px' }}>
           {children}
         </main>

@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { formatCurrency, safeSum, safeAverage } from '@/lib/formatNumber'
+import { safeSum, safeAverage } from '@/lib/formatNumber'
+import { formatEuro } from '@/lib/utils'
 
 type TipEntryRow = {
   id: string
@@ -298,7 +299,7 @@ export default function TipsHistory() {
         <h3 className="text-lg font-semibold mb-4">📊 Statistiche</h3>
         <div className="grid md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">{formatCurrency(stats.total)}</div>
+            <div className="text-2xl font-bold text-gray-900">{formatEuro(stats.total)}</div>
             <div className="text-sm text-gray-600">Totale</div>
           </div>
           <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
@@ -313,7 +314,7 @@ export default function TipsHistory() {
           </div>
           <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg">
             <div className="text-2xl font-bold text-orange-900">
-              {formatCurrency(stats.average)}
+              {formatEuro(stats.average)}
             </div>
             <div className="text-sm text-orange-700">
               {isEmployee ? 'Media per quota' : 'Media per transazione'}
@@ -326,19 +327,19 @@ export default function TipsHistory() {
             <div className="p-3 bg-green-50 rounded-lg border border-green-200 flex justify-between">
               <span className="text-sm font-medium text-green-800">💵 Contanti</span>
               <span className="text-lg font-bold text-green-900">
-                {formatCurrency(stats.byType.cash)}
+                {formatEuro(stats.byType.cash)}
               </span>
             </div>
             <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 flex justify-between">
               <span className="text-sm font-medium text-blue-800">💳 Carta</span>
               <span className="text-lg font-bold text-blue-900">
-                {formatCurrency(stats.byType.card)}
+                {formatEuro(stats.byType.card)}
               </span>
             </div>
             <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 flex justify-between">
               <span className="text-sm font-medium text-purple-800">🌍 Estere</span>
               <span className="text-lg font-bold text-purple-900">
-                {formatCurrency(stats.byType.foreign)}
+                {formatEuro(stats.byType.foreign)}
               </span>
             </div>
           </div>
@@ -353,7 +354,7 @@ export default function TipsHistory() {
                   className="inline-flex gap-2 px-3 py-1.5 bg-gray-100 rounded-full text-sm"
                 >
                   <span className="text-gray-600">{loc.name}</span>
-                  <span className="font-semibold">{formatCurrency(stats.byLocation[loc.name])}</span>
+                  <span className="font-semibold">{formatEuro(stats.byLocation[loc.name])}</span>
                 </span>
               ) : null
             )}
@@ -397,7 +398,7 @@ export default function TipsHistory() {
                       Punti {d.employeeScore}/{d.totalPoints}
                     </span>
                   </div>
-                  <div className="font-semibold text-gray-900">{formatCurrency(d.amount)}</div>
+                  <div className="font-semibold text-gray-900">{formatEuro(d.amount)}</div>
                 </div>
               ))}
             </div>
@@ -435,7 +436,7 @@ export default function TipsHistory() {
                           : '🌍 Estere'}
                     </span>
                   </div>
-                  <div className="font-semibold text-gray-900">{formatCurrency(entry.amount)}</div>
+                  <div className="font-semibold text-gray-900">{formatEuro(entry.amount)}</div>
                 </div>
               ))}
             </div>

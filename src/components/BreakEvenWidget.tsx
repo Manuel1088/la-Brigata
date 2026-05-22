@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo, useCallback } from 'react'
+import { formatEuro } from '@/lib/utils'
 
 interface BreakEvenData {
   fixedCosts: number
@@ -12,17 +13,6 @@ const validateNumber = (value: string, min: number = 0, max: number = 1000000): 
   const num = parseFloat(value)
   if (isNaN(num)) return min
   return Math.max(min, Math.min(max, num))
-}
-
-// Formattazione valuta sicura
-const formatCurrency = (amount: number | undefined): string => {
-  if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount)) return '€0,00'
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount)
 }
 
 // Formattazione numero unità
@@ -262,7 +252,7 @@ export default function BreakEvenWidget() {
                 </div>
               </div>
               <div className="text-4xl font-bold">
-                {formatCurrency(calculations.breakEvenRevenue)}
+                {formatEuro(calculations.breakEvenRevenue)}
               </div>
               <div className="mt-2 text-sm opacity-90">
                 al mese
@@ -277,7 +267,7 @@ export default function BreakEvenWidget() {
                 <div>
                   <p className="text-sm text-gray-600">Margine di Contribuzione</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(calculations.contributionMargin)}
+                    {formatEuro(calculations.contributionMargin)}
                   </p>
                 </div>
                 <div className="text-right">
@@ -300,7 +290,7 @@ export default function BreakEvenWidget() {
                 <div className="text-right">
                   <p className="text-sm text-gray-600">unità/giorno</p>
                   <p className="text-lg font-semibold text-purple-600">
-                    {formatCurrency((calculations.breakEvenRevenue / 30))}
+                    {formatEuro((calculations.breakEvenRevenue / 30))}
                   </p>
                 </div>
               </div>
@@ -341,7 +331,7 @@ export default function BreakEvenWidget() {
                       <div className={`text-lg font-bold ${
                         sim.isProfit ? 'text-green-700' : 'text-red-700'
                       }`}>
-                        {sim.isProfit ? '+' : ''}{formatCurrency(sim.profit)}
+                        {sim.isProfit ? '+' : ''}{formatEuro(sim.profit)}
                       </div>
                     </div>
                   </div>
@@ -349,11 +339,11 @@ export default function BreakEvenWidget() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Ricavi: </span>
-                      <span className="font-medium">{formatCurrency(sim.revenue)}</span>
+                      <span className="font-medium">{formatEuro(sim.revenue)}</span>
                     </div>
                     <div>
                       <span className="text-gray-600">Costi Totali: </span>
-                      <span className="font-medium">{formatCurrency(sim.totalCosts)}</span>
+                      <span className="font-medium">{formatEuro(sim.totalCosts)}</span>
                     </div>
                   </div>
                 </div>
@@ -427,7 +417,7 @@ export default function BreakEvenWidget() {
                 <li>✅ Ottimo margine di contribuzione! Hai spazio per competere sul prezzo o investire in marketing.</li>
               )}
               <li>
-                📌 Ogni unità venduta oltre il break-even genera {formatCurrency(calculations.contributionMargin)} di profitto.
+                📌 Ogni unità venduta oltre il break-even genera {formatEuro(calculations.contributionMargin)} di profitto.
               </li>
             </ul>
           </div>
