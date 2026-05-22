@@ -25,7 +25,9 @@ const patchProfileSchema = z
   .object({
     name: z.string().min(1).optional(),
     role: z.string().optional(),
-    department: z.string().optional(),
+    department: z
+      .enum(['cucina', 'pasticceria', 'sala', 'beverage', 'accoglienza', 'dirigenti'])
+      .optional(),
     ccnlLevel: z.string().optional(),
   })
   .strict()

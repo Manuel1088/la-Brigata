@@ -33,7 +33,7 @@ const createEmployeeSchema = z
     phone: z.string().optional(),
     role: z.string().min(1),
     position: z.string().optional(),
-    department: z.enum(['cucina', 'sala', 'beverage', 'accoglienza', 'dirigenti']),
+    department: z.enum(['cucina', 'pasticceria', 'sala', 'beverage', 'accoglienza', 'dirigenti']),
     ccnlLevel: z.string().optional(),
     hourlyRate: z.number().min(0).optional(),
     expenseAllowance: z.number().min(0).optional(),

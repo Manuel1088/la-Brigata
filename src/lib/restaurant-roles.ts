@@ -4,6 +4,7 @@ import { CCNLLevel, type CCNLLevel as CcnlLevelType } from '@/lib/ccnl'
 /** Reparti del form dipendente (valori = campo department su User). */
 export type RestaurantDepartment =
   | 'cucina'
+  | 'pasticceria'
   | 'sala'
   | 'beverage'
   | 'accoglienza'
@@ -24,6 +25,7 @@ export const RESTAURANT_DEPARTMENTS: {
   icon: string
 }[] = [
   { value: 'cucina', label: 'Cucina', icon: '🍳' },
+  { value: 'pasticceria', label: 'Pasticceria', icon: '🍰' },
   { value: 'sala', label: 'Sala', icon: '🍽️' },
   { value: 'beverage', label: 'Beverage', icon: '🍸' },
   { value: 'accoglienza', label: 'Accoglienza', icon: '🛎️' },
@@ -37,9 +39,14 @@ export const RESTAURANT_ROLES: RestaurantRoleOption[] = [
   { value: 'SOUS_CHEF', label: 'Sous Chef', department: 'cucina', suggestedCcnl: CCNLLevel.QB },
   { value: 'CHEF_DE_PARTIE', label: 'Chef de Partie', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_1 },
   { value: 'CHEF', label: 'Cuoco', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_3 },
-  { value: 'CHEF', label: 'Pasticcere', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_3 },
   { value: 'COMMIS_DE_CUISINE', label: 'Commis di Cucina', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_5 },
   { value: 'LAVAPIATTI', label: 'Lavapiatti Cucina', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_6 },
+
+  // Pasticceria (dal livello CCNL più alto al più basso)
+  { value: 'CAPO_PARTITA', label: 'Capo Pasticcere', department: 'pasticceria', suggestedCcnl: CCNLLevel.LIVELLO_2 },
+  { value: 'SOUS_CHEF', label: 'Secondo Pasticcere', department: 'pasticceria', suggestedCcnl: CCNLLevel.LIVELLO_3 },
+  { value: 'CHEF', label: 'Pasticcere', department: 'pasticceria', suggestedCcnl: CCNLLevel.LIVELLO_4 },
+  { value: 'COMMIS_DE_CUISINE', label: 'Commis Pasticceria', department: 'pasticceria', suggestedCcnl: CCNLLevel.LIVELLO_5 },
 
   // Sala (dal livello CCNL più alto al più basso)
   { value: 'RESTAURANT_MANAGER', label: 'Restaurant Manager', department: 'sala', suggestedCcnl: CCNLLevel.LIVELLO_2 },
@@ -120,7 +127,7 @@ export function departmentFromStorage(dept: string): RestaurantDepartment {
   const d = dept.toLowerCase().trim()
   if (d === 'bar' || d === 'sommellerie' || d === 'beverage') return 'beverage'
   if (d === 'gestione' || d === 'dirigenti') return 'dirigenti'
-  if (d === 'cucina' || d === 'sala' || d === 'accoglienza') return d
+  if (d === 'cucina' || d === 'pasticceria' || d === 'sala' || d === 'accoglienza') return d
   return 'sala'
 }
 
@@ -131,6 +138,7 @@ export function normalizeDepartmentInput(dept: string): string {
   if (d === 'gestione') return 'dirigenti'
   if (
     d === 'cucina' ||
+    d === 'pasticceria' ||
     d === 'sala' ||
     d === 'beverage' ||
     d === 'accoglienza' ||

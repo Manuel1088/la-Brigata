@@ -124,7 +124,7 @@ export function toEmployeeRole(userRole: UserRole, department: string): Employee
   if (userRole === 'RUNNER' || userRole === 'COMMIS_DI_SALA') return 'WAITER'
 
   const dept = department.toLowerCase()
-  if (dept === 'cucina') {
+  if (dept === 'cucina' || dept === 'pasticceria') {
     if (userRole === 'EXECUTIVE_CHEF' || userRole === 'SOUS_CHEF' || userRole === 'HEAD_CHEF') {
       return 'SOUS_CHEF'
     }

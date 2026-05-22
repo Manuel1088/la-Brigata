@@ -18,14 +18,15 @@ type TeamEmployee = EmployeeFull & {
   ccnlLevel?: string
 }
 
-const DEPARTMENT_ORDER = ['cucina', 'sala', 'beverage', 'accoglienza', 'dirigenti'] as const
+const DEPARTMENT_ORDER = ['cucina', 'pasticceria', 'sala', 'beverage', 'accoglienza', 'dirigenti'] as const
 
 const DEPARTMENT_LABELS: Record<string, string> = Object.fromEntries(
   RESTAURANT_DEPARTMENTS.map((d) => [d.value, d.label])
 )
 
 const DEPARTMENT_SECTION_TITLE: Record<string, string> = {
-  cucina: '🔥 Cucina',
+  cucina: '🍳 Cucina',
+  pasticceria: '🍰 Pasticceria',
   sala: '🍽️ Sala',
   beverage: '🍷 Beverage',
   accoglienza: '🛎️ Accoglienza',
@@ -226,8 +227,25 @@ function getDepartmentLabel(dept: string) {
   return DEPARTMENT_LABELS[normalizeDept(dept)] ?? dept
 }
 
+/** Cognome per ordinamento (ultima parola del nome visualizzato). */
+function surnameForSort(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return ''
+  return parts[parts.length - 1]!.toLowerCase()
+}
+
+/** CCNL più alto → più basso; a parità di livello, cognome A→Z. */
 function sortByCcnlDesc(a: TeamEmployee, b: TeamEmployee): number {
-  return ccnlSortRank(getEmployeeCcnlLevel(a)) - ccnlSortRank(getEmployeeCcnlLevel(b))
+  const rankA = ccnlSortRank(getEmployeeCcnlLevel(a))
+  const rankB = ccnlSortRank(getEmployeeCcnlLevel(b))
+  if (rankA !== rankB) return rankA - rankB
+
+  const bySurname = surnameForSort(a.name).localeCompare(surnameForSort(b.name), 'it', {
+    sensitivity: 'base',
+  })
+  if (bySurname !== 0) return bySurname
+
+  return a.name.localeCompare(b.name, 'it', { sensitivity: 'base' })
 }
 
 export default function TeamEmployees() {
