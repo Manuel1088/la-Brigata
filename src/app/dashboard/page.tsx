@@ -3,10 +3,29 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { usePermissions } from '@/hooks/usePermissions'
 import { UserRole } from '@/types/roles'
 import { formatCurrency } from '@/lib/formatNumber'
+import { shiftHubLabel } from '@/lib/shifts'
 import { useDashboardData } from '@/hooks/useDashboardData'
+
+interface HubShift {
+  id: string
+  time: string
+  department: string
+  status: string
+}
+
+interface MeHubData {
+  todayShift: HubShift | null
+}
+
+const hubFetcher = (url: string) =>
+  fetch(url, { credentials: 'include' }).then((res) => {
+    if (!res.ok) throw new Error('Failed to load hub')
+    return res.json() as Promise<MeHubData>
+  })
 
 // Color Palette La Brigata
 const COLORS = {
@@ -134,6 +153,14 @@ export default function DashboardPage() {
     userRole === UserRole.MANAGER ||
     isRestaurantTipsRole(session?.user?.role as string | undefined)
 
+  const showPersonalShift = !isManagerOrAdmin
+  const { data: hubData, isLoading: hubLoading } = useSWR<MeHubData>(
+    showPersonalShift && status === 'authenticated' ? '/api/me/hub' : null,
+    hubFetcher,
+    { revalidateOnFocus: true }
+  )
+  const todayShift = shiftHubLabel(hubData?.todayShift ?? null)
+
   // Helper: Get greeting
   const getGreeting = (): string => {
     const hour = new Date().getHours()
@@ -243,25 +270,57 @@ export default function DashboardPage() {
             </button>
           ))}
 
-          <div className="bg-white rounded-2xl p-6 shadow-md border-t-4 border-orange-500">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-sm text-gray-600">In turno oggi</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {isLoadingDashboard ? '…' : widgets.shiftsTodayCount}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">dipendenti presenti</p>
-              </div>
-              <span className="text-3xl">👥</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.push('/team/turni')}
-              className="text-sm text-orange-600 font-semibold hover:underline"
+          {showPersonalShift ? (
+            <div
+              className={`rounded-2xl p-6 shadow-md text-white ${
+                todayShift.tone === 'work'
+                  ? 'bg-gradient-to-br from-orange-500 to-red-500 border-t-4 border-orange-300'
+                  : todayShift.tone === 'leave'
+                    ? 'bg-gradient-to-br from-purple-500 to-indigo-600 border-t-4 border-purple-300'
+                    : 'bg-gradient-to-br from-gray-500 to-gray-600 border-t-4 border-gray-400'
+              }`}
             >
-              Calendario turni →
-            </button>
-          </div>
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <p className="text-sm font-medium opacity-90">Il tuo turno oggi</p>
+                  <p className="text-2xl font-bold mt-1">
+                    {hubLoading ? '…' : todayShift.title}
+                  </p>
+                  <p className="text-sm opacity-90 mt-1">
+                    {hubLoading ? '' : todayShift.subtitle}
+                  </p>
+                </div>
+                <span className="text-3xl">📅</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push('/shifts')}
+                className="text-sm font-semibold hover:underline opacity-90"
+              >
+                I miei turni →
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-6 shadow-md border-t-4 border-orange-500">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-sm text-gray-600">In turno oggi</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {isLoadingDashboard ? '…' : widgets.shiftsTodayCount}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">dipendenti presenti</p>
+                </div>
+                <span className="text-3xl">👥</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push('/team/turni')}
+                className="text-sm text-orange-600 font-semibold hover:underline"
+              >
+                Calendario turni →
+              </button>
+            </div>
+          )}
 
           <div className="bg-white rounded-2xl p-6 shadow-md border-t-4 border-indigo-500">
             <div className="flex items-center justify-between mb-2">

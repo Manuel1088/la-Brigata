@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { formatCurrency } from '@/lib/formatNumber'
+import { shiftHubLabel } from '@/lib/shifts'
 
 interface HubShift {
   id: string
@@ -43,23 +44,6 @@ const fetcher = (url: string) =>
     if (!res.ok) throw new Error('Failed to load hub')
     return res.json() as Promise<MeHubData>
   })
-
-function shiftLabel(shift: HubShift | null): { title: string; subtitle: string; tone: string } {
-  if (!shift) {
-    return { title: 'Riposo', subtitle: 'Nessun turno assegnato', tone: 'rest' }
-  }
-  if (shift.time === 'RIPOSO' || shift.status === 'rest') {
-    return { title: 'Riposo', subtitle: 'Giorno libero', tone: 'rest' }
-  }
-  if (shift.time === 'FERIE' || shift.status === 'leave') {
-    return { title: 'Ferie', subtitle: 'Assenza programmata', tone: 'leave' }
-  }
-  return {
-    title: shift.time,
-    subtitle: shift.department.charAt(0).toUpperCase() + shift.department.slice(1),
-    tone: 'work',
-  }
-}
 
 export default function MeHubPage() {
   const { data: session, status } = useSession()
@@ -100,7 +84,7 @@ export default function MeHubPage() {
   }
 
   const firstName = data?.user.name?.split(' ').slice(-1)[0] ?? session.user?.name?.split(' ').slice(-1)[0] ?? 'Ciao'
-  const today = shiftLabel(data?.todayShift ?? null)
+  const today = shiftHubLabel(data?.todayShift ?? null)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-gray-50 pb-24">
@@ -204,7 +188,7 @@ export default function MeHubPage() {
                 style={{ WebkitOverflowScrolling: 'touch' }}
               >
                 {data.weekShifts.map((day, index) => {
-                  const info = shiftLabel(day.shift)
+                  const info = shiftHubLabel(day.shift)
                   const isActive = index === activeDayIndex
                   return (
                     <button
@@ -250,10 +234,10 @@ export default function MeHubPage() {
                     })}
                   </p>
                   <p className="text-lg font-semibold text-gray-900 mt-1">
-                    {shiftLabel(data.weekShifts[activeDayIndex].shift).title}
+                    {shiftHubLabel(data.weekShifts[activeDayIndex].shift).title}
                   </p>
                   <p className="text-sm text-gray-600">
-                    {shiftLabel(data.weekShifts[activeDayIndex].shift).subtitle}
+                    {shiftHubLabel(data.weekShifts[activeDayIndex].shift).subtitle}
                   </p>
                 </div>
               )}

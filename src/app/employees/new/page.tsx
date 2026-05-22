@@ -18,6 +18,7 @@ import {
   type WorkSchedule,
 } from '@/lib/employee-contract'
 import {
+  departmentToStorage,
   getDefaultRoleForDepartment,
   getRolesForDepartment,
   roleOptionKey,
@@ -208,7 +209,7 @@ export default function NewEmployeePage() {
           phone: formData.phone || undefined,
           role,
           position: selectedRole.label,
-          department: formData.department,
+          department: departmentToStorage(formData.department),
           ccnlLevel: formData.ccnlLevel,
           hourlyRate: showHourly ? formData.hourlyRate : undefined,
           expenseAllowance: showExpense ? formData.expenseAllowance : undefined,

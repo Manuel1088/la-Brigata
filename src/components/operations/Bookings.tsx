@@ -423,7 +423,7 @@ export default function OperationsBookings() {
                 {showFloorPlan ? '📋 Lista' : '🗺️ Mappa Tavoli'}
               </button>
               
-              {can('bookings_create') && (
+              {can('bookings_manage') && (
                 <button
                   onClick={() => {
                     resetForm()

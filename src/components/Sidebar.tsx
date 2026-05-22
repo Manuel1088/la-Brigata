@@ -132,32 +132,32 @@ export default function Sidebar() {
           label: 'Il Team', 
           path: '/team', 
           color: '#FDCB6E',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
         },
         { 
           icon: '💰', 
           label: 'Mance Team', 
           path: '/team/mance', 
           color: '#FDCB6E',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
         },
         { 
           icon: '📅', 
           label: 'Turni Team', 
           path: '/team/turni', 
           color: '#74B9FF',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
         },
         {
           icon: '✅', 
           label: 'Approvazioni', 
           path: '/approvals', 
           color: '#00B894',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA],
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE],
           badge: pendingApprovals > 0 ? pendingApprovals : undefined
         }
       ],
-      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA]
+      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
     },
     // GESTIONE - Manager e superiori
     {
@@ -167,29 +167,29 @@ export default function Sidebar() {
           icon: '📅', 
           label: 'Prenotazioni', 
           path: '/operations',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
         },
         { 
           icon: '🎉', 
           label: 'Eventi e Festività', 
           path: '/events',
           color: '#A29BFE',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
         },
         { 
           icon: '📊', 
           label: 'Report', 
           path: '/reports',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
         },
         { 
           icon: '📈', 
           label: 'Analytics', 
           path: '/analytics',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
         }
       ],
-      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
+      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
     },
     // AZIENDA - Solo Proprietari/Manager
     {

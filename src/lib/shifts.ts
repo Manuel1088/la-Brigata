@@ -45,6 +45,29 @@ export function decodeShiftTime(status: string, startTime: Date, endTime: Date):
   return `${fmt(startTime)}-${fmt(endTime)}`
 }
 
+/** Etichetta turno per hub /me e dashboard (stesso formato di /me). */
+export function shiftHubLabel(shift: {
+  time: string
+  department: string
+  status: string
+} | null): { title: string; subtitle: string; tone: 'work' | 'rest' | 'leave' } {
+  if (!shift) {
+    return { title: 'Riposo', subtitle: 'Nessun turno assegnato', tone: 'rest' }
+  }
+  if (shift.time === 'RIPOSO' || shift.status === 'rest') {
+    return { title: 'Riposo', subtitle: 'Giorno libero', tone: 'rest' }
+  }
+  if (shift.time === 'FERIE' || shift.status === 'leave') {
+    return { title: 'Ferie', subtitle: 'Assenza programmata', tone: 'leave' }
+  }
+  const dept = shift.department || 'sala'
+  return {
+    title: shift.time,
+    subtitle: dept.charAt(0).toUpperCase() + dept.slice(1),
+    tone: 'work',
+  }
+}
+
 export function isPresentShift(status: string, startTime: Date, endTime: Date): boolean {
   const time = decodeShiftTime(status, startTime, endTime)
   return time !== 'RIPOSO' && time !== 'FERIE'

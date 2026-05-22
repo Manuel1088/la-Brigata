@@ -67,10 +67,23 @@ const USER_ROLE_VALUES = new Set<string>([
 ])
 
 export function hierarchyLevelForUserRole(role: UserRole): number {
-  if (role === 'ADMIN' || role === 'PROPRIETARIO' || role === 'DIRETTORE' || role === 'DIRETTORE_GENERALE') {
+  if (
+    role === 'ADMIN' ||
+    role === 'PROPRIETARIO' ||
+    role === 'DIRETTORE' ||
+    role === 'DIRETTORE_GENERALE'
+  ) {
     return 10
   }
-  if (role === 'MANAGER' || role === 'RESTAURANT_MANAGER' || role === 'EXECUTIVE_CHEF') return 8
+  if (
+    role === 'VICE_DIRETTORE' ||
+    role === 'ASSISTANT_MANAGER' ||
+    role === 'MANAGER' ||
+    role === 'RESTAURANT_MANAGER' ||
+    role === 'EXECUTIVE_CHEF'
+  ) {
+    return 8
+  }
   if (
     role === 'RESPONSABILE_SALA' ||
     role === 'HEAD_CHEF' ||
@@ -99,6 +112,9 @@ export function toEmployeeRole(userRole: UserRole, department: string): Employee
     userRole === 'RESTAURANT_MANAGER' ||
     userRole === 'DIRETTORE' ||
     userRole === 'DIRETTORE_GENERALE' ||
+    userRole === 'VICE_DIRETTORE' ||
+    userRole === 'ASSISTANT_MANAGER' ||
+    userRole === 'PROPRIETARIO' ||
     userRole === 'PROPRIETARIO_OPERATIVO'
   ) {
     return 'MANAGER'
@@ -108,7 +124,7 @@ export function toEmployeeRole(userRole: UserRole, department: string): Employee
   if (userRole === 'RUNNER' || userRole === 'COMMIS_DI_SALA') return 'WAITER'
 
   const dept = department.toLowerCase()
-  if (dept === 'cucina' || dept === 'dirigenti') {
+  if (dept === 'cucina') {
     if (userRole === 'EXECUTIVE_CHEF' || userRole === 'SOUS_CHEF' || userRole === 'HEAD_CHEF') {
       return 'SOUS_CHEF'
     }

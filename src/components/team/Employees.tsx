@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
@@ -73,7 +74,7 @@ const EMPLOYEES_DEFAULT = [
 ]
 
 export default function TeamEmployees() {
-  // session/router non usati in questa vista
+  const router = useRouter()
   const { canManageEmployees } = usePermissions()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
@@ -370,21 +371,15 @@ export default function TeamEmployees() {
                     </div>
                     
                     <div className="mt-4 flex gap-2">
-                      {/* router.push non definito, rimuovendo il pulsante */}
-                      {/* <button
-                        onClick={() => router.push(`/employees/${employee.id}`)}
-                        className="flex-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
-                      >
-                        👁️ Visualizza
-                      </button> */}
-                      {/* canManageEmployees() && (
+                      {canManageEmployees() && (
                         <button
-                          onClick={() => router.push(`/employees/${employee.id}?edit=true`)}
+                          type="button"
+                          onClick={() => router.push(`/employees/${employee.id}`)}
                           className="flex-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 transition text-sm"
                         >
                           ✏️ Modifica
                         </button>
-                      ) */}
+                      )}
                     </div>
                   </div>
                 ))}
