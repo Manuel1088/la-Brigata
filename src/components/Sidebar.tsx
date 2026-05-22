@@ -97,7 +97,7 @@ export default function Sidebar() {
       items: [
         { icon: '💰', label: 'Le Mance', path: '/tips', color: '#FDCB6E' },
         { icon: '📄', label: 'Buste Paga', path: '/buste-paga', color: '#00B894' },
-        { icon: '📅', label: 'I Miei Turni', path: '/shifts', color: '#74B9FF' },
+        { icon: '📅', label: 'Turni', path: '/shifts', color: '#74B9FF' },
         { icon: '🏖️', label: 'Ferie e Permessi', path: '/leaves', color: '#00B894' },
         { icon: '👤', label: 'Il Profilo', path: '/profile', color: '#2D3436' },
       ],
@@ -106,12 +106,6 @@ export default function Sidebar() {
       title: 'MANCE TEAM',
       items: [
         { icon: '💰', label: 'Mance Team', path: '/team/mance', color: '#FDCB6E' },
-      ],
-    },
-    {
-      title: 'TURNI TEAM',
-      items: [
-        { icon: '📅', label: 'Turni Team', path: '/team/turni', color: '#74B9FF' },
       ],
     },
     {
@@ -171,7 +165,6 @@ export default function Sidebar() {
         return true
       case 'MANCE TEAM':
         return canInsertTips()
-      case 'TURNI TEAM':
       case 'GESTIONE':
         return ccnlMeetsLevel(userCcnl, 'LIVELLO_3')
       case 'APPROVAZIONI':

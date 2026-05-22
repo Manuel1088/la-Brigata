@@ -90,3 +90,50 @@ export function resolveVisibleShiftDepartments(
   if (fromRole === null) return [...ALL_SHIFT_DEPARTMENTS]
   return ALL_SHIFT_DEPARTMENTS.filter((d) => fromRole.includes(d))
 }
+
+export type ShiftsPageViewMode = 'personal' | 'department' | 'all'
+
+/** Vista pagina /shifts in base al CCNL (e ADMIN → calendario completo). */
+export function getShiftsPageViewMode(
+  ccnlLevel: string | null | undefined,
+  role?: string | null
+): ShiftsPageViewMode {
+  const level = (ccnlLevel ?? '').toString().trim().toUpperCase()
+  const r = (role ?? '').toString().trim().toUpperCase()
+
+  if (level === 'QA' || level === 'QB' || r === 'ADMIN') {
+    return 'all'
+  }
+  if (['LIVELLO_1', 'LIVELLO_2', 'LIVELLO_3'].includes(level)) {
+    return 'department'
+  }
+  return 'personal'
+}
+
+export function normalizeUserDepartmentToShiftDept(
+  department: string | null | undefined
+): ShiftCalendarDepartment {
+  const d = (department ?? 'sala').toString().trim().toLowerCase()
+  if (d === 'bar' || d === 'beverage') return 'beverage'
+  if (d === 'accoglienza') return 'accoglienza'
+  if (d === 'cucina') return 'cucina'
+  if (d === 'pasticceria') return 'pasticceria'
+  if (d === 'dirigenti' || d === 'direzione') return 'direzione'
+  return 'sala'
+}
+
+/**
+ * `null` = tutti i reparti nel calendario; array = solo quelli elencati.
+ */
+export function getAllowedDepartmentsForCcnl(
+  ccnlLevel: string | null | undefined,
+  userDepartment: string | null | undefined,
+  role?: string | null
+): ShiftCalendarDepartment[] | null {
+  const mode = getShiftsPageViewMode(ccnlLevel, role)
+  if (mode === 'all') return null
+  if (mode === 'department') {
+    return [normalizeUserDepartmentToShiftDept(userDepartment)]
+  }
+  return null
+}

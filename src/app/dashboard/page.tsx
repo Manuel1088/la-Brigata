@@ -538,7 +538,7 @@ export default function DashboardPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => router.push('/team/turni')}
+                  onClick={() => router.push('/shifts')}
                   className={statLinkClass}
                 >
                   Calendario turni →
