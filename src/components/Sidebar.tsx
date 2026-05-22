@@ -34,13 +34,17 @@ function isQbOrQaCcnl(userCcnl: string | null | undefined): boolean {
   return level === 'QA' || level === 'QB'
 }
 
-export default function Sidebar() {
+type SidebarProps = {
+  /** Chiusura overlay mobile dopo navigazione */
+  onNavigate?: () => void
+}
+
+export default function Sidebar({ onNavigate }: SidebarProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
   const { userRole, canInsertTips } = usePermissions()
   const userCcnl = session?.user?.ccnlLevel ?? null
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)  // 🔓 Sempre aperta
   const [isHovered, setIsHovered] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
 
@@ -214,7 +218,10 @@ export default function Sidebar() {
                 return (
                   <li key={itemIndex}>
                     <button
-                      onClick={() => router.push(item.path)}
+                      onClick={() => {
+                        router.push(item.path)
+                        onNavigate?.()
+                      }}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-1 rounded-lg transition-all relative ${
                         isActive
                           ? 'bg-gray-100 text-gray-900 font-semibold shadow-sm border-l-4 border-orange-500'

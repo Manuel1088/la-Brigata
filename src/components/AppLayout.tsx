@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import { isAuthPath } from '@/lib/utils'
@@ -16,6 +16,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
   const authPage = isAuthPath(pathname)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -23,6 +24,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
       router.push('/login')
     }
   }, [session, status, router, authPage])
+
+  useEffect(() => {
+    setMobileSidebarOpen(false)
+  }, [pathname])
 
   // Login/register: mai sidebar, topbar o offset layout
   if (authPage) {
@@ -46,14 +51,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopBar />
+      <TopBar onMenuToggle={() => setMobileSidebarOpen((open) => !open)} />
 
       <div className="flex pt-16">
-        <div className="fixed left-0 top-16 bottom-0 z-40">
+        <div className="hidden md:fixed md:left-0 md:top-16 md:bottom-0 md:z-40 md:block">
           <Sidebar />
         </div>
 
-        <main className="flex-1 overflow-auto" style={{ marginLeft: '250px' }}>
+        {mobileSidebarOpen && (
+          <>
+            <button
+              type="button"
+              className="md:hidden fixed inset-0 top-16 z-[60] bg-black/50"
+              aria-label="Chiudi menu"
+              onClick={() => setMobileSidebarOpen(false)}
+            />
+            <div className="md:hidden fixed left-0 top-16 bottom-0 z-[61]">
+              <Sidebar onNavigate={() => setMobileSidebarOpen(false)} />
+            </div>
+          </>
+        )}
+
+        <main className="flex-1 overflow-auto max-md:ml-0 md:ml-[250px]">
           {children}
         </main>
       </div>

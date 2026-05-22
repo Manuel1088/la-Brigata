@@ -11,7 +11,11 @@ import { PendingEmploymentsBadge } from './PendingEmploymentsBadge'
 import { RestaurantSelector } from './RestaurantSelector'
 import { NotificationCenter } from './NotificationCenter'
 
-export default function TopBar() {
+type TopBarProps = {
+  onMenuToggle?: () => void
+}
+
+export default function TopBar({ onMenuToggle }: TopBarProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
@@ -108,6 +112,14 @@ export default function TopBar() {
           <div className="flex items-center justify-between h-16">
           {/* Left Section - Logo + Brand + Breadcrumb */}
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => onMenuToggle?.()}
+              className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Menu di navigazione"
+            >
+              <span className="text-xl leading-none">☰</span>
+            </button>
             {/* Logo + Brand */}
             <button
               onClick={() => router.push('/dashboard')}
