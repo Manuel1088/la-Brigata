@@ -8,6 +8,68 @@ import { compare } from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
+function inferCcnlFromRole(role: string): string {
+  const r = (role || '').toString().trim().toUpperCase().replace(/\s+/g, '_')
+
+  if (['ADMIN', 'PROPRIETARIO', 'DIRETTORE_GENERALE', 'FB_MANAGER'].includes(r)) {
+    return 'QA'
+  }
+  if (['DIRETTORE', 'RESTAURANT_MANAGER'].includes(r)) {
+    return 'QB'
+  }
+  if (
+    [
+      'MANAGER',
+      'ASSISTANT_MANAGER',
+      'VICE_DIRETTORE',
+      'MAITRE',
+      'HEAD_CHEF',
+      'HEAD_BARMAN',
+      'HEAD_SOMMELIER',
+      'RESPONSABILE_SALA',
+    ].includes(r)
+  ) {
+    return 'LIVELLO_1'
+  }
+  if (r === 'CAPO_PASTICCERE') {
+    return 'LIVELLO_2'
+  }
+  if (
+    [
+      'SOMMELIER',
+      'CAMERIERE',
+      'BARMAN',
+      'CHEF',
+      'CHEF_DE_PARTIE',
+      'SOUS_CHEF',
+      'RECEPTIONIST',
+      'EVENT_COORDINATOR',
+      'CAMERIERE_QUALIFICATO',
+    ].includes(r)
+  ) {
+    return 'LIVELLO_3'
+  }
+  if (r === 'CASSIERE') {
+    return 'LIVELLO_4'
+  }
+  if (
+    [
+      'COMMIS_DI_SALA',
+      'COMMIS_DE_CUISINE',
+      'COMMIS_BAR',
+      'COMMIS_SOMMELIER',
+      'HOSTESS',
+      'RUNNER',
+    ].includes(r)
+  ) {
+    return 'LIVELLO_5'
+  }
+  if (r === 'LAVAPIATTI') {
+    return 'LIVELLO_6'
+  }
+  return 'LIVELLO_6'
+}
+
 // Configurazione ruoli e livelli gerarchici
 const roleConfig = {
   ADMIN: { level: 11, name: 'Amministratore', avatar: '🛡️' },        // Team La Brigata (gestione piattaforma)
@@ -67,7 +129,9 @@ export const authOptions: AuthOptions = {
               name: dbUser.name,
               role: String(dbUser.role) as UserRoleString,
               level: Number((dbUser as unknown as { hierarchyLevel?: number }).hierarchyLevel ?? 5),
-              ccnlLevel: dbUser.ccnlLevel ? String(dbUser.ccnlLevel) : null,
+              ccnlLevel: dbUser.ccnlLevel
+                ? String(dbUser.ccnlLevel)
+                : inferCcnlFromRole(String(dbUser.role)),
               avatar: (dbUser as unknown as { avatar?: string }).avatar ?? '👤',
               userType: (dbUser as unknown as { userType?: string }).userType ?? 'EMPLOYEE',
               companyId: (dbUser as unknown as { companyId?: string | null }).companyId ?? null,
@@ -167,7 +231,15 @@ export const authOptions: AuthOptions = {
       if (user && 'role' in user) {
         token.role = (user as unknown as { role?: import('@/types/roles').UserRoleString }).role;
         token.level = (user as unknown as { level?: number }).level;
-        token.ccnlLevel = (user as unknown as { ccnlLevel?: string | null }).ccnlLevel ?? null;
+        const loginCcnl = (user as unknown as { ccnlLevel?: string | null }).ccnlLevel
+        token.ccnlLevel = loginCcnl
+          ? String(loginCcnl)
+          : inferCcnlFromRole(
+              String(
+                (user as unknown as { role?: import('@/types/roles').UserRoleString })
+                  .role ?? ''
+              )
+            )
         token.avatar = (user as unknown as { avatar?: string }).avatar;
         token.name = user.name;
         token.email = user.email;
@@ -208,7 +280,9 @@ export const authOptions: AuthOptions = {
             token.email = dbUser.email
             token.role = String(dbUser.role) as import('@/types/roles').UserRoleString
             token.level = dbUser.hierarchyLevel ?? token.level
-            token.ccnlLevel = dbUser.ccnlLevel ? String(dbUser.ccnlLevel) : null
+            token.ccnlLevel = dbUser.ccnlLevel
+              ? String(dbUser.ccnlLevel)
+              : inferCcnlFromRole(String(dbUser.role))
             token.avatar = (dbUser as unknown as { avatar?: string }).avatar ?? '👤'
             ;(token as { restaurantId?: string }).restaurantId = dbUser.restaurantId
             ;(token as { department?: string | null }).department = dbUser.department
