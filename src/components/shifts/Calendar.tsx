@@ -543,8 +543,8 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     <div className="space-y-6">
       {/* Header con controlli */}
       <div className="bg-white rounded-lg shadow p-6">
-        {/* Navigazione Data + Pulsanti Vista */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Navigazione settimana */}
+        <div className="flex items-center justify-between mb-6 flex-nowrap gap-2">
           {/* Frecce Sinistra */}
           <div className="flex gap-1">
             <button
@@ -562,53 +562,24 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
           </div>
           
           {/* Data Centro */}
-          <span className="text-lg font-medium">
+          <span className="text-lg font-medium flex-1 text-center">
             {getDateRangeLabel(weekDates)}
           </span>
-          
-          {/* Pulsanti Vista Destra */}
-          <div className="flex gap-1">
-            <button
-              onClick={() => setViewMode('week')}
-              className={`px-3 py-2 rounded-lg font-medium transition ${
-                viewMode === 'week'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title="Settimana"
-            >
-              S
-            </button>
-            <button
-              onClick={() => setViewMode('twoWeeks')}
-              className={`px-3 py-2 rounded-lg font-medium transition ${
-                viewMode === 'twoWeeks'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title="2 Settimane"
-            >
-              2S
-            </button>
-            <button
-              onClick={() => setViewMode('month')}
-              className={`px-3 py-2 rounded-lg font-medium transition ${
-                viewMode === 'month'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title="Mensile"
-            >
-              M
-            </button>
-          </div>
+
+          {/* Badge reparto (vista singolo reparto) */}
+          {visibleDepartments.length === 1 && (
+            <span className="px-3 py-2 rounded-lg font-medium bg-blue-600 text-white shrink-0">
+              {SHIFT_DEPARTMENT_LABELS[visibleDepartments[0]].icon}{' '}
+              {SHIFT_DEPARTMENT_LABELS[visibleDepartments[0]].label}
+            </span>
+          )}
         </div>
         
         {/* Pulsanti Reparto e Azioni */}
         <div className="flex items-center justify-between gap-4">
           {/* Pulsanti Reparto */}
           <div className="flex flex-wrap gap-2">
-            {visibleDepartments.map((dept) => {
+            {visibleDepartments.length > 1 && visibleDepartments.map((dept) => {
               const meta = SHIFT_DEPARTMENT_LABELS[dept]
               return (
                 <button

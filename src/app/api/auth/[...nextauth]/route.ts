@@ -11,10 +11,14 @@ const prisma = new PrismaClient()
 function inferCcnlFromRole(role: string): string {
   const r = (role || '').toString().trim().toUpperCase().replace(/\s+/g, '_')
 
-  if (['ADMIN', 'PROPRIETARIO', 'DIRETTORE_GENERALE', 'FB_MANAGER'].includes(r)) {
+  if (
+    ['ADMIN', 'PROPRIETARIO', 'DIRETTORE_GENERALE', 'FB_MANAGER', 'EXECUTIVE_CHEF'].includes(
+      r
+    )
+  ) {
     return 'QA'
   }
-  if (['DIRETTORE', 'RESTAURANT_MANAGER'].includes(r)) {
+  if (['DIRETTORE', 'SOUS_CHEF', 'CAPO_PASTICCERE'].includes(r)) {
     return 'QB'
   }
   if (
@@ -22,34 +26,35 @@ function inferCcnlFromRole(role: string): string {
       'MANAGER',
       'ASSISTANT_MANAGER',
       'VICE_DIRETTORE',
-      'MAITRE',
       'HEAD_CHEF',
       'HEAD_BARMAN',
       'HEAD_SOMMELIER',
       'RESPONSABILE_SALA',
+      'CHEF_DE_PARTIE',
+      'RESTAURANT_MANAGER',
     ].includes(r)
   ) {
     return 'LIVELLO_1'
   }
-  if (r === 'CAPO_PASTICCERE') {
+  if (r === 'SECONDO_PASTICCERE') {
     return 'LIVELLO_2'
   }
   if (
     [
+      'MAITRE',
       'SOMMELIER',
       'CAMERIERE',
       'BARMAN',
       'CHEF',
-      'CHEF_DE_PARTIE',
-      'SOUS_CHEF',
+      'CAMERIERE_QUALIFICATO',
       'RECEPTIONIST',
       'EVENT_COORDINATOR',
-      'CAMERIERE_QUALIFICATO',
+      'CAPO_PARTITA',
     ].includes(r)
   ) {
     return 'LIVELLO_3'
   }
-  if (r === 'CASSIERE') {
+  if (['CASSIERE', 'BARTENDER'].includes(r)) {
     return 'LIVELLO_4'
   }
   if (
@@ -64,7 +69,7 @@ function inferCcnlFromRole(role: string): string {
   ) {
     return 'LIVELLO_5'
   }
-  if (r === 'LAVAPIATTI') {
+  if (['LAVAPIATTI', 'DIPENDENTE'].includes(r)) {
     return 'LIVELLO_6'
   }
   return 'LIVELLO_6'

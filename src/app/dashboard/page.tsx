@@ -19,6 +19,13 @@ interface HubShift {
 
 interface MeHubData {
   todayShift: HubShift | null
+  monthlyTips?: {
+    total: number
+    daysWithTips: number
+    month: number
+    year: number
+    monthLabel: string
+  }
 }
 
 type LeaveBalance = {
@@ -158,71 +165,6 @@ export default function DashboardPage() {
     return r === 'ADMIN' || r === 'MANAGER'
   }
 
-  // Manager/Admin: TipEntry ristorante (/api/tips/summary). Dipendente: quota V2 (/api/tips/my)
-  useEffect(() => {
-    if (!session?.user?.id) return
-
-    let cancelled = false
-    const role = session.user.role as string | undefined
-    const restaurantView = isRestaurantTipsRole(role)
-
-    const loadMonthlyTips = async () => {
-      setTipsLoading(true)
-      try {
-        const now = new Date()
-        const params = `year=${now.getFullYear()}&month=${now.getMonth()}`
-        const url = restaurantView ? `/api/tips/summary?${params}` : `/api/tips/my?${params}`
-
-        const res = await fetch(url, { credentials: 'include' })
-        if (!res.ok) {
-          if (!cancelled) {
-            setMonthlyTips(0)
-            setMonthlyTipsDays(0)
-            setTipsView(restaurantView ? 'restaurant' : 'personal')
-          }
-          return
-        }
-
-        if (restaurantView) {
-          const data = (await res.json()) as {
-            summary?: {
-              monthTotal?: number
-              monthDaysWithTips?: number
-              todayTotal?: number
-            }
-          }
-          if (!cancelled) {
-            setTipsView('restaurant')
-            setMonthlyTips(Number(data.summary?.monthTotal ?? 0))
-            setMonthlyTipsDays(Number(data.summary?.monthDaysWithTips ?? 0))
-          }
-        } else {
-          const data = (await res.json()) as {
-            summary?: { total?: number; daysWithTips?: number }
-          }
-          if (!cancelled) {
-            setTipsView('personal')
-            setMonthlyTips(Number(data.summary?.total ?? 0))
-            setMonthlyTipsDays(Number(data.summary?.daysWithTips ?? 0))
-          }
-        }
-      } catch (error) {
-        console.error('Error loading monthly tips:', error)
-        if (!cancelled) {
-          setMonthlyTips(0)
-          setMonthlyTipsDays(0)
-        }
-      } finally {
-        if (!cancelled) setTipsLoading(false)
-      }
-    }
-
-    void loadMonthlyTips()
-    return () => {
-      cancelled = true
-    }
-  }, [session?.user?.id, session?.user?.role])
-
   const isManagerOrAdmin =
     userRole === UserRole.ADMIN ||
     userRole === UserRole.MANAGER ||
@@ -241,6 +183,65 @@ export default function DashboardPage() {
     leavesFetcher,
     { revalidateOnFocus: true }
   )
+
+  // Manager/Admin: totale mance ristorante del mese corrente
+  useEffect(() => {
+    if (!session?.user?.id || showPersonalShift) return
+
+    let cancelled = false
+    const loadRestaurantTips = async () => {
+      setTipsLoading(true)
+      try {
+        const now = new Date()
+        const params = `year=${now.getFullYear()}&month=${now.getMonth()}`
+        const res = await fetch(`/api/tips/summary?${params}`, {
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          if (!cancelled) {
+            setMonthlyTips(0)
+            setMonthlyTipsDays(0)
+            setTipsView('restaurant')
+          }
+          return
+        }
+        const data = (await res.json()) as {
+          summary?: { monthTotal?: number; monthDaysWithTips?: number }
+        }
+        if (!cancelled) {
+          setTipsView('restaurant')
+          setMonthlyTips(Number(data.summary?.monthTotal ?? 0))
+          setMonthlyTipsDays(Number(data.summary?.monthDaysWithTips ?? 0))
+        }
+      } catch (error) {
+        console.error('Error loading monthly tips:', error)
+        if (!cancelled) {
+          setMonthlyTips(0)
+          setMonthlyTipsDays(0)
+        }
+      } finally {
+        if (!cancelled) setTipsLoading(false)
+      }
+    }
+
+    void loadRestaurantTips()
+    return () => {
+      cancelled = true
+    }
+  }, [session?.user?.id, session?.user?.restaurantId, showPersonalShift])
+
+  // Dipendente: stesso totale mese di /me (da /api/me/hub, non oggi)
+  useEffect(() => {
+    if (!showPersonalShift) return
+    setTipsView('personal')
+    if (hubLoading) {
+      setTipsLoading(true)
+      return
+    }
+    setTipsLoading(false)
+    setMonthlyTips(Number(hubData?.monthlyTips?.total ?? 0))
+    setMonthlyTipsDays(Number(hubData?.monthlyTips?.daysWithTips ?? 0))
+  }, [showPersonalShift, hubLoading, hubData?.monthlyTips])
   const todayShift = shiftHubLabel(hubData?.todayShift ?? null)
 
   const leaveBalances = leavesData?.balances ?? []
