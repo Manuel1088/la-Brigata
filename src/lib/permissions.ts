@@ -1,5 +1,11 @@
 // Sistema di permessi granulari per La Brigata
-// 25+ permessi organizzati per categoria
+// Fonte di verità: livello CCNL (mansione/ruolo indipendente dal livello)
+import {
+  CCNLLevel,
+  CCNL_LEVEL_ORDER,
+  isCcnlLevel,
+  type CCNLLevel as CcnlLevelType,
+} from '@/lib/ccnl'
 
 export interface Permission {
   id: string
@@ -155,6 +161,13 @@ export const PERMISSIONS: Record<string, Permission> = {
     description: 'Esportare i dati dei turni',
     category: 'turni',
     level: 6
+  },
+  TURNI_SWAP_REQUEST: {
+    id: 'turni_swap_request',
+    name: 'Richiedere Cambi Turno',
+    description: 'Inviare richieste di cambio turno',
+    category: 'turni',
+    level: 4
   },
 
   // 🏖️ FERIE (8 permessi)
@@ -547,46 +560,200 @@ ROLE_PERMISSIONS['LAVAPIATTI'] = ROLE_PERMISSIONS['DIPENDENTE']
 ROLE_PERMISSIONS['DIPENDENTE_SALA'] = ROLE_PERMISSIONS['DIPENDENTE']
 ROLE_PERMISSIONS['DIPENDENTE_BAR'] = ROLE_PERMISSIONS['DIPENDENTE']
 
+/** Permessi riservati alla piattaforma (solo ADMIN creatore). */
+const PLATFORM_ONLY_PERMISSION_IDS = new Set([
+  'admin_users',
+  'admin_roles',
+  'admin_settings',
+  'admin_backup',
+  'admin_companies',
+  'admin_candidates',
+  'admin_ccnl',
+  'super_admin_delete_company',
+  'super_admin_system_config',
+  'super_admin_database_access',
+  'super_admin_full_audit',
+  'super_admin_override_permissions',
+])
+
+const ALL_PERMISSION_IDS = Object.values(PERMISSIONS).map((p) => p.id)
+
+/** QA / QB — massimi permessi ristorante (no gestione piattaforma). */
+const RESTAURANT_FULL_PERMISSION_IDS = ALL_PERMISSION_IDS.filter(
+  (id) => !PLATFORM_ONLY_PERMISSION_IDS.has(id)
+)
+
+/** Incrementi per livello operativo (L6 → L1). */
+const CCNL_L6 = ['edit_personal_info', 'turni_view', 'mance_view'] as const
+const CCNL_L5_ADD = ['ferie_view', 'ferie_request', 'payroll_view'] as const
+const CCNL_L4_ADD = ['turni_swap_request'] as const
+const CCNL_L3_ADD = ['personale_view'] as const
+const CCNL_L2_ADD = [
+  'ferie_approve',
+  'ferie_calendar',
+  'turni_manage',
+  'turni_assign',
+  'turni_approve',
+  'mance_manage',
+  'mance_calculate',
+] as const
+const CCNL_L1_ADD = [
+  'ferie_view_all',
+  'report_basic',
+  'report_advanced',
+  'report_export',
+  'bookings_view',
+  'customers_view',
+] as const
+
+function unionSets(...groups: readonly (readonly string[])[]): string[] {
+  return [...new Set(groups.flat())]
+}
+
+const CCNL_PERMISSIONS_BY_LEVEL: Record<CcnlLevelType, string[]> = {
+  [CCNLLevel.LIVELLO_6]: [...CCNL_L6],
+  [CCNLLevel.LIVELLO_5]: unionSets(CCNL_L6, CCNL_L5_ADD),
+  [CCNLLevel.LIVELLO_4]: unionSets(CCNL_L6, CCNL_L5_ADD, CCNL_L4_ADD),
+  [CCNLLevel.LIVELLO_3]: unionSets(CCNL_L6, CCNL_L5_ADD, CCNL_L4_ADD, CCNL_L3_ADD),
+  [CCNLLevel.LIVELLO_2]: unionSets(CCNL_L6, CCNL_L5_ADD, CCNL_L4_ADD, CCNL_L3_ADD, CCNL_L2_ADD),
+  [CCNLLevel.LIVELLO_1]: unionSets(
+    CCNL_L6,
+    CCNL_L5_ADD,
+    CCNL_L4_ADD,
+    CCNL_L3_ADD,
+    CCNL_L2_ADD,
+    CCNL_L1_ADD
+  ),
+  [CCNLLevel.QB]: [...RESTAURANT_FULL_PERMISSION_IDS],
+  [CCNLLevel.QA]: [...RESTAURANT_FULL_PERMISSION_IDS],
+}
+
+/** Permessi QA/QB aggiuntivi rispetto a L1 (gestione completa ristorante). */
+const QA_QB_EXTRA = RESTAURANT_FULL_PERMISSION_IDS.filter(
+  (id) => !CCNL_PERMISSIONS_BY_LEVEL[CCNLLevel.LIVELLO_1].includes(id)
+)
+
 // Funzioni di utilità per i permessi
 function normalizeRole(role: string): string {
   return (role || '').toString().toUpperCase()
 }
 
-export function hasPermission(userRole: string, permission: string): boolean {
-  const rolePermissions = ROLE_PERMISSIONS[normalizeRole(userRole)] || []
-  return rolePermissions.includes(permission)
+export function normalizeCcnlLevel(level: string | null | undefined): CcnlLevelType | null {
+  if (!level) return null
+  const key = String(level).toUpperCase()
+  return isCcnlLevel(key) ? key : null
 }
 
-export function hasAnyPermission(userRole: string, permissions: string[]): boolean {
-  return permissions.some(permission => hasPermission(normalizeRole(userRole), permission))
+/** Indice gerarchico CCNL (0 = QA, più alto = livello più basso). */
+export function ccnlRank(level: CcnlLevelType | string): number {
+  const normalized = normalizeCcnlLevel(level)
+  if (!normalized) return 999
+  const idx = CCNL_LEVEL_ORDER.indexOf(normalized)
+  return idx === -1 ? 999 : idx
 }
 
-export function hasAllPermissions(userRole: string, permissions: string[]): boolean {
-  return permissions.every(permission => hasPermission(normalizeRole(userRole), permission))
+/** true se userLevel è almeno minimumLevel (QA ≥ QB ≥ L1 ≥ … ≥ L6). */
+export function ccnlMeetsMinimum(
+  userLevel: CcnlLevelType | string | null | undefined,
+  minimumLevel: CcnlLevelType | string
+): boolean {
+  const min = normalizeCcnlLevel(minimumLevel)
+  const user = normalizeCcnlLevel(userLevel)
+  if (!min || !user) return false
+  return ccnlRank(user) <= ccnlRank(min)
 }
 
-export function getUserPermissions(userRole: string): Permission[] {
-  const permissionIds = ROLE_PERMISSIONS[normalizeRole(userRole)] || []
-  return permissionIds.map(id => PERMISSIONS[id]).filter(Boolean)
+/**
+ * Permessi effettivi da livello CCNL (fonte di verità).
+ * ADMIN è gestito a parte in hasPermission / canAccess.
+ */
+export function getCcnlPermissions(ccnlLevel: CcnlLevelType): string[] {
+  return [...(CCNL_PERMISSIONS_BY_LEVEL[ccnlLevel] ?? [])]
 }
 
-export function getPermissionsByCategory(userRole: string, category: string): Permission[] {
-  return getUserPermissions(normalizeRole(userRole)).filter(p => p.category === category)
+/** Lista permessi effettivi: CCNL se presente, altrimenti fallback legacy per ruolo. */
+export function getEffectivePermissionIds(
+  userRole: string,
+  ccnlLevel?: string | null
+): string[] {
+  if (normalizeRole(userRole) === 'ADMIN') {
+    return [...ALL_PERMISSION_IDS]
+  }
+  const level = normalizeCcnlLevel(ccnlLevel)
+  if (level) return getCcnlPermissions(level)
+  return [...(ROLE_PERMISSIONS[normalizeRole(userRole)] ?? [])]
 }
 
-// Controllo livello minimo
+export function hasPermission(
+  userRole: string,
+  permission: string,
+  ccnlLevel?: string | null
+): boolean {
+  if (normalizeRole(userRole) === 'ADMIN') return true
+  return getEffectivePermissionIds(userRole, ccnlLevel).includes(permission)
+}
+
+export function hasAnyPermission(
+  userRole: string,
+  permissions: string[],
+  ccnlLevel?: string | null
+): boolean {
+  return permissions.some((p) => hasPermission(userRole, p, ccnlLevel))
+}
+
+export function hasAllPermissions(
+  userRole: string,
+  permissions: string[],
+  ccnlLevel?: string | null
+): boolean {
+  return permissions.every((p) => hasPermission(userRole, p, ccnlLevel))
+}
+
+export function getUserPermissions(
+  userRole: string,
+  ccnlLevel?: string | null
+): Permission[] {
+  const permissionIds = getEffectivePermissionIds(userRole, ccnlLevel)
+  return permissionIds.map((id) => PERMISSIONS[id]).filter(Boolean)
+}
+
+export function getPermissionsByCategory(
+  userRole: string,
+  category: string,
+  ccnlLevel?: string | null
+): Permission[] {
+  return getUserPermissions(userRole, ccnlLevel).filter((p) => p.category === category)
+}
+
+/** @deprecated Usare ccnlMeetsMinimum; mantenuto per compatibilità hierarchyLevel numerico. */
 export function hasMinimumLevel(userLevel: number, requiredLevel: number): boolean {
   return userLevel >= requiredLevel
 }
 
-// Verifica combinata livello + permesso
-export function canAccess(userRole: string, userLevel: number, permission: string): boolean {
-  // Trova il permesso nel PERMISSIONS usando l'id
-  const perm = Object.values(PERMISSIONS).find(p => p.id === permission)
-  if (!perm) return false
-  
-  const role = normalizeRole(userRole)
-  // Superuser: ADMIN o PROPRIETARIO hanno sempre accesso
-  if (role === 'ADMIN' || role === 'PROPRIETARIO') return true
-  return hasPermission(role, permission) && hasMinimumLevel(userLevel, perm.level)
+/** Verifica accesso: ADMIN totale; altrimenti permessi da CCNL. */
+export function canAccess(
+  userRole: string,
+  _userLevel: number,
+  permission: string,
+  ccnlLevel?: string | null
+): boolean {
+  return hasPermission(userRole, permission, ccnlLevel)
 }
+
+/** Sidebar / sezioni UI */
+export function canSeeTeamSection(
+  ccnlLevel?: string | null,
+  userRole?: string | null
+): boolean {
+  if (normalizeRole(userRole ?? '') === 'ADMIN') return false
+  return ccnlMeetsMinimum(ccnlLevel, CCNLLevel.LIVELLO_2)
+}
+
+export function canSeeGestioneSection(
+  ccnlLevel?: string | null,
+  userRole?: string | null
+): boolean {
+  if (normalizeRole(userRole ?? '') === 'ADMIN') return false
+  return ccnlMeetsMinimum(ccnlLevel, CCNLLevel.LIVELLO_1)
+}
+

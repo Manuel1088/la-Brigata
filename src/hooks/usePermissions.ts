@@ -1,17 +1,31 @@
 'use client'
 import { useSession } from 'next-auth/react'
-import { hasAnyPermission, hasAllPermissions, canAccess, getUserPermissions, getPermissionsByCategory, PERMISSIONS } from '@/lib/permissions'
-import { canManageRestaurantStaff } from '@/lib/employee-create'
+import {
+  canAccess,
+  canSeeGestioneSection,
+  canSeeTeamSection,
+  ccnlMeetsMinimum,
+  getEffectivePermissionIds,
+  getPermissionsByCategory,
+  getUserPermissions,
+  hasAllPermissions,
+  hasAnyPermission,
+  hasPermission,
+  normalizeCcnlLevel,
+  PERMISSIONS,
+} from '@/lib/permissions'
+import type { CCNLLevel } from '@/lib/ccnl'
 
 export function usePermissions() {
   const { data: session } = useSession()
-  
+
   const userRole = session?.user?.role
   const userLevel = session?.user?.level || 0
+  const ccnlLevel = session?.user?.ccnlLevel ?? null
   const userId = session?.user?.id as string | undefined
   const upperRole = (userRole || '').toString().toUpperCase()
+  const normalizedCcnl = normalizeCcnlLevel(ccnlLevel)
 
-  // Lettura override permessi per-utente da localStorage
   const getUserOverrides = (): string[] => {
     if (!userId) return []
     try {
@@ -24,46 +38,52 @@ export function usePermissions() {
     }
   }
 
-  // Funzioni di controllo permessi
   const can = (permission: string): boolean => {
     if (!userRole) return false
-    if (upperRole === 'ADMIN' || upperRole === 'PROPRIETARIO') return true
-    // Role-based + override per utente
-    return canAccess(userRole, userLevel, permission) || getUserOverrides().includes(permission)
+    if (upperRole === 'ADMIN') return true
+    return (
+      canAccess(userRole, userLevel, permission, ccnlLevel) ||
+      getUserOverrides().includes(permission)
+    )
   }
 
   const canAny = (permissions: string[]): boolean => {
     if (!userRole) return false
-    if (upperRole === 'ADMIN' || upperRole === 'PROPRIETARIO') return true
-    return hasAnyPermission(userRole, permissions)
+    if (upperRole === 'ADMIN') return true
+    return (
+      hasAnyPermission(userRole, permissions, ccnlLevel) ||
+      permissions.some((p) => getUserOverrides().includes(p))
+    )
   }
 
   const canAll = (permissions: string[]): boolean => {
     if (!userRole) return false
-    if (upperRole === 'ADMIN' || upperRole === 'PROPRIETARIO') return true
-    return hasAllPermissions(userRole, permissions)
+    if (upperRole === 'ADMIN') return true
+    return hasAllPermissions(userRole, permissions, ccnlLevel)
   }
 
-  // Funzioni di utilità
-  const getPermissions = (): typeof PERMISSIONS[string][] => {
+  const meetsCcnlMinimum = (minimumLevel: CCNLLevel | string): boolean => {
+    if (upperRole === 'ADMIN') return true
+    return ccnlMeetsMinimum(ccnlLevel, minimumLevel)
+  }
+
+  const getPermissions = (): (typeof PERMISSIONS)[string][] => {
     if (!userRole) return []
-    return getUserPermissions(userRole)
+    return getUserPermissions(userRole, ccnlLevel)
   }
 
-  const getPermissionsByCat = (category: string): typeof PERMISSIONS[string][] => {
+  const getPermissionsByCat = (category: string): (typeof PERMISSIONS)[string][] => {
     if (!userRole) return []
-    return getPermissionsByCategory(userRole, category)
+    return getPermissionsByCategory(userRole, category, ccnlLevel)
   }
 
-  // Controlli specifici per sezioni
   const canManageEmployees = (): boolean => {
-    if (canManageRestaurantStaff(userRole)) return true
-    return canAny([
-      'personale_create',
-      'personale_edit',
-      'personale_activate',
-      'personale_salary',
-    ])
+    return (
+      can('ferie_approve') ||
+      can('personale_create') ||
+      can('personale_edit') ||
+      can('turni_assign')
+    )
   }
 
   const canManageTips = (): boolean => {
@@ -86,7 +106,6 @@ export function usePermissions() {
     return canAny(['admin_users', 'admin_roles', 'admin_settings'])
   }
 
-  // Controlli per azioni specifiche
   const canCreateEmployee = (): boolean => can('personale_create')
   const canEditEmployee = (): boolean => can('personale_edit')
   const canDeleteEmployee = (): boolean => can('personale_delete')
@@ -104,6 +123,7 @@ export function usePermissions() {
   const canAssignShift = (): boolean => can('turni_assign')
   const canApproveShift = (): boolean => can('turni_approve')
   const canExportShifts = (): boolean => can('turni_export')
+  const canRequestShiftSwap = (): boolean => can('turni_swap_request')
 
   const canRequestLeave = (): boolean => can('ferie_request')
   const canApproveLeave = (): boolean => can('ferie_approve')
@@ -129,48 +149,48 @@ export function usePermissions() {
   const canManageBackup = (): boolean => can('admin_backup')
 
   return {
-    // Stato utente
     userRole,
     userLevel,
+    ccnlLevel: normalizedCcnl,
     isAuthenticated: !!session,
-    
-    // Funzioni base
+
     can,
     canAny,
     canAll,
+    meetsCcnlMinimum,
+    canSeeTeamSection: () => canSeeTeamSection(ccnlLevel, userRole),
+    canSeeGestioneSection: () => canSeeGestioneSection(ccnlLevel, userRole),
     getPermissions,
     getPermissionsByCat,
-    
-    // Controlli per sezioni
+    getEffectivePermissionIds: () =>
+      userRole ? getEffectivePermissionIds(userRole, ccnlLevel) : [],
+
     canManageEmployees,
     canManageTips,
     canManageShifts,
     canManageLeaves,
     canViewReports,
     canAccessAdmin,
-    
-    // Controlli specifici - Personale
+
     canCreateEmployee,
     canEditEmployee,
     canDeleteEmployee,
     canActivateEmployee,
     canExportEmployees,
     canManageSalary,
-    
-    // Controlli specifici - Mance
+
     canInsertTips,
     canCalculateTips,
     canApproveTips,
     canViewTipsHistory,
     canExportTips,
-    
-    // Controlli specifici - Turni
+
     canCreateShift,
     canAssignShift,
     canApproveShift,
     canExportShifts,
-    
-    // Controlli specifici - Ferie
+    canRequestShiftSwap,
+
     canRequestLeave,
     canApproveLeave,
     canViewAllLeaves,
@@ -178,21 +198,18 @@ export function usePermissions() {
     canExportLeaves,
     canViewLeaveCalendar,
     canManageLeaveBalance,
-    
-    // Controlli specifici - Busta Paga
+
     canViewPayroll,
     canManagePayroll,
     canScanPayroll,
-    
-    // Controlli specifici - Report
+
     canViewBasicReports,
     canViewAdvancedReports,
     canViewFinancialReports,
     canExportReports,
     canViewAnalytics: () => can('report_advanced'),
     canViewPredictions: () => can('report_advanced'),
-    
-    // Controlli specifici - Admin
+
     canManageUsers,
     canManageCompanies: () => can('admin_companies'),
     canManageCandidates: () => can('admin_candidates'),
@@ -201,18 +218,8 @@ export function usePermissions() {
     canManageSettings,
     canViewAudit,
     canManageBackup,
-    
-    // Controlli specifici - Settings
+
     canEditPersonal: () => can('edit_personal_info'),
-    canManageCompany: () => {
-      if (
-        upperRole === 'MANAGER' ||
-        upperRole === 'RESTAURANT_MANAGER' ||
-        upperRole === 'ASSISTANT_MANAGER'
-      ) {
-        return true
-      }
-      return can('manage_company_settings')
-    },
+    canManageCompany: () => can('manage_company_settings'),
   }
 }

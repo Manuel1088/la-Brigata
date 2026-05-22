@@ -1,12 +1,13 @@
 // types/next-auth.d.ts
-import NextAuth from 'next-auth'
 import type { UserRoleString } from '@/types/roles'
+import type { CCNLLevel } from '@/lib/ccnl'
 
 declare module 'next-auth' {
   interface User {
     id?: string
     role?: UserRoleString
     level?: number
+    ccnlLevel?: CCNLLevel | string | null
     avatar?: string
     department?: string
     companyId?: string
@@ -18,6 +19,7 @@ declare module 'next-auth' {
       id: string
       role: UserRoleString
       level: number
+      ccnlLevel?: CCNLLevel | string | null
       avatar: string
       department?: string
       companyId?: string
@@ -33,6 +35,7 @@ declare module 'next-auth/jwt' {
   interface JWT {
     role?: UserRoleString
     level?: number
+    ccnlLevel?: CCNLLevel | string | null
     avatar?: string
     userType?: string
     companyId?: string | null

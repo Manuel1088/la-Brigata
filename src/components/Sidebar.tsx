@@ -26,7 +26,12 @@ export default function Sidebar() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
-  const { userRole, canManageEmployees } = usePermissions()
+  const {
+    userRole,
+    canManageEmployees,
+    canSeeTeamSection,
+    canSeeGestioneSection,
+  } = usePermissions()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)  // 🔓 Sempre aperta
   const [isHovered, setIsHovered] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
@@ -123,73 +128,31 @@ export default function Sidebar() {
         }
       ]
     },
-    // TEAM - Manager e superiori (e Maître per reparto sala)
+    // TEAM — CCNL LIVELLO_2+ (permessi da getCcnlPermissions)
     {
       title: 'TEAM',
       items: [
-        { 
-          icon: '👥', 
-          label: 'Il Team', 
-          path: '/team', 
-          color: '#FDCB6E',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
-        },
-        { 
-          icon: '💰', 
-          label: 'Mance Team', 
-          path: '/team/mance', 
-          color: '#FDCB6E',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
-        },
-        { 
-          icon: '📅', 
-          label: 'Turni Team', 
-          path: '/team/turni', 
-          color: '#74B9FF',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
-        },
+        { icon: '👥', label: 'Il Team', path: '/team', color: '#FDCB6E' },
+        { icon: '💰', label: 'Mance Team', path: '/team/mance', color: '#FDCB6E' },
+        { icon: '📅', label: 'Turni Team', path: '/team/turni', color: '#74B9FF' },
         {
-          icon: '✅', 
-          label: 'Approvazioni', 
-          path: '/approvals', 
+          icon: '✅',
+          label: 'Approvazioni',
+          path: '/approvals',
           color: '#00B894',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE],
-          badge: pendingApprovals > 0 ? pendingApprovals : undefined
-        }
+          badge: pendingApprovals > 0 ? pendingApprovals : undefined,
+        },
       ],
-      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
     },
-    // GESTIONE - Manager e superiori
+    // GESTIONE — CCNL LIVELLO_1+
     {
       title: 'GESTIONE',
       items: [
-        { 
-          icon: '📅', 
-          label: 'Prenotazioni', 
-          path: '/operations',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
-        },
-        { 
-          icon: '🎉', 
-          label: 'Eventi e Festività', 
-          path: '/events',
-          color: '#A29BFE',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
-        },
-        { 
-          icon: '📊', 
-          label: 'Report', 
-          path: '/reports',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
-        },
-        { 
-          icon: '📈', 
-          label: 'Analytics', 
-          path: '/analytics',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
-        }
+        { icon: '📅', label: 'Prenotazioni', path: '/operations' },
+        { icon: '🎉', label: 'Eventi e Festività', path: '/events', color: '#A29BFE' },
+        { icon: '📊', label: 'Report', path: '/reports' },
+        { icon: '📈', label: 'Analytics', path: '/analytics' },
       ],
-      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE, UserRole.RESPONSABILE_SALA, UserRole.MAITRE]
     },
     // AZIENDA - Solo Proprietari/Manager
     {
@@ -243,18 +206,24 @@ export default function Sidebar() {
     }
   ]
 
-  // Filter sections and items based on user role
+  const showTeam = canSeeTeamSection()
+  const showGestione = canSeeGestioneSection()
+
   const filteredSections = menuSections
-    .filter(section => !section.roles || section.roles.includes(userRole as UserRole))
-    .map(section => ({
+    .filter((section) => {
+      if (section.title === 'TEAM') return showTeam
+      if (section.title === 'GESTIONE') return showGestione
+      if (section.roles) return section.roles.includes(userRole as UserRole)
+      return true
+    })
+    .map((section) => ({
       ...section,
-      items: section.items.filter(item => {
-        // Verifica se il ruolo è incluso (se specificato)
+      items: section.items.filter((item) => {
         const roleMatch = !item.roles || item.roles.includes(userRole as UserRole)
-        // Verifica se il ruolo NON è escluso (se specificato)
-        const notExcluded = !item.excludeRoles || !item.excludeRoles.includes(userRole as UserRole)
+        const notExcluded =
+          !item.excludeRoles || !item.excludeRoles.includes(userRole as UserRole)
         return roleMatch && notExcluded
-      })
+      }),
     }))
 
 

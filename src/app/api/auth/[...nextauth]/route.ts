@@ -67,6 +67,7 @@ export const authOptions: AuthOptions = {
               name: dbUser.name,
               role: String(dbUser.role) as UserRoleString,
               level: Number((dbUser as unknown as { hierarchyLevel?: number }).hierarchyLevel ?? 5),
+              ccnlLevel: dbUser.ccnlLevel ? String(dbUser.ccnlLevel) : null,
               avatar: (dbUser as unknown as { avatar?: string }).avatar ?? '👤',
               userType: (dbUser as unknown as { userType?: string }).userType ?? 'EMPLOYEE',
               companyId: (dbUser as unknown as { companyId?: string | null }).companyId ?? null,
@@ -165,6 +166,7 @@ export const authOptions: AuthOptions = {
       if (user && 'role' in user) {
         token.role = (user as unknown as { role?: import('@/types/roles').UserRoleString }).role;
         token.level = (user as unknown as { level?: number }).level;
+        token.ccnlLevel = (user as unknown as { ccnlLevel?: string | null }).ccnlLevel ?? null;
         token.avatar = (user as unknown as { avatar?: string }).avatar;
         token.name = user.name;
         token.email = user.email;
@@ -200,6 +202,8 @@ export const authOptions: AuthOptions = {
             token.name = dbUser.name
             token.email = dbUser.email
             token.role = String(dbUser.role) as import('@/types/roles').UserRoleString
+            token.level = dbUser.hierarchyLevel ?? token.level
+            token.ccnlLevel = dbUser.ccnlLevel ? String(dbUser.ccnlLevel) : null
             token.avatar = (dbUser as unknown as { avatar?: string }).avatar ?? '👤'
             ;(token as { restaurantId?: string }).restaurantId = dbUser.restaurantId
             ;(token as { department?: string | null }).department = dbUser.department
@@ -218,6 +222,7 @@ export const authOptions: AuthOptions = {
         session.user.email = token.email as string | undefined;
         session.user.role = token.role as unknown as import('@/types/roles').UserRoleString;
         session.user.level = token.level as number;
+        session.user.ccnlLevel = (token.ccnlLevel as string | null | undefined) ?? null;
         session.user.avatar = token.avatar as string;
         session.user.userType = token.userType as string | undefined;
         session.user.companyId = (token.companyId as string | null | undefined) ?? undefined;
