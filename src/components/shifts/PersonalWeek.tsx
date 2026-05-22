@@ -2,10 +2,21 @@
 
 import { useSession } from 'next-auth/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNotifications } from '@/hooks/useNotifications'
+import { CCNLLevel } from '@/lib/ccnl'
+import { ccnlMeetsMinimum } from '@/lib/permissions'
 import { getMonday, hoursFromShiftTimeLabel, toDateOnlyIso } from '@/lib/shifts'
 
 type ShiftRow = {
   id: string
+  date: string
+  time: string
+  department: string
+}
+
+type DeptShiftRow = {
+  userId: string
+  userName: string
   date: string
   time: string
   department: string
@@ -21,11 +32,36 @@ function displayLabel(time: string): string {
   return time
 }
 
+function normalizeDept(department: string): string {
+  const d = department.trim().toLowerCase()
+  if (d === 'bar') return 'beverage'
+  return d
+}
+
 export default function PersonalWeekShifts() {
   const { data: session, status } = useSession()
+  const { notifyCustom } = useNotifications()
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [myShifts, setMyShifts] = useState<ShiftRow[]>([])
+  const [deptWeekShifts, setDeptWeekShifts] = useState<DeptShiftRow[]>([])
   const [loadingShifts, setLoadingShifts] = useState(true)
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
+  const [swapStep, setSwapStep] = useState<'intro' | 'pick'>('intro')
+  const [swapSource, setSwapSource] = useState<{
+    dateISO: string
+    offeredShiftTime: string
+  } | null>(null)
+  const [swapTarget, setSwapTarget] = useState<{
+    targetUserId: string
+    targetEmployee: string
+    targetShiftTime: string
+    dateISO: string
+  } | null>(null)
+
+  const userId = session?.user?.id
+  const userCcnl = session?.user?.ccnlLevel ?? null
+  const restaurantId = session?.user?.restaurantId
+  const canRequestVerticalSwap = !ccnlMeetsMinimum(userCcnl, CCNLLevel.LIVELLO_3)
 
   const getWeekDays = useCallback(() => {
     const start = getMonday(currentWeek)
@@ -48,11 +84,13 @@ export default function PersonalWeekShifts() {
     return map
   }, [myShifts])
 
-  const loadMyShifts = useCallback(async () => {
-    const restaurantId = session?.user?.restaurantId
-    const userId = session?.user?.id
+  const sessionDeptRaw = session?.user?.department || 'sala'
+  const userDepartment = sessionDeptRaw === 'bar' ? 'beverage' : sessionDeptRaw
+
+  const loadWeekShifts = useCallback(async () => {
     if (!restaurantId || !userId) {
       setMyShifts([])
+      setDeptWeekShifts([])
       setLoadingShifts(false)
       return
     }
@@ -60,18 +98,27 @@ export default function PersonalWeekShifts() {
     setLoadingShifts(true)
     try {
       const fromDate = toDateOnlyIso(weekDays[0])
-      const params = new URLSearchParams({
+      const baseParams = {
         restaurantId,
         date: fromDate,
         days: '7',
-        userId,
-      })
-      const res = await fetch(`/api/shifts?${params}`, { credentials: 'include' })
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Errore caricamento turni')
       }
-      const rows = (data.shifts ?? []) as Array<{
+
+      const [myRes, deptRes] = await Promise.all([
+        fetch(
+          `/api/shifts?${new URLSearchParams({ ...baseParams, userId })}`,
+          { credentials: 'include' }
+        ),
+        fetch(`/api/shifts?${new URLSearchParams(baseParams)}`, {
+          credentials: 'include',
+        }),
+      ])
+
+      const myData = await myRes.json()
+      if (!myRes.ok) {
+        throw new Error(myData.error || 'Errore caricamento turni')
+      }
+      const rows = (myData.shifts ?? []) as Array<{
         id: string
         date: string
         time: string
@@ -85,20 +132,136 @@ export default function PersonalWeekShifts() {
           department: r.department,
         }))
       )
+
+      if (deptRes.ok) {
+        const deptData = await deptRes.json()
+        const deptRows = (deptData.shifts ?? []) as Array<{
+          userId: string
+          userName: string
+          date: string
+          time: string
+          department: string
+        }>
+        setDeptWeekShifts(
+          deptRows.map((r) => ({
+            userId: r.userId,
+            userName: r.userName,
+            date: r.date,
+            time: r.time,
+            department: r.department,
+          }))
+        )
+      } else {
+        setDeptWeekShifts([])
+      }
     } catch (error) {
       console.error('Errore caricamento turni:', error)
       setMyShifts([])
+      setDeptWeekShifts([])
     } finally {
       setLoadingShifts(false)
     }
-  }, [session?.user?.restaurantId, session?.user?.id, weekDays])
+  }, [restaurantId, userId, weekDays])
 
   useEffect(() => {
     if (status !== 'authenticated') return
-    void loadMyShifts()
-  }, [status, loadMyShifts])
+    void loadWeekShifts()
+  }, [status, loadWeekShifts])
+
+  useEffect(() => {
+    const onSwapUpdated = () => void loadWeekShifts()
+    window.addEventListener('shift_swaps_updated', onSwapUpdated)
+    return () => window.removeEventListener('shift_swaps_updated', onSwapUpdated)
+  }, [loadWeekShifts])
 
   const getShiftForDay = (date: Date) => shiftsByDate.get(toDateOnlyIso(date))
+
+  const getColleaguesOnDay = useCallback(
+    (dateISO: string) => {
+      const colleagues: Array<{
+        userId: string
+        name: string
+        time: string
+      }> = []
+      const myDept = normalizeDept(userDepartment)
+
+      for (const row of deptWeekShifts) {
+        if (row.userId === userId) continue
+        if (row.date !== dateISO) continue
+        if (normalizeDept(row.department) !== myDept) continue
+        if (!isWorkingTime(row.time)) continue
+        colleagues.push({
+          userId: row.userId,
+          name: row.userName,
+          time: row.time,
+        })
+      }
+
+      return colleagues
+    },
+    [deptWeekShifts, userId, userDepartment]
+  )
+
+  const swapColleagues =
+    swapSource != null ? getColleaguesOnDay(swapSource.dateISO) : []
+
+  const closeSwapModal = () => {
+    setIsSwapModalOpen(false)
+    setSwapStep('intro')
+    setSwapSource(null)
+    setSwapTarget(null)
+  }
+
+  const openSwapFlow = (dateISO: string, offeredShiftTime: string) => {
+    setSwapSource({ dateISO, offeredShiftTime })
+    setSwapTarget(null)
+    setSwapStep('intro')
+    setIsSwapModalOpen(true)
+  }
+
+  const handleDayClick = (day: Date) => {
+    if (!canRequestVerticalSwap) return
+    const shift = getShiftForDay(day)
+    if (!shift || !isWorkingTime(shift.time)) return
+    openSwapFlow(toDateOnlyIso(day), shift.time)
+  }
+
+  const handleSwapRequest = async () => {
+    if (!swapTarget || !swapSource || !restaurantId) return
+
+    try {
+      const res = await fetch('/api/shifts/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          restaurantId,
+          targetUserId: swapTarget.targetUserId,
+          targetDate: swapSource.dateISO,
+          requesterDate: swapSource.dateISO,
+          targetShiftTime: swapTarget.targetShiftTime,
+          offeredShiftTime: swapSource.offeredShiftTime,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(
+          (err as { error?: string }).error || 'Invio richiesta fallito'
+        )
+      }
+
+      window.dispatchEvent(new CustomEvent('approvals_updated'))
+      window.dispatchEvent(new CustomEvent('shift_swaps_updated'))
+      notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', 'Richiesta inviata!')
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Errore nell'invio della richiesta"
+      notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', msg)
+    }
+
+    closeSwapModal()
+  }
 
   const weekStats = useMemo(() => {
     let workingDays = 0
@@ -174,8 +337,6 @@ export default function PersonalWeekShifts() {
       { name: 'Serale Accoglienza', time: '18:00-24:00' },
     ],
   }
-  const sessionDeptRaw = session?.user?.department || 'sala'
-  const userDepartment = sessionDeptRaw === 'bar' ? 'beverage' : sessionDeptRaw
   const deptShifts = deptShiftCatalog[userDepartment] || deptShiftCatalog['sala']
 
   return (
@@ -243,14 +404,28 @@ export default function PersonalWeekShifts() {
 
                   <div className="p-3 min-h-[120px] flex items-center justify-center">
                     {hasWork ? (
-                      <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleDayClick(day)}
+                        disabled={!canRequestVerticalSwap}
+                        className={`text-center w-full rounded-lg p-2 transition ${
+                          canRequestVerticalSwap
+                            ? 'hover:bg-blue-50 cursor-pointer'
+                            : 'cursor-default'
+                        } ${isToday ? 'ring-2 ring-orange-400' : ''}`}
+                        title={
+                          canRequestVerticalSwap
+                            ? 'Richiedi cambio turno'
+                            : undefined
+                        }
+                      >
                         <div className="text-sm font-semibold text-gray-900">
                           {shift.time}
                         </div>
                         <div className="text-xs text-gray-500 mt-1 capitalize">
                           {shift.department}
                         </div>
-                      </div>
+                      </button>
                     ) : (
                       <div className="text-xs text-gray-400 text-center">
                         {shift ? displayLabel(shift.time) : 'Riposo'}
@@ -293,6 +468,116 @@ export default function PersonalWeekShifts() {
           </ul>
         </div>
       </div>
+
+      {isSwapModalOpen && swapSource && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            {swapStep === 'intro' ? (
+              <>
+                <h3 className="text-lg font-semibold mb-4">Cambio turno</h3>
+                <div className="space-y-3 text-sm">
+                  <p className="text-gray-600">
+                    Giorno:{' '}
+                    <span className="font-medium text-gray-900">
+                      {new Date(`${swapSource.dateISO}T12:00:00`).toLocaleDateString(
+                        'it-IT',
+                        { weekday: 'long', day: 'numeric', month: 'long' }
+                      )}
+                    </span>
+                  </p>
+                  <p className="text-gray-600">
+                    Il tuo turno:{' '}
+                    <span className="font-medium text-gray-900">
+                      {swapSource.offeredShiftTime}
+                    </span>
+                  </p>
+                  <p className="text-gray-500 text-xs">
+                    Reparto: {userDepartment}
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                  <button
+                    type="button"
+                    onClick={closeSwapModal}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSwapStep('pick')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Richiedi Cambio
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold mb-2">Scegli un collega</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Colleghi del tuo reparto in turno il{' '}
+                  {new Date(`${swapSource.dateISO}T12:00:00`).toLocaleDateString('it-IT', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                  })}
+                </p>
+                {swapColleagues.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">
+                    Nessun collega del reparto in turno in questa data
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {swapColleagues.map((colleague) => (
+                      <button
+                        key={colleague.userId}
+                        type="button"
+                        onClick={() =>
+                          setSwapTarget({
+                            targetUserId: colleague.userId,
+                            targetEmployee: colleague.name,
+                            targetShiftTime: colleague.time,
+                            dateISO: swapSource.dateISO,
+                          })
+                        }
+                        className={`w-full text-left p-3 rounded-lg border transition ${
+                          swapTarget?.targetUserId === colleague.userId
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-medium">{colleague.name}</div>
+                        <div className="text-sm text-gray-600">{colleague.time}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSwapStep('intro')
+                      setSwapTarget(null)
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    Indietro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSwapRequest()}
+                    disabled={!swapTarget}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  >
+                    Invia Richiesta
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }
