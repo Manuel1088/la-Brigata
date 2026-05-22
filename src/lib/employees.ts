@@ -23,6 +23,7 @@ export interface EmployeeFull {
   baseSalary?: number
   weeklyHours?: number
   contractTypeEnum?: 'INDETERMINATO' | 'DETERMINATO'
+  ccnlLevel?: string | null
   employmentEndDate?: string
 }
 

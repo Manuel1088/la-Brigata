@@ -6,6 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import type { EmployeeFull } from '@/lib/employees'
+import { CCNL_LEVEL_ORDER, isCcnlLevel, type CCNLLevel } from '@/lib/ccnl'
 import {
   departmentFromStorage,
   RESTAURANT_DEPARTMENTS,
@@ -14,6 +15,7 @@ import {
 
 type TeamEmployee = EmployeeFull & {
   position?: string
+  ccnlLevel?: string
 }
 
 const DEPARTMENT_ORDER = ['cucina', 'sala', 'beverage', 'accoglienza', 'dirigenti'] as const
@@ -159,8 +161,47 @@ function userRoleDisplayLabel(role: string, department?: string): string {
   return titleCaseRole(key)
 }
 
-function getRoleFilterLabel(role: string): string {
-  return userRoleDisplayLabel(role)
+/** Livello CCNL assegnato nel DB (solo payload API — non il suggested del ruolo). */
+function getEmployeeCcnlLevel(employee: TeamEmployee): string | null {
+  const raw = employee.ccnlLevel?.trim()
+  if (!raw) return null
+  const key = raw.toUpperCase()
+  return isCcnlLevel(key) ? key : null
+}
+
+function ccnlSortRank(level: string | null): number {
+  if (!level || !isCcnlLevel(level)) return 999
+  const idx = CCNL_LEVEL_ORDER.indexOf(level as CCNLLevel)
+  return idx === -1 ? 999 : idx
+}
+
+function ccnlBadgeLabel(level: string): string {
+  if (level === 'QA' || level === 'QB') return level
+  const match = level.match(/LIVELLO_(\d+)/)
+  return match ? `L${match[1]}` : level
+}
+
+function getCardBadge(employee: TeamEmployee): { label: string; className: string } | null {
+  const ccnl = getEmployeeCcnlLevel(employee)
+  if (ccnl) {
+    return {
+      label: ccnlBadgeLabel(ccnl),
+      className: 'bg-slate-100 text-slate-700 border-slate-200',
+    }
+  }
+  if (employee.contractTypeEnum === 'INDETERMINATO') {
+    return {
+      label: 'Indeterminato',
+      className: 'bg-green-50 text-green-700 border-green-200',
+    }
+  }
+  if (employee.contractTypeEnum === 'DETERMINATO') {
+    return {
+      label: 'Determinato',
+      className: 'bg-orange-50 text-orange-700 border-orange-200',
+    }
+  }
+  return null
 }
 
 function getRoleDisplay(employee: TeamEmployee): string {
@@ -181,30 +222,12 @@ function getRoleDisplay(employee: TeamEmployee): string {
   return position
 }
 
-function getDepartmentColor(dept: string) {
-  switch (normalizeDept(dept)) {
-    case 'cucina':
-      return 'bg-red-50 text-red-700 border-red-200'
-    case 'sala':
-      return 'bg-blue-50 text-blue-700 border-blue-200'
-    case 'beverage':
-      return 'bg-green-50 text-green-700 border-green-200'
-    case 'accoglienza':
-      return 'bg-purple-50 text-purple-700 border-purple-200'
-    case 'dirigenti':
-      return 'bg-amber-50 text-amber-800 border-amber-200'
-    default:
-      return 'bg-gray-50 text-gray-700 border-gray-200'
-  }
-}
-
-function getDepartmentIcon(dept: string) {
-  const key = normalizeDept(dept)
-  return RESTAURANT_DEPARTMENTS.find((d) => d.value === key)?.icon ?? '🏢'
-}
-
 function getDepartmentLabel(dept: string) {
   return DEPARTMENT_LABELS[normalizeDept(dept)] ?? dept
+}
+
+function sortByCcnlDesc(a: TeamEmployee, b: TeamEmployee): number {
+  return ccnlSortRank(getEmployeeCcnlLevel(a)) - ccnlSortRank(getEmployeeCcnlLevel(b))
 }
 
 export default function TeamEmployees() {
@@ -212,10 +235,6 @@ export default function TeamEmployees() {
   const { canManageEmployees } = usePermissions()
   const [searchTerm, setSearchTerm] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
-  const [selectedRole, setSelectedRole] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<'name' | 'role' | 'department' | 'startDate'>('name')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { employees: employeesData, mutate } = useEmployeeContext()
@@ -252,57 +271,22 @@ export default function TeamEmployees() {
   )
 
   const filteredEmployees = useMemo(() => {
-    const filtered = employees.filter((emp) => {
-      const matchesSearch =
-        !searchTerm.trim() ||
-        emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getRoleDisplay(emp).toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesDepartment =
-        selectedDepartment === 'all' || normalizeDept(emp.department) === selectedDepartment
-      const matchesRole = selectedRole === 'all' || emp.role === selectedRole
-
-      return matchesSearch && matchesDepartment && matchesRole
+    const q = searchTerm.trim().toLowerCase()
+    return employees.filter((emp) => {
+      if (!q) return true
+      return (
+        emp.name.toLowerCase().includes(q) ||
+        getRoleDisplay(emp).toLowerCase().includes(q)
+      )
     })
-
-    filtered.sort((a, b) => {
-      let aValue: string | number | Date
-      let bValue: string | number | Date
-
-      switch (sortBy) {
-        case 'name':
-          aValue = a.name
-          bValue = b.name
-          break
-        case 'role':
-          aValue = getRoleDisplay(a)
-          bValue = getRoleDisplay(b)
-          break
-        case 'department':
-          aValue = normalizeDept(a.department)
-          bValue = normalizeDept(b.department)
-          break
-        case 'startDate':
-          aValue = new Date(a.startDate)
-          bValue = new Date(b.startDate)
-          break
-        default:
-          aValue = a.name
-          bValue = b.name
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1
-      }
-      return aValue < bValue ? 1 : -1
-    })
-
-    return filtered
-  }, [employees, searchTerm, selectedDepartment, selectedRole, sortBy, sortOrder])
+  }, [employees, searchTerm])
 
   const groupedByDepartment = useMemo(() => {
     const groups: { key: string; label: string; employees: TeamEmployee[] }[] = []
     for (const dept of DEPARTMENT_ORDER) {
-      const list = filteredEmployees.filter((e) => normalizeDept(e.department) === dept)
+      const list = filteredEmployees
+        .filter((e) => normalizeDept(e.department) === dept)
+        .sort(sortByCcnlDesc)
       if (list.length > 0) {
         groups.push({
           key: dept,
@@ -312,9 +296,9 @@ export default function TeamEmployees() {
       }
     }
     const known = new Set(DEPARTMENT_ORDER)
-    const other = filteredEmployees.filter(
-      (e) => !known.has(normalizeDept(e.department) as (typeof DEPARTMENT_ORDER)[number])
-    )
+    const other = filteredEmployees
+      .filter((e) => !known.has(normalizeDept(e.department) as (typeof DEPARTMENT_ORDER)[number]))
+      .sort(sortByCcnlDesc)
     if (other.length > 0) {
       groups.push({ key: 'altro', label: DEPARTMENT_SECTION_TITLE.altro, employees: other })
     }
@@ -343,16 +327,13 @@ export default function TeamEmployees() {
     return { total, active, byDepartment, byRole }
   }, [employees])
 
-  const departments = ['all', ...DEPARTMENT_ORDER]
-  const roles = ['all', ...Array.from(new Set(employees.map((emp) => emp.role)))]
-
   const closeSearch = () => {
     setSearchOpen(false)
     setSearchTerm('')
   }
 
   const renderEmployeeCard = (employee: TeamEmployee) => {
-    const deptNorm = normalizeDept(employee.department)
+    const badge = getCardBadge(employee)
 
     return (
       <div
@@ -377,11 +358,13 @@ export default function TeamEmployees() {
         <p className="text-xs text-gray-600 truncate mt-0.5 leading-tight">
           {getRoleDisplay(employee)}
         </p>
-        <span
-          className={`inline-flex mt-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium border leading-none ${getDepartmentColor(deptNorm)}`}
-        >
-          {getDepartmentIcon(deptNorm)} {getDepartmentLabel(deptNorm)}
-        </span>
+        {badge && (
+          <span
+            className={`inline-flex mt-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium border leading-none ${badge.className}`}
+          >
+            {badge.label}
+          </span>
+        )}
       </div>
     )
   }
@@ -427,68 +410,6 @@ export default function TeamEmployees() {
               {Object.keys(stats.byRole).length}
             </div>
             <div className="text-sm text-orange-700">Ruoli</div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Reparto</label>
-              <select
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {departments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept === 'all' ? 'Tutti' : getDepartmentLabel(dept)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ruolo</label>
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {roles.map((role) => (
-                  <option key={role} value={role}>
-                    {role === 'all' ? 'Tutti' : getRoleFilterLabel(role)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ordina per</label>
-              <select
-                value={sortBy}
-                onChange={(e) =>
-                  setSortBy(e.target.value as 'name' | 'role' | 'department' | 'startDate')
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="name">Nome</option>
-                <option value="role">Ruolo</option>
-                <option value="department">Reparto</option>
-                <option value="startDate">Data assunzione</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ordine</label>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="asc">Crescente</option>
-                <option value="desc">Decrescente</option>
-              </select>
-            </div>
           </div>
         </div>
 
@@ -540,7 +461,7 @@ export default function TeamEmployees() {
               <div className="text-center py-8">
                 <div className="text-4xl mb-2">👥</div>
                 <p className="text-gray-500">Nessun dipendente trovato</p>
-                <p className="text-sm text-gray-400 mt-1">Modifica i filtri per vedere più risultati</p>
+                <p className="text-sm text-gray-400 mt-1">Prova a modificare la ricerca</p>
               </div>
             ) : (
               <div className="space-y-8">

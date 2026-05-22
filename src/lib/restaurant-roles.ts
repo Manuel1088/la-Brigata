@@ -32,39 +32,43 @@ export const RESTAURANT_DEPARTMENTS: {
 
 /** Ruoli reali per reparto, con livello CCNL suggerito. */
 export const RESTAURANT_ROLES: RestaurantRoleOption[] = [
-  // Cucina
+  // Cucina (dal livello CCNL più alto al più basso)
   { value: 'EXECUTIVE_CHEF', label: 'Executive Chef', department: 'cucina', suggestedCcnl: CCNLLevel.QA },
   { value: 'SOUS_CHEF', label: 'Sous Chef', department: 'cucina', suggestedCcnl: CCNLLevel.QB },
   { value: 'CHEF_DE_PARTIE', label: 'Chef de Partie', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_1 },
   { value: 'CHEF', label: 'Cuoco', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_3 },
+  { value: 'CHEF', label: 'Pasticcere', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_3 },
   { value: 'COMMIS_DE_CUISINE', label: 'Commis di Cucina', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_5 },
-  { value: 'LAVAPIATTI', label: 'Lavapiatti', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_6 },
+  { value: 'LAVAPIATTI', label: 'Lavapiatti Cucina', department: 'cucina', suggestedCcnl: CCNLLevel.LIVELLO_6 },
 
-  // Sala
+  // Sala (dal livello CCNL più alto al più basso)
   { value: 'RESTAURANT_MANAGER', label: 'Restaurant Manager', department: 'sala', suggestedCcnl: CCNLLevel.LIVELLO_2 },
   { value: 'MAITRE', label: 'Maitre', department: 'sala', suggestedCcnl: CCNLLevel.LIVELLO_3 },
   { value: 'CAMERIERE_QUALIFICATO', label: 'Chef de Rang', department: 'sala', suggestedCcnl: CCNLLevel.LIVELLO_4 },
   { value: 'CAMERIERE', label: 'Cameriere', department: 'sala', suggestedCcnl: CCNLLevel.LIVELLO_3 },
   { value: 'COMMIS_DI_SALA', label: 'Commis di Sala', department: 'sala', suggestedCcnl: CCNLLevel.LIVELLO_5 },
   { value: 'RUNNER', label: 'Runner', department: 'sala', suggestedCcnl: CCNLLevel.LIVELLO_6 },
+  { value: 'LAVAPIATTI', label: 'Lavapiatti Sala', department: 'sala', suggestedCcnl: CCNLLevel.LIVELLO_6 },
 
-  // Beverage
+  // Beverage (dal livello CCNL più alto al più basso)
   { value: 'HEAD_BARMAN', label: 'Head Barman', department: 'beverage', suggestedCcnl: CCNLLevel.LIVELLO_1 },
+  { value: 'HEAD_SOMMELIER', label: 'Head Sommelier', department: 'beverage', suggestedCcnl: CCNLLevel.LIVELLO_1 },
   { value: 'BARMAN', label: 'Barman', department: 'beverage', suggestedCcnl: CCNLLevel.LIVELLO_3 },
   { value: 'DIPENDENTE_BAR', label: 'Bartender', department: 'beverage', suggestedCcnl: CCNLLevel.LIVELLO_3 },
   { value: 'SOMMELIER', label: 'Sommelier', department: 'beverage', suggestedCcnl: CCNLLevel.LIVELLO_3 },
   { value: 'DIPENDENTE_BAR', label: 'Commis Bar', department: 'beverage', suggestedCcnl: CCNLLevel.LIVELLO_5 },
   { value: 'SOMMELIER', label: 'Commis Sommelier', department: 'beverage', suggestedCcnl: CCNLLevel.LIVELLO_5 },
 
-  // Accoglienza
+  // Accoglienza (dal livello CCNL più alto al più basso)
+  { value: 'CASSIERE', label: 'Cassiere', department: 'accoglienza', suggestedCcnl: CCNLLevel.LIVELLO_4 },
+  { value: 'DIPENDENTE', label: 'Event Coordinator', department: 'accoglienza', suggestedCcnl: CCNLLevel.LIVELLO_3 },
   { value: 'DIPENDENTE', label: 'Receptionist', department: 'accoglienza', suggestedCcnl: CCNLLevel.LIVELLO_3 },
   { value: 'DIPENDENTE', label: 'Hostess', department: 'accoglienza', suggestedCcnl: CCNLLevel.LIVELLO_5 },
-  { value: 'CASSIERE', label: 'Cassiere', department: 'accoglienza', suggestedCcnl: CCNLLevel.LIVELLO_4 },
 
-  // Dirigenti
+  // Dirigenti (dal livello CCNL più alto al più basso)
   { value: 'PROPRIETARIO', label: 'Proprietario', department: 'dirigenti', suggestedCcnl: CCNLLevel.QA },
-  { value: 'MANAGER', label: 'F&B Manager', department: 'dirigenti', suggestedCcnl: CCNLLevel.QB },
   { value: 'DIRETTORE_GENERALE', label: 'Direttore Generale', department: 'dirigenti', suggestedCcnl: CCNLLevel.QA },
+  { value: 'MANAGER', label: 'F&B Manager', department: 'dirigenti', suggestedCcnl: CCNLLevel.QB },
   { value: 'DIRETTORE', label: 'Direttore', department: 'dirigenti', suggestedCcnl: CCNLLevel.QB },
   { value: 'RESTAURANT_MANAGER', label: 'Restaurant Manager', department: 'dirigenti', suggestedCcnl: CCNLLevel.LIVELLO_2 },
   { value: 'MANAGER', label: 'Manager', department: 'dirigenti', suggestedCcnl: CCNLLevel.LIVELLO_1 },
