@@ -46,6 +46,13 @@ export async function POST(request: NextRequest) {
     } = parsed.data
     const requesterDate = parsed.data.requesterDate ?? targetDate
 
+    if (requesterDate !== targetDate) {
+      return NextResponse.json(
+        { error: 'Il cambio turno deve essere nello stesso giorno' },
+        { status: 400 }
+      )
+    }
+
     if (targetUserId === session.user.id) {
       return NextResponse.json(
         { error: 'Non puoi richiedere uno scambio con te stesso' },

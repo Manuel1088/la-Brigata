@@ -16,6 +16,8 @@ import {
   SHIFT_DEPARTMENT_LABELS,
   type ShiftCalendarDepartment,
 } from '@/lib/shift-department-access'
+import { ccnlMeetsMinimum } from '@/lib/permissions'
+import { CCNLLevel } from '@/lib/ccnl'
 
 type CalendarEmployee = Omit<SimpleEmployee, 'department'> & {
   id: string
@@ -40,15 +42,18 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
   const [isShiftSelectorOpen, setIsShiftSelectorOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{name: string, dayIndex: number, isEdit?: boolean} | null>(null)
   const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
+  const [swapStep, setSwapStep] = useState<'intro' | 'pick'>('intro')
+  const [swapSource, setSwapSource] = useState<{
+    dayIndex: number
+    dateISO: string
+    offeredShiftTime: string
+  } | null>(null)
   const [swapTarget, setSwapTarget] = useState<{
     targetEmployee: string
     targetUserId: string
-    targetDepartment: string
-    dayIndex: number
-    dateISO: string
     targetShiftTime: string
+    dateISO: string
   } | null>(null)
-  const [offeredShiftTime, setOfferedShiftTime] = useState<string>('')
   const [swapVersion, setSwapVersion] = useState(0)
   const { notifyCustom } = useNotifications()
   const [customShifts, setCustomShifts] = useState<{[department: string]: Array<{id: string, name: string, time: string, description: string}>}>({})
@@ -57,6 +62,9 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
   const { canCreateShift, canAssignShift, canApproveShift } = usePermissions()
   const userRole = session?.user?.role || ''
   const userName = session?.user?.name || ''
+  const userId = session?.user?.id
+  const userCcnl = session?.user?.ccnlLevel ?? null
+  const canRequestVerticalSwap = !ccnlMeetsMinimum(userCcnl, CCNLLevel.LIVELLO_3)
   const [restVersion, setRestVersion] = useState(0)
   const [showCcnlDetails, setShowCcnlDetails] = useState(false)
   const [shifts, setShifts] = useState<{[key: string]: ShiftCell}>({})
@@ -323,35 +331,44 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
   }
 
-  const getISOString = (date: Date) => {
-    return date.toISOString().split('T')[0]
+  const getISOString = (date: Date) => toDateOnlyIso(date)
+
+  const isWorkingShift = (time: string | undefined) =>
+    !!time && time !== 'RIPOSO' && time !== 'FERIE'
+
+  const closeSwapModal = () => {
+    setIsSwapModalOpen(false)
+    setSwapStep('intro')
+    setSwapSource(null)
+    setSwapTarget(null)
+  }
+
+  const openSwapFlow = (dayIndex: number, offeredShiftTime: string) => {
+    const dateISO = getISOString(getWeekDates(currentWeek)[dayIndex])
+    setSwapSource({ dayIndex, dateISO, offeredShiftTime })
+    setSwapTarget(null)
+    setSwapStep('intro')
+    setIsSwapModalOpen(true)
   }
 
   // ✅ Gestione turni
   const handleCellClick = (employee: string, dayIndex: number) => {
-    if (!accessCanEdit) {
-      // Se non può modificare, controlla se può fare swap
-      const cellKey = `${employee}-${dayIndex}`
-      const currentShift = shifts[cellKey]
-      
-      if (currentShift && currentShift.time && currentShift.time !== 'RIPOSO' && currentShift.time !== 'FERIE') {
-        const targetEmp = employees.find((e) => e.name === employee)
-        if (!targetEmp?.id) {
-          notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', 'Collega non trovato')
-          return
-        }
-        setSwapTarget({
-          targetEmployee: employee,
-          targetUserId: targetEmp.id,
-          targetDepartment: currentShift.department || 'sala',
-          dayIndex,
-          dateISO: getISOString(getWeekDates(currentWeek)[dayIndex]),
-          targetShiftTime: currentShift.time,
-        })
-        setIsSwapModalOpen(true)
-        return
-      }
+    const cellKey = `${employee}-${dayIndex}`
+    const currentShift = shifts[cellKey]
+    const isOwnCell =
+      employee === userName ||
+      employees.find((e) => e.name === employee)?.id === userId
+
+    if (
+      canRequestVerticalSwap &&
+      isOwnCell &&
+      isWorkingShift(currentShift?.time)
+    ) {
+      openSwapFlow(dayIndex, currentShift.time as string)
+      return
     }
+
+    if (!accessCanEdit) return
 
     if (accessScope === 'own' && employee !== userName) return
     if (accessScope === 'department') {
@@ -468,7 +485,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
   }
 
   const handleSwapRequest = async () => {
-    if (!swapTarget || !offeredShiftTime || !restaurantId) return
+    if (!swapTarget || !swapSource || !restaurantId) return
 
     try {
       const res = await fetch('/api/shifts/swap', {
@@ -478,10 +495,10 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
         body: JSON.stringify({
           restaurantId,
           targetUserId: swapTarget.targetUserId,
-          targetDate: swapTarget.dateISO,
-          requesterDate: swapTarget.dateISO,
+          targetDate: swapSource.dateISO,
+          requesterDate: swapSource.dateISO,
           targetShiftTime: swapTarget.targetShiftTime,
-          offeredShiftTime,
+          offeredShiftTime: swapSource.offeredShiftTime,
         }),
       })
 
@@ -502,9 +519,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', msg)
     }
 
-    setIsSwapModalOpen(false)
-    setSwapTarget(null)
-    setOfferedShiftTime('')
+    closeSwapModal()
   }
 
   // ✅ Generazione automatica
@@ -537,7 +552,33 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     return employees.filter(emp => emp.department === selectedDepartment)
   }, [employees, selectedDepartment])
 
+  const getColleaguesOnDay = useCallback(
+    (dayIndex: number) => {
+      const colleagues: Array<{
+        userId: string
+        name: string
+        time: string
+      }> = []
+      for (const emp of filteredEmployees) {
+        if (emp.id === userId) continue
+        const cellKey = `${emp.name}-${dayIndex}`
+        const shift = shifts[cellKey]
+        const time = shift?.time
+        if (!time || !isWorkingShift(time)) continue
+        colleagues.push({
+          userId: emp.id,
+          name: emp.name,
+          time,
+        })
+      }
+      return colleagues
+    },
+    [filteredEmployees, shifts, userId]
+  )
+
   const weekDates = getWeekDates(currentWeek)
+  const swapColleagues =
+    swapSource != null ? getColleaguesOnDay(swapSource.dayIndex) : []
 
   return (
     <div className="space-y-6">
@@ -660,7 +701,14 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                               : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
                             }
                             ${isToday ? 'ring-2 ring-orange-400' : ''}
-                            ${accessCanEdit ? 'cursor-pointer' : 'cursor-default'}
+                            ${
+                              accessCanEdit ||
+                              (canRequestVerticalSwap &&
+                                (employee.name === userName || employee.id === userId) &&
+                                isWorkingShift(shift?.time))
+                                ? 'cursor-pointer'
+                                : 'cursor-default'
+                            }
                           `}
                         >
                           {shift?.time || 'Vuoto'}
@@ -723,45 +771,105 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
         </div>
       )}
 
-      {/* Modal richiesta swap */}
-      {isSwapModalOpen && swapTarget && (
+      {/* Modal richiesta cambio verticale */}
+      {isSwapModalOpen && swapSource && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Richiedi Cambio Turno</h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">Vuoi scambiare il turno di:</p>
-                <p className="font-medium">{swapTarget.targetEmployee}</p>
-                <p className="text-sm text-gray-500">{swapTarget.targetShiftTime}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Con quale turno vuoi scambiare?
-                </label>
-                <input
-                  type="text"
-                  value={offeredShiftTime}
-                  onChange={(e) => setOfferedShiftTime(e.target.value)}
-                  placeholder="es. 09:00-17:00"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                onClick={() => setIsSwapModalOpen(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-              >
-                Annulla
-              </button>
-              <button
-                onClick={handleSwapRequest}
-                disabled={!offeredShiftTime}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                Invia Richiesta
-              </button>
-            </div>
+            {swapStep === 'intro' ? (
+              <>
+                <h3 className="text-lg font-semibold mb-4">Cambio turno</h3>
+                <div className="space-y-3 text-sm">
+                  <p className="text-gray-600">
+                    Giorno:{' '}
+                    <span className="font-medium text-gray-900">
+                      {new Date(`${swapSource.dateISO}T12:00:00`).toLocaleDateString(
+                        'it-IT',
+                        { weekday: 'long', day: 'numeric', month: 'long' }
+                      )}
+                    </span>
+                  </p>
+                  <p className="text-gray-600">
+                    Il tuo turno:{' '}
+                    <span className="font-medium text-gray-900">
+                      {swapSource.offeredShiftTime}
+                    </span>
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                  <button
+                    type="button"
+                    onClick={closeSwapModal}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSwapStep('pick')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Richiedi Cambio
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold mb-2">Scegli un collega</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Solo chi lavora lo stesso giorno ({swapSource.dateISO})
+                </p>
+                {swapColleagues.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">
+                    Nessun collega in turno in questa data
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {swapColleagues.map((colleague) => (
+                      <button
+                        key={colleague.userId}
+                        type="button"
+                        onClick={() =>
+                          setSwapTarget({
+                            targetUserId: colleague.userId,
+                            targetEmployee: colleague.name,
+                            targetShiftTime: colleague.time,
+                            dateISO: swapSource.dateISO,
+                          })
+                        }
+                        className={`w-full text-left p-3 rounded-lg border transition ${
+                          swapTarget?.targetUserId === colleague.userId
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-medium">{colleague.name}</div>
+                        <div className="text-sm text-gray-600">{colleague.time}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSwapStep('intro')
+                      setSwapTarget(null)
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    Indietro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSwapRequest()}
+                    disabled={!swapTarget}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  >
+                    Invia Richiesta
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

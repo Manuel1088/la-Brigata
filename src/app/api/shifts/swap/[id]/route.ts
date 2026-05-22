@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
-import { isManagerRole } from '@/lib/roles'
+import { CCNLLevel } from '@/lib/ccnl'
+import { ccnlMeetsMinimum } from '@/lib/permissions'
 import { resolveRestaurantAccess } from '@/lib/restaurant-access'
 import {
   executeApprovedSwap,
@@ -16,7 +17,7 @@ const swapInclude = {
   target: { select: { id: true, name: true, department: true } },
 } as const
 
-/** PATCH /api/shifts/swap/[id] — approva o rifiuta (solo manager) */
+/** PATCH /api/shifts/swap/[id] — approva o rifiuta (CCNL >= LIVELLO_2) */
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -48,7 +49,16 @@ export async function PATCH(
     }
 
     const access = await resolveRestaurantAccess(session.user.id, swap.restaurantId)
-    if (!access.allowed || !isManagerRole(access.user?.role)) {
+    const approver = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { ccnlLevel: true, role: true },
+    })
+    const canApprove =
+      access.allowed &&
+      approver &&
+      (String(approver.role).toUpperCase() === 'ADMIN' ||
+        ccnlMeetsMinimum(approver.ccnlLevel, CCNLLevel.LIVELLO_2))
+    if (!canApprove) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 

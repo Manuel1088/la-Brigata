@@ -7,6 +7,8 @@ import {
   normalizeSwapStatus,
   type ShiftSwapStatus,
 } from '@/lib/shift-swap-storage'
+import { ccnlMeetsMinimum } from '@/lib/permissions'
+import { CCNLLevel } from '@/lib/ccnl'
 
 export type SwapRequestUi = {
   id: string
@@ -42,6 +44,10 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
   const [loading, setLoading] = useState(true)
 
   const restaurantId = session?.user?.restaurantId as string | undefined
+  const userCcnl = session?.user?.ccnlLevel ?? null
+  const userRole = (session?.user?.role ?? '').toString().toUpperCase()
+  const canApproveSwaps =
+    userRole === 'ADMIN' || ccnlMeetsMinimum(userCcnl, CCNLLevel.LIVELLO_2)
 
   const loadSwapRequests = useCallback(async () => {
     if (!restaurantId) {
@@ -320,7 +326,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
         </div>
       </div>
 
-      {pendingRequests.length > 0 && (
+      {canApproveSwaps && pendingRequests.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -357,11 +363,9 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-3">
                     <span className="text-xl">🔄</span>
-                    <h4 className="font-medium text-gray-900">
-                      Cambio turno per {request.targetEmployeeName}
-                    </h4>
+                    <h4 className="font-medium text-gray-900">Cambio turno verticale</h4>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
                     >
@@ -372,35 +376,28 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
                     <div>
                       <span className="text-gray-600">Richiedente:</span>
-                      <div className="font-medium flex items-center gap-2">
-                        {request.requesterName}
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${getDepartmentColor(request.requesterDepartment)}`}
-                        >
-                          {getDepartmentIcon(request.requesterDepartment)}{' '}
-                          {request.requesterDepartment}
-                        </span>
-                      </div>
+                      <div className="font-medium">{request.requesterName}</div>
                     </div>
                     <div>
-                      <span className="text-gray-600">Data:</span>
-                      <div className="font-medium">{formatDate(request.dateISO)}</div>
+                      <span className="text-gray-600">Collega:</span>
+                      <div className="font-medium">{request.targetEmployeeName}</div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div className="bg-blue-50 rounded-lg p-3">
-                      <span className="text-gray-600 text-xs">TURNO OFFERTO</span>
-                      <div className="font-medium">
-                        {formatTime(request.offeredShiftTime)}
-                      </div>
+                  <div className="text-sm mb-3">
+                    <span className="text-gray-600">Giorno:</span>
+                    <div className="font-medium">{formatDate(request.dateISO)}</div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                    <span className="text-gray-600 text-xs">ORARI</span>
+                    <div className="font-medium mt-1">
+                      {formatTime(request.offeredShiftTime)} →{' '}
+                      {formatTime(request.targetShiftTime)}
                     </div>
-                    <div className="bg-green-50 rounded-lg p-3">
-                      <span className="text-gray-600 text-xs">TURNO RICHIESTO</span>
-                      <div className="font-medium">
-                        {formatTime(request.targetShiftTime)}
-                      </div>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {request.requesterName} → {request.targetEmployeeName}
+                    </p>
                   </div>
 
                   {request.status === 'REJECTED' && request.reason && (
@@ -413,7 +410,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
                   )}
                 </div>
 
-                {request.status === 'PENDING' && (
+                {request.status === 'PENDING' && canApproveSwaps && (
                   <div className="flex gap-2 ml-4">
                     <button
                       onClick={() => handleApprove(request.id)}
