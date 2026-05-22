@@ -63,6 +63,8 @@ const USER_ROLE_VALUES = new Set<string>([
   'DIPENDENTE_SALA',
   'DIPENDENTE_BAR',
   'DIPENDENTE',
+  'EVENT_COORDINATOR',
+  'CAPO_PASTICCERE',
   'LAVAPIATTI',
 ])
 
@@ -94,7 +96,14 @@ export function hierarchyLevelForUserRole(role: UserRole): number {
   ) {
     return 7
   }
-  if (role === 'CASSIERE' || role === 'CHEF_DE_PARTIE' || role === 'CAPO_PARTITA') return 6
+  if (
+    role === 'CASSIERE' ||
+    role === 'CHEF_DE_PARTIE' ||
+    role === 'CAPO_PARTITA' ||
+    role === 'CAPO_PASTICCERE'
+  ) {
+    return 6
+  }
   return 5
 }
 
@@ -131,6 +140,7 @@ export function toEmployeeRole(userRole: UserRole, department: string): Employee
     if (
       userRole === 'CHEF_DE_PARTIE' ||
       userRole === 'CAPO_PARTITA' ||
+      userRole === 'CAPO_PASTICCERE' ||
       userRole === 'CHEF' ||
       userRole === 'CUOCO_QUALIFICATO'
     ) {
@@ -143,7 +153,10 @@ export function toEmployeeRole(userRole: UserRole, department: string): Employee
     if (userRole === 'SOMMELIER' || userRole === 'HEAD_SOMMELIER') return 'BARTENDER'
     return 'BARTENDER'
   }
-  if (dept === 'accoglienza') return 'HOST'
+  if (dept === 'accoglienza') {
+    if (userRole === 'CASSIERE') return 'CASHIER'
+    return 'HOST'
+  }
   if (
     userRole === 'MAITRE' ||
     userRole === 'RESPONSABILE_SALA' ||
