@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
+import { ccnlMeetsMinimum } from '@/lib/permissions'
 import { UserRole } from '@/types/roles'
 import { isAuthPath } from '@/lib/utils'
 
@@ -13,34 +14,42 @@ interface MenuItem {
   path: string
   color?: string
   badge?: number
-  roles?: UserRole[]
-  excludeRoles?: UserRole[]
 }
 
 interface MenuSection {
   title: string
   items: MenuItem[]
-  roles?: UserRole[]
+}
+
+/** true se il livello utente è >= minLevel (QA > QB > L1 > … > L6). */
+function ccnlMeetsLevel(
+  userCcnl: string | null | undefined,
+  minLevel: string
+): boolean {
+  return ccnlMeetsMinimum(userCcnl, minLevel)
+}
+
+function isQbOrQaCcnl(userCcnl: string | null | undefined): boolean {
+  const level = (userCcnl ?? '').toString().trim().toUpperCase()
+  return level === 'QA' || level === 'QB'
 }
 
 export default function Sidebar() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
-  const {
-    userRole,
-    canManageEmployees,
-    canSeeTeamSection,
-    canSeeGestioneSection,
-  } = usePermissions()
+  const { userRole, canInsertTips } = usePermissions()
+  const userCcnl = session?.user?.ccnlLevel ?? null
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)  // 🔓 Sempre aperta
   const [isHovered, setIsHovered] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
 
+  const showApprovalsBadge = ccnlMeetsLevel(userCcnl, 'LIVELLO_2')
+
   // Conteggio approvazioni da API aggregata (DB)
   useEffect(() => {
     const loadPendingApprovals = async () => {
-      if (!canManageEmployees()) {
+      if (!showApprovalsBadge) {
         setPendingApprovals(0)
         return
       }
@@ -75,67 +84,46 @@ export default function Sidebar() {
       window.removeEventListener('shift_swaps_updated', handleUpdate)
       window.removeEventListener('employee_requests_updated', handleUpdate)
     }
-  }, [canManageEmployees])
+  }, [showApprovalsBadge])
 
   // Don't show sidebar on login/register or without active session
   if (isAuthPath(pathname) || status !== 'authenticated' || !session) {
     return null
   }
 
-  // Define menu structure based on roles
   const menuSections: MenuSection[] = [
-    // PERSONALE - Tutti gli utenti
     {
       title: 'PERSONALE',
       items: [
-        { 
-          icon: '💰', 
-          label: 'Le Mance', 
-          path: '/tips', 
-          color: '#FDCB6E',
-          // Solo dipendenti che lavorano (esclusi ADMIN e PROPRIETARIO)
-          excludeRoles: [UserRole.ADMIN, UserRole.PROPRIETARIO]
-        },
-        { 
-          icon: '📄', 
-          label: 'Buste Paga', 
-          path: '/buste-paga', 
-          color: '#00B894',
-          // Solo dipendenti con stipendio (esclusi ADMIN e PROPRIETARIO)
-          excludeRoles: [UserRole.ADMIN, UserRole.PROPRIETARIO]
-        },
-        { 
-          icon: '📅', 
-          label: 'I Miei Turni', 
-          path: '/shifts', 
-          color: '#74B9FF',
-          // Solo per chi lavora fisicamente (esclusi ADMIN e PROPRIETARIO)
-          excludeRoles: [UserRole.ADMIN, UserRole.PROPRIETARIO]
-        },
-        { 
-          icon: '🏖️', 
-          label: 'Ferie e Permessi', 
-          path: '/leaves', 
-          color: '#00B894',
-          // Solo dipendenti che lavorano (esclusi ADMIN e PROPRIETARIO)
-          excludeRoles: [UserRole.ADMIN, UserRole.PROPRIETARIO]
-        },
-        { 
-          icon: '👤', 
-          label: 'Il Profilo', 
-          path: '/profile', 
-          color: '#2D3436'
-          // Tutti hanno profilo (nessuna esclusione)
-        }
-      ]
+        { icon: '💰', label: 'Le Mance', path: '/tips', color: '#FDCB6E' },
+        { icon: '📄', label: 'Buste Paga', path: '/buste-paga', color: '#00B894' },
+        { icon: '📅', label: 'I Miei Turni', path: '/shifts', color: '#74B9FF' },
+        { icon: '🏖️', label: 'Ferie e Permessi', path: '/leaves', color: '#00B894' },
+        { icon: '👤', label: 'Il Profilo', path: '/profile', color: '#2D3436' },
+      ],
     },
-    // TEAM — CCNL LIVELLO_2+ (permessi da getCcnlPermissions)
     {
-      title: 'TEAM',
+      title: 'MANCE TEAM',
       items: [
-        { icon: '👥', label: 'Il Team', path: '/team', color: '#FDCB6E' },
         { icon: '💰', label: 'Mance Team', path: '/team/mance', color: '#FDCB6E' },
+      ],
+    },
+    {
+      title: 'TURNI TEAM',
+      items: [
         { icon: '📅', label: 'Turni Team', path: '/team/turni', color: '#74B9FF' },
+      ],
+    },
+    {
+      title: 'GESTIONE',
+      items: [
+        { icon: '📅', label: 'Prenotazioni', path: '/operations' },
+        { icon: '🎉', label: 'Eventi e Festività', path: '/events', color: '#A29BFE' },
+      ],
+    },
+    {
+      title: 'APPROVAZIONI',
+      items: [
         {
           icon: '✅',
           label: 'Approvazioni',
@@ -145,54 +133,25 @@ export default function Sidebar() {
         },
       ],
     },
-    // GESTIONE — CCNL LIVELLO_1+
     {
-      title: 'GESTIONE',
+      title: 'TEAM',
+      items: [{ icon: '👥', label: 'Il Team', path: '/team', color: '#FDCB6E' }],
+    },
+    {
+      title: 'REPORT',
       items: [
-        { icon: '📅', label: 'Prenotazioni', path: '/operations' },
-        { icon: '🎉', label: 'Eventi e Festività', path: '/events', color: '#A29BFE' },
         { icon: '📊', label: 'Report', path: '/reports' },
         { icon: '📈', label: 'Analytics', path: '/analytics' },
       ],
     },
-    // AZIENDA - Solo Proprietari/Manager
-    {
-      title: 'AZIENDA',
-      items: [
-        { 
-          icon: '🏢', 
-          label: 'Company', 
-          path: '/company',
-          color: '#FDCB6E',
-          roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
-        }
-      ],
-      roles: [UserRole.MANAGER, UserRole.PROPRIETARIO, UserRole.DIRETTORE]
-    },
-    // IMPOSTAZIONI - Tutti gli utenti
     {
       title: 'IMPOSTAZIONI',
       items: [
-        { 
-          icon: '⚙️', 
-          label: 'Impostazioni', 
-          path: '/settings'
-        },
-        { 
-          icon: '🔔', 
-          label: 'Notifiche', 
-          path: '/notifications', 
-          color: '#74B9FF' 
-        },
-        { 
-          icon: '💳', 
-          label: 'Abbonamenti', 
-          path: '/subscription',
-          color: '#FDCB6E'
-        }
-      ]
+        { icon: '⚙️', label: 'Impostazioni', path: '/settings' },
+        { icon: '🔔', label: 'Notifiche', path: '/notifications', color: '#74B9FF' },
+        { icon: '💳', label: 'Abbonamenti', path: '/subscription', color: '#FDCB6E' },
+      ],
     },
-    // ADMIN - Solo team La Brigada (gestione piattaforma)
     {
       title: 'ADMIN',
       items: [
@@ -200,33 +159,37 @@ export default function Sidebar() {
           icon: '🛡️',
           label: 'Admin Panel',
           path: '/admin',
-          roles: [UserRole.ADMIN]
-        }
+        },
       ],
-      roles: [UserRole.ADMIN]
-    }
+    },
   ]
 
-  const showTeam = canSeeTeamSection()
-  const showGestione = canSeeGestioneSection()
+  const isSectionVisible = (title: string): boolean => {
+    switch (title) {
+      case 'PERSONALE':
+      case 'IMPOSTAZIONI':
+        return true
+      case 'MANCE TEAM':
+        return canInsertTips()
+      case 'TURNI TEAM':
+      case 'GESTIONE':
+        return ccnlMeetsLevel(userCcnl, 'LIVELLO_3')
+      case 'APPROVAZIONI':
+        return ccnlMeetsLevel(userCcnl, 'LIVELLO_2')
+      case 'TEAM':
+        return isQbOrQaCcnl(userCcnl)
+      case 'REPORT':
+        return ccnlMeetsLevel(userCcnl, 'LIVELLO_1')
+      case 'ADMIN':
+        return userRole === UserRole.ADMIN
+      default:
+        return false
+    }
+  }
 
-  const filteredSections = menuSections
-    .filter((section) => {
-      if (section.title === 'TEAM') return showTeam
-      if (section.title === 'GESTIONE') return showGestione
-      if (section.roles) return section.roles.includes(userRole as UserRole)
-      return true
-    })
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => {
-        const roleMatch = !item.roles || item.roles.includes(userRole as UserRole)
-        const notExcluded =
-          !item.excludeRoles || !item.excludeRoles.includes(userRole as UserRole)
-        return roleMatch && notExcluded
-      }),
-    }))
-
+  const filteredSections = menuSections.filter((section) =>
+    isSectionVisible(section.title)
+  )
 
   const handleMouseEnter = () => {
     setIsHovered(true)
@@ -239,13 +202,12 @@ export default function Sidebar() {
   }
 
   return (
-    <div 
+    <div
       className={`bg-white text-gray-900 h-full flex flex-col border-r border-gray-200`}
-      style={{ width: '250px' }}  // 🎯 Larghezza custom 250px
+      style={{ width: '250px' }} // 🎯 Larghezza custom 250px
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-
       {/* Navigation */}
       <nav className="flex-1 p-4 pt-4 space-y-3">
         {filteredSections.map((section, sectionIndex) => (
@@ -261,8 +223,8 @@ export default function Sidebar() {
                     <button
                       onClick={() => router.push(item.path)}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-1 rounded-lg transition-all relative ${
-                        isActive 
-                          ? 'bg-gray-100 text-gray-900 font-semibold shadow-sm border-l-4 border-orange-500' 
+                        isActive
+                          ? 'bg-gray-100 text-gray-900 font-semibold shadow-sm border-l-4 border-orange-500'
                           : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                     >
@@ -281,7 +243,6 @@ export default function Sidebar() {
           </div>
         ))}
       </nav>
-
     </div>
   )
 }
