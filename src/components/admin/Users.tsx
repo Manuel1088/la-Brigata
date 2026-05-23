@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useAudit } from '@/hooks/useAudit'
 
@@ -25,7 +26,7 @@ type AdminUsersProps = {
 }
 
 export default function AdminUsers({ globalSearch = false }: AdminUsersProps) {
-  // const { data: session } = useSession()
+  const searchParams = useSearchParams()
   const { notifyCustom } = useNotifications()
   const { logReadAction } = useAudit()
   const [users, setUsers] = useState<User[]>([])
@@ -36,6 +37,17 @@ export default function AdminUsers({ globalSearch = false }: AdminUsersProps) {
   const [restaurantFilter, setRestaurantFilter] = useState<string>('all')
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!globalSearch) return
+    setSearchTerm(searchParams.get('q') ?? '')
+    setRoleFilter(searchParams.get('role') ?? 'all')
+    setRestaurantFilter(searchParams.get('restaurantId') ?? 'all')
+    const active = searchParams.get('active')
+    setStatusFilter(
+      active === 'true' ? 'active' : active === 'false' ? 'inactive' : 'all'
+    )
+  }, [globalSearch, searchParams])
 
   useEffect(() => {
     if (!globalSearch) return
@@ -358,83 +370,75 @@ export default function AdminUsers({ globalSearch = false }: AdminUsersProps) {
 
       {/* Filtri e Azioni */}
       <div className="bg-gray-50 rounded-lg p-4">
-        <div
-          className={`grid grid-cols-1 gap-4 mb-4 ${
-            globalSearch ? 'md:grid-cols-5' : 'md:grid-cols-4'
-          }`}
-        >
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Cerca</label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Nome o email..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Ruolo</label>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tutti</option>
-              <option value="ADMIN">Admin</option>
-              <option value="PROPRIETARIO">Proprietario</option>
-              <option value="DIRETTORE">Direttore</option>
-              <option value="MANAGER">Manager</option>
-              <option value="HEAD_CHEF">Head Chef</option>
-              <option value="DIPENDENTE">Dipendente</option>
-              <option value="CASSIERE">Cassiere</option>
-            </select>
-          </div>
-
-          {globalSearch ? (
+        {!globalSearch ? (
+          <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ristorante
+                Cerca
+              </label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Nome o email..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ruolo
               </label>
               <select
-                value={restaurantFilter}
-                onChange={(e) => setRestaurantFilter(e.target.value)}
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">Tutti</option>
-                <option value="none">Senza ristorante</option>
-                {restaurants.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
+                <option value="ADMIN">Admin</option>
+                <option value="PROPRIETARIO">Proprietario</option>
+                <option value="DIRETTORE">Direttore</option>
+                <option value="MANAGER">Manager</option>
+                <option value="HEAD_CHEF">Head Chef</option>
+                <option value="DIPENDENTE">Dipendente</option>
+                <option value="CASSIERE">Cassiere</option>
               </select>
             </div>
-          ) : null}
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Stato</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tutti</option>
-              <option value="active">Attivi</option>
-              <option value="inactive">Inattivi</option>
-            </select>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Stato
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Tutti</option>
+                <option value="active">Attivi</option>
+                <option value="inactive">Inattivi</option>
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                onClick={selectAllUsers}
+                className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+              >
+                Seleziona Tutti
+              </button>
+            </div>
           </div>
-          
-          <div className="flex items-end">
+        ) : (
+          <div className="flex justify-end mb-4">
             <button
               onClick={selectAllUsers}
-              className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+              className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm"
             >
               Seleziona Tutti
             </button>
           </div>
-        </div>
+        )}
 
         {/* Azioni Bulk */}
         {selectedUsers.length > 0 && (

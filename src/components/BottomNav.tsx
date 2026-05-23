@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Calendar, Coins, Home, User } from 'lucide-react'
 import { isAuthPath } from '@/lib/utils'
+import { isPlatformAdmin } from '@/lib/platform-admin'
 
 const TABS = [
   { href: '/dashboard', label: 'Home', icon: Home, match: (p: string) => p === '/dashboard' || p === '/' },
@@ -18,6 +19,10 @@ export default function BottomNav() {
   const { data: session, status } = useSession()
 
   if (isAuthPath(pathname) || status === 'loading' || !session) {
+    return null
+  }
+
+  if (isPlatformAdmin(session.user?.role, session.user?.level)) {
     return null
   }
 

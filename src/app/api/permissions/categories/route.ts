@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { CCNLLevel, Prisma, PrismaClient } from '@prisma/client'
+import { CCNLLevel, Prisma } from '@prisma/client'
+import { isPlatformAdminScope } from '@/lib/admin-auth'
 import { CCNLLevel as CcnlLevelConst } from '@/lib/ccnl'
 import { inferCcnlFromRole } from '@/lib/ccnl-infer'
 import {
@@ -14,12 +15,11 @@ import {
 } from '@/lib/category-permissions'
 import { normalizeCcnlLevel } from '@/lib/permissions'
 import { getPermissionActorFromSession } from '@/lib/permission-api-auth'
+import { prisma } from '@/lib/db'
 import {
   loadCategoryGrantsForUsers,
   setCategoryGrant,
 } from '@/lib/user-permissions-db'
-
-const prisma = new PrismaClient()
 
 const LISTABLE_CCNL: CCNLLevel[] = [
   CCNLLevel.QA,
@@ -52,15 +52,21 @@ export async function GET() {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
   }
 
-  const superAdmin = isSuperAdmin(actor)
+  const platformScope = isPlatformAdminScope(
+    actor.role,
+    actor.level,
+    actor.restaurantId
+  )
 
   const where: Prisma.UserWhereInput = {
     isActive: true,
-    OR: [{ ccnlLevel: { in: LISTABLE_CCNL } }, { ccnlLevel: null }],
   }
 
-  if (!superAdmin && actor.restaurantId) {
-    where.restaurantId = actor.restaurantId
+  if (!platformScope) {
+    where.OR = [{ ccnlLevel: { in: LISTABLE_CCNL } }, { ccnlLevel: null }]
+    if (actor.restaurantId) {
+      where.restaurantId = actor.restaurantId
+    }
   }
 
   const users = await prisma.user.findMany({
@@ -121,9 +127,11 @@ export async function GET() {
   return NextResponse.json({
     employees,
     categories: PERMISSION_CATEGORIES,
+    scope: platformScope ? 'platform' : 'restaurant',
     actor: {
       id: actor.id,
       canGrantDelega:
+        isSuperAdmin(actor) ||
         actor.role === 'ADMIN' ||
         actor.ccnlLevel === CcnlLevelConst.QA ||
         actor.ccnlLevel === CcnlLevelConst.QB,

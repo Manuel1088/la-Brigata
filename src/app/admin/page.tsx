@@ -42,14 +42,6 @@ export default function AdminPage() {
     else setMainView('restaurants')
   }, [searchParams])
 
-  const setView = (view: MainView, tools?: ToolsTab) => {
-    setMainView(view)
-    const params = new URLSearchParams()
-    params.set('view', view)
-    if (view === 'tools' && tools) params.set('tools', tools)
-    router.push(`/admin?${params.toString()}`)
-  }
-
   const userRole = session?.user?.role
   const userLevel = session?.user?.level
   const isAdmin = userRole === 'ADMIN' && userLevel === 11
@@ -86,63 +78,23 @@ export default function AdminPage() {
     )
   }
 
+  const viewTitle =
+    mainView === 'users'
+      ? 'Vista Utenti'
+      : mainView === 'tools'
+        ? 'Strumenti'
+        : 'Vista Ristoranti'
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-start space-x-4">
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard')}
-              className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
-            >
-              ←
-            </button>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900">Admin Piattaforma</h1>
-              <p className="text-gray-600 mt-1">Gestione ristoranti e utenti La Brigata</p>
-            </div>
-          </div>
+    <div className="min-h-full bg-gradient-to-br from-orange-50 to-red-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <header className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">{viewTitle}</h1>
+          <p className="text-gray-600 mt-1 text-sm">
+            Admin Piattaforma · La Brigata
+          </p>
+        </header>
 
-          <nav className="mt-6 flex flex-wrap gap-3" aria-label="Viste principali">
-            <button
-              type="button"
-              onClick={() => setView('restaurants')}
-              className={`px-5 py-2.5 rounded-lg font-medium text-sm transition ${
-                mainView === 'restaurants'
-                  ? 'bg-orange-600 text-white shadow'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🏨 Vista Ristoranti
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('users')}
-              className={`px-5 py-2.5 rounded-lg font-medium text-sm transition ${
-                mainView === 'users'
-                  ? 'bg-orange-600 text-white shadow'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              👥 Vista Utenti
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('tools', 'permissions')}
-              className={`px-5 py-2.5 rounded-lg font-medium text-sm transition ${
-                mainView === 'tools'
-                  ? 'bg-gray-800 text-white shadow'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              ⚙️ Strumenti
-            </button>
-          </nav>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow p-6">
           {mainView === 'restaurants' && (
             <>
@@ -160,35 +112,11 @@ export default function AdminPage() {
 
           {mainView === 'tools' && (
             <div>
-              <div className="flex gap-4 border-b border-gray-200 mb-6">
-                <button
-                  type="button"
-                  onClick={() => setView('tools', 'permissions')}
-                  className={`pb-2 text-sm font-medium border-b-2 ${
-                    toolsTab === 'permissions'
-                      ? 'border-orange-500 text-orange-600'
-                      : 'border-transparent text-gray-500'
-                  }`}
-                >
-                  🔐 Permessi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView('tools', 'audit')}
-                  className={`pb-2 text-sm font-medium border-b-2 ${
-                    toolsTab === 'audit'
-                      ? 'border-orange-500 text-orange-600'
-                      : 'border-transparent text-gray-500'
-                  }`}
-                >
-                  📋 Audit
-                </button>
-              </div>
               {toolsTab === 'permissions' ? <AdminPermissions /> : <AdminAudit />}
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }

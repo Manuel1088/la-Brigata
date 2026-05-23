@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { subscriptionStatusClass } from '@/lib/admin-restaurant'
 
 type RestaurantCard = {
@@ -18,10 +18,12 @@ type RestaurantCard = {
 
 export default function AdminRestaurantsGrid() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [restaurants, setRestaurants] = useState<RestaurantCard[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+
+  const search = searchParams.get('q') ?? ''
+  const statusFilter = searchParams.get('subscription') ?? 'all'
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -61,27 +63,6 @@ export default function AdminRestaurantsGrid() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4">
-        <input
-          type="search"
-          placeholder="Cerca per nome, città, azienda..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:outline-none"
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg bg-white"
-        >
-          <option value="all">Tutti gli abbonamenti</option>
-          <option value="FREE">Gratuito</option>
-          <option value="BASIC">Basic</option>
-          <option value="PRO">Pro</option>
-          <option value="EXPIRED">Scaduto</option>
-        </select>
-      </div>
-
       <p className="text-sm text-gray-600">
         {filtered.length} ristorant{filtered.length === 1 ? 'e' : 'i'} su {restaurants.length}
       </p>

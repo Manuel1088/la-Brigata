@@ -9,6 +9,7 @@ import { UserRole } from '@/types/roles'
 import { formatEuro } from '@/lib/utils'
 import { shiftHubLabel } from '@/lib/shifts'
 import { useDashboardData } from '@/hooks/useDashboardData'
+import PlatformAdminDashboard from '@/components/dashboard/PlatformAdminDashboard'
 
 interface HubShift {
   id: string
@@ -159,6 +160,9 @@ export default function DashboardPage() {
       router.push('/login')
     }
   }, [session, status, router])
+
+  const isPlatformAdmin =
+    session?.user?.role === 'ADMIN' && session?.user?.level === 11
 
   const isRestaurantTipsRole = (role: string | undefined): boolean => {
     const r = (role || '').toUpperCase()
@@ -329,6 +333,10 @@ export default function DashboardPage() {
   }
 
   if (!session) return null
+
+  if (isPlatformAdmin) {
+    return <PlatformAdminDashboard userName={session.user?.name} />
+  }
 
   const statCardClass =
     'bg-white rounded-2xl p-4 shadow-sm h-full flex flex-col'
