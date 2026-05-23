@@ -72,7 +72,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </>
         )}
 
-        <main className="flex-1 overflow-auto max-md:ml-0 md:ml-[250px]">
+        <main className="flex-1 overflow-auto max-md:ml-0 max-md:pb-16 md:ml-[250px]">
           {children}
         </main>
       </div>
