@@ -696,38 +696,43 @@ export function getEffectivePermissionIds(
 export function hasPermission(
   userRole: string,
   permission: string,
-  ccnlLevel?: string | null
+  ccnlLevel?: string | null,
+  dbGrantedIds?: string[] | null
 ): boolean {
   if (normalizeRole(userRole) === 'ADMIN') return true
+  if (dbGrantedIds?.includes(permission)) return true
   return getEffectivePermissionIds(userRole, ccnlLevel).includes(permission)
 }
 
 /** Assegnazione/modifica turni dal calendario (L2+; QA/QB/ADMIN via permessi completi). */
 export function hasGestioneTurni(
   userRole: string,
-  ccnlLevel?: string | null
+  ccnlLevel?: string | null,
+  dbGrantedIds?: string[] | null
 ): boolean {
   return (
-    hasPermission(userRole, 'gestione_turni', ccnlLevel) ||
-    hasPermission(userRole, 'turni_manage', ccnlLevel) ||
-    hasPermission(userRole, 'turni_assign', ccnlLevel)
+    hasPermission(userRole, 'gestione_turni', ccnlLevel, dbGrantedIds) ||
+    hasPermission(userRole, 'turni_manage', ccnlLevel, dbGrantedIds) ||
+    hasPermission(userRole, 'turni_assign', ccnlLevel, dbGrantedIds)
   )
 }
 
 export function hasAnyPermission(
   userRole: string,
   permissions: string[],
-  ccnlLevel?: string | null
+  ccnlLevel?: string | null,
+  dbGrantedIds?: string[] | null
 ): boolean {
-  return permissions.some((p) => hasPermission(userRole, p, ccnlLevel))
+  return permissions.some((p) => hasPermission(userRole, p, ccnlLevel, dbGrantedIds))
 }
 
 export function hasAllPermissions(
   userRole: string,
   permissions: string[],
-  ccnlLevel?: string | null
+  ccnlLevel?: string | null,
+  dbGrantedIds?: string[] | null
 ): boolean {
-  return permissions.every((p) => hasPermission(userRole, p, ccnlLevel))
+  return permissions.every((p) => hasPermission(userRole, p, ccnlLevel, dbGrantedIds))
 }
 
 export function getUserPermissions(
@@ -756,9 +761,10 @@ export function canAccess(
   userRole: string,
   _userLevel: number,
   permission: string,
-  ccnlLevel?: string | null
+  ccnlLevel?: string | null,
+  dbGrantedIds?: string[] | null
 ): boolean {
-  return hasPermission(userRole, permission, ccnlLevel)
+  return hasPermission(userRole, permission, ccnlLevel, dbGrantedIds)
 }
 
 const TEAM_GESTIONE_SIDEBAR_ROLES = new Set(['MAITRE', 'RESTAURANT_MANAGER'])

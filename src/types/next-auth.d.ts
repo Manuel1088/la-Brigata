@@ -1,6 +1,7 @@
 // types/next-auth.d.ts
 import type { UserRoleString } from '@/types/roles'
 import type { CCNLLevel } from '@/lib/ccnl'
+import type { CategoryGrants } from '@/lib/category-permissions'
 
 declare module 'next-auth' {
   interface User {
@@ -14,6 +15,8 @@ declare module 'next-auth' {
     companyId?: string
     restaurantId?: string
     phone?: string
+    categoryGrants?: CategoryGrants
+    dbGrantedPermissionIds?: string[]
   }
   interface Session {
     user?: User & {
@@ -29,6 +32,8 @@ declare module 'next-auth' {
       phone?: string
       userType?: string
       informalCompanyId?: string | null
+      categoryGrants?: CategoryGrants
+      dbGrantedPermissionIds?: string[]
     }
   }
 }
@@ -45,6 +50,8 @@ declare module 'next-auth/jwt' {
     restaurantId?: string
     department?: string
     position?: string | null
+    categoryGrants?: CategoryGrants
+    dbGrantedPermissionIds?: string[]
   }
 }
 

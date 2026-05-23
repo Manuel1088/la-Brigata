@@ -43,7 +43,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
-  const { userRole, canInsertTips } = usePermissions()
+  const { userRole, canInsertTips, canManagePermissionCategories } = usePermissions()
   const userCcnl = session?.user?.ccnlLevel ?? null
   const [isHovered, setIsHovered] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
@@ -133,7 +133,18 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
     },
     {
       title: 'TEAM',
-      items: [{ icon: '👥', label: 'Il Team', path: '/team', color: '#FDCB6E' }],
+      items: [
+        { icon: '👥', label: 'Il Team', path: '/team', color: '#FDCB6E' },
+        ...(canManagePermissionCategories()
+          ? [{ icon: '🔐', label: 'Permessi', path: '/permissions', color: '#E17055' }]
+          : []),
+      ],
+    },
+    {
+      title: 'PERMESSI',
+      items: [
+        { icon: '🔐', label: 'Gestione permessi', path: '/permissions', color: '#E17055' },
+      ],
     },
     {
       title: 'REPORT',
@@ -174,7 +185,9 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
       case 'APPROVAZIONI':
         return ccnlMeetsLevel(userCcnl, 'LIVELLO_2')
       case 'TEAM':
-        return isQbOrQaCcnl(userCcnl)
+        return isQbOrQaCcnl(userCcnl) || canManagePermissionCategories()
+      case 'PERMESSI':
+        return canManagePermissionCategories() && !isQbOrQaCcnl(userCcnl)
       case 'REPORT':
         return ccnlMeetsLevel(userCcnl, 'LIVELLO_1')
       case 'ADMIN':

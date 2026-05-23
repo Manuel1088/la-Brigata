@@ -26,6 +26,7 @@ export default function AdminPage() {
     canManageCandidates,
     canManageCCNL,
     canManageRoles,
+    canManagePermissionCategories,
     canViewAudit,
     canManageSettings 
   } = usePermissions()
@@ -92,7 +93,7 @@ export default function AdminPage() {
       label: 'Permessi', 
       icon: '🔐', 
       component: AdminPermissions,
-      permission: canManageRoles()
+      permission: canManageRoles() || canManagePermissionCategories()
     },
     { 
       id: 'audit', 

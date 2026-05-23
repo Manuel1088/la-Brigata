@@ -3,6 +3,7 @@
  * Esegui: npx tsx scripts/sync-permissions-to-db.ts
  */
 import { PrismaClient } from '@prisma/client'
+import { ensureCategoryPermissionsExist } from '../src/lib/user-permissions-db'
 import { PERMISSIONS } from '../src/lib/permissions'
 
 const prisma = new PrismaClient()
@@ -34,6 +35,9 @@ async function main() {
       created++
     }
   }
+
+  await ensureCategoryPermissionsExist()
+  console.log('✅ Permessi categoria (user_permissions) assicurati nel DB')
 
   console.log(`✅ Permessi sincronizzati: ${created} creati, ${updated} aggiornati (${entries.length} totali)`)
   const gestione = await prisma.permission.findUnique({ where: { name: 'gestione_turni' } })

@@ -145,7 +145,8 @@ export async function POST(request: NextRequest) {
         ? String(access.user.ccnlLevel)
         : session.user.ccnlLevel
 
-    if (!hasGestioneTurni(role, ccnlLevel)) {
+    const dbGrantedIds = session.user.dbGrantedPermissionIds
+    if (!hasGestioneTurni(role, ccnlLevel, dbGrantedIds)) {
       return NextResponse.json({ error: 'Permessi insufficienti' }, { status: 403 })
     }
 

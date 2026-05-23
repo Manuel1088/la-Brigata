@@ -1,6 +1,11 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import {
+  canAccessPermissionManagementPage,
+  type CategoryGrants,
+  EMPTY_CATEGORY_GRANTS,
+} from '@/lib/category-permissions'
+import {
   canAccess,
   canSeeGestioneSection,
   canSeeTeamSection,
@@ -25,41 +30,26 @@ export function usePermissions() {
   const userId = session?.user?.id as string | undefined
   const upperRole = (userRole || '').toString().toUpperCase()
   const normalizedCcnl = normalizeCcnlLevel(ccnlLevel)
-
-  const getUserOverrides = (): string[] => {
-    if (!userId) return []
-    try {
-      const raw = localStorage.getItem('user_permissions_v1')
-      if (!raw) return []
-      const map = JSON.parse(raw) as Record<string, { permissions: string[] }>
-      return map[userId]?.permissions || []
-    } catch {
-      return []
-    }
-  }
+  const dbGrantedIds = session?.user?.dbGrantedPermissionIds ?? []
+  const categoryGrants: CategoryGrants =
+    session?.user?.categoryGrants ?? EMPTY_CATEGORY_GRANTS
 
   const can = (permission: string): boolean => {
     if (!userRole) return false
     if (upperRole === 'ADMIN') return true
-    return (
-      canAccess(userRole, userLevel, permission, ccnlLevel) ||
-      getUserOverrides().includes(permission)
-    )
+    return canAccess(userRole, userLevel, permission, ccnlLevel, dbGrantedIds)
   }
 
   const canAny = (permissions: string[]): boolean => {
     if (!userRole) return false
     if (upperRole === 'ADMIN') return true
-    return (
-      hasAnyPermission(userRole, permissions, ccnlLevel) ||
-      permissions.some((p) => getUserOverrides().includes(p))
-    )
+    return hasAnyPermission(userRole, permissions, ccnlLevel, dbGrantedIds)
   }
 
   const canAll = (permissions: string[]): boolean => {
     if (!userRole) return false
     if (upperRole === 'ADMIN') return true
-    return hasAllPermissions(userRole, permissions, ccnlLevel)
+    return hasAllPermissions(userRole, permissions, ccnlLevel, dbGrantedIds)
   }
 
   const meetsCcnlMinimum = (minimumLevel: CCNLLevel | string): boolean => {
@@ -111,6 +101,19 @@ export function usePermissions() {
     return canAny(['admin_users', 'admin_roles', 'admin_settings'])
   }
 
+  const canManagePermissionCategories = (): boolean => {
+    if (!userId || !userRole) return false
+    return canAccessPermissionManagementPage({
+      id: userId,
+      role: userRole,
+      level: userLevel,
+      ccnlLevel,
+      department: session?.user?.department,
+      restaurantId: session?.user?.restaurantId,
+      categoryGrants,
+    })
+  }
+
   const canCreateEmployee = (): boolean => can('personale_create')
   const canEditEmployee = (): boolean => can('personale_edit')
   const canDeleteEmployee = (): boolean => can('personale_delete')
@@ -157,6 +160,8 @@ export function usePermissions() {
     userRole,
     userLevel,
     ccnlLevel: normalizedCcnl,
+    categoryGrants,
+    dbGrantedPermissionIds: dbGrantedIds,
     isAuthenticated: !!session,
 
     can,
@@ -167,8 +172,11 @@ export function usePermissions() {
     canSeeGestioneSection: () => canSeeGestioneSection(ccnlLevel, userRole),
     getPermissions,
     getPermissionsByCat,
-    getEffectivePermissionIds: () =>
-      userRole ? getEffectivePermissionIds(userRole, ccnlLevel) : [],
+    getEffectivePermissionIds: () => {
+      if (!userRole) return []
+      const base = getEffectivePermissionIds(userRole, ccnlLevel)
+      return [...new Set([...base, ...dbGrantedIds])]
+    },
 
     canManageEmployees,
     canManageTips,
@@ -177,6 +185,7 @@ export function usePermissions() {
     canManageLeaves,
     canViewReports,
     canAccessAdmin,
+    canManagePermissionCategories,
 
     canCreateEmployee,
     canEditEmployee,

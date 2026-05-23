@@ -2,77 +2,27 @@ import NextAuth, { AuthOptions, type User } from 'next-auth'
 import type { UserRoleString } from '@/types/roles'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { logLogin, logLogout } from '@/lib/audit'
+import { loadSessionPermissionPayload } from '@/lib/auth-session-permissions'
+import { inferCcnlFromRole } from '@/lib/ccnl-infer'
 import { getEmployeesFullClient } from '@/lib/employees'
 import { PrismaClient } from '@prisma/client'
 import { compare } from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-function inferCcnlFromRole(role: string): string {
-  const r = (role || '').toString().trim().toUpperCase().replace(/\s+/g, '_')
-
-  if (
-    ['ADMIN', 'PROPRIETARIO', 'DIRETTORE_GENERALE', 'FB_MANAGER', 'EXECUTIVE_CHEF'].includes(
-      r
-    )
-  ) {
-    return 'QA'
+async function attachPermissionsToToken(
+  token: import('next-auth/jwt').JWT,
+  userId: string
+): Promise<void> {
+  try {
+    const payload = await loadSessionPermissionPayload(userId)
+    ;(token as { categoryGrants?: typeof payload.categoryGrants }).categoryGrants =
+      payload.categoryGrants
+    ;(token as { dbGrantedPermissionIds?: string[] }).dbGrantedPermissionIds =
+      payload.dbGrantedPermissionIds
+  } catch (e) {
+    console.error('Error loading user permissions for session:', e)
   }
-  if (['DIRETTORE', 'SOUS_CHEF', 'CAPO_PASTICCERE'].includes(r)) {
-    return 'QB'
-  }
-  if (
-    [
-      'MANAGER',
-      'ASSISTANT_MANAGER',
-      'VICE_DIRETTORE',
-      'HEAD_CHEF',
-      'HEAD_BARMAN',
-      'HEAD_SOMMELIER',
-      'RESPONSABILE_SALA',
-      'CHEF_DE_PARTIE',
-      'RESTAURANT_MANAGER',
-    ].includes(r)
-  ) {
-    return 'LIVELLO_1'
-  }
-  if (r === 'SECONDO_PASTICCERE') {
-    return 'LIVELLO_2'
-  }
-  if (
-    [
-      'MAITRE',
-      'SOMMELIER',
-      'CAMERIERE',
-      'BARMAN',
-      'CHEF',
-      'CAMERIERE_QUALIFICATO',
-      'RECEPTIONIST',
-      'EVENT_COORDINATOR',
-      'CAPO_PARTITA',
-    ].includes(r)
-  ) {
-    return 'LIVELLO_3'
-  }
-  if (['CASSIERE', 'BARTENDER'].includes(r)) {
-    return 'LIVELLO_4'
-  }
-  if (
-    [
-      'COMMIS_DI_SALA',
-      'COMMIS_DE_CUISINE',
-      'COMMIS_BAR',
-      'COMMIS_SOMMELIER',
-      'HOSTESS',
-      'RUNNER',
-    ].includes(r)
-  ) {
-    return 'LIVELLO_5'
-  }
-  if (['LAVAPIATTI', 'DIPENDENTE'].includes(r)) {
-    return 'LIVELLO_6'
-  }
-  return 'LIVELLO_6'
 }
 
 // Configurazione ruoli e livelli gerarchici
@@ -146,7 +96,7 @@ export const authOptions: AuthOptions = {
               position: dbUser.position ?? undefined,
             } as unknown as User
               await logLogin((user as unknown as { id: string }).id)
-            return user
+              return user
             }
           }
         } catch {}
@@ -272,6 +222,10 @@ export const authOptions: AuthOptions = {
         (token as { position?: string | null }).position =
           (user as { position?: string | null }).position ?? null;
       }
+
+      if (user && 'id' in user && (user as { id?: string }).id) {
+        await attachPermissionsToToken(token, (user as { id: string }).id)
+      }
       
       // Ricarica i dati dal database ogni volta per avere sempre i dati freschi
       // (o almeno quando c'è un update trigger)
@@ -292,9 +246,13 @@ export const authOptions: AuthOptions = {
             ;(token as { restaurantId?: string }).restaurantId = dbUser.restaurantId
             ;(token as { department?: string | null }).department = dbUser.department
             ;(token as { position?: string | null }).position = dbUser.position
+            await attachPermissionsToToken(token, dbUser.id)
           }
         } catch (e) {
           console.error('Error refreshing user data in JWT:', e)
+          if (token.sub) {
+            await attachPermissionsToToken(token, token.sub as string)
+          }
         }
       }
       
@@ -315,6 +273,12 @@ export const authOptions: AuthOptions = {
         session.user.restaurantId = (token as { restaurantId?: string }).restaurantId;
         session.user.department = (token as { department?: string }).department;
         session.user.position = (token as { position?: string | null }).position ?? null;
+        session.user.categoryGrants = (
+          token as { categoryGrants?: import('@/lib/category-permissions').CategoryGrants }
+        ).categoryGrants;
+        session.user.dbGrantedPermissionIds = (
+          token as { dbGrantedPermissionIds?: string[] }
+        ).dbGrantedPermissionIds;
       }
       return session;
     }

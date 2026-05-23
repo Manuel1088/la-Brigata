@@ -1,6 +1,7 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useCallback, useEffect, useState } from 'react'
+import CategoryPermissionsManager from '@/components/permissions/CategoryPermissionsManager'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useAudit } from '@/hooks/useAudit'
 
@@ -166,7 +167,20 @@ export default function AdminPermissions() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Permessi per categoria (CCNL + database)
+        </h2>
+        <CategoryPermissionsManager />
+      </section>
+
+      <hr className="border-gray-200" />
+
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Permessi mance per dipendente (sistema esistente)
+        </h2>
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
         <p className="font-medium mb-1">Permessi per dipendente (database)</p>
         <p>
@@ -298,6 +312,7 @@ export default function AdminPermissions() {
           </p>
         ))}
       </div>
+      </section>
     </div>
   )
 }
