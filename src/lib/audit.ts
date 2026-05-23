@@ -1,19 +1,11 @@
 // Sistema di Audit Trail per La Brigata
 // Traccia tutte le azioni degli utenti per sicurezza e compliance
+// Solo server-side (API routes, NextAuth). Il client usa POST /api/audit via useAudit.
 
 import { prisma } from '@/lib/db'
+import type { AuditLogEntry } from '@/lib/audit-types'
 
-export interface AuditLogEntry {
-  id?: string
-  userId: string
-  action: 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'IMPORT' | 'APPROVE' | 'REJECT'
-  resource: string // users, tips, shifts, reports, etc.
-  resourceId?: string
-  details?: string // JSON con dettagli dell'azione
-  ipAddress?: string
-  userAgent?: string
-  timestamp?: Date
-}
+export type { AuditLogEntry } from '@/lib/audit-types'
 
 // Mock database per audit logs (in produzione sarà un database reale)
 const auditLogs: AuditLogEntry[] = []
