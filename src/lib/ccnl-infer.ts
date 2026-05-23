@@ -1,3 +1,23 @@
+/** Super Admin piattaforma: nessun CCNL operativo. */
+export function isPlatformAdminUser(
+  role: string,
+  hierarchyLevel?: number | null
+): boolean {
+  const r = (role || '').toString().trim().toUpperCase()
+  return r === 'ADMIN' && (hierarchyLevel ?? 0) === 11
+}
+
+/** CCNL in sessione: DB se presente; null per admin piattaforma; altrimenti inferenza da ruolo. */
+export function resolveSessionCcnlLevel(
+  role: string,
+  hierarchyLevel: number | null | undefined,
+  ccnlLevel: string | null | undefined
+): string | null {
+  if (ccnlLevel != null) return String(ccnlLevel)
+  if (isPlatformAdminUser(role, hierarchyLevel)) return null
+  return inferCcnlFromRole(role)
+}
+
 /** Inferisce il livello CCNL dal ruolo utente (allineato al login NextAuth). */
 export function inferCcnlFromRole(role: string): string {
   const r = (role || '').toString().trim().toUpperCase().replace(/\s+/g, '_')

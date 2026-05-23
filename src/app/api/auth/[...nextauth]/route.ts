@@ -3,7 +3,7 @@ import type { UserRoleString } from '@/types/roles'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { logLogin, logLogout } from '@/lib/audit'
 import { loadSessionPermissionPayload } from '@/lib/auth-session-permissions'
-import { inferCcnlFromRole } from '@/lib/ccnl-infer'
+import { inferCcnlFromRole, resolveSessionCcnlLevel } from '@/lib/ccnl-infer'
 import { getEmployeesFullClient } from '@/lib/employees'
 import { PrismaClient } from '@prisma/client'
 import { compare } from 'bcryptjs'
@@ -84,9 +84,11 @@ export const authOptions: AuthOptions = {
               name: dbUser.name,
               role: String(dbUser.role) as UserRoleString,
               level: Number((dbUser as unknown as { hierarchyLevel?: number }).hierarchyLevel ?? 5),
-              ccnlLevel: dbUser.ccnlLevel
-                ? String(dbUser.ccnlLevel)
-                : inferCcnlFromRole(String(dbUser.role)),
+              ccnlLevel: resolveSessionCcnlLevel(
+                String(dbUser.role),
+                dbUser.hierarchyLevel,
+                dbUser.ccnlLevel
+              ),
               avatar: (dbUser as unknown as { avatar?: string }).avatar ?? '👤',
               userType: (dbUser as unknown as { userType?: string }).userType ?? 'EMPLOYEE',
               companyId: (dbUser as unknown as { companyId?: string | null }).companyId ?? null,
@@ -239,11 +241,14 @@ export const authOptions: AuthOptions = {
             token.email = dbUser.email
             token.role = String(dbUser.role) as import('@/types/roles').UserRoleString
             token.level = dbUser.hierarchyLevel ?? token.level
-            token.ccnlLevel = dbUser.ccnlLevel
-              ? String(dbUser.ccnlLevel)
-              : inferCcnlFromRole(String(dbUser.role))
+            token.ccnlLevel = resolveSessionCcnlLevel(
+              String(dbUser.role),
+              dbUser.hierarchyLevel,
+              dbUser.ccnlLevel
+            )
             token.avatar = (dbUser as unknown as { avatar?: string }).avatar ?? '👤'
-            ;(token as { restaurantId?: string }).restaurantId = dbUser.restaurantId
+            ;(token as { restaurantId?: string | null }).restaurantId =
+              dbUser.restaurantId ?? null
             ;(token as { department?: string | null }).department = dbUser.department
             ;(token as { position?: string | null }).position = dbUser.position
             await attachPermissionsToToken(token, dbUser.id)

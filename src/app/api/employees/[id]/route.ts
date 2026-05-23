@@ -32,13 +32,17 @@ const patchProfileSchema = z
   })
   .strict()
 
-async function canManageRestaurant(userId: string, restaurantId: string): Promise<boolean> {
+async function canManageRestaurant(
+  userId: string,
+  restaurantId: string | null
+): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { restaurantId: true, companyId: true, role: true },
+    select: { restaurantId: true, companyId: true, role: true, hierarchyLevel: true },
   })
   if (!user) return false
   if (String(user.role) === 'ADMIN') return true
+  if (!restaurantId) return false
   if (user.restaurantId === restaurantId) return isManagerRole(user.role)
 
   const restaurant = await prisma.restaurant.findUnique({

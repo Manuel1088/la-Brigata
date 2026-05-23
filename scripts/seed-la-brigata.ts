@@ -151,17 +151,27 @@ async function main() {
   const hashedPassword = await bcrypt.hash('LaBrigata2026!', 12)
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@labrigata.it' },
-    update: {},
+    update: {
+      role: 'ADMIN',
+      hierarchyLevel: 11,
+      ccnlLevel: null,
+      restaurantId: null,
+      companyId: null,
+      informalCompanyId: null,
+      department: null,
+    },
     create: {
       email: 'admin@labrigata.it',
       name: 'Manuel Alicinio',
       password: hashedPassword,
       role: 'ADMIN',
       hierarchyLevel: 11,
-      restaurantId: restaurant.id,
-      department: 'amministrazione',
+      ccnlLevel: null,
+      restaurantId: null,
+      companyId: null,
+      department: null,
       avatar: '👨‍🍳',
-      userType: 'OWNER',
+      userType: 'EMPLOYEE',
     }
   })
   console.log(`   ✅ Admin creato: ${adminUser.email}`)

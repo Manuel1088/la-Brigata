@@ -10,6 +10,7 @@ import {
   serializeLeaveRequest,
 } from '@/lib/leaves'
 import { dateFromIso } from '@/lib/shifts'
+import { isPlatformAdminUser } from '@/lib/ccnl-infer'
 import { getLeavesQuerySchema, postLeaveBodySchema } from '@/lib/validations/leaves'
 
 async function getSessionUser(userId: string) {
@@ -20,7 +21,7 @@ async function getSessionUser(userId: string) {
 }
 
 function buildListWhere(
-  dbUser: { id: string; restaurantId: string },
+  dbUser: { id: string; restaurantId: string | null; role: string },
   isApprover: boolean,
   params: {
     userId?: string
@@ -40,9 +41,9 @@ function buildListWhere(
 
   if (restaurantUserIds) {
     where.userId = { in: restaurantUserIds }
-  } else if (isApprover) {
+  } else if (isApprover && dbUser.restaurantId) {
     where.user = { restaurantId: dbUser.restaurantId }
-  } else {
+  } else if (!isApprover) {
     where.userId = dbUser.id
   }
 
@@ -83,7 +84,13 @@ export async function GET(request: NextRequest) {
     }
 
     const dbUser = await getSessionUser(session.user.id)
-    if (!dbUser?.restaurantId) {
+    if (!dbUser) {
+      return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 })
+    }
+    if (
+      !dbUser.restaurantId &&
+      !isPlatformAdminUser(String(dbUser.role), session.user.level)
+    ) {
       return NextResponse.json({ error: 'Ristorante non configurato' }, { status: 400 })
     }
 

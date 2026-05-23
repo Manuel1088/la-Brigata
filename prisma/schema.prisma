@@ -46,7 +46,7 @@ model User {
   password           String
   role               UserRole
   hierarchyLevel     Int                @map("hierarchy_level")
-  restaurantId       String             @map("restaurant_id")
+  restaurantId       String?            @map("restaurant_id")
   department         String?
   isActive           Boolean            @default(true) @map("is_active")
   lastLogin          DateTime?          @map("last_login")
@@ -91,7 +91,7 @@ model User {
   userPermissions    UserPermission[]
   company            Company?           @relation("CompanyUsers", fields: [companyId], references: [id])
   informalCompany    InformalCompany?   @relation("InformalCompanyUsers", fields: [informalCompanyId], references: [id])
-  restaurant         Restaurant         @relation(fields: [restaurantId], references: [id])
+  restaurant         Restaurant?        @relation(fields: [restaurantId], references: [id])
   employments        Employment[]       @relation("UserEmployments")
   linkedEmployees    Employee[]         @relation("UserEmployee")
 

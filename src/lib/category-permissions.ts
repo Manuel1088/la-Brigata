@@ -131,6 +131,11 @@ export function isSuperAdmin(actor: PermissionActor): boolean {
   return normalizeRole(actor.role) === 'ADMIN' && (actor.level ?? 0) === 11
 }
 
+/** Alias esplicito per gestore piattaforma (nessun ristorante/CCNL). */
+export function isPlatformAdmin(actor: PermissionActor): boolean {
+  return isSuperAdmin(actor)
+}
+
 export function isQaOrQbCcnl(ccnlLevel?: string | null): boolean {
   const l = normalizeCcnlLevel(ccnlLevel)
   return l === CCNLLevel.QA || l === CCNLLevel.QB
