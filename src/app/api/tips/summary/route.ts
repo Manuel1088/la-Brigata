@@ -6,7 +6,13 @@ import { prisma } from '@/lib/db'
 import { dateFromIso, toDateOnlyIso } from '@/lib/shifts'
 import { getTipsSummaryQuerySchema } from '@/lib/validations/tips'
 
+import { restaurantIdsForManager } from '@/lib/restaurant-access'
 import { isManagerRole } from '@/lib/roles'
+
+function emptyToUndefined(value: string | null): string | undefined {
+  const v = value?.trim()
+  return v ? v : undefined
+}
 
 function sumByType(rows: Array<{ type: PaymentType; amount: unknown }>) {
   let cash = 0
@@ -52,9 +58,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const parsed = getTipsSummaryQuerySchema.safeParse({
-      month: searchParams.get('month') ?? undefined,
-      year: searchParams.get('year') ?? undefined,
-      restaurantId: searchParams.get('restaurantId') ?? undefined,
+      month: emptyToUndefined(searchParams.get('month')),
+      year: emptyToUndefined(searchParams.get('year')),
+      restaurantId: emptyToUndefined(searchParams.get('restaurantId')),
     })
 
     if (!parsed.success) {
@@ -66,18 +72,32 @@ export async function GET(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true, restaurantId: true },
+      select: { role: true, restaurantId: true, companyId: true },
     })
 
-    if (!user?.restaurantId) {
-      return NextResponse.json({ error: 'Ristorante non configurato' }, { status: 400 })
+    if (!user) {
+      return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 })
     }
 
     if (!isManagerRole(user.role)) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
-    const restaurantId = parsed.data.restaurantId ?? user.restaurantId
+    let restaurantId = parsed.data.restaurantId ?? user.restaurantId ?? null
+    if (!restaurantId) {
+      const ids = await restaurantIdsForManager(user)
+      restaurantId = ids[0] ?? null
+    }
+
+    if (!restaurantId) {
+      return NextResponse.json(
+        {
+          error:
+            'Ristorante non configurato per il tuo account. Contatta l\'amministratore.',
+        },
+        { status: 400 }
+      )
+    }
 
     if (!(await assertRestaurantAccess(session.user.id, restaurantId))) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
