@@ -150,10 +150,10 @@ export default function CategoryPermissionsManager() {
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-950">
         <p className="font-medium mb-1">Permessi centralizzati (database)</p>
         <p>
-          Ogni categoria attiva permessi aggiuntivi oltre al livello CCNL. I toggle salvano su{' '}
+          Ogni categoria attiva permessi aggiuntivi oltre al livello CCNL, inclusa la categoria{' '}
+          <strong>Mance</strong>. I toggle salvano su{' '}
           <code className="text-xs">user_permissions</code> e si applicano alla sessione al
-          prossimo refresh. Le mance operative (inserimento/modifica record) restano nella sezione
-          sotto, senza modifiche.
+          prossimo refresh.
         </p>
       </div>
 
