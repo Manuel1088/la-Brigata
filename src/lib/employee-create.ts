@@ -68,6 +68,15 @@ const USER_ROLE_VALUES = new Set<string>([
   'LAVAPIATTI',
 ])
 
+const USER_ROLE_ALIASES: Record<string, UserRole> = {
+  FB_MANAGER: 'MANAGER',
+  SECONDO_PASTICCERE: 'SOUS_CHEF',
+  RECEPTIONIST: 'DIPENDENTE',
+  HOSTESS: 'DIPENDENTE',
+  COMMIS_BAR: 'DIPENDENTE_BAR',
+  COMMIS_SOMMELIER: 'DIPENDENTE_BAR',
+}
+
 export function hierarchyLevelForUserRole(role: UserRole): number {
   if (
     role === 'ADMIN' ||
@@ -109,6 +118,8 @@ export function hierarchyLevelForUserRole(role: UserRole): number {
 
 export function toUserRole(role: string): UserRole {
   const candidate = role.toUpperCase().trim()
+  const aliased = USER_ROLE_ALIASES[candidate]
+  if (aliased) return aliased
   if (USER_ROLE_VALUES.has(candidate)) {
     return candidate as UserRole
   }
@@ -154,7 +165,6 @@ export function toEmployeeRole(userRole: UserRole, department: string): Employee
     return 'BARTENDER'
   }
   if (dept === 'accoglienza') {
-    if (userRole === 'CASSIERE') return 'CASHIER'
     return 'HOST'
   }
   if (

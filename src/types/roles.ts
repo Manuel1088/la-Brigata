@@ -42,6 +42,13 @@ export enum UserRole {
   LAVAPIATTI = 'LAVAPIATTI',
   DIPENDENTE_SALA = 'DIPENDENTE_SALA',
   DIPENDENTE_BAR = 'DIPENDENTE_BAR',
+  // Alias legacy / etichette reparto (confronti sessione e inferCcnl)
+  FB_MANAGER = 'FB_MANAGER',
+  SECONDO_PASTICCERE = 'SECONDO_PASTICCERE',
+  RECEPTIONIST = 'RECEPTIONIST',
+  HOSTESS = 'HOSTESS',
+  COMMIS_BAR = 'COMMIS_BAR',
+  COMMIS_SOMMELIER = 'COMMIS_SOMMELIER',
 }
 
 export type UserRoleString = `${UserRole}`
