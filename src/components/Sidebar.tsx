@@ -135,9 +135,6 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
       title: 'TEAM',
       items: [
         { icon: '👥', label: 'Il Team', path: '/team', color: '#FDCB6E' },
-        ...(canManagePermissionCategories()
-          ? [{ icon: '🔐', label: 'Permessi', path: '/permissions', color: '#E17055' }]
-          : []),
       ],
     },
     {
@@ -187,7 +184,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
       case 'TEAM':
         return isQbOrQaCcnl(userCcnl) || canManagePermissionCategories()
       case 'PERMESSI':
-        return canManagePermissionCategories() && !isQbOrQaCcnl(userCcnl)
+        return canManagePermissionCategories()
       case 'REPORT':
         return ccnlMeetsLevel(userCcnl, 'LIVELLO_1')
       case 'ADMIN':
