@@ -5,7 +5,6 @@ import './globals.css'
 import { Providers } from './providers'
 import AppLayout from '@/components/AppLayout'
 import BottomNav from '@/components/BottomNav'
-import FloatingPermessiButton from '@/components/FloatingPermessiButton'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,7 +26,6 @@ export default function RootLayout({
             {children}
           </AppLayout>
           <BottomNav />
-          <FloatingPermessiButton />
         </Providers>
       </body>
     </html>

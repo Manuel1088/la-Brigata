@@ -1,11 +1,4 @@
-/** Super Admin piattaforma: nessun CCNL operativo. */
-export function isPlatformAdminUser(
-  role: string,
-  hierarchyLevel?: number | null
-): boolean {
-  const r = (role || '').toString().trim().toUpperCase()
-  return r === 'ADMIN' && (hierarchyLevel ?? 0) === 11
-}
+import { isPlatformAdmin } from '@/lib/platform-admin'
 
 /** CCNL in sessione: DB se presente; null per admin piattaforma; altrimenti inferenza da ruolo. */
 export function resolveSessionCcnlLevel(
@@ -14,7 +7,7 @@ export function resolveSessionCcnlLevel(
   ccnlLevel: string | null | undefined
 ): string | null {
   if (ccnlLevel != null) return String(ccnlLevel)
-  if (isPlatformAdminUser(role, hierarchyLevel)) return null
+  if (isPlatformAdmin(role, hierarchyLevel)) return null
   return inferCcnlFromRole(role)
 }
 

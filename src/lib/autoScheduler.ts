@@ -1,6 +1,9 @@
 // lib/autoScheduler.ts
 import type { SimpleEmployee } from '@/lib/employees'
-import { getLeaveRequests } from '@/lib/leaveSystem'
+import {
+  fetchApprovedLeavesForMonths,
+  monthsInDateRange,
+} from '@/lib/leaves-calendar'
 import { getRestRuleFor } from '@/lib/restRules'
 import { getMonday, shiftsToGrid, toDateOnlyIso, type ShiftApiRecord } from '@/lib/shifts'
 import type { ShiftAssignment } from '@/lib/validations/shifts'
@@ -409,23 +412,36 @@ export class AutoScheduler {
       specialEvents: this.getSpecialEvents(weekStart)
     }
     
-    this.employees.forEach(employee => {
-      const leaves = getLeaveRequests(employee.id)
-        .filter((req) => req.status === 'APPROVED')
+    const weekEnd = this.getWeekEnd(weekStart)
+    const approvedLeaves = await fetchApprovedLeavesForMonths(
+      monthsInDateRange(weekStart, weekEnd)
+    )
+
+    this.employees.forEach((employee) => {
+      const leaves = approvedLeaves
+        .filter((req) => req.userId === employee.id)
         .filter((req) =>
-          this.dateRangeOverlaps(req.startDate, req.endDate, weekStart, this.getWeekEnd(weekStart))
+          this.dateRangeOverlaps(
+            new Date(req.startDate),
+            new Date(req.endDate),
+            weekStart,
+            weekEnd
+          )
         )
 
       if (leaves.length > 0) {
         const leaveDays: string[] = []
         leaves.forEach((leave) => {
-          const days = this.getDaysInRange(leave.startDate, leave.endDate, weekStart)
+          const days = this.getDaysInRange(
+            new Date(leave.startDate),
+            new Date(leave.endDate),
+            weekStart
+          )
           leaveDays.push(...days)
         })
         constraints.leaves.set(employee.name, leaveDays)
       }
 
-      // Raccoglie giorni fissi di riposo
       const restRule = getRestRuleFor(employee.name)
       if (restRule?.fixedDayIndices) {
         constraints.fixedRests.set(employee.name, restRule.fixedDayIndices)

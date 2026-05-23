@@ -5,8 +5,12 @@ import { useAutoScheduler } from '@/lib/autoScheduler'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useNotifications } from '@/hooks/useNotifications'
-import { getLeaveRequests, LEAVE_TYPES } from '@/lib/leaveSystem'
 import { getRestRuleFor } from '@/lib/restRules'
+import {
+  applyApprovedLeavesToShiftGrid,
+  fetchApprovedLeavesForMonths,
+  monthsInDateRange,
+} from '@/lib/leaves-calendar'
 import { type SimpleEmployee } from '@/lib/employees'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import { shiftsToGrid, toDateOnlyIso, type ShiftGridCell } from '@/lib/shifts'
@@ -77,6 +81,14 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
   const [isLoadingShifts, setIsLoadingShifts] = useState(false)
   const [isSavingShifts, setIsSavingShifts] = useState(false)
   const { employees: employeesData, mutate: mutateEmployees, isLoading } = useEmployeeContext()
+
+  const nameByUserId = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const e of employees) {
+      map.set(e.id, e.name)
+    }
+    return map
+  }, [employees])
   const userDepartment = normalizeUserDepartmentToShiftDept(
     session?.user?.department
   )
@@ -259,7 +271,21 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
         const data = await res.json()
         if (cancelled) return
 
-        setShifts(shiftsToGrid(data.shifts ?? [], weekDates, new Map()))
+        let grid = shiftsToGrid(data.shifts ?? [], weekDates, nameByUserId)
+        const months = monthsInDateRange(
+          weekDates[0],
+          weekDates[weekDates.length - 1]
+        )
+        const approvedLeaves = await fetchApprovedLeavesForMonths(months)
+        if (!cancelled) {
+          grid = applyApprovedLeavesToShiftGrid(
+            grid,
+            approvedLeaves,
+            weekDates,
+            nameByUserId
+          )
+        }
+        setShifts(grid)
       } catch (error) {
         console.error('Errore caricamento turni:', error)
         if (!cancelled) setShifts({})
@@ -270,7 +296,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
 
     load()
     return () => { cancelled = true }
-  }, [currentWeek, viewMode, restaurantId, status, getWeekDates, swapVersion])
+  }, [currentWeek, viewMode, restaurantId, status, getWeekDates, swapVersion, nameByUserId])
 
   useEffect(() => {
     const onSwapUpdated = () => setSwapVersion((v) => v + 1)

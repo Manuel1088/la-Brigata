@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client'
 import {
   CATEGORY_DB_IDS,
   type CategoryGrants,
@@ -9,8 +8,7 @@ import {
   type PermissionCategory,
 } from '@/lib/category-permissions'
 import { PERMISSIONS, type Permission } from '@/lib/permissions'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/db'
 
 const CATEGORY_DB_ID_LIST = Object.values(CATEGORY_DB_IDS)
 

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
-import { PrismaClient, UserRole as PrismaUserRole } from '@prisma/client'
+import { UserRole as PrismaUserRole } from '@prisma/client'
 import { createNotification } from '@/lib/notifications'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {

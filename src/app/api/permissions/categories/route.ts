@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { CCNLLevel, Prisma } from '@prisma/client'
-import { isPlatformAdminScope } from '@/lib/admin-auth'
+import { isPlatformAdminScope } from '@/lib/platform-admin'
 import { CCNLLevel as CcnlLevelConst } from '@/lib/ccnl'
 import { inferCcnlFromRole } from '@/lib/ccnl-infer'
 import {

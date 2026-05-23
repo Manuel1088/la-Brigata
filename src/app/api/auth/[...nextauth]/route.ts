@@ -5,10 +5,8 @@ import { logLogin, logLogout } from '@/lib/audit'
 import { loadSessionPermissionPayload } from '@/lib/auth-session-permissions'
 import { inferCcnlFromRole, resolveSessionCcnlLevel } from '@/lib/ccnl-infer'
 import { getEmployeesFullClient } from '@/lib/employees'
-import { PrismaClient } from '@prisma/client'
 import { compare } from 'bcryptjs'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/db'
 
 async function attachPermissionsToToken(
   token: import('next-auth/jwt').JWT,

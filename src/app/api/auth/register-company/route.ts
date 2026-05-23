@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
-import { PrismaClient, Prisma, UserRole as PrismaUserRole } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { Prisma, UserRole as PrismaUserRole } from '@prisma/client'
+import { prisma } from '@/lib/db'
 
 function toUserRole(roleString: string): PrismaUserRole {
   // Map known labels to Prisma enum; fallback to PROPRIETARIO

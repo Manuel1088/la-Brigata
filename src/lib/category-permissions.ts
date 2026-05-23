@@ -2,7 +2,7 @@
  * Permessi centralizzati per categoria (user_permissions).
  * Non include i flag mance su Employee (canInsertTips, ecc.).
  */
-import { isSystemAdmin } from '@/lib/admin-auth'
+import { isPlatformAdmin } from '@/lib/platform-admin'
 import { CCNLLevel, type CCNLLevel as CcnlLevelType } from '@/lib/ccnl'
 import {
   ccnlRank,
@@ -129,12 +129,7 @@ const MANAGEABLE_CCNL: CcnlLevelType[] = [
 ]
 
 export function isSuperAdmin(actor: PermissionActor): boolean {
-  return isSystemAdmin(actor.role, actor.level)
-}
-
-/** Alias esplicito per gestore piattaforma (nessun ristorante/CCNL). */
-export function isPlatformAdmin(actor: PermissionActor): boolean {
-  return isSuperAdmin(actor)
+  return isPlatformAdmin(actor.role, actor.level)
 }
 
 export function isQaOrQbCcnl(ccnlLevel?: string | null): boolean {

@@ -10,7 +10,7 @@ import {
   serializeLeaveRequest,
 } from '@/lib/leaves'
 import { dateFromIso } from '@/lib/shifts'
-import { isPlatformAdminUser } from '@/lib/ccnl-infer'
+import { isPlatformAdmin } from '@/lib/platform-admin'
 import { getLeavesQuerySchema, postLeaveBodySchema } from '@/lib/validations/leaves'
 
 async function getSessionUser(userId: string) {
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     }
     if (
       !dbUser.restaurantId &&
-      !isPlatformAdminUser(String(dbUser.role), session.user.level)
+      !isPlatformAdmin(String(dbUser.role), session.user.level)
     ) {
       return NextResponse.json({ error: 'Ristorante non configurato' }, { status: 400 })
     }
