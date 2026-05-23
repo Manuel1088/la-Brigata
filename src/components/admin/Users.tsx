@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useAudit } from '@/hooks/useAudit'
 
@@ -14,9 +14,17 @@ interface User {
   lastLogin: Date
   createdAt: Date
   company?: string
+  restaurant?: string | null
+  restaurantId?: string | null
 }
 
-export default function AdminUsers() {
+type RestaurantOption = { id: string; name: string }
+
+type AdminUsersProps = {
+  globalSearch?: boolean
+}
+
+export default function AdminUsers({ globalSearch = false }: AdminUsersProps) {
   // const { data: session } = useSession()
   const { notifyCustom } = useNotifications()
   const { logReadAction } = useAudit()
@@ -25,15 +33,37 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [restaurantFilter, setRestaurantFilter] = useState<string>('all')
+  const [restaurants, setRestaurants] = useState<RestaurantOption[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
 
   useEffect(() => {
-    loadUsers()
-  }, [])
+    if (!globalSearch) return
+    void fetch('/api/admin/restaurants', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        setRestaurants(
+          (d.restaurants ?? []).map((x: { id: string; name: string }) => ({
+            id: x.id,
+            name: x.name,
+          }))
+        )
+      })
+      .catch(() => setRestaurants([]))
+  }, [globalSearch])
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/users', {
+      const params = new URLSearchParams()
+      if (globalSearch) {
+        if (searchTerm.trim()) params.set('q', searchTerm.trim())
+        if (roleFilter !== 'all') params.set('role', roleFilter)
+        if (restaurantFilter !== 'all') params.set('restaurantId', restaurantFilter)
+        if (statusFilter === 'active') params.set('active', 'true')
+        if (statusFilter === 'inactive') params.set('active', 'false')
+      }
+      const qs = params.toString()
+      const response = await fetch(`/api/admin/users${qs ? `?${qs}` : ''}`, {
         credentials: 'include',
       })
       const data = await response.json()
@@ -62,7 +92,9 @@ export default function AdminUsers() {
             isActive: user.isActive,
             lastLogin: user.lastLogin ? new Date(user.lastLogin) : (null as unknown as Date),
             createdAt: new Date(user.createdAt),
-            company: user.company
+            company: user.company,
+            restaurant: (user as ApiUser & { restaurant?: string }).restaurant,
+            restaurantId: (user as ApiUser & { restaurantId?: string }).restaurantId,
           }))
           setUsers(usersWithDates)
       } else {
@@ -81,7 +113,24 @@ export default function AdminUsers() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [
+    globalSearch,
+    searchTerm,
+    roleFilter,
+    restaurantFilter,
+    statusFilter,
+    notifyCustom,
+    logReadAction,
+  ])
+
+  useEffect(() => {
+    if (!globalSearch) {
+      void loadUsers()
+      return
+    }
+    const t = setTimeout(() => void loadUsers(), 300)
+    return () => clearTimeout(t)
+  }, [globalSearch, loadUsers])
 
   const handleUserAction = async (userId: string, action: 'activate' | 'deactivate' | 'delete') => {
     try {
@@ -188,16 +237,19 @@ export default function AdminUsers() {
     setSelectedUsers(filteredUserIds)
   }
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && user.isActive) ||
-                         (statusFilter === 'inactive' && !user.isActive)
-    
-    return matchesSearch && matchesRole && matchesStatus
-  })
+  const filteredUsers = globalSearch
+    ? users
+    : users.filter((user) => {
+        const matchesSearch =
+          user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.email.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchesRole = roleFilter === 'all' || user.role === roleFilter
+        const matchesStatus =
+          statusFilter === 'all' ||
+          (statusFilter === 'active' && user.isActive) ||
+          (statusFilter === 'inactive' && !user.isActive)
+        return matchesSearch && matchesRole && matchesStatus
+      })
 
   // ✅ HELPER: Conta utenti online nelle ultime 24h CON VALIDAZIONE
   const getOnlineUsersCount = (): number => {
@@ -306,7 +358,11 @@ export default function AdminUsers() {
 
       {/* Filtri e Azioni */}
       <div className="bg-gray-50 rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div
+          className={`grid grid-cols-1 gap-4 mb-4 ${
+            globalSearch ? 'md:grid-cols-5' : 'md:grid-cols-4'
+          }`}
+        >
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Cerca</label>
             <input
@@ -326,13 +382,36 @@ export default function AdminUsers() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tutti</option>
+              <option value="ADMIN">Admin</option>
               <option value="PROPRIETARIO">Proprietario</option>
               <option value="DIRETTORE">Direttore</option>
               <option value="MANAGER">Manager</option>
-              <option value="CASSIERE">Cassiere</option>
+              <option value="HEAD_CHEF">Head Chef</option>
               <option value="DIPENDENTE">Dipendente</option>
+              <option value="CASSIERE">Cassiere</option>
             </select>
           </div>
+
+          {globalSearch ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ristorante
+              </label>
+              <select
+                value={restaurantFilter}
+                onChange={(e) => setRestaurantFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Tutti</option>
+                <option value="none">Senza ristorante</option>
+                {restaurants.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Stato</label>
@@ -403,7 +482,7 @@ export default function AdminUsers() {
                   Ruolo
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Azienda
+                  {globalSearch ? 'Ristorante' : 'Azienda'}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Stato
@@ -442,7 +521,9 @@ export default function AdminUsers() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.company || 'N/A'}
+                    {globalSearch
+                      ? user.restaurant || '(Piattaforma / nessuno)'
+                      : user.company || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${

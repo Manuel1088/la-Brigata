@@ -94,6 +94,9 @@ model User {
   restaurant         Restaurant?        @relation(fields: [restaurantId], references: [id])
   employments        Employment[]       @relation("UserEmployments")
   linkedEmployees    Employee[]         @relation("UserEmployee")
+  vatRegistrationLinks      VatRegistrationUser[]
+  vatAggNotificationsSent   VatAggregationNotification[] @relation("VatAggSender")
+  vatAggNotificationsReceived VatAggregationNotification[] @relation("VatAggRecipient")
 
   @@index([companyId])
   @@index([companyId, isActive])
@@ -753,4 +756,73 @@ model Employment {
   @@index([restaurantId, status]) // Per query: "tutti i PENDING di un restaurant"
   @@index([createdAt]) // Per ordinamento temporale
   @@map("employments")
+}
+
+// ─── Aggregazione P.IVA (schema futuro — senza UI) ───────────────────────────
+
+enum VatAggregationStatus {
+  PENDING
+  CONFIRMED
+  ANOMALIA
+}
+
+enum VatAggregationResponseStatus {
+  IN_ATTESA
+  CONFERMATO
+  RIFIUTATO
+}
+
+/// P.IVA registrata per aggregazione automatica buste/mance.
+model VatRegistration {
+  id                String               @id @default(cuid())
+  vatNumber         String               @unique @map("vat_number")
+  legalName         String?              @map("legal_name")
+  aggregationStatus VatAggregationStatus @default(PENDING) @map("aggregation_status")
+  confirmedAt       DateTime?            @map("confirmed_at")
+  anomalyNote       String?              @map("anomaly_note")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  linkedUsers   VatRegistrationUser[]
+  notifications VatAggregationNotification[]
+
+  @@index([aggregationStatus])
+  @@map("vat_registrations")
+}
+
+/// Collegamento utente ↔ P.IVA (N utenti per stessa partita IVA).
+model VatRegistrationUser {
+  id                String          @id @default(cuid())
+  vatRegistrationId String          @map("vat_registration_id")
+  userId            String          @map("user_id")
+  linkedAt          DateTime        @default(now()) @map("linked_at")
+
+  vatRegistration VatRegistration @relation(fields: [vatRegistrationId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([vatRegistrationId, userId])
+  @@index([userId])
+  @@map("vat_registration_users")
+}
+
+/// Richiesta di conferma aggregazione tra due utenti sulla stessa P.IVA.
+model VatAggregationNotification {
+  id                String                       @id @default(cuid())
+  vatRegistrationId String                       @map("vat_registration_id")
+  senderUserId      String                       @map("sender_user_id")
+  recipientUserId   String                       @map("recipient_user_id")
+  responseStatus    VatAggregationResponseStatus @default(IN_ATTESA) @map("response_status")
+  expiresAt         DateTime                     @map("expires_at")
+  respondedAt       DateTime?                    @map("responded_at")
+  createdAt         DateTime                     @default(now()) @map("created_at")
+  updatedAt         DateTime                     @updatedAt @map("updated_at")
+
+  vatRegistration VatRegistration @relation(fields: [vatRegistrationId], references: [id], onDelete: Cascade)
+  sender          User            @relation("VatAggSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  recipient       User            @relation("VatAggRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([vatRegistrationId])
+  @@index([recipientUserId, responseStatus])
+  @@index([expiresAt])
+  @@map("vat_aggregation_notifications")
 }

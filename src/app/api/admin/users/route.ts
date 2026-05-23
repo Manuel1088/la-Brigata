@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { isSystemAdmin } from '@/lib/admin-auth'
 import { prisma } from '@/lib/db'
+import type { Prisma } from '@prisma/client'
 
-function isSystemAdmin(role: unknown, level?: unknown): boolean {
-  const r = String(role ?? '').toUpperCase()
-  if (r === 'ADMIN') return true
-  const lvl = Number(level)
-  return Number.isFinite(lvl) && lvl >= 11
-}
-
-/** GET /api/admin/users — ADMIN: tutti gli utenti (nessun filtro companyId/restaurantId) */
-export async function GET() {
+/** GET /api/admin/users — ricerca globale Super Admin */
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -22,7 +17,35 @@ export async function GET() {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
+    const { searchParams } = new URL(req.url)
+    const q = searchParams.get('q')?.trim() ?? ''
+    const role = searchParams.get('role')?.trim()
+    const restaurantId = searchParams.get('restaurantId')?.trim()
+    const activeParam = searchParams.get('active')
+
+    const where: Prisma.UserWhereInput = {}
+
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ]
+    }
+    if (role && role !== 'all') {
+      where.role = role as Prisma.EnumUserRoleFilter['equals']
+    }
+    if (restaurantId && restaurantId !== 'all') {
+      if (restaurantId === 'none') {
+        where.restaurantId = null
+      } else {
+        where.restaurantId = restaurantId
+      }
+    }
+    if (activeParam === 'true') where.isActive = true
+    if (activeParam === 'false') where.isActive = false
+
     const users = await prisma.user.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
