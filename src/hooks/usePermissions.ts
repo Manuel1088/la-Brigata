@@ -90,9 +90,14 @@ export function usePermissions() {
     return canAny(['mance_manage', 'mance_calculate', 'mance_approve'])
   }
 
-  const canManageShifts = (): boolean => {
-    return canAny(['turni_manage', 'turni_assign', 'turni_approve'])
+  const canGestioneTurni = (): boolean => {
+    return (
+      can('gestione_turni') ||
+      canAny(['turni_manage', 'turni_assign', 'turni_approve'])
+    )
   }
+
+  const canManageShifts = (): boolean => canGestioneTurni()
 
   const canManageLeaves = (): boolean => {
     return canAny(['ferie_approve', 'ferie_view_all', 'ferie_manage'])
@@ -119,8 +124,8 @@ export function usePermissions() {
   const canViewTipsHistory = (): boolean => can('mance_history')
   const canExportTips = (): boolean => can('mance_export')
 
-  const canCreateShift = (): boolean => can('turni_manage')
-  const canAssignShift = (): boolean => can('turni_assign')
+  const canCreateShift = (): boolean => canGestioneTurni()
+  const canAssignShift = (): boolean => canGestioneTurni()
   const canApproveShift = (): boolean => can('turni_approve')
   const canExportShifts = (): boolean => can('turni_export')
   const canRequestShiftSwap = (): boolean => can('turni_swap_request')
@@ -167,6 +172,7 @@ export function usePermissions() {
 
     canManageEmployees,
     canManageTips,
+    canGestioneTurni,
     canManageShifts,
     canManageLeaves,
     canViewReports,

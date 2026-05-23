@@ -4,7 +4,7 @@ import { isManagerRole } from '@/lib/roles'
 export async function resolveRestaurantAccess(userId: string, restaurantId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { restaurantId: true, companyId: true, role: true },
+    select: { restaurantId: true, companyId: true, role: true, ccnlLevel: true },
   })
   if (!user) return { allowed: false as const, user: null }
 

@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 import ShiftsCalendar from '@/components/shifts/Calendar'
-import PersonalWeekShifts from '@/components/shifts/PersonalWeek'
+import ShiftLegendButton from '@/components/shifts/ShiftLegendButton'
 import {
   getAllowedDepartmentsForCcnl,
   getShiftsPageViewMode,
@@ -37,18 +37,14 @@ export default function ShiftsPage() {
       : null
 
   const pageTitle =
-    viewMode === 'personal'
-      ? 'I Miei Turni'
-      : viewMode === 'department'
-        ? `Turni — ${deptLabel ?? 'Reparto'}`
-        : 'Turni'
+    viewMode === 'all'
+      ? 'Turni'
+      : `Turni — ${deptLabel ?? 'Reparto'}`
 
   const pageSubtitle =
-    viewMode === 'personal'
-      ? 'Visualizza i tuoi turni lavorativi della settimana'
-      : viewMode === 'department'
-        ? 'Gestisci i turni del tuo reparto'
-        : 'Gestisci e programma i turni di tutti i reparti'
+    viewMode === 'all'
+      ? 'Gestisci e programma i turni di tutti i reparti'
+      : 'Calendario completo del tuo reparto'
 
   useEffect(() => {
     if (status === 'loading') return
@@ -69,36 +65,28 @@ export default function ShiftsPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-start space-x-4">
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard')}
-              className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
-            >
-              ←
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">📅 {pageTitle}</h1>
-              <p className="text-gray-600 mt-2">{pageSubtitle}</p>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start space-x-4 min-w-0">
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard')}
+                className="text-gray-600 hover:text-gray-900 transition text-lg mt-1 shrink-0"
+              >
+                ←
+              </button>
+              <div className="min-w-0">
+                <h1 className="text-3xl font-bold text-gray-900">📅 {pageTitle}</h1>
+                <p className="text-gray-600 mt-2">{pageSubtitle}</p>
+              </div>
             </div>
+            <ShiftLegendButton />
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
-          {viewMode === 'personal' ? (
-            <PersonalWeekShifts />
-          ) : (
-            <>
-              <ShiftsCalendar allowedDepartments={allowedDepartments} />
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-700">
-                  🔵 Turno Lavorativo | ⚪ Riposo | 🟢 Ferie | 🟣 Evento Aziendale
-                </p>
-              </div>
-            </>
-          )}
+          <ShiftsCalendar allowedDepartments={allowedDepartments} />
         </div>
       </main>
     </div>

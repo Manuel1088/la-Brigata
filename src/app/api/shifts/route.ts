@@ -26,6 +26,7 @@ function eachDayIsoInRange(rangeFrom: string, rangeTo: string): string[] {
 
 import { isManagerRole } from '@/lib/roles'
 import { resolveRestaurantAccess } from '@/lib/restaurant-access'
+import { hasGestioneTurni } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     const dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { restaurantId: true },
+      select: { restaurantId: true, role: true, ccnlLevel: true },
     })
 
     const restaurantId = parsed.data.restaurantId ?? dbUser?.restaurantId
@@ -138,11 +139,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
-    const canEdit =
-      isManagerRole(access.user?.role) ||
-      ['HEAD_CHEF', 'RESPONSABILE_SALA', 'CASSIERE'].includes(String(access.user?.role))
+    const role = String(access.user?.role ?? session.user.role ?? '')
+    const ccnlLevel =
+      access.user?.ccnlLevel != null
+        ? String(access.user.ccnlLevel)
+        : session.user.ccnlLevel
 
-    if (!canEdit) {
+    if (!hasGestioneTurni(role, ccnlLevel)) {
       return NextResponse.json({ error: 'Permessi insufficienti' }, { status: 403 })
     }
 

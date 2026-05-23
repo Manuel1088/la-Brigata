@@ -308,37 +308,6 @@ export default function PersonalWeekShifts() {
   todayOnly.setHours(0, 0, 0, 0)
   const isCurrentWeek = todayOnly >= startOfWeek && todayOnly <= endOfWeek
 
-  const deptShiftCatalog: Record<string, Array<{ name: string; time: string }>> = {
-    cucina: [
-      { name: 'Prep Mattino', time: '06:00-14:00' },
-      { name: 'Servizio Giorno', time: '08:00-16:00' },
-      { name: 'Servizio Sera', time: '15:00-23:00' },
-      { name: 'Spezzato Chef', time: '09:00-15:00 / 18:00-24:00' },
-    ],
-    pasticceria: [
-      { name: 'Prep Pasticceria', time: '06:00-14:00' },
-      { name: 'Servizio Giorno', time: '08:00-16:00' },
-      { name: 'Servizio Sera', time: '15:00-23:00' },
-    ],
-    sala: [
-      { name: 'Apertura', time: '07:00-15:00' },
-      { name: 'Pranzo', time: '11:00-16:00' },
-      { name: 'Cena', time: '17:00-01:00' },
-      { name: 'Spezzato Sala', time: '11:00-15:00 / 19:00-23:00' },
-    ],
-    beverage: [
-      { name: 'Apertura Bar', time: '07:00-15:00' },
-      { name: 'Aperitivo', time: '17:00-21:00' },
-      { name: 'Dopocena', time: '20:00-02:00' },
-      { name: 'Spezzato Bar', time: '07:00-11:00 / 17:00-01:00' },
-    ],
-    accoglienza: [
-      { name: 'Apertura Accoglienza', time: '10:00-16:00' },
-      { name: 'Serale Accoglienza', time: '18:00-24:00' },
-    ],
-  }
-  const deptShifts = deptShiftCatalog[userDepartment] || deptShiftCatalog['sala']
-
   return (
     <>
       <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -451,21 +420,6 @@ export default function PersonalWeekShifts() {
         <div className="bg-white rounded-lg shadow p-4">
           <div className="text-sm text-gray-600">Giorni di riposo</div>
           <div className="text-2xl font-bold text-purple-600">{weekStats.restDays}</div>
-        </div>
-      </div>
-
-      <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="text-sm">
-          <div className="font-semibold text-blue-900 mb-1">
-            Turni disponibili nel tuo reparto
-          </div>
-          <ul className="list-disc list-inside text-blue-800">
-            {deptShifts.map((s, idx) => (
-              <li key={idx}>
-                {s.name} — {s.time}
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
 

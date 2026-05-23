@@ -134,6 +134,13 @@ export const PERMISSIONS: Record<string, Permission> = {
     category: 'turni',
     level: 5
   },
+  GESTIONE_TURNI: {
+    id: 'gestione_turni',
+    name: 'Gestione Turni',
+    description: 'Assegnare e modificare i turni dal calendario reparto',
+    category: 'turni',
+    level: 7
+  },
   TURNI_MANAGE: {
     id: 'turni_manage',
     name: 'Gestire Turni',
@@ -592,6 +599,7 @@ const CCNL_L3_ADD = ['personale_view'] as const
 const CCNL_L2_ADD = [
   'ferie_approve',
   'ferie_calendar',
+  'gestione_turni',
   'turni_manage',
   'turni_assign',
   'turni_approve',
@@ -692,6 +700,18 @@ export function hasPermission(
 ): boolean {
   if (normalizeRole(userRole) === 'ADMIN') return true
   return getEffectivePermissionIds(userRole, ccnlLevel).includes(permission)
+}
+
+/** Assegnazione/modifica turni dal calendario (L2+; QA/QB/ADMIN via permessi completi). */
+export function hasGestioneTurni(
+  userRole: string,
+  ccnlLevel?: string | null
+): boolean {
+  return (
+    hasPermission(userRole, 'gestione_turni', ccnlLevel) ||
+    hasPermission(userRole, 'turni_manage', ccnlLevel) ||
+    hasPermission(userRole, 'turni_assign', ccnlLevel)
+  )
 }
 
 export function hasAnyPermission(

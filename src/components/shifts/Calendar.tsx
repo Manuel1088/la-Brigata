@@ -12,6 +12,7 @@ import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import { shiftsToGrid, toDateOnlyIso, type ShiftGridCell } from '@/lib/shifts'
 import type { ShiftAssignment } from '@/lib/validations/shifts'
 import {
+  normalizeUserDepartmentToShiftDept,
   resolveVisibleShiftDepartments,
   SHIFT_DEPARTMENT_LABELS,
   type ShiftCalendarDepartment,
@@ -59,7 +60,11 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
   const [customShifts, setCustomShifts] = useState<{[department: string]: Array<{id: string, name: string, time: string, description: string}>}>({})
   const [isAddingCustomShift, setIsAddingCustomShift] = useState(false)
   const [targetDepartment, setTargetDepartment] = useState('')
-  const { canCreateShift, canAssignShift, canApproveShift } = usePermissions()
+  const {
+    canCreateShift,
+    canGestioneTurni,
+    canRequestShiftSwap,
+  } = usePermissions()
   const userRole = session?.user?.role || ''
   const userName = session?.user?.name || ''
   const userId = session?.user?.id
@@ -72,9 +77,9 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
   const [isLoadingShifts, setIsLoadingShifts] = useState(false)
   const [isSavingShifts, setIsSavingShifts] = useState(false)
   const { employees: employeesData, mutate: mutateEmployees, isLoading } = useEmployeeContext()
-  const [userDepartment, setUserDepartment] = useState<string>('sala')
-  const [accessScope, setAccessScope] = useState<'own' | 'department' | 'all' | null>(null)
-  const [accessCanEdit, setAccessCanEdit] = useState<boolean | null>(null)
+  const userDepartment = normalizeUserDepartmentToShiftDept(
+    session?.user?.department
+  )
 
   // ✅ Turni predefiniti memoizzati
   const departmentShifts = useMemo(() => ({
@@ -273,40 +278,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     return () => window.removeEventListener('shift_swaps_updated', onSwapUpdated)
   }, [])
 
-  // ✅ Determina accesso utente
-  useEffect(() => {
-    if (!session?.user) return
-    
-    const role = session.user.role || ''
-    const userDept = session.user?.department || 'sala'
-    setUserDepartment(userDept)
-    
-    const roleDeptFilter = resolveVisibleShiftDepartments(role, allowedDepartments)
-    const restrictedDepts =
-      roleDeptFilter.length < 6 && !roleDeptFilter.includes('direzione')
-
-    if (['PROPRIETARIO', 'DIRETTORE', 'MANAGER', 'FB_MANAGER', 'ADMIN'].includes(role)) {
-      setAccessScope('all')
-      setAccessCanEdit(true)
-    } else if (
-      restrictedDepts ||
-      [
-        'HEAD_CHEF',
-        'EXECUTIVE_CHEF',
-        'CAPO_PASTICCERE',
-        'MAITRE',
-        'RESTAURANT_MANAGER',
-        'RESPONSABILE_SALA',
-        'CASSIERE',
-      ].includes(role)
-    ) {
-      setAccessScope('all')
-      setAccessCanEdit(true)
-    } else {
-      setAccessScope('own')
-      setAccessCanEdit(false)
-    }
-  }, [session, allowedDepartments])
+  const canEditShifts = canGestioneTurni()
 
   // ✅ Helper functions
   
@@ -351,6 +323,65 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     setIsSwapModalOpen(true)
   }
 
+  const openSwapOnColleagueShift = (
+    colleagueName: string,
+    dayIndex: number,
+    targetShiftTime: string
+  ) => {
+    const myCellKey = `${userName}-${dayIndex}`
+    const myShift = shifts[myCellKey]
+    if (!isWorkingShift(myShift?.time)) {
+      notifyCustom(
+        'WARNING',
+        'SHIFTS',
+        'Cambio turno',
+        'Per richiedere il cambio devi avere un turno lavorativo lo stesso giorno'
+      )
+      return
+    }
+    const colleague = employees.find((e) => e.name === colleagueName)
+    if (!colleague) return
+    const dateISO = getISOString(getWeekDates(currentWeek)[dayIndex])
+    setSwapSource({
+      dayIndex,
+      dateISO,
+      offeredShiftTime: myShift.time as string,
+    })
+    setSwapTarget({
+      targetUserId: colleague.id,
+      targetEmployee: colleagueName,
+      targetShiftTime,
+      dateISO,
+    })
+    setSwapStep('intro')
+    setIsSwapModalOpen(true)
+  }
+
+  const canInteractWithCell = (
+    employee: string,
+    shift: ShiftCell | undefined
+  ): boolean => {
+    if (canEditShifts) return true
+    const isOwnCell =
+      employee === userName ||
+      employees.find((e) => e.name === employee)?.id === userId
+    if (
+      canRequestVerticalSwap &&
+      isOwnCell &&
+      isWorkingShift(shift?.time)
+    ) {
+      return true
+    }
+    if (
+      canRequestShiftSwap() &&
+      !isOwnCell &&
+      isWorkingShift(shift?.time)
+    ) {
+      return true
+    }
+    return false
+  }
+
   // ✅ Gestione turni
   const handleCellClick = (employee: string, dayIndex: number) => {
     const cellKey = `${employee}-${dayIndex}`
@@ -368,13 +399,21 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       return
     }
 
-    if (!accessCanEdit) return
-
-    if (accessScope === 'own' && employee !== userName) return
-    if (accessScope === 'department') {
-      const emp = employees.find(e => e.name === employee)
-      if (emp?.department !== userDepartment) return
+    if (
+      !canEditShifts &&
+      !isOwnCell &&
+      canRequestShiftSwap() &&
+      isWorkingShift(currentShift?.time)
+    ) {
+      openSwapOnColleagueShift(
+        employee,
+        dayIndex,
+        currentShift.time as string
+      )
+      return
     }
+
+    if (!canEditShifts) return
 
     const empForScope = employees.find((e) => e.name === employee)
     if (
@@ -384,12 +423,19 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       return
     }
 
-    // ✅ Determina il dipartimento corretto per il dipendente
-    const emp = employees.find(e => e.name === employee)
-    const employeeDepartment = emp?.department || 'sala'
-    
-    setSelectedEmployee({ name: employee, dayIndex, isEdit: !!shifts[`${employee}-${dayIndex}`] })
-    setSelectedDepartment(employeeDepartment) // ✅ Imposta il dipartimento corretto
+    const emp = employees.find((e) => e.name === employee)
+    const employeeDepartment = emp?.department || userDepartment
+    const isEmpty = !currentShift?.time
+
+    if (isEmpty) {
+      setSelectedEmployee({ name: employee, dayIndex, isEdit: false })
+      setSelectedDepartment(employeeDepartment)
+      setIsShiftSelectorOpen(true)
+      return
+    }
+
+    setSelectedEmployee({ name: employee, dayIndex, isEdit: true })
+    setSelectedDepartment(employeeDepartment)
     setIsShiftSelectorOpen(true)
   }
 
@@ -702,10 +748,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                             }
                             ${isToday ? 'ring-2 ring-orange-400' : ''}
                             ${
-                              accessCanEdit ||
-                              (canRequestVerticalSwap &&
-                                (employee.name === userName || employee.id === userId) &&
-                                isWorkingShift(shift?.time))
+                              canInteractWithCell(employee.name, shift)
                                 ? 'cursor-pointer'
                                 : 'cursor-default'
                             }
@@ -723,28 +766,14 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
         </div>
       </div>
 
-      {/* Legenda turni per reparto selezionato */}
-      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="text-sm font-semibold text-blue-900 mb-1">
-          Turni disponibili — {SHIFT_DEPARTMENT_LABELS[selectedDepartment].label}
-        </div>
-        <ul className="list-disc list-inside text-sm text-blue-800">
-          {(
-            departmentShifts[selectedDepartment as keyof typeof departmentShifts]
-              ?.filter((s) => s.time !== 'RIPOSO' && s.time !== 'custom')
-              .map((s) => (
-                <li key={s.id}>{s.name} — {s.time}</li>
-              ))
-          ) || null}
-        </ul>
-      </div>
-
       {/* Modal selezione turno */}
       {isShiftSelectorOpen && selectedEmployee && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">
-              Seleziona turno per {selectedEmployee.name}
+              {selectedEmployee.isEdit
+                ? `Modifica turno — ${selectedEmployee.name}`
+                : `Assegna turno — ${selectedEmployee.name}`}
             </h3>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {departmentShifts[selectedDepartment as keyof typeof departmentShifts]?.map(shift => (
@@ -794,6 +823,22 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                       {swapSource.offeredShiftTime}
                     </span>
                   </p>
+                  {swapTarget && (
+                    <>
+                      <p className="text-gray-600">
+                        Collega:{' '}
+                        <span className="font-medium text-gray-900">
+                          {swapTarget.targetEmployee}
+                        </span>
+                      </p>
+                      <p className="text-gray-600">
+                        Turno richiesto:{' '}
+                        <span className="font-medium text-gray-900">
+                          {swapTarget.targetShiftTime}
+                        </span>
+                      </p>
+                    </>
+                  )}
                 </div>
                 <div className="flex justify-end gap-2 mt-6">
                   <button
@@ -803,13 +848,23 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                   >
                     Annulla
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setSwapStep('pick')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                  >
-                    Richiedi Cambio
-                  </button>
+                  {swapTarget ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleSwapRequest()}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      Invia richiesta
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSwapStep('pick')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      Richiedi Cambio
+                    </button>
+                  )}
                 </div>
               </>
             ) : (

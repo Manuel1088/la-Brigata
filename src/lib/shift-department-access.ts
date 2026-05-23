@@ -104,10 +104,7 @@ export function getShiftsPageViewMode(
   if (level === 'QA' || level === 'QB' || r === 'ADMIN') {
     return 'all'
   }
-  if (['LIVELLO_1', 'LIVELLO_2', 'LIVELLO_3'].includes(level)) {
-    return 'department'
-  }
-  return 'personal'
+  return 'department'
 }
 
 export function normalizeUserDepartmentToShiftDept(
