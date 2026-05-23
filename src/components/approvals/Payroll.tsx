@@ -60,6 +60,8 @@ export default function ApprovalsPayroll({ onUpdate }: Props) {
     'pay_req_4',
   ])
 
+  // TODO: migrare payroll_requests da localStorage a DB (modello + API) quando
+  // la funzionalità payroll completa (richieste, workflow, buste) sarà definita.
   const loadRequests = () => {
     try {
       const raw = localStorage.getItem('payroll_requests')

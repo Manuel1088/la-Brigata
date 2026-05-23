@@ -6,7 +6,7 @@ import {
   Notification,
   NotificationDto,
   parseNotificationDto,
-  getNotificationStats,
+  computeNotificationStats,
   NOTIFICATION_CATEGORIES,
   formatTimestamp,
 } from '@/lib/notifications'
@@ -17,7 +17,7 @@ export default function NotificationsPage() {
   const searchParams = useSearchParams()
   const [filter, setFilter] = useState(searchParams.get('filter') || 'all')
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [stats, setStats] = useState(getNotificationStats())
+  const [stats, setStats] = useState(computeNotificationStats([]))
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -31,10 +31,10 @@ export default function NotificationsPage() {
         ? parsed.filter((n) => !n.userId || n.userId === userId)
         : parsed
       setNotifications(mine)
-      setStats(getNotificationStats(userId))
+      setStats(computeNotificationStats(mine))
     } catch {
       setNotifications([])
-      setStats(getNotificationStats(session?.user?.id))
+      setStats(computeNotificationStats([]))
     }
   }, [session])
 

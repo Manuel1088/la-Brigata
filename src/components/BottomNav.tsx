@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Calendar, Coins, Home, User } from 'lucide-react'
+import { Calendar, Coins, Home, Sun } from 'lucide-react'
 import { isAuthPath } from '@/lib/utils'
 import { isPlatformAdmin } from '@/lib/platform-admin'
 
@@ -11,7 +11,7 @@ const TABS = [
   { href: '/dashboard', label: 'Home', icon: Home, match: (p: string) => p === '/dashboard' || p === '/' },
   { href: '/shifts', label: 'Turni', icon: Calendar, match: (p: string) => p === '/shifts' || p.startsWith('/shifts/') },
   { href: '/tips', label: 'Mance', icon: Coins, match: (p: string) => p === '/tips' || p.startsWith('/tips/') },
-  { href: '/me', label: 'Profilo', icon: User, match: (p: string) => p === '/me' || p.startsWith('/me/') },
+  { href: '/me', label: 'Oggi', icon: Sun, match: (p: string) => p === '/me' || p.startsWith('/me/') },
 ] as const
 
 export default function BottomNav() {

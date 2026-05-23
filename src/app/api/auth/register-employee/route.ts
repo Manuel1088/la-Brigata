@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
         
         // 🔔 Crea notifica per approvazione (owner/manager)
         try {
-          createNotification({
+          await createNotification({
             type: 'URGENT',
             category: 'PERSONNEL',
             title: '👥 Nuovo dipendente in attesa',
@@ -244,7 +244,12 @@ export async function POST(request: NextRequest) {
               { label: 'Visualizza Richieste', action: '/approvals', variant: 'primary', icon: '👁️' },
               { label: 'Vai al Team', action: '/team/requests', variant: 'secondary', icon: '✅' }
             ],
-            metadata: { employmentId: employment.id, userId: user.id, companyId: (foundCompany?.id || companyId || '') }
+            metadata: {
+              employmentId: employment.id,
+              userId: user.id,
+              companyId: foundCompany?.id || companyId || '',
+              restaurantId,
+            },
           })
         } catch (notifError) {
           console.error('Errore creazione notifica:', notifError)

@@ -14,14 +14,14 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({ where: { id: employment.userId } })
 
-    // Notifica al proprietario/manager
-    createNotification({
+    await createNotification({
       type: 'SUCCESS',
       category: 'PERSONNEL',
       title: 'Dipendente approvato',
       message: `${user?.name || 'Dipendente'} approvato e aggiunto al team`,
       isUrgent: false,
-      actions: [{ label: 'Apri Team', action: '/team', variant: 'primary', icon: '👥' }]
+      actions: [{ label: 'Apri Team', action: '/team', variant: 'primary', icon: '👥' }],
+      metadata: { restaurantId: employment.restaurantId },
     })
 
     return NextResponse.json({ success: true })

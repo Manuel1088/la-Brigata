@@ -97,6 +97,7 @@ model User {
   vatRegistrationLinks      VatRegistrationUser[]
   vatAggNotificationsSent   VatAggregationNotification[] @relation("VatAggSender")
   vatAggNotificationsReceived VatAggregationNotification[] @relation("VatAggRecipient")
+  notifications             Notification[]
 
   @@index([companyId])
   @@index([companyId, isActive])
@@ -104,6 +105,22 @@ model User {
   @@index([informalCompanyId])
   @@index([id, restaurantId]) // ✅ NUOVO - Per query dashboard rapide
   @@map("users")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  payload   Json?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
 }
 
 model Shift {

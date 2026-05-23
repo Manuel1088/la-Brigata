@@ -124,9 +124,6 @@ export const NOTIFICATION_CATEGORIES = {
   }
 }
 
-/** Store in-memory solo per notifiche create in sessione; la UI legge da GET /api/notifications */
-const notificationStore: Notification[] = []
-
 export type NotificationDto = Omit<Notification, 'timestamp'> & {
   timestamp: string
 }
@@ -145,70 +142,7 @@ export function serializeNotification(n: Notification): NotificationDto {
   }
 }
 
-export function getNotifications(userId?: string): Notification[] {
-  if (userId) {
-    return notificationStore.filter((n) => !n.userId || n.userId === userId)
-  }
-  return [...notificationStore]
-}
-
-export function getUnreadCount(userId?: string): number {
-  return getNotifications(userId).filter(n => !n.isRead).length
-}
-
-export function getUrgentCount(userId?: string): number {
-  return getNotifications(userId).filter(n => n.isUrgent && !n.isRead).length
-}
-
-export function getNotificationsByCategory(category: NotificationCategory, userId?: string): Notification[] {
-  return getNotifications(userId).filter(n => n.category === category)
-}
-
-export function getNotificationsByType(type: NotificationType, userId?: string): Notification[] {
-  return getNotifications(userId).filter(n => n.type === type)
-}
-
-// Funzioni per gestire le notifiche
-export function markAsRead(notificationId: string): boolean {
-  const notification = notificationStore.find((n) => n.id === notificationId)
-  if (notification) {
-    notification.isRead = true
-    return true
-  }
-  return false
-}
-
-export function markAllAsRead(userId?: string): number {
-  const notifications = getNotifications(userId)
-  let count = 0
-  notifications.forEach(n => {
-    if (!n.isRead) {
-      n.isRead = true
-      count++
-    }
-  })
-  return count
-}
-
-export function dismissNotification(notificationId: string): boolean {
-  const index = notificationStore.findIndex((n) => n.id === notificationId)
-  if (index !== -1) {
-    notificationStore.splice(index, 1)
-    return true
-  }
-  return false
-}
-
-// Funzioni per creare notifiche
-export function createNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>): Notification {
-  const newNotification: Notification = {
-    ...notification,
-    id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    timestamp: new Date(),
-    isRead: false
-  }
-  
-  notificationStore.unshift(newNotification)
+function dispatchNotificationsUpdated() {
   try {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('notifications_updated'))
@@ -216,19 +150,65 @@ export function createNotification(notification: Omit<Notification, 'id' | 'time
   } catch {
     /* ignore */
   }
-  
-  // Auto-dismiss se configurato
-  if (newNotification.autoDismiss && newNotification.dismissAfter) {
-    setTimeout(() => {
-      dismissNotification(newNotification.id)
-    }, newNotification.dismissAfter)
+}
+
+async function dismissNotificationById(notificationId: string): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    await fetch(`/api/notifications/${notificationId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+    dispatchNotificationsUpdated()
+  } catch {
+    /* ignore */
   }
-  
-  return newNotification
+}
+
+/** Crea notifica: POST /api/notifications (client) o persistenza DB (server). */
+export async function createNotification(
+  notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>
+): Promise<Notification> {
+  if (typeof window !== 'undefined') {
+    const res = await fetch('/api/notifications', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        userId: notification.userId,
+        category: notification.category,
+        isUrgent: notification.isUrgent,
+        metadata: notification.metadata,
+        actions: notification.actions,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(
+        typeof data.error === 'string' ? data.error : 'Errore creazione notifica'
+      )
+    }
+    const created = parseNotificationDto(data.notification as NotificationDto)
+    dispatchNotificationsUpdated()
+
+    if (notification.autoDismiss && notification.dismissAfter) {
+      setTimeout(() => {
+        void dismissNotificationById(created.id)
+      }, notification.dismissAfter)
+    }
+
+    return created
+  }
+
+  const { persistNotification } = await import('@/lib/notifications-db')
+  return persistNotification(notification)
 }
 
 // Funzioni helper per creare notifiche specifiche
-export function createLeaveRequestNotification(employeeName: string, days: number, startDate: string, endDate: string): Notification {
+export function createLeaveRequestNotification(employeeName: string, days: number, startDate: string, endDate: string): Promise<Notification> {
   return createNotification({
     type: 'WARNING',
     category: 'LEAVES',
@@ -244,7 +224,7 @@ export function createLeaveRequestNotification(employeeName: string, days: numbe
   })
 }
 
-export function createLeaveProposalNotification(employeeName: string, startDate: string, endDate: string, comment?: string): Notification {
+export function createLeaveProposalNotification(employeeName: string, startDate: string, endDate: string, comment?: string): Promise<Notification> {
   return createNotification({
     type: 'INFO',
     category: 'LEAVES',
@@ -260,7 +240,7 @@ export function createLeaveProposalNotification(employeeName: string, startDate:
   })
 }
 
-export function createProposalAcceptedNotification(employeeName: string, startDate: string, endDate: string): Notification {
+export function createProposalAcceptedNotification(employeeName: string, startDate: string, endDate: string): Promise<Notification> {
   return createNotification({
     type: 'SUCCESS',
     category: 'LEAVES',
@@ -271,7 +251,7 @@ export function createProposalAcceptedNotification(employeeName: string, startDa
   })
 }
 
-export function createProposalRejectedNotification(employeeName: string, reason?: string): Notification {
+export function createProposalRejectedNotification(employeeName: string, reason?: string): Promise<Notification> {
   return createNotification({
     type: 'WARNING',
     category: 'LEAVES',
@@ -282,7 +262,7 @@ export function createProposalRejectedNotification(employeeName: string, reason?
   })
 }
 
-export function createShiftCoverageNotification(shiftDate: string, shiftTime: string, department: string, reason: string): Notification {
+export function createShiftCoverageNotification(shiftDate: string, shiftTime: string, department: string, reason: string): Promise<Notification> {
   return createNotification({
     type: 'URGENT',
     category: 'SHIFTS',
@@ -297,7 +277,7 @@ export function createShiftCoverageNotification(shiftDate: string, shiftTime: st
   })
 }
 
-export function createTipsCompletedNotification(amount: number, employeeCount: number, date: string): Notification {
+export function createTipsCompletedNotification(amount: number, employeeCount: number, date: string): Promise<Notification> {
   return createNotification({
     type: 'SUCCESS',
     category: 'TIPS',
@@ -312,35 +292,39 @@ export function createTipsCompletedNotification(amount: number, employeeCount: n
   })
 }
 
-// Funzioni per filtri e statistiche
-export function getNotificationStats(userId?: string): {
+export function computeNotificationStats(notifications: Notification[]): {
   total: number
   unread: number
   urgent: number
   byType: Record<NotificationType, number>
   byCategory: Record<NotificationCategory, number>
 } {
-  const notifications = getNotifications(userId)
-  
   const stats = {
     total: notifications.length,
-    unread: notifications.filter(n => !n.isRead).length,
-    urgent: notifications.filter(n => n.isUrgent && !n.isRead).length,
+    unread: notifications.filter((n) => !n.isRead).length,
+    urgent: notifications.filter((n) => n.isUrgent && !n.isRead).length,
     byType: {} as Record<NotificationType, number>,
-    byCategory: {} as Record<NotificationCategory, number>
+    byCategory: {} as Record<NotificationCategory, number>,
   }
-  
-  // Conta per tipo
-  Object.keys(NOTIFICATION_TYPES).forEach(type => {
-    stats.byType[type as NotificationType] = notifications.filter(n => n.type === type).length
+
+  Object.keys(NOTIFICATION_TYPES).forEach((type) => {
+    stats.byType[type as NotificationType] = notifications.filter(
+      (n) => n.type === type
+    ).length
   })
-  
-  // Conta per categoria
-  Object.keys(NOTIFICATION_CATEGORIES).forEach(category => {
-    stats.byCategory[category as NotificationCategory] = notifications.filter(n => n.category === category).length
+
+  Object.keys(NOTIFICATION_CATEGORIES).forEach((category) => {
+    stats.byCategory[category as NotificationCategory] = notifications.filter(
+      (n) => n.category === category
+    ).length
   })
-  
+
   return stats
+}
+
+/** @deprecated Usare computeNotificationStats sulla lista caricata dall'API */
+export function getNotificationStats(_userId?: string) {
+  return computeNotificationStats([])
 }
 
 // Funzione per formattare timestamp

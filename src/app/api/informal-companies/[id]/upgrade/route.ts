@@ -124,7 +124,7 @@ export async function POST(
 
         // Invia notifica a ciascun membro
         try {
-          createNotification({
+          await createNotification({
             type: 'SUCCESS',
             category: 'PERSONNEL',
             title: '🎉 Azienda Registrata!',
