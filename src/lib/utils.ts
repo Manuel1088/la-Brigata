@@ -1,8 +1,8 @@
-/** Pagine auth senza sidebar/topbar (login, register). */
+/** Pagine pubbliche senza sidebar/topbar (landing, login, register). */
 export function isAuthPath(pathname: string | null | undefined): boolean {
   if (!pathname) return false
   const base = pathname.split('?')[0].replace(/\/$/, '') || '/'
-  return base === '/login' || base === '/register'
+  return base === '/' || base === '/login' || base === '/register'
 }
 
 /**

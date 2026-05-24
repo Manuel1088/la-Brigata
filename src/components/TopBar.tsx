@@ -7,6 +7,8 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { UserRole } from '@/types/roles'
 import { userDisplayTitle } from '@/lib/user-role-display'
 import { isAuthPath } from '@/lib/utils'
+import { parseNotificationDto, type NotificationDto } from '@/lib/notifications'
+import { countUnreadAfterRoleFilter } from '@/lib/notifications-filter'
 import { PendingEmploymentsBadge } from './PendingEmploymentsBadge'
 import { RestaurantSelector } from './RestaurantSelector'
 import { NotificationCenter } from './NotificationCenter'
@@ -23,9 +25,17 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
   const [pendingNotifications, setPendingNotifications] = useState(0)
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false)
 
-  // Contatore allineato a GET /api/notifications (stessa fonte del pannello)
+  const userId = session?.user?.id
+  const roleForNotifications = String(userRole ?? session?.user?.role ?? '')
+  const departmentForNotifications = session?.user?.department ?? ''
+
+  // Contatore = non lette dopo filterNotificationsByRole (come NotificationCenter)
   useEffect(() => {
     const calculatePendingNotifications = async () => {
+      if (!userId) {
+        setPendingNotifications(0)
+        return
+      }
       try {
         const res = await fetch('/api/notifications', { credentials: 'include' })
         if (!res.ok) {
@@ -33,19 +43,16 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
           return
         }
         const data = await res.json()
-        if (typeof data.meta?.unread === 'number') {
-          setPendingNotifications(data.meta.unread)
-          return
-        }
-        const uid = session?.user?.id
-        const list = (data.notifications ?? []) as Array<{
-          userId?: string
-          isRead: boolean
-        }>
-        const mine = uid
-          ? list.filter((n) => !n.userId || n.userId === uid)
-          : list
-        setPendingNotifications(mine.filter((n) => !n.isRead).length)
+        const rows = (data.notifications ?? []) as NotificationDto[]
+        const parsed = rows.map(parseNotificationDto)
+        setPendingNotifications(
+          countUnreadAfterRoleFilter(
+            parsed,
+            userId,
+            roleForNotifications,
+            departmentForNotifications
+          )
+        )
       } catch {
         setPendingNotifications(0)
       }
@@ -58,7 +65,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
     return () => {
       window.removeEventListener('notifications_updated', handleUpdate)
     }
-  }, [session?.user?.id])
+  }, [userId, roleForNotifications, departmentForNotifications])
 
   // Don't show topbar on login/register or without active session
   if (isAuthPath(pathname) || status !== 'authenticated' || !session) {

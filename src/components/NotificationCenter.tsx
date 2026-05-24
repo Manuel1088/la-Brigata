@@ -9,6 +9,7 @@ import {
   NOTIFICATION_TYPES,
   formatTimestamp,
 } from '@/lib/notifications'
+import { filterNotificationsByRole } from '@/lib/notifications-filter'
 
 interface NotificationCenterProps {
   isOpen: boolean
@@ -16,39 +17,6 @@ interface NotificationCenterProps {
   userId?: string
   userRole?: string
   department?: string
-}
-
-function filterByRole(
-  list: Notification[],
-  userId: string | undefined,
-  userRole: string,
-  department: string
-): Notification[] {
-  const dept = department.toLowerCase()
-  const role = userRole.toUpperCase()
-
-  return list.filter((n) => {
-    if (n.userId && userId && n.userId !== userId) return false
-
-    if (['PROPRIETARIO', 'MANAGER', 'DIRETTORE', 'ADMIN'].includes(role)) {
-      if (n.category === 'SHIFTS' && n.metadata?.department) {
-        return String(n.metadata.department).toLowerCase() === dept
-      }
-      return true
-    }
-
-    const allowedCategories: NotificationCategory[] = [
-      'LEAVES',
-      'SHIFTS',
-      'TIPS',
-      'MESSAGES',
-    ]
-    if (!allowedCategories.includes(n.category)) return false
-    if (n.metadata?.department) {
-      return String(n.metadata.department).toLowerCase() === dept
-    }
-    return true
-  })
 }
 
 function computeStats(list: Notification[]) {
@@ -104,7 +72,12 @@ export function NotificationCenter({
 
       const rows = (data.notifications ?? []) as NotificationDto[]
       const parsed = rows.map(parseNotificationDto)
-      const filtered = filterByRole(parsed, userId, userRole, department)
+      const filtered = filterNotificationsByRole(
+        parsed,
+        userId,
+        userRole,
+        department
+      )
       setNotifications(filtered)
       setStats(computeStats(filtered))
     } catch {

@@ -31,7 +31,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setMobileSidebarOpen(false)
   }, [pathname])
 
-  // Login/register: mai sidebar, topbar o offset layout
+  // Landing, login, register: mai sidebar, topbar o offset layout
   if (authPage) {
     return <>{children}</>
   }
