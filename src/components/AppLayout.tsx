@@ -59,9 +59,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopBar onMenuToggle={() => setMobileSidebarOpen((open) => !open)} />
+      <button
+        type="button"
+        onClick={() => setMobileSidebarOpen((open) => !open)}
+        className="md:hidden fixed top-3 left-3 z-50 p-2.5 bg-white text-gray-700 rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 transition-colors"
+        aria-label="Menu di navigazione"
+      >
+        <span className="text-xl leading-none">☰</span>
+      </button>
 
-      <div className="flex pt-16">
+      <TopBar />
+
+      <div className="flex md:pt-16">
         <div className="hidden md:fixed md:left-0 md:top-16 md:bottom-0 md:z-40 md:block">
           <Suspense
             fallback={
@@ -79,11 +88,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <>
             <button
               type="button"
-              className="md:hidden fixed inset-0 top-16 z-[60] bg-black/50"
+              className="md:hidden fixed inset-0 z-[60] bg-black/50"
               aria-label="Chiudi menu"
               onClick={() => setMobileSidebarOpen(false)}
             />
-            <div className="md:hidden fixed left-0 top-16 bottom-0 z-[61]">
+            <div className="md:hidden fixed left-0 top-0 bottom-0 z-[61]">
               <Suspense fallback={null}>
                 <SidebarComponent
                   onNavigate={() => setMobileSidebarOpen(false)}

@@ -13,11 +13,7 @@ import { PendingEmploymentsBadge } from './PendingEmploymentsBadge'
 import { RestaurantSelector } from './RestaurantSelector'
 import { NotificationCenter } from './NotificationCenter'
 
-type TopBarProps = {
-  onMenuToggle?: () => void
-}
-
-export default function TopBar({ onMenuToggle }: TopBarProps) {
+export default function TopBar() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
@@ -114,19 +110,11 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
+      <div className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
           {/* Left Section - Logo + Brand + Breadcrumb */}
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => onMenuToggle?.()}
-              className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="Menu di navigazione"
-            >
-              <span className="text-xl leading-none">☰</span>
-            </button>
             {/* Logo + Brand */}
             <button
               onClick={() => router.push('/dashboard')}
@@ -167,18 +155,6 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
                   {pendingNotifications > 9 ? '9+' : pendingNotifications}
                 </span>
               )}
-            </button>
-
-            {/* Help/Docs */}
-            <button
-              onClick={() => {
-                // Aprire documentazione o help
-                window.open('/docs', '_blank')
-              }}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Documentazione e Aiuto"
-            >
-              <span className="text-xl">❓</span>
             </button>
 
             {/* Settings Button */}
