@@ -182,6 +182,46 @@ export function toDateOnlyIso(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
+export type ShiftCalendarEmployee = { id: string; name: string }
+
+export function shiftCellKey(employeeName: string, dayIndex: number): string {
+  return `${employeeName}-${dayIndex}`
+}
+
+export function findShiftCalendarEmployee(
+  employees: ShiftCalendarEmployee[],
+  opts: { userId?: string; name?: string }
+): ShiftCalendarEmployee | undefined {
+  if (opts.userId) {
+    const byId = employees.find((e) => e.id === opts.userId)
+    if (byId) return byId
+  }
+  if (opts.name) {
+    return employees.find((e) => e.name === opts.name)
+  }
+  return undefined
+}
+
+export function getShiftAtDay(
+  grid: Record<string, ShiftGridCell>,
+  employees: ShiftCalendarEmployee[],
+  dayIndex: number,
+  opts: { userId?: string; name?: string }
+): ShiftGridCell | undefined {
+  const emp = findShiftCalendarEmployee(employees, opts)
+  if (!emp) return undefined
+  return grid[shiftCellKey(emp.name, dayIndex)]
+}
+
+export function isShiftCalendarCurrentUser(
+  row: ShiftCalendarEmployee,
+  opts: { userId?: string; name?: string }
+): boolean {
+  if (opts.userId && row.id === opts.userId) return true
+  if (opts.name && row.name === opts.name) return true
+  return false
+}
+
 /** Build grid keys `${employeeName}-${dayIndex}` from API records */
 export function shiftsToGrid(
   records: ShiftApiRecord[],
@@ -195,7 +235,7 @@ export function shiftsToGrid(
     const dayIndex = dateToIndex.get(s.date)
     const name = s.userName || nameByUserId.get(s.userId)
     if (dayIndex === undefined || !name) continue
-    grid[`${name}-${dayIndex}`] = {
+    grid[shiftCellKey(name, dayIndex)] = {
       employee: name,
       time: s.time,
       department: s.department,

@@ -13,7 +13,15 @@ import {
 } from '@/lib/leaves-calendar'
 import { type SimpleEmployee } from '@/lib/employees'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
-import { shiftsToGrid, toDateOnlyIso, type ShiftGridCell } from '@/lib/shifts'
+import {
+  findShiftCalendarEmployee,
+  getShiftAtDay,
+  isShiftCalendarCurrentUser,
+  shiftCellKey,
+  shiftsToGrid,
+  toDateOnlyIso,
+  type ShiftGridCell,
+} from '@/lib/shifts'
 import type { ShiftAssignment } from '@/lib/validations/shifts'
 import {
   normalizeUserDepartmentToShiftDept,
@@ -349,14 +357,19 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     setIsSwapModalOpen(true)
   }
 
+  const sessionIdentity = useMemo(
+    () => ({ userId, name: userName }),
+    [userId, userName]
+  )
+
   const openSwapOnColleagueShift = (
     colleagueName: string,
     dayIndex: number,
     targetShiftTime: string
   ) => {
-    const myCellKey = `${userName}-${dayIndex}`
-    const myShift = shifts[myCellKey]
-    if (!isWorkingShift(myShift?.time)) {
+    const myShift = getShiftAtDay(shifts, employees, dayIndex, sessionIdentity)
+    const myShiftTime = myShift?.time
+    if (!myShiftTime || !isWorkingShift(myShiftTime)) {
       notifyCustom(
         'WARNING',
         'SHIFTS',
@@ -365,13 +378,21 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       )
       return
     }
-    const colleague = employees.find((e) => e.name === colleagueName)
-    if (!colleague) return
+    const colleague = findShiftCalendarEmployee(employees, { name: colleagueName })
+    if (!colleague) {
+      notifyCustom(
+        'WARNING',
+        'SHIFTS',
+        'Cambio turno',
+        'Collega non trovato nel calendario turni'
+      )
+      return
+    }
     const dateISO = getISOString(getWeekDates(currentWeek)[dayIndex])
     setSwapSource({
       dayIndex,
       dateISO,
-      offeredShiftTime: myShift.time as string,
+      offeredShiftTime: myShiftTime,
     })
     setSwapTarget({
       targetUserId: colleague.id,
@@ -388,9 +409,10 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     shift: ShiftCell | undefined
   ): boolean => {
     if (canEditShifts) return true
-    const isOwnCell =
-      employee === userName ||
-      employees.find((e) => e.name === employee)?.id === userId
+    const row = findShiftCalendarEmployee(employees, { name: employee })
+    const isOwnCell = row
+      ? isShiftCalendarCurrentUser(row, sessionIdentity)
+      : employee === userName
     if (
       canRequestVerticalSwap &&
       isOwnCell &&
@@ -410,11 +432,12 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
 
   // ✅ Gestione turni
   const handleCellClick = (employee: string, dayIndex: number) => {
-    const cellKey = `${employee}-${dayIndex}`
+    const cellKey = shiftCellKey(employee, dayIndex)
     const currentShift = shifts[cellKey]
-    const isOwnCell =
-      employee === userName ||
-      employees.find((e) => e.name === employee)?.id === userId
+    const row = findShiftCalendarEmployee(employees, { name: employee })
+    const isOwnCell = row
+      ? isShiftCalendarCurrentUser(row, sessionIdentity)
+      : employee === userName
 
     if (
       canRequestVerticalSwap &&
@@ -439,7 +462,28 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       return
     }
 
-    if (!canEditShifts) return
+    if (!canEditShifts) {
+      if (
+        !isOwnCell &&
+        canRequestShiftSwap() &&
+        !isWorkingShift(currentShift?.time)
+      ) {
+        notifyCustom(
+          'INFO',
+          'SHIFTS',
+          'Cambio turno',
+          'Seleziona una cella con turno lavorativo di un collega'
+        )
+      } else if (!canRequestShiftSwap() && !isOwnCell) {
+        notifyCustom(
+          'WARNING',
+          'SHIFTS',
+          'Cambio turno',
+          'Il cambio turno con colleghi è disponibile dal livello CCNL 4 in su'
+        )
+      }
+      return
+    }
 
     const empForScope = employees.find((e) => e.name === employee)
     if (
@@ -469,7 +513,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     if (!selectedEmployee) return
 
     const { name, dayIndex } = selectedEmployee
-    const cellKey = `${name}-${dayIndex}`
+    const cellKey = shiftCellKey(name, dayIndex)
     const shift = departmentShifts[selectedDepartment as keyof typeof departmentShifts]?.find(s => s.id === shiftId)
     
     if (!shift) return
@@ -633,7 +677,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       }> = []
       for (const emp of filteredEmployees) {
         if (emp.id === userId) continue
-        const cellKey = `${emp.name}-${dayIndex}`
+        const cellKey = shiftCellKey(emp.name, dayIndex)
         const shift = shifts[cellKey]
         const time = shift?.time
         if (!time || !isWorkingShift(time)) continue
@@ -754,7 +798,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                     </div>
                   </td>
                   {weekDates.map((date, dayIndex) => {
-                    const cellKey = `${employee.name}-${dayIndex}`
+                    const cellKey = shiftCellKey(employee.name, dayIndex)
                     const shift = shifts[cellKey]
                     const isToday = date.toDateString() === new Date().toDateString()
                     

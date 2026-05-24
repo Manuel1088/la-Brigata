@@ -3,7 +3,11 @@ import type { UserRoleString } from '@/types/roles'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { logLogin, logLogout } from '@/lib/audit'
 import { loadSessionPermissionPayload } from '@/lib/auth-session-permissions'
-import { inferCcnlFromRole, resolveSessionCcnlLevel } from '@/lib/ccnl-infer'
+import {
+  inferCcnlFromEmployeeRole,
+  inferCcnlFromRole,
+  resolveSessionCcnlLevel,
+} from '@/lib/ccnl-infer'
 import { getEmployeesFullClient } from '@/lib/employees'
 import { compare } from 'bcryptjs'
 import { prisma } from '@/lib/db'
@@ -76,6 +80,15 @@ export const authOptions: AuthOptions = {
           if (dbUser && dbUser.password) {
             const ok = await compare(credentials.password, dbUser.password)
             if (ok) {
+            const linkedEmployee = await prisma.employee.findFirst({
+              where: {
+                OR: [
+                  { userId: dbUser.id },
+                  { email: { equals: dbUser.email, mode: 'insensitive' } },
+                ],
+              },
+              select: { role: true, ccnlLevel: true },
+            })
             const user: User = {
               id: dbUser.id,
               email: dbUser.email,
@@ -85,7 +98,8 @@ export const authOptions: AuthOptions = {
               ccnlLevel: resolveSessionCcnlLevel(
                 String(dbUser.role),
                 dbUser.hierarchyLevel,
-                dbUser.ccnlLevel
+                dbUser.ccnlLevel ?? linkedEmployee?.ccnlLevel,
+                { employeeRole: linkedEmployee?.role ?? null }
               ),
               avatar: (dbUser as unknown as { avatar?: string }).avatar ?? '👤',
               userType: (dbUser as unknown as { userType?: string }).userType ?? 'EMPLOYEE',
@@ -156,12 +170,17 @@ export const authOptions: AuthOptions = {
               DIPENDENTE_BAR: 'DIPENDENTE'
             }
             const mappedRole = (roleMap[found.role] || 'DIPENDENTE') as UserRoleString
+            const demoCcnl =
+              (found as { ccnlLevel?: string | null }).ccnlLevel ??
+              inferCcnlFromEmployeeRole(found.role) ??
+              inferCcnlFromRole(found.role)
             const user: User = {
               id: found.id,
               email: found.email,
               name: found.name,
               role: mappedRole,
               level: found.level || 5,
+              ccnlLevel: demoCcnl,
               avatar: found.avatar || '👤'
             } as unknown as User
             await logLogin((user as unknown as { id: string }).id)
@@ -235,6 +254,15 @@ export const authOptions: AuthOptions = {
             where: { id: token.sub as string }
           })
           if (dbUser) {
+            const linkedEmployee = await prisma.employee.findFirst({
+              where: {
+                OR: [
+                  { userId: dbUser.id },
+                  { email: { equals: dbUser.email, mode: 'insensitive' } },
+                ],
+              },
+              select: { role: true, ccnlLevel: true },
+            })
             token.name = dbUser.name
             token.email = dbUser.email
             token.role = String(dbUser.role) as import('@/types/roles').UserRoleString
@@ -242,7 +270,8 @@ export const authOptions: AuthOptions = {
             token.ccnlLevel = resolveSessionCcnlLevel(
               String(dbUser.role),
               dbUser.hierarchyLevel,
-              dbUser.ccnlLevel
+              dbUser.ccnlLevel ?? linkedEmployee?.ccnlLevel,
+              { employeeRole: linkedEmployee?.role ?? null }
             )
             token.avatar = (dbUser as unknown as { avatar?: string }).avatar ?? '👤'
             ;(token as { restaurantId?: string | null }).restaurantId =

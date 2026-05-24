@@ -3,6 +3,16 @@ import { hash } from 'bcryptjs'
 import { UserRole as PrismaUserRole } from '@prisma/client'
 import { createNotification } from '@/lib/notifications'
 import { prisma } from '@/lib/db'
+import type { CCNLLevel } from '@prisma/client'
+import { isCcnlLevel } from '@/lib/ccnl'
+import {
+  inferCcnlFromRole,
+  registrationLevelToCcnl,
+} from '@/lib/ccnl-infer'
+import {
+  departmentFromStorage,
+  suggestedCcnlForRole,
+} from '@/lib/restaurant-roles'
 
 export async function POST(request: NextRequest) {
   try {
@@ -194,6 +204,15 @@ export async function POST(request: NextRequest) {
 
     const mappedRole = mapPositionToRole(position)
     const hierarchyLevel = parseHierarchyLevel(level)
+    const roleKey = mappedRole || role || 'DIPENDENTE'
+    const deptKey = departmentFromStorage(department || 'sala')
+    const resolvedCcnl =
+      registrationLevelToCcnl(level) ??
+      suggestedCcnlForRole(deptKey, roleKey) ??
+      inferCcnlFromRole(roleKey)
+    const ccnlLevel: CCNLLevel | null = isCcnlLevel(resolvedCcnl)
+      ? (resolvedCcnl as CCNLLevel)
+      : null
 
     // Crea utente
     const user = await prisma.user.create({
@@ -201,9 +220,10 @@ export async function POST(request: NextRequest) {
         email: normalizedEmail,
         name,
         password: hashedPassword,
-        role: toUserRole(mappedRole || role || 'DIPENDENTE'),
+        role: toUserRole(roleKey),
         userType: 'EMPLOYEE',
         hierarchyLevel,
+        ccnlLevel,
         position: position || null,
         department,
         phone,

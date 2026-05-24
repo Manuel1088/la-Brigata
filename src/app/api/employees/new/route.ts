@@ -15,7 +15,12 @@ import {
 } from '@/lib/employee-create'
 import { sendEmployeeWelcomeEmail } from '@/lib/employee-welcome-email'
 import { isCcnlLevel } from '@/lib/ccnl'
-import { normalizeDepartmentInput } from '@/lib/restaurant-roles'
+import {
+  departmentFromStorage,
+  normalizeDepartmentInput,
+  suggestedCcnlForRole,
+} from '@/lib/restaurant-roles'
+import { inferCcnlFromRole } from '@/lib/ccnl-infer'
 import type { CCNLLevel, ContractType } from '@prisma/client'
 import { z } from 'zod'
 import {
@@ -154,14 +159,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const storedDepartment = normalizeDepartmentInput(department)
+    const defaultCcnl =
+      suggestedCcnlForRole(
+        departmentFromStorage(storedDepartment),
+        roleInput
+      ) ?? inferCcnlFromRole(roleInput)
+
     const ccnlLevel: CCNLLevel | undefined =
       workSchedule === 'apprendistato'
         ? 'LIVELLO_6'
         : ccnlLevelInput && isCcnlLevel(ccnlLevelInput)
           ? (ccnlLevelInput as CCNLLevel)
-          : undefined
+          : isCcnlLevel(defaultCcnl)
+            ? (defaultCcnl as CCNLLevel)
+            : undefined
 
-    const storedDepartment = normalizeDepartmentInput(department)
     const userRole = toUserRole(roleInput)
     const employeeRole = toEmployeeRole(userRole, storedDepartment)
     const hierarchyLevel = hierarchyLevelForUserRole(userRole)
