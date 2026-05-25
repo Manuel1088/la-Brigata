@@ -39,11 +39,9 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
   const { notifyCustom } = useNotifications()
   const { logReadAction } = useAudit()
   const [requests, setRequests] = useState<EmployeeRequest[]>([])
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [filterType, setFilterType] = useState<string>('all')
-  const [filterDepartment, setFilterDepartment] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<'createdAt' | 'employeeName' | 'type'>('createdAt')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [loading, setLoading] = useState(true)
+  const [sortBy] = useState<'createdAt' | 'employeeName' | 'type'>('createdAt')
+  const [sortOrder] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
     loadRequests()
@@ -57,17 +55,25 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
       window.removeEventListener('employee_requests_updated', handleUpdate)
       window.removeEventListener('approvals_updated', handleUpdate)
     }
-  }, [])
+  }, [session?.user?.restaurantId])
 
   const loadRequests = async () => {
+    setLoading(true)
     try {
-      // 1) Prova a caricare da API employments (fonte ufficiale usata in TopBar)
-      const res = await fetch('/api/employments')
-      if (res.ok) {
-        const json = await res.json()
-        const emps = (json.employments || json.data || []) as Array<Record<string, unknown>>
-        // Mappa in formato EmployeeRequest per UI uniforme
-        const mapped: EmployeeRequest[] = emps.map((e) => {
+      const params = new URLSearchParams({ status: 'PENDING' })
+      const restaurantId = session?.user?.restaurantId
+      if (restaurantId) params.set('restaurantId', restaurantId)
+
+      const res = await fetch(`/api/employments?${params.toString()}`, {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Caricamento fallito')
+
+      const json = await res.json()
+      const emps = (json.employments || json.data || []) as Array<Record<string, unknown>>
+      const mapped: EmployeeRequest[] = emps
+        .filter((e) => String((e as { status?: string }).status || '').toUpperCase() === 'PENDING')
+        .map((e) => {
           const user = (e as { user?: { id?: string; name?: string; email?: string } }).user
           return {
             id: String((e as { id?: string }).id || ''),
@@ -76,40 +82,22 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
             employeeId: user?.id || String((e as { userId?: string }).userId || ''),
             department: String((e as { department?: string }).department || '').toLowerCase(),
             newRole: String((e as { role?: string }).role || ''),
-            reason: ((e as { status?: string }).status || 'PENDING') === 'PENDING' ? 'Nuova richiesta di assunzione' : 'Aggiornamento employment',
+            reason: 'Nuova richiesta di assunzione',
             requestedBy: user?.email || 'Sistema',
-            status: String((e as { status?: string }).status || 'PENDING') as EmployeeRequest['status'],
+            status: 'PENDING',
             createdAt: String((e as { createdAt?: string }).createdAt || new Date().toISOString()),
-            metadata: { source: 'api_employments', restaurantId: String((e as { restaurantId?: string }).restaurantId || '') }
+            metadata: {
+              source: 'api_employments',
+              restaurantId: String((e as { restaurantId?: string }).restaurantId || ''),
+            },
           }
         })
-        setRequests(mapped)
-        return
-      }
-    } catch (error) {
-      // fallback a localStorage se API non disponibile
-    }
-    
-    try {
-      const raw = localStorage.getItem('employee_requests')
-      if (raw) {
-        setRequests(JSON.parse(raw))
-      } else {
-        setRequests([])
-      }
+      setRequests(mapped)
     } catch (error) {
       console.error('Errore nel caricamento richieste dipendenti:', error)
       setRequests([])
-    }
-  }
-
-  const saveRequests = (updatedRequests: EmployeeRequest[]) => {
-    try {
-      localStorage.setItem('employee_requests', JSON.stringify(updatedRequests))
-      setRequests(updatedRequests)
-      window.dispatchEvent(new CustomEvent('employee_requests_updated'))
-    } catch (error) {
-      console.error('Errore nel salvataggio richieste dipendenti:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -149,15 +137,7 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
     }
   }
 
-  // Filtra e ordina richieste
-  const filteredRequests = requests
-    .filter(req => {
-      if (filterStatus !== 'all' && req.status !== filterStatus) return false
-      if (filterType !== 'all' && req.type !== filterType) return false
-      if (filterDepartment !== 'all' && req.department !== filterDepartment) return false
-      return true
-    })
-    .sort((a, b) => {
+  const sortedRequests = [...requests].sort((a, b) => {
       let aValue: string | Date, bValue: string | Date
       
       switch (sortBy) {
@@ -234,59 +214,22 @@ export default function ApprovalsEmployees({ onUpdate }: Props) {
     return new Date(dateString).toLocaleDateString('it-IT')
   }
 
-  const stats = {
-    total: requests.length,
-    pending: requests.filter(r => r.status === 'PENDING').length,
-    approved: requests.filter(r => r.status === 'APPROVED').length,
-    rejected: requests.filter(r => r.status === 'REJECTED').length
+  if (loading) {
+    return (
+      <div className="text-center py-8 text-gray-500">Caricamento richieste...</div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Statistiche */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div
-          className={`bg-blue-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='all' ? 'ring-2 ring-blue-300 shadow' : 'border border-blue-200'}`}
-          onClick={() => setFilterStatus('all')}
-        >
-          <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-          <div className="text-sm text-blue-700">Totali</div>
-        </div>
-        <div
-          className={`bg-yellow-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='PENDING' ? 'ring-2 ring-yellow-300 shadow' : 'border border-yellow-200'}`}
-          onClick={() => setFilterStatus('PENDING')}
-        >
-          <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-          <div className="text-sm text-yellow-700">In Attesa</div>
-        </div>
-        <div
-          className={`bg-green-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='APPROVED' ? 'ring-2 ring-green-300 shadow' : 'border border-green-200'}`}
-          onClick={() => setFilterStatus('APPROVED')}
-        >
-          <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-          <div className="text-sm text-green-700">Approvate</div>
-        </div>
-        <div
-          className={`bg-red-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus==='REJECTED' ? 'ring-2 ring-red-300 shadow' : 'border border-red-200'}`}
-          onClick={() => setFilterStatus('REJECTED')}
-        >
-          <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-          <div className="text-sm text-red-700">Rifiutate</div>
-        </div>
-      </div>
-
-      {/* Filtri rimossi su richiesta; filtraggio gestito dai 4 riquadri */}
-
-      {/* Lista Richieste */}
+    <div className="space-y-4">
       <div className="space-y-4">
-        {filteredRequests.length === 0 ? (
-          <div className="text-center py-8">
+        {sortedRequests.length === 0 ? (
+          <div className="text-center py-12">
             <div className="text-4xl mb-2">👥</div>
-            <p className="text-gray-500">Nessuna richiesta trovata</p>
-            <p className="text-sm text-gray-400 mt-1">Modifica i filtri per vedere più risultati</p>
+            <p className="text-gray-600">Nessuna richiesta dipendente in attesa</p>
           </div>
         ) : (
-          filteredRequests.map(request => (
+          sortedRequests.map(request => (
             <div key={request.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
               <div className="flex items-start justify-between">
                 <div className="flex-1">

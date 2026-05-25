@@ -215,7 +215,6 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('it-IT', {
       weekday: 'long',
-      year: 'numeric',
       month: 'long',
       day: 'numeric',
     })
@@ -243,9 +242,11 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
           key={request.id}
           className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden"
         >
-          <div className="p-4 sm:p-5 flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-gray-700">{formatDate(request.dateISO)}</p>
+          <div className="p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <p className="text-sm font-medium text-gray-900 capitalize">
+                {formatDate(request.dateISO)}
+              </p>
               <span
                 className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
               >
@@ -253,65 +254,60 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Richiedente</p>
-                <p className="font-semibold text-gray-900">{request.requesterName}</p>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  Turno: {request.offeredShiftTime || '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Collega</p>
-                <p className="font-semibold text-gray-900 flex items-center gap-2 flex-wrap">
-                  <span>{request.targetEmployeeName}</span>
-                  {request.status === 'PEER_PENDING' && (
-                    <span className="text-base" title="In attesa risposta del collega">
-                      ⏳
-                    </span>
-                  )}
-                  {peerAccepted(request.status) && (
-                    <span className="text-base" title="Il collega ha accettato">
-                      ✅
-                    </span>
-                  )}
-                </p>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  Turno: {request.targetShiftTime || '—'}
-                </p>
-              </div>
+            <div className="grid grid-cols-2 gap-x-4 text-xs uppercase tracking-wide text-gray-500 mb-2">
+              <span>Richiedente</span>
+              <span>Collega</span>
             </div>
 
-            <div className="bg-gray-50 rounded-lg px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Orari del cambio</p>
-              <p className="font-semibold text-gray-900 mt-1 text-sm sm:text-base">
-                {request.offeredShiftTime || '—'} → {request.targetShiftTime || '—'}
-              </p>
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="grid grid-cols-2 gap-x-4 flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900">{request.requesterName}</p>
+                  <p className="font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                    <span>{request.targetEmployeeName}</span>
+                    {request.status === 'PEER_PENDING' && (
+                      <span className="text-base" title="In attesa risposta del collega">
+                        ⏳
+                      </span>
+                    )}
+                    {peerAccepted(request.status) && (
+                      <span className="text-base" title="Il collega ha accettato">
+                        ✅
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {request.status === 'PENDING' && canApproveSwaps && (
+                  <div className="flex gap-2 w-full sm:w-auto sm:shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleApprove(request.id)}
+                      className="flex-1 sm:flex-none px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                    >
+                      Approva
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleReject(request.id)}
+                      className="flex-1 sm:flex-none px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+                    >
+                      Rifiuta
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-4 text-sm text-gray-600">
+                <p>{request.offeredShiftTime || '—'}</p>
+                <p>{request.targetShiftTime || '—'}</p>
+              </div>
             </div>
 
             {request.status === 'REJECTED' && request.reason && (
-              <div className="p-3 bg-red-50 rounded-lg border border-red-100">
+              <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-100">
                 <p className="text-sm text-red-700 font-medium">Motivo</p>
                 <p className="text-sm text-red-600 mt-1">{request.reason}</p>
-              </div>
-            )}
-
-            {request.status === 'PENDING' && canApproveSwaps && (
-              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-1 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => handleApprove(request.id)}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
-                >
-                  ✅ Approva
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleReject(request.id)}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
-                >
-                  ❌ Rifiuta
-                </button>
               </div>
             )}
           </div>

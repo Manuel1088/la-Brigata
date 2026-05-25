@@ -86,26 +86,17 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">🎉 Eventi Aziendali</h1>
-              <p className="text-gray-600 mt-2">Gestisci chiusure, festività e eventi speciali</p>
-            </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
-            >
-              ➕ Nuovo Evento
-            </button>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        
+        <div className="flex justify-end mb-4">
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm"
+          >
+            Nuovo evento
+          </button>
+        </div>
+
         {/* Info */}
         <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
           <p className="text-sm text-purple-700">
