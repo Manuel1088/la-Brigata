@@ -9,8 +9,9 @@ export function buildPeerSwapRequestMessage(opts: {
 }): string {
   const day = formatSwapDayIt(opts.dateIso)
   return (
-    `${opts.requesterName} vuole cambiare turno con te il ${day}. ` +
-    `Il tuo turno: ${opts.targetShiftTime}, il suo: ${opts.offeredShiftTime}. Accetti?`
+    `${opts.requesterName} vuole cambiare turno.\n` +
+    `${day}\n` +
+    `Il suo turno: ${opts.offeredShiftTime} con il tuo: ${opts.targetShiftTime}`
   )
 }
 

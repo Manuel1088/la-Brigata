@@ -11,6 +11,14 @@ import {
 } from '@/lib/notifications'
 import { filterNotificationsByRole } from '@/lib/notifications-filter'
 
+function isShiftSwapPeerNotification(notification: Notification): boolean {
+  return (
+    notification.metadata?.category === 'shift_swap_peer' &&
+    typeof notification.metadata?.swapId === 'string' &&
+    notification.metadata.swapId.length > 0
+  )
+}
+
 interface NotificationCenterProps {
   isOpen: boolean
   onClose: () => void
@@ -62,6 +70,7 @@ export function NotificationCenter({
   const [stats, setStats] = useState(computeStats([]))
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [actingSwapId, setActingSwapId] = useState<string | null>(null)
 
   const loadNotifications = useCallback(async () => {
     setLoading(true)
@@ -136,6 +145,55 @@ export function NotificationCenter({
     }
     await loadNotifications()
     window.dispatchEvent(new CustomEvent('notifications_updated'))
+  }
+
+  const handlePeerSwapAction = async (
+    notification: Notification,
+    action: 'accept' | 'reject'
+  ) => {
+    const swapId = String(notification.metadata?.swapId ?? '')
+    if (!swapId) return
+
+    if (action === 'reject') {
+      const ok = window.confirm('Rifiutare questa richiesta di cambio turno?')
+      if (!ok) return
+    }
+
+    setActingSwapId(swapId)
+    try {
+      const res = await fetch(`/api/shifts/swap/${swapId}/peer`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        throw new Error(data.error || 'Operazione fallita')
+      }
+
+      if (!notification.isRead) {
+        await fetch(`/api/notifications/${notification.id}`, {
+          method: 'PATCH',
+          credentials: 'include',
+        })
+      }
+      await fetch(`/api/notifications/${notification.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+
+      window.dispatchEvent(new CustomEvent('shift_swaps_updated'))
+      window.dispatchEvent(new CustomEvent('approvals_updated'))
+      await loadNotifications()
+      window.dispatchEvent(new CustomEvent('notifications_updated'))
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : 'Errore nella risposta al cambio turno'
+      window.alert(msg)
+    } finally {
+      setActingSwapId(null)
+    }
   }
 
   const handleAction = (notification: Notification, action: string) => {
@@ -236,25 +294,84 @@ export function NotificationCenter({
           <ul className="space-y-4">
             {filteredNotifications.map((notification) => {
               const typeConfig = NOTIFICATION_TYPES[notification.type]
+              const peerSwap = isShiftSwapPeerNotification(notification)
+              const swapId = peerSwap
+                ? String(notification.metadata?.swapId ?? '')
+                : ''
+              const swapBusy = actingSwapId === swapId
               return (
                 <li
                   key={notification.id}
-                  className={`p-4 rounded-lg shadow-sm flex items-start justify-between border ${
+                  className={`p-4 rounded-lg shadow-sm flex flex-col gap-3 border ${
                     notification.isRead ? 'bg-gray-50' : typeConfig.bgColor
                   } ${typeConfig.borderColor}`}
                 >
-                  <div className="flex-1 mr-4">
-                    <h3 className="text-sm font-medium text-gray-900">
-                      {notification.title}
-                    </h3>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formatTimestamp(notification.timestamp)}
-                    </p>
-                    {notification.actions && notification.actions.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        {notification.title}
+                      </h3>
+                      <p className="text-sm text-gray-700 mt-2 whitespace-pre-line leading-relaxed">
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {formatTimestamp(notification.timestamp)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {notification.isUrgent && (
+                        <span className="text-red-500 text-xs font-semibold">
+                          URGENTE
+                        </span>
+                      )}
+                      {!notification.isRead && !peerSwap && (
+                        <button
+                          onClick={() => void handleMarkAsRead(notification.id)}
+                          className="p-1 text-blue-500 hover:text-blue-700 rounded-full"
+                          title="Marca come letta"
+                        >
+                          ✅
+                        </button>
+                      )}
+                      <button
+                        onClick={() => void handleDismiss(notification.id)}
+                        className="p-1 text-gray-400 hover:text-gray-600 rounded-full"
+                        title="Elimina"
+                      >
+                        ✗
+                      </button>
+                    </div>
+                  </div>
+
+                  {peerSwap && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={swapBusy}
+                        onClick={() =>
+                          void handlePeerSwapAction(notification, 'accept')
+                        }
+                        className="w-full px-4 py-3 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition"
+                      >
+                        Accetta
+                      </button>
+                      <button
+                        type="button"
+                        disabled={swapBusy}
+                        onClick={() =>
+                          void handlePeerSwapAction(notification, 'reject')
+                        }
+                        className="w-full px-4 py-3 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition"
+                      >
+                        Rifiuta
+                      </button>
+                    </div>
+                  )}
+
+                  {!peerSwap &&
+                    notification.actions &&
+                    notification.actions.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
                         {notification.actions.map((action) => (
                           <button
                             key={action.action}
@@ -269,30 +386,6 @@ export function NotificationCenter({
                         ))}
                       </div>
                     )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {notification.isUrgent && (
-                      <span className="text-red-500 text-xs font-semibold">
-                        URGENTE
-                      </span>
-                    )}
-                    {!notification.isRead && (
-                      <button
-                        onClick={() => void handleMarkAsRead(notification.id)}
-                        className="p-1 text-blue-500 hover:text-blue-700 rounded-full"
-                        title="Marca come letta"
-                      >
-                        ✅
-                      </button>
-                    )}
-                    <button
-                      onClick={() => void handleDismiss(notification.id)}
-                      className="p-1 text-gray-400 hover:text-gray-600 rounded-full"
-                      title="Elimina"
-                    >
-                      ✗
-                    </button>
-                  </div>
                 </li>
               )
             })}
