@@ -1,7 +1,10 @@
 import type { Prisma, PrismaClient } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { dateFromIso, decodeShiftTime } from '@/lib/shifts'
-import { normalizeSwapStatus, type ShiftSwapStatus } from '@/lib/shift-swap-storage'
+import {
+  normalizeSwapStatus,
+  type ShiftSwapStatus,
+} from '@/lib/shift-swap-status'
 
 export type { ShiftSwapStatus }
 export { normalizeSwapStatus }

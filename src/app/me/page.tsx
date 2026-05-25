@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { formatEuro } from '@/lib/utils'
 import { shiftHubLabel } from '@/lib/shifts'
+import PeerSwapRequests from '@/components/me/PeerSwapRequests'
 
 interface HubShift {
   id: string
@@ -143,6 +144,8 @@ export default function MeHubPage() {
                 })}
               </p>
             </section>
+
+            <PeerSwapRequests />
 
             {/* Mance del mese */}
             <section className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-orange-100">

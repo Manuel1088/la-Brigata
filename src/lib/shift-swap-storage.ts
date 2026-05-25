@@ -1,13 +1,10 @@
-/** Stati swap normalizzati in maiuscolo. */
-export type SwapStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+import {
+  normalizeSwapStatus,
+  type ShiftSwapStatus,
+} from '@/lib/shift-swap-status'
 
-export type ShiftSwapStatus = SwapStatus
-
-export function normalizeSwapStatus(status: string | undefined | null): SwapStatus {
-  const upper = (status ?? 'PENDING').toUpperCase()
-  if (upper === 'APPROVED' || upper === 'REJECTED') return upper
-  return 'PENDING'
-}
+export type { ShiftSwapStatus }
+export { normalizeSwapStatus }
 
 export type StoredSwapRequest = {
   id: string
@@ -20,7 +17,7 @@ export type StoredSwapRequest = {
   requesterName: string
   requesterDepartment: string
   offeredShiftTime: string
-  status: SwapStatus
+  status: ShiftSwapStatus
   createdAt: string
   decidedBy?: string
   decidedAt?: string

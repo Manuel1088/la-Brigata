@@ -141,16 +141,23 @@ model Shift {
   @@map("shifts")
 }
 
+enum ShiftSwapStatus {
+  PEER_PENDING
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model ShiftSwapRequest {
-  id               String     @id @default(cuid())
-  restaurantId     String     @map("restaurant_id")
-  requesterUserId  String     @map("requester_user_id")
-  targetUserId     String     @map("target_user_id")
-  requesterShiftId String?    @map("requester_shift_id")
-  targetShiftId    String?    @map("target_shift_id")
-  requesterDate    DateTime   @map("requester_date")
-  targetDate       DateTime   @map("target_date")
-  status           String     @default("PENDING")
+  id               String           @id @default(cuid())
+  restaurantId     String           @map("restaurant_id")
+  requesterUserId  String           @map("requester_user_id")
+  targetUserId     String           @map("target_user_id")
+  requesterShiftId String?          @map("requester_shift_id")
+  targetShiftId    String?          @map("target_shift_id")
+  requesterDate    DateTime         @map("requester_date")
+  targetDate       DateTime         @map("target_date")
+  status           ShiftSwapStatus  @default(PEER_PENDING)
   notes            String?
   createdAt        DateTime   @default(now()) @map("created_at")
   updatedAt        DateTime   @updatedAt @map("updated_at")

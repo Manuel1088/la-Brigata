@@ -627,7 +627,12 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
 
       window.dispatchEvent(new CustomEvent('approvals_updated'))
       window.dispatchEvent(new CustomEvent('shift_swaps_updated'))
-      notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', 'Richiesta inviata!')
+      notifyCustom(
+        'SUCCESS',
+        'SHIFTS',
+        'Cambio turno',
+        'Richiesta inviata al collega. Riceverai aggiornamento dopo la sua risposta.'
+      )
       setSwapVersion((prev) => prev + 1)
     } catch (error) {
       const msg =

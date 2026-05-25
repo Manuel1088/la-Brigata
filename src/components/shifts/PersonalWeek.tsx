@@ -253,7 +253,12 @@ export default function PersonalWeekShifts() {
 
       window.dispatchEvent(new CustomEvent('approvals_updated'))
       window.dispatchEvent(new CustomEvent('shift_swaps_updated'))
-      notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', 'Richiesta inviata!')
+      notifyCustom(
+        'SUCCESS',
+        'SHIFTS',
+        'Cambio turno',
+        'Richiesta inviata al collega. Riceverai aggiornamento dopo la sua risposta.'
+      )
     } catch (error) {
       const msg =
         error instanceof Error ? error.message : "Errore nell'invio della richiesta"

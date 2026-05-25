@@ -14,7 +14,19 @@ export const postShiftSwapBodySchema = z.object({
 
 export const getShiftSwapQuerySchema = z.object({
   restaurantId: z.string().min(1).optional(),
-  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+  status: z
+    .enum(['PEER_PENDING', 'PENDING', 'APPROVED', 'REJECTED'])
+    .optional(),
+  /** Solo richieste in cui l'utente corrente è il collega destinatario */
+  peerInbox: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+})
+
+export const peerShiftSwapBodySchema = z.object({
+  action: z.enum(['accept', 'reject']),
+  notes: z.string().optional(),
 })
 
 export const patchShiftSwapBodySchema = z.object({

@@ -9,6 +9,8 @@ import {
   findShiftByUserDateAndTime,
   serializeShiftSwapRequest,
 } from '@/lib/shift-swaps'
+import { ACTIVE_SWAP_STATUSES } from '@/lib/shift-swap-status'
+import { notifyPeerSwapRequest } from '@/lib/shift-swap-notifications'
 import {
   getShiftSwapQuerySchema,
   postShiftSwapBodySchema,
@@ -96,7 +98,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.shiftSwapRequest.findFirst({
       where: {
         restaurantId,
-        status: 'PENDING',
+        status: { in: ACTIVE_SWAP_STATUSES },
         OR: [
           { requesterShiftId: requesterShift.id },
           { targetShiftId: targetShift.id },
@@ -121,13 +123,27 @@ export async function POST(request: NextRequest) {
         targetShiftId: targetShift.id,
         requesterDate: dateFromIso(requesterDate),
         targetDate: dateFromIso(targetDate),
-        status: 'PENDING',
+        status: 'PEER_PENDING',
         notes: notes ?? null,
       },
       include: swapInclude,
     })
 
     const swap = await serializeShiftSwapRequest(created)
+
+    try {
+      await notifyPeerSwapRequest({
+        targetUserId,
+        requesterName: created.requester.name,
+        swapId: created.id,
+        restaurantId,
+        dateIso: targetDate,
+        targetShiftTime,
+        offeredShiftTime,
+      })
+    } catch (notifyErr) {
+      console.error('Notifica peer swap non inviata:', notifyErr)
+    }
 
     return NextResponse.json({ success: true, swap }, { status: 201 })
   } catch (error) {
@@ -148,6 +164,7 @@ export async function GET(request: NextRequest) {
     const parsed = getShiftSwapQuerySchema.safeParse({
       restaurantId: searchParams.get('restaurantId') ?? undefined,
       status: searchParams.get('status') ?? undefined,
+      peerInbox: searchParams.get('peerInbox') ?? undefined,
     })
 
     if (!parsed.success) {
@@ -176,7 +193,8 @@ export async function GET(request: NextRequest) {
 
     const where: {
       restaurantId: string
-      status?: string
+      status?: (typeof ACTIVE_SWAP_STATUSES)[number] | 'APPROVED' | 'REJECTED'
+      targetUserId?: string
       OR?: Array<{ requesterUserId: string } | { targetUserId: string }>
     } = { restaurantId }
 
@@ -184,7 +202,12 @@ export async function GET(request: NextRequest) {
       where.status = parsed.data.status
     }
 
-    if (!isManager) {
+    if (parsed.data.peerInbox) {
+      where.targetUserId = session.user.id
+      if (!parsed.data.status) {
+        where.status = 'PEER_PENDING'
+      }
+    } else if (!isManager) {
       where.OR = [
         { requesterUserId: session.user.id },
         { targetUserId: session.user.id },

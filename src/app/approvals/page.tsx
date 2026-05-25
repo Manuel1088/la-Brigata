@@ -153,7 +153,7 @@ export default function ApprovalsPage() {
               if (d.getFullYear() === year && d.getMonth() === month) {
                 const key = formatISO(d)
                 const status = normalizeSwapStatus(req.status)
-                if (status === 'PENDING') markPending(key)
+                if (status === 'PENDING' || status === 'PEER_PENDING') markPending(key)
                 else if (status === 'APPROVED') markApproved(key)
               }
             }

@@ -215,6 +215,8 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'PEER_PENDING':
+        return 'bg-blue-100 text-blue-800'
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800'
       case 'APPROVED':
@@ -228,8 +230,10 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case 'PEER_PENDING':
+        return 'In attesa collega'
       case 'PENDING':
-        return 'In Attesa'
+        return 'In attesa manager'
       case 'APPROVED':
         return 'Approvato'
       case 'REJECTED':
@@ -280,6 +284,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
 
   const stats = {
     total: swapRequests.length,
+    peerPending: swapRequests.filter((r) => r.status === 'PEER_PENDING').length,
     pending: swapRequests.filter((r) => r.status === 'PENDING').length,
     approved: swapRequests.filter((r) => r.status === 'APPROVED').length,
     rejected: swapRequests.filter((r) => r.status === 'REJECTED').length,
@@ -295,7 +300,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div
           className={`bg-blue-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus === 'all' ? 'ring-2 ring-blue-300 shadow' : 'border border-blue-200'}`}
           onClick={() => setFilterStatus('all')}
@@ -304,11 +309,18 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
           <div className="text-sm text-blue-700">Totali</div>
         </div>
         <div
+          className={`bg-sky-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus === 'PEER_PENDING' ? 'ring-2 ring-sky-300 shadow' : 'border border-sky-200'}`}
+          onClick={() => setFilterStatus('PEER_PENDING')}
+        >
+          <div className="text-2xl font-bold text-sky-600">{stats.peerPending}</div>
+          <div className="text-sm text-sky-700">Attesa collega</div>
+        </div>
+        <div
           className={`bg-yellow-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus === 'PENDING' ? 'ring-2 ring-yellow-300 shadow' : 'border border-yellow-200'}`}
           onClick={() => setFilterStatus('PENDING')}
         >
           <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-          <div className="text-sm text-yellow-700">In Attesa</div>
+          <div className="text-sm text-yellow-700">Attesa manager</div>
         </div>
         <div
           className={`bg-green-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus === 'APPROVED' ? 'ring-2 ring-green-300 shadow' : 'border border-green-200'}`}
