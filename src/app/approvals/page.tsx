@@ -307,47 +307,34 @@ export default function ApprovalsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">✅ Approvazioni</h1>
-              <p className="text-gray-600 mt-2">Gestisci tutte le richieste in sospeso</p>
-            </div>
-
-            {pendingCount > 0 && (
-              <div className="flex items-center gap-4">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">⚠️</span>
-                    <div>
-                      <div className="text-lg font-semibold text-red-800">{pendingCount}</div>
-                      <div className="text-sm text-red-700">Richieste in sospeso</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleBulkAction('approve_all', [])}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                  >
-                    ✅ Approva Tutto
-                  </button>
-                  <button
-                    onClick={() => handleBulkAction('reject_all', [])}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                  >
-                    ❌ Rifiuta Tutto
-                  </button>
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {pendingCount > 0 && (
+          <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⚠️</span>
+                <div>
+                  <p className="text-lg font-semibold text-red-800">{pendingCount}</p>
+                  <p className="text-sm text-red-700">Richieste in sospeso</p>
                 </div>
               </div>
-            )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleBulkAction('approve_all', [])}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+              >
+                Approva tutto
+              </button>
+              <button
+                onClick={() => handleBulkAction('reject_all', [])}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+              >
+                Rifiuta tutto
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        )}
         {/* Calendario mese corrente */}
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-4">

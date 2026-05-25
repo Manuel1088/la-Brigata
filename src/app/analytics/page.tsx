@@ -87,32 +87,19 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">📈 Analytics Avanzate</h1>
-              <p className="text-gray-600 mt-2">Analisi predittive e business intelligence</p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {canExportReports() && (
-                <button
-                  onClick={() => {
-                    // Implementa export analytics
-                    console.log('Export all analytics')
-                  }}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                >
-                  📤 Esporta Analytics
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {canExportReports() && (
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => {
+                console.log('Export all analytics')
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+            >
+              Esporta analytics
+            </button>
+          </div>
+        )}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6 overflow-x-auto" aria-label="Tabs">

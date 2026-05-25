@@ -142,21 +142,6 @@ export default function LeavesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div>
-              <h1 className="text-3xl font-bold text-gray-900">🏖️ Ferie e Permessi</h1>
-              <p className="text-gray-600 mt-2">
-                {isManager 
-                  ? 'Gestisci richieste ferie del team'
-                  : 'Richiedi e gestisci le tue ferie'
-                }
-              </p>
-            </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         
         {/* Link approvazioni (solo chi gestisce il team) */}

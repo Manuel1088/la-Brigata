@@ -220,53 +220,41 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">👤 {formData.name || session.user?.name}</h1>
-              <p className="text-gray-600 mt-2">{userRole}</p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {isEditing ? (
-                <>
-                  <button
-                    onClick={() => {
-                      setIsEditing(false)
-                      setFormData(prev => ({
-                        ...prev,
-                        name: session.user?.name || '',
-                        email: session.user?.email || '',
-                        phone: session.user?.phone || ''
-                      }))
-                    }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
-                  >
-                    Annulla
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isLoading}
-                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
-                  >
-                    {isLoading ? 'Salvataggio...' : 'Salva'}
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  Modifica Profilo
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="flex justify-end mb-4 gap-3">
+          {isEditing ? (
+            <>
+              <button
+                onClick={() => {
+                  setIsEditing(false)
+                  setFormData(prev => ({
+                    ...prev,
+                    name: session.user?.name || '',
+                    email: session.user?.email || '',
+                    phone: session.user?.phone || ''
+                  }))
+                }}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition text-sm font-medium"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isLoading}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 text-sm font-medium"
+              >
+                {isLoading ? 'Salvataggio...' : 'Salva'}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+            >
+              Modifica profilo
+            </button>
+          )}
+        </div>
         {message && (
           <div className={`mb-6 p-4 rounded-lg ${
             message.includes('✅') ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
