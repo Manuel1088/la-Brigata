@@ -43,7 +43,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
-  const { userRole, canInsertTips, canManagePermissionCategories } = usePermissions()
+  const { userRole, canInsertTips, canManagePermissionCategories, canManageCompany } = usePermissions()
   const userCcnl = session?.user?.ccnlLevel ?? null
   const [isHovered, setIsHovered] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
@@ -156,6 +156,9 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
         { icon: '⚙️', label: 'Impostazioni', path: '/settings' },
         { icon: '🔔', label: 'Notifiche', path: '/notifications', color: '#74B9FF' },
         { icon: '💳', label: 'Abbonamenti', path: '/subscription', color: '#FDCB6E' },
+        ...(canManageCompany()
+          ? [{ icon: '🏢', label: 'La mia attività', path: '/company', color: '#636E72' }]
+          : []),
       ],
     },
     {

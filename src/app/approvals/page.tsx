@@ -8,6 +8,7 @@ import ApprovalsSwaps from '@/components/approvals/Swaps'
 import ApprovalsEmployees from '@/components/approvals/Employees'
 import ApprovalsPayroll from '@/components/approvals/Payroll'
 import ApprovalsLeaves from '@/components/approvals/Leaves'
+import ApprovalsCandidatures from '@/components/approvals/Candidatures'
 import { normalizeSwapStatus } from '@/lib/shift-swap-storage'
 
 export interface ApprovalItem {
@@ -47,7 +48,7 @@ export default function ApprovalsPage() {
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState('leaves')
   const [pendingCount, setPendingCount] = useState(0)
-  const [counts, setCounts] = useState<{ swaps: number; employees: number; payroll: number; leaves: number }>({ swaps: 0, employees: 0, payroll: 0, leaves: 0 })
+  const [counts, setCounts] = useState<{ swaps: number; employees: number; payroll: number; leaves: number; candidatures: number }>({ swaps: 0, employees: 0, payroll: 0, leaves: 0, candidatures: 0 })
   const { 
     canManageEmployees, 
     canManagePayroll,
@@ -177,7 +178,7 @@ export default function ApprovalsPage() {
   // Gestisci query param ?tab=payroll
   useEffect(() => {
     const tabParam = searchParams.get('tab')
-    if (tabParam && ['leaves', 'swaps', 'employees', 'payroll'].includes(tabParam)) {
+    if (tabParam && ['leaves', 'swaps', 'employees', 'payroll', 'candidatures'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [searchParams])
@@ -187,6 +188,7 @@ export default function ApprovalsPage() {
     const loadPendingCounts = async () => {
       let swaps = 0
       let employees = 0
+      let candidatures = 0
       const payroll = 0
       let leaves = 0
       let count = 0
@@ -199,9 +201,9 @@ export default function ApprovalsPage() {
           const data = await res.json()
           if (canEmployees) {
             leaves = typeof data.leaves === 'number' ? data.leaves : 0
-            employees =
+            candidatures =
               typeof data.employments === 'number' ? data.employments : 0
-            count += leaves + employees
+            count += leaves + candidatures
           }
           if (canShifts) {
             swaps = typeof data.swaps === 'number' ? data.swaps : 0
@@ -213,7 +215,7 @@ export default function ApprovalsPage() {
       }
 
       setPendingCount(count)
-      setCounts({ swaps, employees, payroll, leaves })
+      setCounts({ swaps, employees, payroll, leaves, candidatures })
     }
 
     loadPendingCounts()
@@ -246,6 +248,14 @@ export default function ApprovalsPage() {
       component: ApprovalsSwaps,
       permission: canShifts,
       badge: 0 // Sarà calcolato dinamicamente
+    },
+    { 
+      id: 'candidatures', 
+      label: 'Candidature', 
+      icon: '📝', 
+      component: ApprovalsCandidatures,
+      permission: canEmployees,
+      badge: 0
     },
     { 
       id: 'employees', 
@@ -403,7 +413,7 @@ export default function ApprovalsPage() {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
               {visibleTabs.map((tab) => {
-                const badge = tab.id === 'swaps' ? counts.swaps : tab.id === 'employees' ? counts.employees : tab.id === 'payroll' ? counts.payroll : tab.id === 'leaves' ? counts.leaves : 0
+                const badge = tab.id === 'swaps' ? counts.swaps : tab.id === 'employees' ? counts.employees : tab.id === 'payroll' ? counts.payroll : tab.id === 'leaves' ? counts.leaves : tab.id === 'candidatures' ? counts.candidatures : 0
                 return (
                 <button
                   key={tab.id}

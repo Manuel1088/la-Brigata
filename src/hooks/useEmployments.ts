@@ -81,27 +81,3 @@ export function useEmployments(params: UseEmploymentsParams = {}): UseEmployment
     isValidating
   }
 }
-
-/**
- * Hook per ottenere il count degli employments pending
- * Ottimizzato con intervallo di refresh di 30 secondi
- */
-export function usePendingEmploymentsCount() {
-  const { data, error, isLoading, mutate } = useSWR(
-    '/api/employments?status=PENDING',
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 5000,
-      refreshInterval: 30000, // Refresh ogni 30 secondi
-    }
-  )
-  
-  return {
-    count: data?.employments?.length || 0,
-    isLoading,
-    error,
-    mutate
-  }
-}
-

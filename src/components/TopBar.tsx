@@ -4,12 +4,10 @@ import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
-import { UserRole } from '@/types/roles'
 import { userDisplayTitle } from '@/lib/user-role-display'
 import { isAuthPath } from '@/lib/utils'
 import { parseNotificationDto, type NotificationDto } from '@/lib/notifications'
 import { countUnreadAfterRoleFilter } from '@/lib/notifications-filter'
-import { PendingEmploymentsBadge } from './PendingEmploymentsBadge'
 import { RestaurantSelector } from './RestaurantSelector'
 import { NotificationCenter } from './NotificationCenter'
 
@@ -89,7 +87,7 @@ export default function TopBar() {
         'analytics': 'Analytics',
         'notifications': 'Notifiche',
         'settings': 'Impostazioni',
-        'company': 'Company',
+        'company': 'La mia attività',
         'subscription': 'Abbonamenti',
         'admin': 'Amministrazione',
         'me': 'Profilo',
@@ -134,14 +132,6 @@ export default function TopBar() {
           <div className="flex items-center gap-3">
             {/* Restaurant Selector - Solo se ha multiple employments */}
             <RestaurantSelector />
-            
-            {/* Pending Employments Badge - Solo per admin/proprietario/manager */}
-            {(userRole === UserRole.ADMIN || 
-              userRole === UserRole.PROPRIETARIO || 
-              userRole === UserRole.MANAGER || 
-              userRole === UserRole.DIRETTORE) && (
-              <PendingEmploymentsBadge />
-            )}
             
             {/* Notifications */}
             <button

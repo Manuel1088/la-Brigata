@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
             isUrgent: true,
             actions: [
               { label: 'Visualizza Richieste', action: '/approvals', variant: 'primary', icon: '👁️' },
-              { label: 'Vai al Team', action: '/team/requests', variant: 'secondary', icon: '✅' }
+              { label: 'Vai alle approvazioni', action: '/approvals?tab=candidatures', variant: 'secondary', icon: '✅' }
             ],
             metadata: {
               employmentId: employment.id,

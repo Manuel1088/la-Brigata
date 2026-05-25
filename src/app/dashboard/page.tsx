@@ -659,7 +659,7 @@ export default function DashboardPage() {
                   <div className="text-3xl">⏳</div>
                 </div>
                 <button
-                  onClick={() => router.push('/approvals')}
+                  onClick={() => router.push('/approvals?tab=candidatures')}
                   className="text-sm text-orange-600 font-semibold hover:underline"
                 >
                   Gestisci →
