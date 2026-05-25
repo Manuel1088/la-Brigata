@@ -32,15 +32,22 @@ interface Props {
   onUpdate: () => void
 }
 
+const STATUS_ORDER: Record<ShiftSwapStatus, number> = {
+  PENDING: 0,
+  PEER_PENDING: 1,
+  APPROVED: 2,
+  REJECTED: 3,
+}
+
+function peerAccepted(status: ShiftSwapStatus): boolean {
+  return status === 'PENDING' || status === 'APPROVED'
+}
+
 export default function ApprovalsSwaps({ onUpdate }: Props) {
   const { data: session } = useSession()
   const { notifyCustom } = useNotifications()
   const { logReadAction } = useAudit()
   const [swapRequests, setSwapRequests] = useState<SwapRequestUi[]>([])
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [filterDepartment, setFilterDepartment] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<'createdAt' | 'dateISO' | 'requesterName'>('createdAt')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [loading, setLoading] = useState(true)
 
   const restaurantId = session?.user?.restaurantId as string | undefined
@@ -111,19 +118,39 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
       credentials: 'include',
       body: JSON.stringify({ status, notes }),
     })
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string
+      autoRejected?: boolean
+      message?: string
+    }
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error((err as { error?: string }).error || 'Operazione fallita')
+      throw new Error(data.error || 'Operazione fallita')
     }
     await loadSwapRequests()
     window.dispatchEvent(new CustomEvent('approvals_updated'))
     window.dispatchEvent(new CustomEvent('shift_swaps_updated'))
+    return data
   }
 
   const handleApprove = async (requestId: string) => {
     try {
-      await patchSwap(requestId, 'APPROVED')
-      notifyCustom('SUCCESS', 'SHIFTS', 'Cambio turno', 'Cambio turno approvato e turni aggiornati')
+      const data = await patchSwap(requestId, 'APPROVED')
+      if (data.autoRejected) {
+        notifyCustom(
+          'WARNING',
+          'SHIFTS',
+          'Cambio turno',
+          data.message ??
+            'I turni non esistono più. La richiesta è stata chiusa automaticamente.'
+        )
+      } else {
+        notifyCustom(
+          'SUCCESS',
+          'SHIFTS',
+          'Cambio turno',
+          'Cambio turno approvato e turni aggiornati'
+        )
+      }
       onUpdate()
       logReadAction('shift_swap_approved')
     } catch (error) {
@@ -149,71 +176,13 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
     }
   }
 
-  const handleBulkApprove = async (requestIds: string[]) => {
-    try {
-      for (const id of requestIds) {
-        await patchSwap(id, 'APPROVED')
-      }
-      notifyCustom(
-        'SUCCESS',
-        'SHIFTS',
-        'Cambio turno',
-        `${requestIds.length} cambi turno approvati`
-      )
-      onUpdate()
-      logReadAction('shift_swaps_bulk_approved')
-    } catch (error) {
-      const msg =
-        error instanceof Error
-          ? error.message
-          : "Errore nell'approvazione multipla"
-      notifyCustom('ERROR', 'SHIFTS', 'Cambio turno', msg)
-    }
-  }
+  const sortedRequests = [...swapRequests].sort((a, b) => {
+    const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+    if (statusDiff !== 0) return statusDiff
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
 
-  const filteredRequests = swapRequests
-    .filter((req) => {
-      if (filterStatus !== 'all' && req.status !== filterStatus) return false
-      if (
-        filterDepartment !== 'all' &&
-        req.requesterDepartment !== filterDepartment
-      ) {
-        return false
-      }
-      return true
-    })
-    .sort((a, b) => {
-      let aValue: string | Date
-      let bValue: string | Date
-
-      switch (sortBy) {
-        case 'createdAt':
-          aValue = new Date(a.createdAt)
-          bValue = new Date(b.createdAt)
-          break
-        case 'dateISO':
-          aValue = new Date(a.dateISO)
-          bValue = new Date(b.dateISO)
-          break
-        case 'requesterName':
-          aValue = a.requesterName
-          bValue = b.requesterName
-          break
-        default:
-          aValue = new Date(a.createdAt)
-          bValue = new Date(b.createdAt)
-      }
-
-      return sortOrder === 'asc'
-        ? aValue > bValue
-          ? 1
-          : -1
-        : aValue < bValue
-          ? 1
-          : -1
-    })
-
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: ShiftSwapStatus) => {
     switch (status) {
       case 'PEER_PENDING':
         return 'bg-blue-100 text-blue-800'
@@ -228,7 +197,7 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
     }
   }
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: ShiftSwapStatus) => {
     switch (status) {
       case 'PEER_PENDING':
         return 'In attesa collega'
@@ -243,32 +212,6 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
     }
   }
 
-  const getDepartmentIcon = (dept: string) => {
-    switch (dept) {
-      case 'cucina':
-        return '🔥'
-      case 'sala':
-        return '🍽️'
-      case 'bar':
-        return '🍹'
-      default:
-        return '🏢'
-    }
-  }
-
-  const getDepartmentColor = (dept: string) => {
-    switch (dept) {
-      case 'cucina':
-        return 'bg-red-50 text-red-700 border-red-200'
-      case 'sala':
-        return 'bg-blue-50 text-blue-700 border-blue-200'
-      case 'bar':
-        return 'bg-green-50 text-green-700 border-green-200'
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200'
-    }
-  }
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('it-IT', {
       weekday: 'long',
@@ -278,171 +221,102 @@ export default function ApprovalsSwaps({ onUpdate }: Props) {
     })
   }
 
-  const formatTime = (timeString: string) => {
-    return timeString.replace(/(\d{2}):(\d{2})/, '$1:$2')
-  }
-
-  const stats = {
-    total: swapRequests.length,
-    peerPending: swapRequests.filter((r) => r.status === 'PEER_PENDING').length,
-    pending: swapRequests.filter((r) => r.status === 'PENDING').length,
-    approved: swapRequests.filter((r) => r.status === 'APPROVED').length,
-    rejected: swapRequests.filter((r) => r.status === 'REJECTED').length,
-  }
-
-  const pendingRequests = filteredRequests.filter((r) => r.status === 'PENDING')
-
   if (loading) {
     return (
       <div className="text-center py-8 text-gray-500">Caricamento richieste...</div>
     )
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div
-          className={`bg-blue-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus === 'all' ? 'ring-2 ring-blue-300 shadow' : 'border border-blue-200'}`}
-          onClick={() => setFilterStatus('all')}
-        >
-          <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-          <div className="text-sm text-blue-700">Totali</div>
-        </div>
-        <div
-          className={`bg-sky-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus === 'PEER_PENDING' ? 'ring-2 ring-sky-300 shadow' : 'border border-sky-200'}`}
-          onClick={() => setFilterStatus('PEER_PENDING')}
-        >
-          <div className="text-2xl font-bold text-sky-600">{stats.peerPending}</div>
-          <div className="text-sm text-sky-700">Attesa collega</div>
-        </div>
-        <div
-          className={`bg-yellow-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus === 'PENDING' ? 'ring-2 ring-yellow-300 shadow' : 'border border-yellow-200'}`}
-          onClick={() => setFilterStatus('PENDING')}
-        >
-          <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-          <div className="text-sm text-yellow-700">Attesa manager</div>
-        </div>
-        <div
-          className={`bg-green-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus === 'APPROVED' ? 'ring-2 ring-green-300 shadow' : 'border border-green-200'}`}
-          onClick={() => setFilterStatus('APPROVED')}
-        >
-          <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-          <div className="text-sm text-green-700">Approvati</div>
-        </div>
-        <div
-          className={`bg-red-50 rounded-lg p-4 text-center cursor-pointer hover:opacity-90 transition ${filterStatus === 'REJECTED' ? 'ring-2 ring-red-300 shadow' : 'border border-red-200'}`}
-          onClick={() => setFilterStatus('REJECTED')}
-        >
-          <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-          <div className="text-sm text-red-700">Rifiutati</div>
-        </div>
+  if (sortedRequests.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-4xl mb-2">🔄</div>
+        <p className="text-gray-500">Nessuna richiesta di cambio turno</p>
       </div>
+    )
+  }
 
-      {canApproveSwaps && pendingRequests.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-blue-800">Azioni Rapide</h3>
-              <p className="text-sm text-blue-700">
-                {pendingRequests.length} richieste in attesa di approvazione
-              </p>
+  return (
+    <div className="space-y-4">
+      {sortedRequests.map((request) => (
+        <div
+          key={request.id}
+          className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden"
+        >
+          <div className="p-4 sm:p-5 flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-gray-700">{formatDate(request.dateISO)}</p>
+              <span
+                className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
+              >
+                {getStatusLabel(request.status)}
+              </span>
             </div>
-            <button
-              onClick={() => handleBulkApprove(pendingRequests.map((r) => r.id))}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              ✅ Approva Tutti
-            </button>
-          </div>
-        </div>
-      )}
 
-      <div className="space-y-4">
-        {filteredRequests.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-2">🔄</div>
-            <p className="text-gray-500">
-              {swapRequests.length === 0
-                ? 'Nessuna richiesta in attesa'
-                : 'Nessuna richiesta trovata'}
-            </p>
-          </div>
-        ) : (
-          filteredRequests.map((request) => (
-            <div
-              key={request.id}
-              className="border rounded-lg p-4 hover:bg-gray-50 transition"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xl">🔄</span>
-                    <h4 className="font-medium text-gray-900">Cambio turno verticale</h4>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
-                    >
-                      {getStatusLabel(request.status)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Richiedente</p>
+                <p className="font-semibold text-gray-900">{request.requesterName}</p>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  Turno: {request.offeredShiftTime || '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Collega</p>
+                <p className="font-semibold text-gray-900 flex items-center gap-2 flex-wrap">
+                  <span>{request.targetEmployeeName}</span>
+                  {request.status === 'PEER_PENDING' && (
+                    <span className="text-base" title="In attesa risposta del collega">
+                      ⏳
                     </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
-                    <div>
-                      <span className="text-gray-600">Richiedente:</span>
-                      <div className="font-medium">{request.requesterName}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Collega:</span>
-                      <div className="font-medium">{request.targetEmployeeName}</div>
-                    </div>
-                  </div>
-
-                  <div className="text-sm mb-3">
-                    <span className="text-gray-600">Giorno:</span>
-                    <div className="font-medium">{formatDate(request.dateISO)}</div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-lg p-3 text-sm">
-                    <span className="text-gray-600 text-xs">ORARI</span>
-                    <div className="font-medium mt-1">
-                      {formatTime(request.offeredShiftTime)} →{' '}
-                      {formatTime(request.targetShiftTime)}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {request.requesterName} → {request.targetEmployeeName}
-                    </p>
-                  </div>
-
-                  {request.status === 'REJECTED' && request.reason && (
-                    <div className="mt-3 p-3 bg-red-50 rounded-lg">
-                      <span className="text-sm text-red-700 font-medium">
-                        Motivo rifiuto:
-                      </span>
-                      <p className="text-sm text-red-600 mt-1">{request.reason}</p>
-                    </div>
                   )}
-                </div>
-
-                {request.status === 'PENDING' && canApproveSwaps && (
-                  <div className="flex gap-2 ml-4">
-                    <button
-                      onClick={() => handleApprove(request.id)}
-                      className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm"
-                    >
-                      ✅ Approva
-                    </button>
-                    <button
-                      onClick={() => handleReject(request.id)}
-                      className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
-                    >
-                      ❌ Rifiuta
-                    </button>
-                  </div>
-                )}
+                  {peerAccepted(request.status) && (
+                    <span className="text-base" title="Il collega ha accettato">
+                      ✅
+                    </span>
+                  )}
+                </p>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  Turno: {request.targetShiftTime || '—'}
+                </p>
               </div>
             </div>
-          ))
-        )}
-      </div>
+
+            <div className="bg-gray-50 rounded-lg px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Orari del cambio</p>
+              <p className="font-semibold text-gray-900 mt-1 text-sm sm:text-base">
+                {request.offeredShiftTime || '—'} → {request.targetShiftTime || '—'}
+              </p>
+            </div>
+
+            {request.status === 'REJECTED' && request.reason && (
+              <div className="p-3 bg-red-50 rounded-lg border border-red-100">
+                <p className="text-sm text-red-700 font-medium">Motivo</p>
+                <p className="text-sm text-red-600 mt-1">{request.reason}</p>
+              </div>
+            )}
+
+            {request.status === 'PENDING' && canApproveSwaps && (
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-1 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => handleApprove(request.id)}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                >
+                  ✅ Approva
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleReject(request.id)}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+                >
+                  ❌ Rifiuta
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

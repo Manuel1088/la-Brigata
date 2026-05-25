@@ -195,31 +195,23 @@ function SubscriptionPageContent() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-start space-x-4">
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
-            >
-              ←
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">💳 Abbonamenti</h1>
-              <p className="text-gray-600 mt-2">
-                Scegli un piano premium — mance, turni e ferie restano sempre
-                gratuiti
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">💳 Abbonamenti</h1>
+            <p className="text-gray-600 mt-2">
+              Scegli un piano premium — mance, turni e ferie restano sempre
+              gratuiti
+            </p>
+            {restaurantName && (
+              <p className="text-sm text-gray-500 mt-1">
+                Ristorante: {restaurantName}
+                {restaurantPlan !== 'FREE' &&
+                  restaurantPeriodEnd &&
+                  ` · rinnovo ${formatDate(restaurantPeriodEnd)}`}
+                {employeePlan === 'PREMIUM' &&
+                  employeePeriodEnd &&
+                  ` · Premium personale fino al ${formatDate(employeePeriodEnd)}`}
               </p>
-              {restaurantName && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Ristorante: {restaurantName}
-                  {restaurantPlan !== 'FREE' &&
-                    restaurantPeriodEnd &&
-                    ` · rinnovo ${formatDate(restaurantPeriodEnd)}`}
-                  {employeePlan === 'PREMIUM' &&
-                    employeePeriodEnd &&
-                    ` · Premium personale fino al ${formatDate(employeePeriodEnd)}`}
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </header>

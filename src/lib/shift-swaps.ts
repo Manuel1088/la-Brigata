@@ -87,6 +87,13 @@ export async function serializeShiftSwapRequest(
   }
 }
 
+const SHIFT_SWAP_ORPHAN_MESSAGE =
+  'I turni collegati non esistono più nel calendario. Richiesta chiusa automaticamente.'
+
+export type ExecuteApprovedSwapResult =
+  | { outcome: 'approved' }
+  | { outcome: 'rejected'; message: string }
+
 export async function executeApprovedSwap(
   tx: Prisma.TransactionClient,
   swap: {
@@ -96,9 +103,13 @@ export async function executeApprovedSwap(
     requesterUserId: string
     targetUserId: string
   }
-) {
+): Promise<ExecuteApprovedSwapResult> {
   if (!swap.requesterShiftId || !swap.targetShiftId) {
-    throw new Error('Turni non collegati alla richiesta di cambio')
+    await tx.shiftSwapRequest.update({
+      where: { id: swap.id },
+      data: { status: 'REJECTED', notes: SHIFT_SWAP_ORPHAN_MESSAGE },
+    })
+    return { outcome: 'rejected', message: SHIFT_SWAP_ORPHAN_MESSAGE }
   }
 
   const [requesterShift, targetShift] = await Promise.all([
@@ -107,7 +118,11 @@ export async function executeApprovedSwap(
   ])
 
   if (!requesterShift || !targetShift) {
-    throw new Error('Turni non trovati')
+    await tx.shiftSwapRequest.update({
+      where: { id: swap.id },
+      data: { status: 'REJECTED', notes: SHIFT_SWAP_ORPHAN_MESSAGE },
+    })
+    return { outcome: 'rejected', message: SHIFT_SWAP_ORPHAN_MESSAGE }
   }
 
   await tx.shift.update({
@@ -123,4 +138,6 @@ export async function executeApprovedSwap(
     where: { id: swap.id },
     data: { status: 'APPROVED' },
   })
+
+  return { outcome: 'approved' }
 }

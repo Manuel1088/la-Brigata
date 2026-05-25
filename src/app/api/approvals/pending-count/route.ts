@@ -80,7 +80,7 @@ export async function GET() {
     if (canStaff && restaurantIds && restaurantIds.length > 0) {
       swaps = await prisma.shiftSwapRequest.count({
         where: {
-          status: 'PENDING',
+          status: { in: ['PENDING', 'PEER_PENDING'] },
           restaurantId: { in: restaurantIds },
         },
       })

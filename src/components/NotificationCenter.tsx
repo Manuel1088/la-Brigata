@@ -89,10 +89,6 @@ export function NotificationCenter({
   }, [userId, userRole, department])
 
   useEffect(() => {
-    void loadNotifications()
-  }, [loadNotifications])
-
-  useEffect(() => {
     if (isOpen) void loadNotifications()
   }, [isOpen, loadNotifications])
 

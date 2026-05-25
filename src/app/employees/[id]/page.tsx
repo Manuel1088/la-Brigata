@@ -157,14 +157,7 @@ export default function EditEmployeePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <header className="bg-white shadow">
-        <div className="max-w-3xl mx-auto px-4 py-6 flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => router.push('/team?tab=employees')}
-            className="text-gray-600 hover:text-gray-900"
-          >
-            ←
-          </button>
+        <div className="max-w-3xl mx-auto px-4 py-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Modifica dipendente</h1>
             <p className="text-gray-600 text-sm">Nome, ruolo, reparto e livello CCNL</p>

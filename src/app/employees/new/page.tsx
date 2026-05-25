@@ -277,22 +277,14 @@ export default function NewEmployeePage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push('/team')}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition text-lg"
-            >
-              ←
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">👥 Nuovo Dipendente</h1>
-              {restaurantName && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Ristorante: <span className="font-medium text-gray-700">{restaurantName}</span>
-                  {' '}(assegnato automaticamente dal tuo account)
-                </p>
-              )}
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">👥 Nuovo Dipendente</h1>
+            {restaurantName && (
+              <p className="text-sm text-gray-500 mt-1">
+                Ristorante: <span className="font-medium text-gray-700">{restaurantName}</span>
+                {' '}(assegnato automaticamente dal tuo account)
+              </p>
+            )}
           </div>
         </div>
       </header>

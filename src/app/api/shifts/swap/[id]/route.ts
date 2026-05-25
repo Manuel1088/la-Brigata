@@ -82,15 +82,15 @@ export async function PATCH(
       return NextResponse.json({ success: true, swap: serialized })
     }
 
-    await prisma.$transaction(async (tx) => {
-      await executeApprovedSwap(tx, {
+    const result = await prisma.$transaction(async (tx) =>
+      executeApprovedSwap(tx, {
         id: swap.id,
         requesterShiftId: swap.requesterShiftId,
         targetShiftId: swap.targetShiftId,
         requesterUserId: swap.requesterUserId,
         targetUserId: swap.targetUserId,
       })
-    })
+    )
 
     const updated = await prisma.shiftSwapRequest.findUnique({
       where: { id },
@@ -102,6 +102,16 @@ export async function PATCH(
     }
 
     const serialized = await serializeShiftSwapRequest(updated)
+
+    if (result.outcome === 'rejected') {
+      return NextResponse.json({
+        success: true,
+        autoRejected: true,
+        message: result.message,
+        swap: serialized,
+      })
+    }
+
     return NextResponse.json({ success: true, swap: serialized })
   } catch (error) {
     console.error('PATCH /api/shifts/swap/[id] error:', error)

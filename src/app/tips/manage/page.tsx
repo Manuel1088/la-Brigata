@@ -30,17 +30,9 @@ export default function TipsManagePage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-start space-x-4">
-            <button
-              onClick={() => router.push('/tips')}
-              className="text-gray-600 hover:text-gray-900 transition text-lg mt-1"
-            >
-              ←
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">📈 Gestione Mance</h1>
-              <p className="text-gray-600 mt-2">Pagina placeholder per gestione e analisi mance</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">📈 Gestione Mance</h1>
+            <p className="text-gray-600 mt-2">Pagina placeholder per gestione e analisi mance</p>
           </div>
         </div>
       </header>
