@@ -9,7 +9,8 @@ import { useEmployees } from '@/hooks/useEmployees'
 import { userDisplayTitle } from '@/lib/user-role-display'
 import { joinFullName } from '@/lib/profile-fields'
 import {
-  CCNLLevel,
+  CCNL_LEVEL_ORDER,
+  CCNL_LEVELS,
   formatCcnlLevelLabel,
   getCcnlMonthlyBase,
   isCcnlLevel,
@@ -571,17 +572,18 @@ export default function ProfilePage() {
                 <div>
                   <span className="text-sm text-gray-600">Livello CCNL</span>
                   <p className="font-medium text-gray-900">
-                    {isCcnlLevel(String(myEmployee.level))
-                      ? formatCcnlLevelLabel(String(myEmployee.level) as CCNLLevel)
-                      : myEmployee.level
-                        ? String(myEmployee.level)
-                        : '—'}
+                    {formatCcnlLevelLabel(
+                      isCcnlLevel(myEmployee.ccnlLevel ?? undefined)
+                        ? myEmployee.ccnlLevel
+                        : CCNL_LEVEL_ORDER.find(
+                            (lvl) =>
+                              CCNL_LEVELS[lvl].hierarchy === Number(myEmployee.level)
+                          ) ??
+                          (isCcnlLevel(String(myEmployee.level))
+                            ? String(myEmployee.level)
+                            : null)
+                    )}
                   </p>
-                  {!isCcnlLevel(String(myEmployee.level)) && myEmployee.level && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      Legacy — riferimento {formatCcnlLevelLabel(CCNLLevel.LIVELLO_3)}
-                    </p>
-                  )}
                 </div>
                 <div>
                   <span className="text-sm text-gray-600">Tipo contratto</span>
