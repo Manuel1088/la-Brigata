@@ -147,15 +147,6 @@ export default function TopBar() {
               )}
             </button>
 
-            {/* Settings Button */}
-            <button
-              onClick={() => router.push('/settings')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Impostazioni"
-            >
-              <span className="text-xl">⚙️</span>
-            </button>
-
             {/* User Info + Logout */}
             <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
               {/* User Avatar & Name - Clickable */}

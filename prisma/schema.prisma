@@ -57,6 +57,16 @@ model User {
   teamCode           String?            @map("team_code")
   isJobSeeking       Boolean            @default(false) @map("is_job_seeking")
   phone              String?
+  secondaryEmail     String?            @map("secondary_email")
+  birthDate          DateTime?          @map("birth_date") @db.Date
+  birthPlace         String?            @map("birth_place")
+  maritalStatus      String?            @map("marital_status")
+  childrenCount      Int?               @map("children_count")
+  education          String?
+  languages          String?
+  hobbies            String?
+  sports             String?
+  emergencyPhone     String?            @map("emergency_phone")
   hourlyRate         Decimal?           @map("hourly_rate")
   contractType       String?            @map("contract_type")
   contractEndDate    DateTime?          @map("contract_end_date")

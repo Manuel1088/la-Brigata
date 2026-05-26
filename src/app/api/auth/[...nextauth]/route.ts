@@ -108,6 +108,7 @@ export const authOptions: AuthOptions = {
               restaurantId: dbUser.restaurantId,
               department: dbUser.department ?? undefined,
               position: dbUser.position ?? undefined,
+              phone: dbUser.phone ?? undefined,
             } as unknown as User
               await logLogin((user as unknown as { id: string }).id)
               return user
@@ -200,7 +201,28 @@ export const authOptions: AuthOptions = {
     maxAge: 8 * 60 * 60, // 8 ore
   },
   callbacks: {
-    async jwt({ token, user }: { token: import('next-auth/jwt').JWT; user?: User | null }) {
+    async jwt({
+      token,
+      user,
+      trigger,
+      session: updateSession,
+    }: {
+      token: import('next-auth/jwt').JWT
+      user?: User | null
+      trigger?: 'signIn' | 'signUp' | 'update'
+      session?: import('next-auth').Session
+    }) {
+      if (trigger === 'update' && updateSession) {
+        const patch = updateSession as {
+          name?: string
+          phone?: string | null
+        }
+        if (patch.name) token.name = patch.name
+        if (patch.phone !== undefined) {
+          ;(token as { phone?: string | null }).phone = patch.phone
+        }
+        return token
+      }
       // Al primo login, salva i dati dell'utente
       if (user && 'role' in user) {
         token.role = (user as unknown as { role?: import('@/types/roles').UserRoleString }).role;
@@ -217,6 +239,10 @@ export const authOptions: AuthOptions = {
         token.avatar = (user as unknown as { avatar?: string }).avatar;
         token.name = user.name;
         token.email = user.email;
+        if ('phone' in user) {
+          ;(token as { phone?: string | null }).phone =
+            (user as { phone?: string | null }).phone ?? null
+        }
       }
       if (user && 'id' in user) {
         token.sub = (user as unknown as { id: string }).id;
@@ -265,6 +291,7 @@ export const authOptions: AuthOptions = {
             })
             token.name = dbUser.name
             token.email = dbUser.email
+            ;(token as { phone?: string | null }).phone = dbUser.phone ?? null
             token.role = String(dbUser.role) as import('@/types/roles').UserRoleString
             token.level = dbUser.hierarchyLevel ?? token.level
             token.ccnlLevel = resolveSessionCcnlLevel(
@@ -295,6 +322,7 @@ export const authOptions: AuthOptions = {
         session.user.id = token.sub as string;
         session.user.name = token.name as string | undefined;
         session.user.email = token.email as string | undefined;
+        session.user.phone = (token as { phone?: string | null }).phone ?? undefined;
         session.user.role = token.role as unknown as import('@/types/roles').UserRoleString;
         session.user.level = token.level as number;
         session.user.ccnlLevel = (token.ccnlLevel as string | null | undefined) ?? null;

@@ -6,22 +6,30 @@ import { usePermissions } from '@/hooks/usePermissions'
 import ReportsFinancial from '@/components/reports/Financial'
 import ReportsOperational from '@/components/reports/Operational'
 import ReportsPersonnel from '@/components/reports/Personnel'
-import ReportsAnalytics from '@/components/reports/Analytics'
+import AnalyticsDashboard from '@/components/analytics/Dashboard'
+import AnalyticsOperations from '@/components/analytics/Operations'
+import AnalyticsPredictions from '@/components/analytics/Predictions'
 
 export default function ReportsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get('tab') || 'financial'
+  const tabParam = searchParams.get('tab')
+  const initialTab =
+    tabParam === 'analytics' ? 'dashboard' : tabParam || 'financial'
   const [activeTab, setActiveTab] = useState(initialTab)
-  
-  const { 
+
+  const {
     canViewReports,
     canViewBasicReports,
     canViewAdvancedReports,
     canViewFinancialReports,
-    canExportReports
+    canViewAnalytics,
+    canExportReports,
   } = usePermissions()
+
+  const canViewAnalyticsTabs =
+    canViewAnalytics() || canViewAdvancedReports()
 
   useEffect(() => {
     if (status === 'loading') return
@@ -36,44 +44,59 @@ export default function ReportsPage() {
   }, [session, status, router, canViewReports])
 
   useEffect(() => {
-    setActiveTab(searchParams.get('tab') || 'financial')
+    const tab = searchParams.get('tab')
+    setActiveTab(tab === 'analytics' ? 'dashboard' : tab || 'financial')
   }, [searchParams])
 
   const tabs = [
-    { 
-      id: 'financial', 
-      label: 'Finanziari', 
-      icon: '💰', 
+    {
+      id: 'financial',
+      label: 'Finanziari',
+      icon: '💰',
       component: ReportsFinancial,
-      permission: canViewFinancialReports()
+      permission: canViewFinancialReports(),
     },
-    { 
-      id: 'operational', 
-      label: 'Operativi', 
-      icon: '📊', 
+    {
+      id: 'operational',
+      label: 'Operativi',
+      icon: '📊',
       component: ReportsOperational,
-      permission: canViewBasicReports()
+      permission: canViewBasicReports(),
     },
-    { 
-      id: 'personnel', 
-      label: 'Personale', 
-      icon: '👥', 
+    {
+      id: 'personnel',
+      label: 'Personale',
+      icon: '👥',
       component: ReportsPersonnel,
-      permission: canViewBasicReports()
+      permission: canViewBasicReports(),
     },
-    { 
-      id: 'analytics', 
-      label: 'Analytics', 
-      icon: '📈', 
-      component: ReportsAnalytics,
-      permission: canViewAdvancedReports()
-    }
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: '📊',
+      component: AnalyticsDashboard,
+      permission: canViewAnalyticsTabs,
+    },
+    {
+      id: 'operations',
+      label: 'Operazioni',
+      icon: '⚙️',
+      component: AnalyticsOperations,
+      permission: canViewAnalyticsTabs,
+    },
+    {
+      id: 'predictions',
+      label: 'Previsioni',
+      icon: '🔮',
+      component: AnalyticsPredictions,
+      permission: canViewAnalyticsTabs,
+    },
   ]
 
-  const visibleTabs = tabs.filter(tab => tab.permission)
+  const visibleTabs = tabs.filter((tab) => tab.permission)
 
   useEffect(() => {
-    if (visibleTabs.length > 0 && !visibleTabs.some(tab => tab.id === activeTab)) {
+    if (visibleTabs.length > 0 && !visibleTabs.some((tab) => tab.id === activeTab)) {
       setActiveTab(visibleTabs[0].id)
     }
   }, [visibleTabs, activeTab])
@@ -118,7 +141,7 @@ export default function ReportsPage() {
               ))}
             </nav>
           </div>
-          
+
           <div className="p-6">
             {visibleTabs.map((tab) => (
               <div key={tab.id} className={activeTab === tab.id ? '' : 'hidden'}>

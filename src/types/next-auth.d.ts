@@ -44,6 +44,7 @@ declare module 'next-auth/jwt' {
     level?: number
     ccnlLevel?: CCNLLevel | string | null
     avatar?: string
+    phone?: string | null
     userType?: string
     companyId?: string | null
     informalCompanyId?: string | null
