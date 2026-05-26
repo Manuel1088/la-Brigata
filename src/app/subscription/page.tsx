@@ -7,8 +7,10 @@ import type { SubscriptionStatus } from '@prisma/client'
 import {
   ANNUAL_DISCOUNT,
   PAID_SUBSCRIPTION_PLANS,
-  annualMonthlyEquivalent,
-  annualTotal,
+  annualMonthlyEquivalentForPlan,
+  annualSavingsForPlan,
+  annualTotalForPlan,
+  formatPlanAmount,
   formatPrice,
   type BillingInterval,
   type CheckoutPlanId,
@@ -167,17 +169,6 @@ function SubscriptionPageContent() {
         })
       : null
 
-  const formatPlanPrice = (amount: number) =>
-    amount.toLocaleString('it-IT', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-
-  const annualSavings = (monthlyPrice: number) => {
-    const fullYear = monthlyPrice * 12
-    return Math.round((fullYear - annualTotal(monthlyPrice)) * 100) / 100
-  }
-
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -310,18 +301,18 @@ function SubscriptionPageContent() {
                       <>
                         <span className="text-4xl font-bold text-gray-900">
                           {plan.currency}
-                          {formatPlanPrice(
-                            annualMonthlyEquivalent(plan.monthlyPrice)
+                          {formatPlanAmount(
+                            annualMonthlyEquivalentForPlan(plan)
                           )}
                         </span>
                         <span className="text-gray-600 text-sm">/mese</span>
                         <p className="text-xs text-gray-500 mt-1">
                           fatturato {plan.currency}
-                          {formatPlanPrice(annualTotal(plan.monthlyPrice))}/anno
+                          {formatPlanAmount(annualTotalForPlan(plan))}/anno
                         </p>
                         <p className="text-xs text-green-700 font-medium mt-0.5">
                           Risparmi {plan.currency}
-                          {formatPlanPrice(annualSavings(plan.monthlyPrice))}
+                          {formatPlanAmount(annualSavingsForPlan(plan))}
                         </p>
                       </>
                     )}

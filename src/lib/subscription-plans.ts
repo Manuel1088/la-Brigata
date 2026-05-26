@@ -1,5 +1,3 @@
-import { formatEuro } from '@/lib/utils'
-
 export type PlanScope = 'employee' | 'restaurant'
 
 export type CheckoutPlanId = 'PREMIUM' | 'BASIC' | 'PRO'
@@ -21,6 +19,10 @@ export interface SubscriptionPlanDefinition {
   scope: PlanScope
   audience: string
   recommended?: boolean
+  /** Limite analisi AI gratuite al mese (solo piano dipendente Premium) */
+  token_limit?: number
+  /** Totale annuale (−20%) arrotondato per difetto all'euro intero */
+  annualTotalFloorInteger?: boolean
   features: { icon: string; text: string; highlight?: boolean }[]
 }
 
@@ -29,18 +31,22 @@ export const PAID_SUBSCRIPTION_PLANS: SubscriptionPlanDefinition[] = [
     id: 'PREMIUM',
     name: 'Premium Dipendente',
     subtitle: 'Strumenti personali',
-    monthlyPrice: 2.99,
+    monthlyPrice: 1.99,
     currency: '€',
     icon: '⭐',
     color: 'blue',
     description: 'Busta paga, 730 e export per ogni membro del team',
     scope: 'employee',
     audience: 'Tutti',
+    token_limit: 10,
+    annualTotalFloorInteger: true,
     features: [
-      { icon: '📋', text: 'Analisi busta paga con CCNL', highlight: true },
+      { icon: '🤖', text: '10 analisi AI incluse/mese', highlight: true },
+      { icon: '📋', text: 'Analisi busta paga con CCNL' },
       { icon: '🧾', text: 'Simulatore 730 per dichiarare le mance' },
       { icon: '📄', text: 'Export PDF storico mance annuale' },
       { icon: '🔔', text: 'Notifiche avanzate turni e mance' },
+      { icon: '➕', text: 'Pacchetti extra AI oltre il limite mensile' },
     ],
   },
   {
@@ -82,17 +88,57 @@ export const PAID_SUBSCRIPTION_PLANS: SubscriptionPlanDefinition[] = [
   },
 ]
 
+function rawAnnualTotal(monthlyPrice: number): number {
+  return monthlyPrice * 12 * (1 - ANNUAL_DISCOUNT)
+}
+
+export function annualTotalForPlan(plan: SubscriptionPlanDefinition): number {
+  const raw = rawAnnualTotal(plan.monthlyPrice)
+  if (plan.annualTotalFloorInteger) {
+    return Math.floor(raw)
+  }
+  return Math.round(raw * 100) / 100
+}
+
+/** Prezzo mensile equivalente con fatturazione annuale (−20%) */
+export function annualMonthlyEquivalentForPlan(
+  plan: SubscriptionPlanDefinition
+): number {
+  if (plan.annualTotalFloorInteger) {
+    return Math.round((annualTotalForPlan(plan) / 12) * 100) / 100
+  }
+  return Math.round(plan.monthlyPrice * (1 - ANNUAL_DISCOUNT) * 100) / 100
+}
+
+export function annualSavingsForPlan(plan: SubscriptionPlanDefinition): number {
+  const fullYear = plan.monthlyPrice * 12
+  return Math.round((fullYear - annualTotalForPlan(plan)) * 100) / 100
+}
+
+/** @deprecated Usa annualTotalForPlan */
 export function annualTotal(monthlyPrice: number): number {
   return Math.round(monthlyPrice * 12 * (1 - ANNUAL_DISCOUNT) * 100) / 100
 }
 
-/** Prezzo mensile equivalente con fatturazione annuale (−20%) */
+/** @deprecated Usa annualMonthlyEquivalentForPlan */
 export function annualMonthlyEquivalent(monthlyPrice: number): number {
   return Math.round(monthlyPrice * (1 - ANNUAL_DISCOUNT) * 100) / 100
 }
 
 export function formatPrice(amount: number): string {
-  return formatEuro(amount).replace(/^€/, '')
+  const hasCents = Math.abs(amount - Math.round(amount)) > 0.001
+  return amount.toLocaleString('it-IT', {
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: hasCents ? 2 : 0,
+  })
+}
+
+export function formatPlanAmount(amount: number): string {
+  const isInteger = Number.isInteger(amount)
+  return amount.toLocaleString('it-IT', {
+    minimumFractionDigits: isInteger ? 0 : 2,
+    maximumFractionDigits: isInteger ? 0 : 2,
+  })
 }
 
 /** @deprecated Usa PAID_SUBSCRIPTION_PLANS */

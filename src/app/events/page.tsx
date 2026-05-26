@@ -1,8 +1,8 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
-import { usePermissions } from '@/hooks/usePermissions'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { hasPermission } from '@/lib/permissions'
 
 interface CompanyEvent {
   id: string
@@ -23,7 +23,21 @@ const EMPTY_FORM = {
 export default function EventsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { canManageCompany } = usePermissions()
+
+  const mayManageCompany = useMemo(() => {
+    const role = session?.user?.role
+    if (!role) return false
+    return hasPermission(
+      String(role),
+      'manage_company_settings',
+      session.user.ccnlLevel ?? null,
+      session.user.dbGrantedPermissionIds ?? []
+    )
+  }, [
+    session?.user?.role,
+    session?.user?.ccnlLevel,
+    session?.user?.dbGrantedPermissionIds,
+  ])
 
   const [events, setEvents] = useState<CompanyEvent[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,16 +61,16 @@ export default function EventsPage() {
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!session) {
+    if (!session?.user?.id) {
       router.push('/login')
       return
     }
-    if (!canManageCompany()) {
+    if (!mayManageCompany) {
       router.push('/dashboard')
       return
     }
     void loadEvents()
-  }, [session, status, router, canManageCompany, loadEvents])
+  }, [status, session?.user?.id, mayManageCompany, loadEvents, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,7 +104,7 @@ export default function EventsPage() {
     )
   }
 
-  if (!session || !canManageCompany()) return null
+  if (!session || !mayManageCompany) return null
 
   const getEventTypeBadge = (type: string) => {
     switch (type) {
