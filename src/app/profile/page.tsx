@@ -81,6 +81,9 @@ function formatDepartmentLabel(department: string): string {
   return department
 }
 
+const profileFieldsGridClass =
+  'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+
 function FieldRow({
   label,
   value,
@@ -93,12 +96,12 @@ function FieldRow({
   children?: React.ReactNode
 }) {
   return (
-    <div className="py-3 border-b border-gray-100 last:border-0">
+    <div className="min-w-0">
       <span className="block text-sm text-gray-600 mb-1">{label}</span>
       {editing && children ? (
         children
       ) : (
-        <p className="text-gray-900 font-medium">{value || '—'}</p>
+        <p className="text-gray-900 font-medium break-words">{value || '—'}</p>
       )}
     </div>
   )
@@ -106,9 +109,24 @@ function FieldRow({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mt-6 mb-2 first:mt-0">
+    <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">
       {children}
     </h4>
+  )
+}
+
+function ProfileSection({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="mb-8 last:mb-0">
+      <SectionTitle>{title}</SectionTitle>
+      <div className={profileFieldsGridClass}>{children}</div>
+    </section>
   )
 }
 
@@ -420,144 +438,157 @@ export default function ProfilePage() {
 
           <div className="p-6">
             {activeTab === 'personale' && (
-              <div className="max-w-xl">
-                <SectionTitle>Contatti</SectionTitle>
-                <FieldRow
-                  label="Nome"
-                  value={form.firstName}
-                  editing={isEditing}
-                >
-                  <input
-                    type="text"
-                    value={form.firstName}
-                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
-                <FieldRow label="Cognome" value={form.lastName} editing={isEditing}>
-                  <input
-                    type="text"
-                    value={form.lastName}
-                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
-                <FieldRow label="Telefono" value={form.phone} editing={isEditing}>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className={inputClass}
-                    placeholder="+39 ..."
-                  />
-                </FieldRow>
-                <FieldRow label="Email secondaria" value={form.secondaryEmail} editing={isEditing}>
-                  <input
-                    type="email"
+              <div>
+                <ProfileSection title="Contatti">
+                  <FieldRow label="Nome" value={form.firstName} editing={isEditing}>
+                    <input
+                      type="text"
+                      value={form.firstName}
+                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                  <FieldRow label="Cognome" value={form.lastName} editing={isEditing}>
+                    <input
+                      type="text"
+                      value={form.lastName}
+                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                  <FieldRow label="Telefono" value={form.phone} editing={isEditing}>
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className={inputClass}
+                      placeholder="+39 ..."
+                    />
+                  </FieldRow>
+                  <FieldRow
+                    label="Email secondaria"
                     value={form.secondaryEmail}
-                    onChange={(e) => setForm({ ...form, secondaryEmail: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
-
-                <SectionTitle>Anagrafica</SectionTitle>
-                <FieldRow label="Data di nascita" value={form.birthDate} editing={isEditing}>
-                  <input
-                    type="date"
-                    value={form.birthDate}
-                    onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
-                <FieldRow label="Luogo di nascita" value={form.birthPlace} editing={isEditing}>
-                  <input
-                    type="text"
-                    value={form.birthPlace}
-                    onChange={(e) => setForm({ ...form, birthPlace: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
-                <FieldRow
-                  label="Stato civile"
-                  value={maritalLabel(form.maritalStatus)}
-                  editing={isEditing}
-                >
-                  <select
-                    value={form.maritalStatus}
-                    onChange={(e) => setForm({ ...form, maritalStatus: e.target.value })}
-                    className={inputClass}
+                    editing={isEditing}
                   >
-                    <option value="">Seleziona...</option>
-                    <option value="single">Celibe/Nubile</option>
-                    <option value="married">Coniugato/a</option>
-                    <option value="divorced">Divorziato/a</option>
-                    <option value="widowed">Vedovo/a</option>
-                  </select>
-                </FieldRow>
-                <FieldRow label="Numero figli" value={form.childrenCount} editing={isEditing}>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.childrenCount}
-                    onChange={(e) => setForm({ ...form, childrenCount: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
+                    <input
+                      type="email"
+                      value={form.secondaryEmail}
+                      onChange={(e) => setForm({ ...form, secondaryEmail: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                </ProfileSection>
 
-                <SectionTitle>Formazione</SectionTitle>
-                <FieldRow label="Titolo di studio" value={form.education} editing={isEditing}>
-                  <input
-                    type="text"
-                    value={form.education}
-                    onChange={(e) => setForm({ ...form, education: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
-                <FieldRow label="Lingue parlate" value={form.languages} editing={isEditing}>
-                  <input
-                    type="text"
-                    value={form.languages}
-                    onChange={(e) => setForm({ ...form, languages: e.target.value })}
-                    className={inputClass}
-                    placeholder="Es. Italiano, Inglese"
-                  />
-                </FieldRow>
+                <ProfileSection title="Anagrafica">
+                  <FieldRow label="Data di nascita" value={form.birthDate} editing={isEditing}>
+                    <input
+                      type="date"
+                      value={form.birthDate}
+                      onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                  <FieldRow label="Luogo di nascita" value={form.birthPlace} editing={isEditing}>
+                    <input
+                      type="text"
+                      value={form.birthPlace}
+                      onChange={(e) => setForm({ ...form, birthPlace: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                  <FieldRow
+                    label="Stato civile"
+                    value={maritalLabel(form.maritalStatus)}
+                    editing={isEditing}
+                  >
+                    <select
+                      value={form.maritalStatus}
+                      onChange={(e) => setForm({ ...form, maritalStatus: e.target.value })}
+                      className={inputClass}
+                    >
+                      <option value="">Seleziona...</option>
+                      <option value="single">Celibe/Nubile</option>
+                      <option value="married">Coniugato/a</option>
+                      <option value="divorced">Divorziato/a</option>
+                      <option value="widowed">Vedovo/a</option>
+                    </select>
+                  </FieldRow>
+                  <FieldRow label="Numero figli" value={form.childrenCount} editing={isEditing}>
+                    <input
+                      type="number"
+                      min={0}
+                      value={form.childrenCount}
+                      onChange={(e) => setForm({ ...form, childrenCount: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                </ProfileSection>
 
-                <SectionTitle>Interessi</SectionTitle>
-                <FieldRow label="Hobby" value={form.hobbies} editing={isEditing}>
-                  <input
-                    type="text"
-                    value={form.hobbies}
-                    onChange={(e) => setForm({ ...form, hobbies: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
-                <FieldRow label="Sport" value={form.sports} editing={isEditing}>
-                  <input
-                    type="text"
-                    value={form.sports}
-                    onChange={(e) => setForm({ ...form, sports: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
+                <ProfileSection title="Formazione">
+                  <FieldRow label="Titolo di studio" value={form.education} editing={isEditing}>
+                    <input
+                      type="text"
+                      value={form.education}
+                      onChange={(e) => setForm({ ...form, education: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                  <FieldRow label="Lingue parlate" value={form.languages} editing={isEditing}>
+                    <input
+                      type="text"
+                      value={form.languages}
+                      onChange={(e) => setForm({ ...form, languages: e.target.value })}
+                      className={inputClass}
+                      placeholder="Es. Italiano, Inglese"
+                    />
+                  </FieldRow>
+                </ProfileSection>
 
-                <SectionTitle>Emergenza</SectionTitle>
-                <FieldRow label="Contatto emergenza" value={form.emergencyContact} editing={isEditing}>
-                  <input
-                    type="text"
+                <ProfileSection title="Interessi">
+                  <FieldRow label="Hobby" value={form.hobbies} editing={isEditing}>
+                    <input
+                      type="text"
+                      value={form.hobbies}
+                      onChange={(e) => setForm({ ...form, hobbies: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                  <FieldRow label="Sport" value={form.sports} editing={isEditing}>
+                    <input
+                      type="text"
+                      value={form.sports}
+                      onChange={(e) => setForm({ ...form, sports: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                </ProfileSection>
+
+                <ProfileSection title="Emergenza">
+                  <FieldRow
+                    label="Contatto emergenza"
                     value={form.emergencyContact}
-                    onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
-                <FieldRow label="Telefono emergenza" value={form.emergencyPhone} editing={isEditing}>
-                  <input
-                    type="tel"
+                    editing={isEditing}
+                  >
+                    <input
+                      type="text"
+                      value={form.emergencyContact}
+                      onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                  <FieldRow
+                    label="Telefono emergenza"
                     value={form.emergencyPhone}
-                    onChange={(e) => setForm({ ...form, emergencyPhone: e.target.value })}
-                    className={inputClass}
-                  />
-                </FieldRow>
+                    editing={isEditing}
+                  >
+                    <input
+                      type="tel"
+                      value={form.emergencyPhone}
+                      onChange={(e) => setForm({ ...form, emergencyPhone: e.target.value })}
+                      className={inputClass}
+                    />
+                  </FieldRow>
+                </ProfileSection>
               </div>
             )}
 

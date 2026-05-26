@@ -65,7 +65,14 @@ export async function GET(request: NextRequest) {
         month,
         year,
         monthLabel,
-        summary: { total: 0, daysWithTips: 0, averageDaily: 0 },
+        summary: {
+          total: 0,
+          cash: 0,
+          card: 0,
+          foreign: 0,
+          daysWithTips: 0,
+          averageDaily: 0,
+        },
         byDay: [],
         byLocation: [],
         distributions: [],
@@ -127,6 +134,41 @@ export async function GET(request: NextRequest) {
       byLocationMap.set(row.locationId, (byLocationMap.get(row.locationId) ?? 0) + amount)
     }
 
+    const entryPools = new Map<string, { cash: number; card: number; foreign: number }>()
+    if (locationIds.length > 0) {
+      const entries = await prisma.tipEntry.findMany({
+        where: {
+          restaurantId: user.restaurantId,
+          date: { gte: monthStart, lte: monthEnd },
+          locationId: { in: locationIds },
+        },
+        select: { date: true, locationId: true, type: true, amount: true },
+      })
+      for (const entry of entries) {
+        const key = `${toDateOnlyIso(entry.date)}:${entry.locationId}`
+        const bucket = entryPools.get(key) ?? { cash: 0, card: 0, foreign: 0 }
+        const amt = Number(entry.amount)
+        if (entry.type === 'CASH') bucket.cash += amt
+        else if (entry.type === 'CARD') bucket.card += amt
+        else bucket.foreign += amt
+        entryPools.set(key, bucket)
+      }
+    }
+
+    let cash = 0
+    let card = 0
+    let foreign = 0
+    for (const row of rows) {
+      const key = `${toDateOnlyIso(row.date)}:${row.locationId}`
+      const pools = entryPools.get(key)
+      const locTotal = Number(row.totalTips)
+      if (!pools || locTotal <= 0) continue
+      const share = Number(row.amount) / locTotal
+      cash += pools.cash * share
+      card += pools.card * share
+      foreign += pools.foreign * share
+    }
+
     const total = rows.reduce((s, r) => s + Number(r.amount), 0)
     const daysWithTips = byDayMap.size
     const averageDaily = daysWithTips > 0 ? total / daysWithTips : 0
@@ -148,6 +190,9 @@ export async function GET(request: NextRequest) {
       monthLabel,
       summary: {
         total,
+        cash,
+        card,
+        foreign,
         daysWithTips,
         averageDaily,
       },

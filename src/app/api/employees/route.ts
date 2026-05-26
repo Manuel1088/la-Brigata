@@ -125,11 +125,11 @@ function buildPersonalUpdateData(
     update.maritalStatus = data.maritalStatus?.trim() || null
   }
   if (data.childrenCount !== undefined) {
-    if (data.childrenCount === null || data.childrenCount === '') {
+    if (data.childrenCount === null) {
       update.childrenCount = null
     } else {
       const n = Number(data.childrenCount)
-      update.childrenCount = Number.isNaN(n) ? null : Math.max(0, n)
+      update.childrenCount = Number.isNaN(n) ? null : Math.max(0, Math.floor(n))
     }
   }
   if (data.education !== undefined) update.education = data.education?.trim() || null

@@ -110,7 +110,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
       title: 'PERSONALE',
       sectionVisible: true,
       items: [
-        { icon: '💰', label: 'Mance', path: '/tips', color: '#FDCB6E' },
+        { icon: '💰', label: 'Mance', path: '/mance', color: '#FDCB6E' },
         { icon: '📄', label: 'Buste Paga', path: '/buste-paga', color: '#00B894' },
         { icon: '📅', label: 'Turni', path: '/shifts', color: '#74B9FF' },
         { icon: '🏖️', label: 'Ferie e Permessi', path: '/leaves', color: '#00B894' },

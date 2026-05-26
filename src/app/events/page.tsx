@@ -30,8 +30,8 @@ export default function EventsPage() {
     return hasPermission(
       String(role),
       'manage_company_settings',
-      session.user.ccnlLevel ?? null,
-      session.user.dbGrantedPermissionIds ?? []
+      session?.user?.ccnlLevel ?? null,
+      session?.user?.dbGrantedPermissionIds ?? []
     )
   }, [
     session?.user?.role,

@@ -10,7 +10,12 @@ import { isPlatformAdmin } from '@/lib/platform-admin'
 const TABS = [
   { href: '/dashboard', label: 'Home', icon: Home, match: (p: string) => p === '/dashboard' || p === '/' },
   { href: '/shifts', label: 'Turni', icon: Calendar, match: (p: string) => p === '/shifts' },
-  { href: '/tips', label: 'Mance', icon: Coins, match: (p: string) => p === '/tips' },
+  {
+    href: '/mance',
+    label: 'Mance',
+    icon: Coins,
+    match: (p: string) => p === '/mance' || p === '/tips' || p.startsWith('/team/mance'),
+  },
   { href: '/me', label: 'Oggi', icon: Sun, match: (p: string) => p === '/me' || p.startsWith('/me/') },
 ] as const
 
