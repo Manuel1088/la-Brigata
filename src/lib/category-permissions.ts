@@ -240,7 +240,13 @@ export function canManageTargetUser(
     if (actor.restaurantId !== target.restaurantId) return false
   }
 
-  if (!isSuperAdmin(actor) && actor.department && target.department) {
+  // QA/QB gestiscono i permessi di tutto il ristorante (non solo il reparto anagrafico, es. dirigenti)
+  if (
+    !isQaOrQbCcnl(actor.ccnlLevel) &&
+    !isSuperAdmin(actor) &&
+    actor.department &&
+    target.department
+  ) {
     const a = actor.department.trim().toLowerCase()
     const t = target.department.trim().toLowerCase()
     if (a && t && a !== t) return false

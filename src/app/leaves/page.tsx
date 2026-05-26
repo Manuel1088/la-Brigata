@@ -2,7 +2,6 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactElement } from 'react'
-import { usePermissions } from '@/hooks/usePermissions'
 import { LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS } from '@/lib/leaves'
 
 type LeaveBalance = {
@@ -28,9 +27,6 @@ type LeaveRequestRow = {
 export default function LeavesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { canManageEmployees } = usePermissions()
-  
-  const isManager = canManageEmployees()
   const [activeView, setActiveView] = useState('my-requests')
   const [form, setForm] = useState<{ type: string; startDate: string; endDate: string; reason: string }>({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
   const userId: string = session?.user?.id || ''
@@ -144,15 +140,6 @@ export default function LeavesPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         
-        {/* Link approvazioni (solo chi gestisce il team) */}
-        {isManager && (
-          <div className="mb-4">
-            <button onClick={() => router.push('/approvals')} className="text-sm text-orange-600 font-semibold hover:underline">
-              Vai a Approvazioni →
-            </button>
-          </div>
-        )}
-
         {/* VISTA: Le Mie Richieste */}
         {activeView === 'my-requests' && (
           <div className="space-y-6">

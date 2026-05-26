@@ -390,23 +390,16 @@ export default function TeamEmployees() {
   return (
     <PermissionGuard permission="personale_view">
       <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">👥 Team</h2>
-              <p className="text-gray-600 mt-1">Gestisci il tuo team e i profili dipendenti</p>
-            </div>
-
-            {canManageEmployees() && (
-              <Link
-                href="/employees/new"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-              >
-                ➕ Aggiungi Dipendente
-              </Link>
-            )}
+        {canManageEmployees() && (
+          <div className="flex justify-end">
+            <Link
+              href="/employees/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+            >
+              ➕ Aggiungi Dipendente
+            </Link>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-blue-50 rounded-lg p-4 text-center">

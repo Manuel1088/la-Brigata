@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 import ShiftsCalendar from '@/components/shifts/Calendar'
-import ShiftLegendButton from '@/components/shifts/ShiftLegendButton'
 import { getAllowedDepartmentsForCcnl } from '@/lib/shift-department-access'
 
 export default function ShiftsPage() {
@@ -39,9 +38,6 @@ export default function ShiftsPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
-          <div className="flex justify-end mb-4">
-            <ShiftLegendButton />
-          </div>
           <ShiftsCalendar allowedDepartments={allowedDepartments} />
         </div>
       </main>

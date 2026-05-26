@@ -728,6 +728,19 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
             {getDateRangeLabel(weekDates)}
           </span>
 
+          {canCreateShift() && (
+            <button
+              type="button"
+              onClick={handleGenerateSchedule}
+              disabled={isGenerating}
+              title="Genera turni automaticamente"
+              aria-label="Genera turni automaticamente"
+              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50 text-lg"
+            >
+              {isGenerating ? '…' : '🧠'}
+            </button>
+          )}
+
           {/* Badge reparto (vista singolo reparto) */}
           {visibleDepartments.length === 1 && (
             <span className="px-3 py-2 rounded-lg font-medium bg-blue-600 text-white shrink-0">
@@ -737,11 +750,10 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
           )}
         </div>
         
-        {/* Pulsanti Reparto e Azioni */}
-        <div className="flex items-center justify-between gap-4">
-          {/* Pulsanti Reparto */}
+        {/* Pulsanti Reparto */}
+        {visibleDepartments.length > 1 && (
           <div className="flex flex-wrap gap-2">
-            {visibleDepartments.length > 1 && visibleDepartments.map((dept) => {
+            {visibleDepartments.map((dept) => {
               const meta = SHIFT_DEPARTMENT_LABELS[dept]
               return (
                 <button
@@ -759,18 +771,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
               )
             })}
           </div>
-          
-          {/* Azioni */}
-          {canCreateShift() && (
-            <button
-              onClick={handleGenerateSchedule}
-              disabled={isGenerating}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-            >
-              {isGenerating ? 'Generando...' : '🤖 Genera Automatico'}
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {(isLoadingShifts || isSavingShifts) && (

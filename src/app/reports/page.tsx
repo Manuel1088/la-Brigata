@@ -97,18 +97,6 @@ export default function ReportsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {canExportReports() && (
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => {
-                console.log('Export all reports')
-              }}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
-            >
-              Esporta tutto
-            </button>
-          </div>
-        )}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6 overflow-x-auto" aria-label="Tabs">
@@ -139,6 +127,18 @@ export default function ReportsPage() {
             ))}
           </div>
         </div>
+        {canExportReports() && (
+          <div className="flex justify-end mt-6">
+            <button
+              onClick={() => {
+                console.log('Export all reports')
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+            >
+              Esporta tutto
+            </button>
+          </div>
+        )}
       </main>
     </div>
   )

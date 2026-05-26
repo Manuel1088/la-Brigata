@@ -24,7 +24,6 @@ const getBaseForLevel = (level?: number | string | null) => {
 export default function ProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [isEditing, setIsEditing] = useState(false)
   const [isEditingPersonal, setIsEditingPersonal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -78,43 +77,6 @@ export default function ProfilePage() {
     const emp = (employeesList as EmployeeFull[]).find(e => e.id === session.user!.id) || null
     setMyEmployee(emp)
   }, [employeesList, session?.user?.id])
-
-  const handleSave = async () => {
-    if (!session?.user?.id) return
-    
-    setIsLoading(true)
-    setMessage('')
-    
-    try {
-      const response = await fetch('/api/employees', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: session.user.id,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          role: formData.role,
-          department: formData.department
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Errore nel salvataggio')
-      }
-
-      setMessage('✅ Modifiche salvate con successo!')
-      setIsEditing(false)
-      
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    } catch (error) {
-      setMessage('❌ Errore nel salvataggio')
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const handleSavePersonal = async () => {
     if (!session?.user?.id) return
@@ -221,40 +183,6 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="flex justify-end mb-4 gap-3">
-          {isEditing ? (
-            <>
-              <button
-                onClick={() => {
-                  setIsEditing(false)
-                  setFormData(prev => ({
-                    ...prev,
-                    name: session.user?.name || '',
-                    email: session.user?.email || '',
-                    phone: session.user?.phone || ''
-                  }))
-                }}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition text-sm font-medium"
-              >
-                Annulla
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isLoading}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 text-sm font-medium"
-              >
-                {isLoading ? 'Salvataggio...' : 'Salva'}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
-            >
-              Modifica profilo
-            </button>
-          )}
-        </div>
         {message && (
           <div className={`mb-6 p-4 rounded-lg ${
             message.includes('✅') ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
@@ -267,110 +195,38 @@ export default function ProfilePage() {
           {/* Colonna Sinistra: Profilo + Azienda */}
           <div className="space-y-6">
             {/* Profilo */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6 relative">
+              <div className="absolute top-4 right-4 flex gap-2">
+                {isEditingPersonal ? (
+                  <>
+                    <button
+                      onClick={() => setIsEditingPersonal(false)}
+                      className="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                    >
+                      Annulla
+                    </button>
+                    <button
+                      onClick={handleSavePersonal}
+                      disabled={isLoading}
+                      className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                    >
+                      {isLoading ? 'Salvataggio...' : 'Salva'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingPersonal(true)}
+                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Modifica profilo
+                  </button>
+                )}
+              </div>
               <div className="text-center">
                 <div className="text-6xl mb-4">{userAvatar}</div>
-                {isEditing ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        defaultValue={(() => {
-                          const parts = (formData.name || '').split(' ')
-                          return parts.slice(0, -1).join(' ')
-                        })()}
-                        onBlur={(e) => {
-                          const first = e.target.value.trim()
-                          const last = ((formData.name || '').split(' ').slice(-1)[0]) || ''
-                          setFormData(prev => ({...prev, name: `${first} ${last}`.trim()}))
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center font-semibold"
-                        placeholder="Nome"
-                      />
-                      <input
-                        type="text"
-                        defaultValue={(() => {
-                          const parts = (formData.name || '').split(' ')
-                          return parts.slice(-1)[0] || ''
-                        })()}
-                        onBlur={(e) => {
-                          const last = e.target.value.trim()
-                          const first = ((formData.name || '').split(' ').slice(0, -1).join(' ')) || ''
-                          setFormData(prev => ({...prev, name: `${first} ${last}`.trim()}))
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center font-semibold"
-                        placeholder="Cognome"
-                      />
-                    </div>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center"
-                      placeholder="Email"
-                    />
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center"
-                      placeholder="Telefono"
-                    />
-                    
-                    {/* Tipo Proprietario - Solo per PROPRIETARIO */}
-                    {(userRole === 'PROPRIETARIO' || userRole === 'PROPRIETARIO_OPERATIVO') && (
-                      <div className="space-y-3 mt-4 border-t pt-4">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Tipo di Proprietario
-                        </label>
-                        <select
-                          value={formData.role || userRole}
-                          onChange={(e) => setFormData({...formData, role: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white"
-                        >
-                          <option value="PROPRIETARIO">Proprietario (non lavoratore)</option>
-                          <option value="PROPRIETARIO_OPERATIVO">Proprietario Operativo (lavoratore)</option>
-                        </select>
-                        
-                        {/* Reparto - Solo se PROPRIETARIO_OPERATIVO */}
-                        {(formData.role === 'PROPRIETARIO_OPERATIVO' || userRole === 'PROPRIETARIO_OPERATIVO') && (
-                          <>
-                            <label className="block text-sm font-medium text-gray-700 mt-3">
-                              Reparto di Lavoro
-                            </label>
-                            <select
-                              value={formData.department}
-                              onChange={(e) => setFormData({...formData, department: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white"
-                            >
-                              <option value="">Seleziona reparto...</option>
-                              <option value="cucina">🍳 Cucina</option>
-                              <option value="sala">🍽️ Sala</option>
-                              <option value="beverage">🍷 Beverage</option>
-                              <option value="direzione">👔 Direzione</option>
-                            </select>
-                          </>
-                        )}
-                        
-                        <div className="text-xs text-gray-500 mt-2 p-3 bg-blue-50 rounded">
-                          💡 <strong>Cambiando in Proprietario Operativo:</strong>
-                          <ul className="mt-1 ml-4 list-disc">
-                            <li>Avrai turni lavorativi</li>
-                            <li>Riceverai mance</li>
-                            <li>Avrai buste paga</li>
-                            <li>Potrai richiedere ferie</li>
-                          </ul>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <h2 className="text-xl font-semibold text-gray-900">{formData.name}</h2>
-                    <p className="text-gray-600">{formData.email}</p>
-                    <p className="text-gray-600">{formData.phone || 'Nessun telefono'}</p>
-                  </>
-                )}
+                <h2 className="text-xl font-semibold text-gray-900">{formData.name}</h2>
+                <p className="text-gray-600">{formData.email}</p>
+                <p className="text-gray-600">{formData.phone || 'Nessun telefono'}</p>
                 
                 <div className="mt-4">
                   <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
@@ -531,35 +387,7 @@ export default function ProfilePage() {
           {/* Colonna Destra: Informazioni Personali */}
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">👤 Informazioni Personali</h3>
-                <div className="flex gap-2">
-                  {isEditingPersonal ? (
-                    <>
-                      <button
-                        onClick={() => setIsEditingPersonal(false)}
-                        className="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                      >
-                        Annulla
-                      </button>
-                      <button
-                        onClick={handleSavePersonal}
-                        disabled={isLoading}
-                        className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                      >
-                        {isLoading ? 'Salvataggio...' : 'Salva'}
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => setIsEditingPersonal(true)}
-                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      Modifica
-                    </button>
-                  )}
-                </div>
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">👤 Informazioni Personali</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Data di Nascita */}
