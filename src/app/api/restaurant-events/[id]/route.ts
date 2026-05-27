@@ -27,12 +27,16 @@ function eventIcon(type: string): string {
   }
 }
 
-async function authorise(session: Awaited<ReturnType<typeof getServerSession>>, eventId: string) {
-  if (!session?.user?.id) return { error: 'Non autorizzato', status: 401 }
+import type { Session } from 'next-auth'
 
-  const role = String(session.user.role ?? '')
-  const ccnlLevel = session.user.ccnlLevel ?? null
-  if (!hasPermission(role, 'manage_company_settings', ccnlLevel)) {
+async function authorise(session: Session | null, eventId: string) {
+  const u = session?.user
+  if (!u?.id) return { error: 'Non autorizzato', status: 401 }
+
+  const role = String(u.role ?? '')
+  const ccnlLevel = u.ccnlLevel != null ? String(u.ccnlLevel) : null
+  const dbGranted = u.dbGrantedPermissionIds ?? []
+  if (!hasPermission(role, 'manage_company_settings', ccnlLevel, dbGranted)) {
     return { error: 'Permesso negato', status: 403 }
   }
 
@@ -41,7 +45,7 @@ async function authorise(session: Awaited<ReturnType<typeof getServerSession>>, 
     select: { id: true, restaurantId: true },
   })
   if (!event) return { error: 'Evento non trovato', status: 404 }
-  if (event.restaurantId !== session.user.restaurantId) {
+  if (event.restaurantId !== u.restaurantId) {
     return { error: 'Accesso negato', status: 403 }
   }
 

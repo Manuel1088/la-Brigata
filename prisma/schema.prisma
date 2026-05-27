@@ -507,7 +507,7 @@ model InformalCompany {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model Employee {
   id                String              @id
-  name              String              @unique
+  name              String
   email             String?             @unique
   phone             String?
   score             Int
@@ -536,6 +536,7 @@ model Employee {
   @@index([userId])
   @@index([restaurantId, userId])
   @@index([locationId])
+  @@index([name])
 }
 
 model EmployeeLocation {

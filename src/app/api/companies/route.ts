@@ -1,27 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import prisma from '@/lib/db'
 import { requireManageCompanySession } from '@/lib/restaurant-location-api'
+
+const PLATFORM_ADMIN_ROLES = new Set(['ADMIN'])
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const cf = searchParams.get('cf')
+
+    // La lookup ?cf= è usata dalla registrazione pubblica — non richiede sessione
     if (cf) {
-      const company = await prisma.company.findUnique({ where: { fiscalCode: cf } })
+      const company = await prisma.company.findUnique({
+        where: { fiscalCode: cf },
+        select: { id: true, name: true, fiscalCode: true },
+      })
       return NextResponse.json({ company })
     }
 
-    // Per Admin Panel: fetch completo con tutte le info
+    // Lista completa: richiede sessione
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
+
+    const caller = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true, companyId: true, restaurantId: true },
+    })
+    if (!caller) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+
+    const isPlatformAdmin = PLATFORM_ADMIN_ROLES.has(caller.role ?? '')
+
+    // Risolvi la companyId dell'utente anche tramite restaurant se non è diretta
+    let resolvedCompanyId = caller.companyId
+    if (!resolvedCompanyId && caller.restaurantId) {
+      const rest = await prisma.restaurant.findUnique({
+        where: { id: caller.restaurantId },
+        select: { companyId: true },
+      })
+      resolvedCompanyId = rest?.companyId ?? null
+    }
+
+    const where = isPlatformAdmin
+      ? {}
+      : resolvedCompanyId
+        ? { id: resolvedCompanyId }
+        : { id: 'NESSUNA' } // nessun risultato se non ha company
+
     const companies = await prisma.company.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         restaurants: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            createdAt: true
-          }
+          select: { id: true, name: true, address: true, createdAt: true }
         },
         users: {
           where: {
@@ -31,29 +65,16 @@ export async function GET(req: NextRequest) {
               { role: 'DIRETTORE_GENERALE' }
             ]
           },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            createdAt: true
-          },
+          select: { id: true, name: true, email: true, role: true, createdAt: true },
           take: 1
         },
-        _count: {
-          select: {
-            users: true,
-            restaurants: true
-          }
-        }
+        _count: { select: { users: true, restaurants: true } }
       }
     })
 
-    // Mappa per Admin Panel con tutte le info necessarie
     const companiesFormatted = companies.map(company => {
       const owner = company.users[0]
       const restaurant = company.restaurants[0]
-      
       return {
         id: company.id,
         name: company.name,
@@ -61,8 +82,8 @@ export async function GET(req: NextRequest) {
         address: company.address || '',
         phone: company.phone || '',
         email: company.email || '',
-        region: company.address?.includes('Milano') ? 'Lombardia' : 
-                company.address?.includes('Roma') ? 'Lazio' : 
+        region: company.address?.includes('Milano') ? 'Lombardia' :
+                company.address?.includes('Roma') ? 'Lazio' :
                 company.address?.includes('Napoli') ? 'Campania' : 'Italia',
         ownerName: owner?.name || '(Non assegnato)',
         ownerEmail: owner?.email || '',
@@ -73,7 +94,7 @@ export async function GET(req: NextRequest) {
         status: company.isActive ? 'active' : 'inactive',
         subscriptionType: company.subscriptionType || 'BASIC',
         createdAt: company.createdAt,
-        lastActivity: company.createdAt // TODO: implementare tracking real-time
+        lastActivity: company.createdAt,
       }
     })
 

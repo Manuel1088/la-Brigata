@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import prisma from '@/lib/db'
 import { UserRole as PrismaUserRole } from '@prisma/client'
+import { isManagerRole } from '@/lib/roles'
 
 function toUserRole(roleString?: string): PrismaUserRole {
   switch ((roleString || '').toUpperCase()) {
@@ -19,6 +22,19 @@ function toUserRole(roleString?: string): PrismaUserRole {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
+
+    const caller = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true, companyId: true },
+    })
+    if (!caller || !isManagerRole(caller.role)) {
+      return NextResponse.json({ error: 'Permesso negato — solo i manager possono assumere candidati' }, { status: 403 })
+    }
+
     const body = await req.json()
     const { candidateId, fiscalCode, department, role, restaurantName } = body as {
       candidateId: string

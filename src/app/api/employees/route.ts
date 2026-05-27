@@ -4,9 +4,16 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import prisma from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import type { ProfilePersonalPayload } from '@/lib/profile-fields'
+import { isManagerRole } from '@/lib/roles'
+import { assertManagerOfUser, restaurantIdsForManager } from '@/lib/restaurant-access'
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
     const restaurantId = searchParams.get('restaurantId')
@@ -18,6 +25,28 @@ export async function GET(request: NextRequest) {
         { error: 'companyId or restaurantId is required' },
         { status: 400 }
       )
+    }
+
+    // Verifica che l'utente possa accedere al ristorante/company richiesti
+    const caller = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { restaurantId: true, companyId: true, role: true },
+    })
+    if (!caller) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+
+    if (restaurantId) {
+      const allowedIds = await restaurantIdsForManager(caller)
+      // Dipendenti possono vedere solo il proprio ristorante (per /profile e /team)
+      const ownRestaurant = caller.restaurantId === restaurantId
+      const managerAccess = isManagerRole(caller.role) && allowedIds.includes(restaurantId)
+      if (!ownRestaurant && !managerAccess) {
+        return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
+      }
+    }
+    if (companyId && !restaurantId) {
+      if (caller.companyId !== companyId && !isManagerRole(caller.role)) {
+        return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
+      }
     }
 
     const employees = await prisma.user.findMany({
@@ -178,6 +207,10 @@ function buildPersonalUpdateData(
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
+
     const data = await request.json()
     const {
       id,
@@ -215,7 +248,16 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'ID dipendente richiesto' }, { status: 400 })
     }
 
-    const isSelfUpdate = session?.user?.id === id
+    const isSelfUpdate = session.user.id === id
+
+    // Manager update: verifica che il caller possa gestire il target
+    if (!isSelfUpdate) {
+      const canManage = await assertManagerOfUser(session.user.id, id)
+      if (!canManage) {
+        return NextResponse.json({ error: 'Permesso negato' }, { status: 403 })
+      }
+    }
+
     const personalPayload: ProfilePersonalPayload = {
       id,
       name,
@@ -231,10 +273,6 @@ export async function PUT(request: NextRequest) {
       sports,
       emergencyContact,
       emergencyPhone,
-    }
-
-    if (isSelfUpdate && !session) {
-      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
     }
 
     // Usa una transazione per aggiornare user e skills insieme
@@ -354,6 +392,11 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
+
     const contentType = request.headers.get('content-type') || ''
     let id: string | null = null
     let email: string | null = null
@@ -375,6 +418,12 @@ export async function DELETE(request: NextRequest) {
     const user = await prisma.user.findUnique({ where: whereUnique })
     if (!user) {
       return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 })
+    }
+
+    // Solo il manager del proprio ristorante/company può eliminare un dipendente
+    const canManage = await assertManagerOfUser(session.user.id, user.id)
+    if (!canManage) {
+      return NextResponse.json({ error: 'Permesso negato' }, { status: 403 })
     }
 
     // Anonimizza e disattiva per evitare problemi di vincoli referenziali

@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
-import { isManagerRole, MANAGER_ROLES } from '@/lib/roles'
+import { MANAGER_ROLES } from '@/lib/roles'
+import { assertRestaurantAccess as _assertRestaurantAccess } from '@/lib/restaurant-access'
 
 export { MANAGER_ROLES }
 
@@ -52,25 +53,11 @@ export async function ensureRestaurantLocations(
   })
 }
 
+/** @deprecated Use assertRestaurantAccess from lib/restaurant-access directly. */
 export async function assertRestaurantAccess(
-  prisma: PrismaClient,
+  _prisma: PrismaClient,
   userId: string,
   restaurantId: string
 ): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { restaurantId: true, companyId: true, role: true },
-  })
-  if (!user) return false
-
-  if (user.restaurantId === restaurantId) return true
-
-  if (!isManagerRole(user.role)) return false
-
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { id: restaurantId },
-    select: { companyId: true },
-  })
-
-  return !!(restaurant?.companyId && user.companyId === restaurant.companyId)
+  return _assertRestaurantAccess(userId, restaurantId)
 }

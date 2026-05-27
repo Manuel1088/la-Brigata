@@ -1,33 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import { EmploymentStatus as PrismaEmploymentStatus, UserRole as PrismaUserRole } from '@prisma/client'
-
-type EmploymentStatus = 'PENDING' | 'APPROVED' | 'ACTIVE' | 'REJECTED' | 'INACTIVE'
-type EmploymentInclude = {
-  user: {
-    select: {
-      id: true
-      name: true
-      email: true
-      phone: true
-      role: true
-      ccnlLevel: true
-      position: true
-    }
-  }
-  restaurant: {
-    select: {
-      id: true
-      name: true
-      address: true
-      phone: true
-    }
-  }
-}
+import { isManagerRole } from '@/lib/roles'
+import { restaurantIdsForManager } from '@/lib/restaurant-access'
 
 // GET - Ottieni employments con filtri
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
+
+    const caller = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { restaurantId: true, companyId: true, role: true },
+    })
+    if (!caller) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
     const restaurantId = searchParams.get('restaurantId')
@@ -39,11 +31,30 @@ export async function GET(request: NextRequest) {
       ? { status: statusUpper as PrismaEmploymentStatus }
       : {}
 
+    // Scoping: i non-manager vedono solo i propri employment; i manager vedono quelli del loro ristorante/company
+    let scopedWhere: Record<string, unknown> = {}
+    if (isManagerRole(caller.role)) {
+      const allowedRestaurantIds = await restaurantIdsForManager(caller)
+      if (restaurantId) {
+        if (!allowedRestaurantIds.includes(restaurantId)) {
+          return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
+        }
+        scopedWhere = { restaurantId }
+      } else if (userId) {
+        // Manager può vedere employment di un utente del proprio ristorante
+        scopedWhere = { userId, restaurantId: { in: allowedRestaurantIds } }
+      } else {
+        scopedWhere = { restaurantId: { in: allowedRestaurantIds } }
+      }
+    } else {
+      // Dipendente: vede solo i propri
+      scopedWhere = { userId: session.user.id }
+    }
+
     const employments = await prisma.employment.findMany({
       where: {
         ...statusFilter,
-        ...(userId && { userId }),
-        ...(restaurantId && { restaurantId })
+        ...scopedWhere,
       },
       include: {
         user: {
@@ -93,6 +104,11 @@ export async function GET(request: NextRequest) {
 // POST - Crea nuovo employment (richiesta di lavoro)
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Non autorizzato' }, { status: 401 })
+    }
+
     const body = await request.json()
     
     const {
@@ -112,6 +128,19 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       )
+    }
+
+    // Un utente può creare solo il proprio employment (o un manager può farlo per i suoi)
+    const caller = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { restaurantId: true, companyId: true, role: true },
+    })
+    if (!caller) return NextResponse.json({ success: false, error: 'Non autorizzato' }, { status: 401 })
+
+    const isSelf = session.user.id === userId
+    const isManagerCreating = isManagerRole(caller.role)
+    if (!isSelf && !isManagerCreating) {
+      return NextResponse.json({ success: false, error: 'Permesso negato' }, { status: 403 })
     }
 
     // Verifica se esiste già un employment per questa combinazione
@@ -193,6 +222,19 @@ export async function POST(request: NextRequest) {
 // PATCH - Aggiorna employment (approva, rifiuta, ecc.)
 export async function PATCH(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Non autorizzato' }, { status: 401 })
+    }
+
+    const caller = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { restaurantId: true, companyId: true, role: true },
+    })
+    if (!caller || !isManagerRole(caller.role)) {
+      return NextResponse.json({ success: false, error: 'Permesso negato' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { id, status, reviewedBy, startDate, endDate, role, department } = body
 
@@ -204,6 +246,16 @@ export async function PATCH(request: NextRequest) {
         },
         { status: 400 }
       )
+    }
+
+    // Verifica che l'employment appartiene a un ristorante del manager
+    const employmentCheck = await prisma.employment.findUnique({ where: { id }, select: { restaurantId: true } })
+    if (!employmentCheck) {
+      return NextResponse.json({ success: false, error: 'Employment non trovato' }, { status: 404 })
+    }
+    const allowedIds = await restaurantIdsForManager(caller)
+    if (!allowedIds.includes(employmentCheck.restaurantId)) {
+      return NextResponse.json({ success: false, error: 'Accesso negato' }, { status: 403 })
     }
 
     // Prepara i dati per l'update
@@ -280,6 +332,19 @@ export async function PATCH(request: NextRequest) {
 // DELETE - Elimina employment
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Non autorizzato' }, { status: 401 })
+    }
+
+    const caller = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { restaurantId: true, companyId: true, role: true },
+    })
+    if (!caller || !isManagerRole(caller.role)) {
+      return NextResponse.json({ success: false, error: 'Permesso negato' }, { status: 403 })
+    }
+
     const searchParams = request.nextUrl.searchParams
     const id = searchParams.get('id')
 
@@ -293,10 +358,17 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    const employment = await prisma.employment.findUnique({ where: { id }, select: { restaurantId: true } })
+    if (!employment) {
+      return NextResponse.json({ success: false, error: 'Employment non trovato' }, { status: 404 })
+    }
+    const allowedIds = await restaurantIdsForManager(caller)
+    if (!allowedIds.includes(employment.restaurantId)) {
+      return NextResponse.json({ success: false, error: 'Accesso negato' }, { status: 403 })
+    }
+
     await prisma.employment.delete({
-      where: {
-        id,
-      },
+      where: { id },
     })
 
     return NextResponse.json({

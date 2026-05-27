@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db'
 import { dateFromIso, toDateOnlyIso } from '@/lib/shifts'
 import { getTipsSummaryQuerySchema } from '@/lib/validations/tips'
 
-import { restaurantIdsForManager } from '@/lib/restaurant-access'
+import { assertRestaurantAccess, restaurantIdsForManager } from '@/lib/restaurant-access'
 import { isManagerRole } from '@/lib/roles'
 
 function emptyToUndefined(value: string | null): string | undefined {
@@ -25,27 +25,6 @@ function sumByType(rows: Array<{ type: PaymentType; amount: unknown }>) {
     else if (row.type === 'FOREIGN') foreign += amount
   }
   return { cash, card, foreign, total: cash + card + foreign }
-}
-
-async function assertRestaurantAccess(userId: string, restaurantId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { restaurantId: true, companyId: true, role: true },
-  })
-  if (!user) return false
-
-  if (user.restaurantId === restaurantId) return isManagerRole(user.role)
-
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { id: restaurantId },
-    select: { companyId: true },
-  })
-
-  return !!(
-    restaurant?.companyId &&
-    user.companyId === restaurant.companyId &&
-    isManagerRole(user.role)
-  )
 }
 
 /** GET /api/tips/summary — totale TipEntry ristorante (mese + oggi), solo manager/admin */
@@ -99,7 +78,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!(await assertRestaurantAccess(session.user.id, restaurantId))) {
+    if (!(await assertRestaurantAccess(session.user.id, restaurantId, true))) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
