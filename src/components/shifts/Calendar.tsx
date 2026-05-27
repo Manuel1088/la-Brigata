@@ -233,6 +233,31 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
   const restaurantId = session?.user?.restaurantId as string | undefined
   const { generateSchedule } = useAutoScheduler(restaurantId)
 
+  // ── Turni template dal DB ──────────────────────────────────────────────────
+  const [dbTemplates, setDbTemplates] = useState<Array<{
+    id: string
+    name: string
+    startTime: string
+    endTime: string
+    color: string
+  }>>([])
+
+  useEffect(() => {
+    if (!restaurantId || status !== 'authenticated') return
+    void fetch(`/api/restaurants/${restaurantId}/shift-templates?active=true`, {
+      credentials: 'include',
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.templates) {
+          setDbTemplates(
+            (data as { templates: Array<{ id: string; name: string; startTime: string; endTime: string; color: string }> }).templates
+          )
+        }
+      })
+      .catch(() => {})
+  }, [restaurantId, status])
+
   const getWeekDates = useCallback((date: Date) => {
     const start = new Date(date)
     const day = start.getDay()
@@ -514,11 +539,31 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
 
     const { name, dayIndex } = selectedEmployee
     const cellKey = shiftCellKey(name, dayIndex)
+    const newShifts = { ...shifts }
+
+    // Template dal DB (prefisso 'tpl_')
+    if (shiftId.startsWith('tpl_')) {
+      const tplId = shiftId.slice(4)
+      const tpl = dbTemplates.find((t) => t.id === tplId)
+      if (tpl) {
+        newShifts[cellKey] = {
+          employee: name,
+          time: `${tpl.startTime}-${tpl.endTime}`,
+          department: selectedDepartment,
+        }
+        setShifts(newShifts)
+        void saveShifts(newShifts)
+      }
+      setIsShiftSelectorOpen(false)
+      setSelectedEmployee(null)
+      return
+    }
+
+    // Turni statici (fallback)
     const shift = departmentShifts[selectedDepartment as keyof typeof departmentShifts]?.find(s => s.id === shiftId)
     
     if (!shift) return
 
-    const newShifts = { ...shifts }
     if (shift.time === 'RIPOSO') {
       newShifts[cellKey] = { employee: name, time: 'RIPOSO', department: selectedDepartment }
     } else if (shift.time === 'custom') {
@@ -851,18 +896,61 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                 ? `Modifica turno — ${selectedEmployee.name}`
                 : `Assegna turno — ${selectedEmployee.name}`}
             </h3>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {departmentShifts[selectedDepartment as keyof typeof departmentShifts]?.map(shift => (
-                <button
-                  key={shift.id}
-                  onClick={() => handleShiftSelect(shift.id)}
-                  className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition"
-                >
-                  <div className="font-medium">{shift.name}</div>
-                  <div className="text-sm text-gray-600">{shift.time}</div>
-                  <div className="text-xs text-gray-500">{shift.description}</div>
-                </button>
-              ))}
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {/* Turni dal DB (se presenti) */}
+              {dbTemplates.length > 0 && (
+                <>
+                  {dbTemplates.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      onClick={() => handleShiftSelect(`tpl_${tpl.id}`)}
+                      className="w-full text-left p-3 rounded-lg border hover:bg-orange-50 transition flex items-center gap-3"
+                    >
+                      <span
+                        className="inline-block w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: tpl.color }}
+                      />
+                      <div>
+                        <div className="font-medium text-gray-900">{tpl.name}</div>
+                        <div className="text-sm text-gray-500">{tpl.startTime} – {tpl.endTime}</div>
+                      </div>
+                    </button>
+                  ))}
+                  <div className="border-t my-2" />
+                </>
+              )}
+
+              {/* Riposo + Personalizzato sempre presenti */}
+              <button
+                onClick={() => handleShiftSelect('riposo')}
+                className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition"
+              >
+                <div className="font-medium">😴 Riposo</div>
+                <div className="text-sm text-gray-500">Giorno di riposo programmato</div>
+              </button>
+              <button
+                onClick={() => handleShiftSelect('personalizzato')}
+                className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition"
+              >
+                <div className="font-medium">⚙️ Personalizzato</div>
+                <div className="text-sm text-gray-500">Inserisci orario manualmente</div>
+              </button>
+
+              {/* Se non ci sono template nel DB, mostra anche i turni statici */}
+              {dbTemplates.length === 0 &&
+                departmentShifts[selectedDepartment as keyof typeof departmentShifts]
+                  ?.filter((s) => s.id !== 'riposo' && s.id !== 'personalizzato')
+                  .map((shift) => (
+                    <button
+                      key={shift.id}
+                      onClick={() => handleShiftSelect(shift.id)}
+                      className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition"
+                    >
+                      <div className="font-medium">{shift.name}</div>
+                      <div className="text-sm text-gray-600">{shift.time}</div>
+                      <div className="text-xs text-gray-500">{shift.description}</div>
+                    </button>
+                  ))}
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <button

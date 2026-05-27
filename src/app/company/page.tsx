@@ -6,8 +6,9 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useCompanyData } from '@/hooks/useCompanyData'
 import type { LocationDto } from '@/lib/restaurant-location-api'
 import RoomsTab from './RoomsTab'
+import ShiftTemplatesTab from './ShiftTemplatesTab'
 
-type CompanyTabId = 'info' | 'rooms' | 'stats'
+type CompanyTabId = 'info' | 'rooms' | 'shifts' | 'stats'
 
 export default function CompanyPage() {
   const { data: session, status } = useSession()
@@ -133,6 +134,7 @@ export default function CompanyPage() {
   const tabs: Array<{ id: CompanyTabId; label: string; icon: string }> = [
     { id: 'info', label: 'Informazioni', icon: '📋' },
     { id: 'rooms', label: 'Sale & Orari', icon: '🏛️' },
+    { id: 'shifts', label: 'Turni', icon: '📅' },
     { id: 'stats', label: 'Statistiche', icon: '📊' },
   ]
 
@@ -314,6 +316,13 @@ export default function CompanyPage() {
                 }
                 onMessage={setMessage}
                 onLocationsChange={setDbLocations}
+              />
+            )}
+
+            {activeTab === 'shifts' && (
+              <ShiftTemplatesTab
+                restaurantId={restaurantId}
+                onMessage={setMessage}
               />
             )}
 

@@ -34,6 +34,7 @@ model Restaurant {
   users              User[]
   company            Company?             @relation(fields: [companyId], references: [id])
   employments        Employment[]         @relation("RestaurantEmployments")
+  shiftTemplates     ShiftTemplate[]
 
   @@index([companyId])
   @@map("restaurants")
@@ -157,6 +158,32 @@ enum ShiftSwapStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum ShiftTemplateType {
+  PRANZO
+  CENA
+  SPEZZATO
+  BREAKFAST
+  NOTTURNO
+  ALTRO
+}
+
+model ShiftTemplate {
+  id           String            @id @default(cuid())
+  restaurantId String            @map("restaurant_id")
+  name         String
+  startTime    String            @map("start_time")
+  endTime      String            @map("end_time")
+  type         ShiftTemplateType @default(ALTRO)
+  color        String            @default("#F97316")
+  isActive     Boolean           @default(true) @map("is_active")
+  sortOrder    Int               @default(0) @map("sort_order")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  restaurant   Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, isActive])
+  @@map("shift_templates")
 }
 
 model ShiftSwapRequest {
