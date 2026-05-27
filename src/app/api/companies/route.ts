@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { requireManageCompanySession } from '@/lib/restaurant-location-api'
 
 export async function GET(req: NextRequest) {
   try {
@@ -85,6 +86,9 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const auth = await requireManageCompanySession()
+    if (!auth.ok) return auth.response
+
     const body = await req.json()
     const { id, name, fiscalCode, address, phone, email } = body
 
@@ -92,24 +96,64 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'ID azienda richiesto' }, { status: 400 })
     }
 
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return NextResponse.json({ error: 'Il nome azienda è obbligatorio' }, { status: 400 })
+    }
+
+    const userId = auth.session.user!.id!
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        companyId: true,
+        restaurant: { select: { companyId: true } },
+        employments: {
+          where: { status: { in: ['APPROVED', 'ACTIVE'] } },
+          select: { restaurant: { select: { companyId: true } } },
+        },
+      },
+    })
+
+    const allowedCompanyIds = new Set(
+      [
+        user?.companyId,
+        user?.restaurant?.companyId,
+        ...user?.employments.map((e) => e.restaurant.companyId) ?? [],
+      ].filter((cid): cid is string => Boolean(cid))
+    )
+
+    if (!allowedCompanyIds.has(id)) {
+      return NextResponse.json({ error: 'Permesso negato' }, { status: 403 })
+    }
+
     const updatedCompany = await prisma.company.update({
       where: { id },
       data: {
-        ...(name && { name }),
-        ...(fiscalCode && { fiscalCode }),
-        ...(address !== undefined && { address }),
-        ...(phone !== undefined && { phone }),
-        ...(email !== undefined && { email })
-      }
+        name: name.trim(),
+        ...(fiscalCode !== undefined && fiscalCode !== '' && { fiscalCode: String(fiscalCode).trim() }),
+        ...(address !== undefined && { address: address || null }),
+        ...(phone !== undefined && { phone: phone || null }),
+        ...(email !== undefined && { email: email || null }),
+      },
     })
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       company: updatedCompany,
-      message: 'Azienda aggiornata con successo'
+      message: 'Azienda aggiornata con successo',
     })
   } catch (error) {
     console.error('PUT /api/companies error:', error)
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: string }).code === 'P2002'
+    ) {
+      return NextResponse.json(
+        { error: 'Codice fiscale / P.IVA già in uso da un’altra azienda' },
+        { status: 409 }
+      )
+    }
     return NextResponse.json({ error: 'Errore nel salvataggio' }, { status: 500 })
   }
 }

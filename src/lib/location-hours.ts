@@ -37,6 +37,56 @@ export function getDefaultOpeningHours(): OpeningHours {
   }
 }
 
+const SHORT_DAY_LABELS: Record<DayId, string> = {
+  monday: 'Lun',
+  tuesday: 'Mar',
+  wednesday: 'Mer',
+  thursday: 'Gio',
+  friday: 'Ven',
+  saturday: 'Sab',
+  sunday: 'Dom',
+}
+
+function daySlotKey(day: DayHours): string {
+  if (day.isClosed) return 'closed'
+  return `${day.open}|${day.close}`
+}
+
+function formatSlotLabel(slotKey: string): string {
+  if (slotKey === 'closed') return 'Chiuso'
+  const [open, close] = slotKey.split('|')
+  return `${open} - ${close}`
+}
+
+/** Riepilogo compatto per visualizzazione (es. "Tutti i giorni 12:00 - 23:00" o "Lun-Ven 16:30 - 00:00 · Sab Chiuso"). */
+export function formatCompactOpeningHours(hours: OpeningHours): string {
+  const dayIds = DAYS_OF_WEEK.map((d) => d.id)
+  const slotKeys = dayIds.map((id) => daySlotKey(hours[id]))
+
+  if (slotKeys.every((k) => k === slotKeys[0])) {
+    if (slotKeys[0] === 'closed') return 'Chiuso tutti i giorni'
+    return `Tutti i giorni ${formatSlotLabel(slotKeys[0])}`
+  }
+
+  const segments: string[] = []
+  let rangeStart = 0
+
+  for (let i = 1; i <= slotKeys.length; i++) {
+    if (i === slotKeys.length || slotKeys[i] !== slotKeys[rangeStart]) {
+      const startId = dayIds[rangeStart]
+      const endId = dayIds[i - 1]
+      const rangeLabel =
+        rangeStart === i - 1
+          ? SHORT_DAY_LABELS[startId]
+          : `${SHORT_DAY_LABELS[startId]}-${SHORT_DAY_LABELS[endId]}`
+      segments.push(`${rangeLabel} ${formatSlotLabel(slotKeys[rangeStart])}`)
+      rangeStart = i
+    }
+  }
+
+  return segments.join(' · ')
+}
+
 export function normalizeOpeningHours(
   hours: Partial<Record<DayId, Partial<DayHours>>> | null | undefined
 ): OpeningHours {

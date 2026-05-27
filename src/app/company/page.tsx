@@ -13,7 +13,12 @@ export default function CompanyPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { canManageCompany } = usePermissions()
-  const { company: companyData, restaurant: restaurantData, isLoading } = useCompanyData(session?.user?.id)
+  const {
+    company: companyData,
+    restaurant: restaurantData,
+    isLoading,
+    mutate: refreshCompanyData,
+  } = useCompanyData(session?.user?.id)
 
   const [activeTab, setActiveTab] = useState<CompanyTabId>('info')
   const [isEditingCompany, setIsEditingCompany] = useState(false)
@@ -56,31 +61,52 @@ export default function CompanyPage() {
     }
   }, [companyData])
 
+  const resolveCompanyId = (): string | null => {
+    const fromCompany = (companyData as { id?: string } | null)?.id
+    if (fromCompany) return fromCompany
+    const fromRestaurant = (restaurantData as { companyId?: string | null } | null)?.companyId
+    return fromRestaurant ?? null
+  }
+
   const handleSaveCompany = async () => {
-    if (!companyData || !(companyData as { id?: string }).id) return
+    const companyId = resolveCompanyId()
+    if (!companyId) {
+      setMessage('❌ Nessuna azienda collegata al tuo account. Contatta l’amministratore.')
+      return
+    }
+
+    if (!companyForm.name.trim()) {
+      setMessage('❌ Il nome azienda è obbligatorio')
+      return
+    }
 
     setIsSaving(true)
     setMessage('')
 
     try {
+      const { website: _website, ...payload } = companyForm
       const response = await fetch('/api/companies', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: (companyData as { id: string }).id,
-          ...companyForm,
+          id: companyId,
+          ...payload,
         }),
       })
 
+      const data = (await response.json().catch(() => ({}))) as { error?: string }
+
       if (!response.ok) {
-        throw new Error('Errore nel salvataggio')
+        throw new Error(data.error || 'Errore nel salvataggio')
       }
 
+      await refreshCompanyData()
       setMessage('✅ Dati azienda salvati!')
       setIsEditingCompany(false)
       setTimeout(() => setMessage(''), 3000)
-    } catch {
-      setMessage('❌ Errore nel salvataggio azienda')
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : 'Errore nel salvataggio azienda'
+      setMessage(`❌ ${detail}`)
     } finally {
       setIsSaving(false)
     }
@@ -281,6 +307,11 @@ export default function CompanyPage() {
             {activeTab === 'rooms' && (
               <RoomsTab
                 restaurantId={restaurantId}
+                companyName={
+                  (companyData as { name?: string } | undefined)?.name ||
+                  companyForm.name ||
+                  undefined
+                }
                 onMessage={setMessage}
                 onLocationsChange={setDbLocations}
               />

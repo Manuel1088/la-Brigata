@@ -1,6 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+const companySelect = {
+  id: true,
+  name: true,
+  fiscalCode: true,
+  address: true,
+  phone: true,
+  email: true,
+} as const
+
+const restaurantSelect = {
+  id: true,
+  name: true,
+  address: true,
+  phone: true,
+  companyId: true,
+  createdAt: true,
+  updatedAt: true,
+  company: { select: companySelect },
+} as const
+
+type CompanyPayload = {
+  id: string
+  name: string
+  fiscalCode: string
+  address: string | null
+  phone: string | null
+  email: string | null
+}
+
+/** Company diretta sull'utente, altrimenti da ristorante principale o primo ristorante attivo. */
+function resolveCompany(
+  userCompany: CompanyPayload | null,
+  primaryRestaurant: { company: CompanyPayload | null } | null,
+  restaurants: Array<{ company: CompanyPayload | null } | null>
+): CompanyPayload | null {
+  if (userCompany) return userCompany
+  if (primaryRestaurant?.company) return primaryRestaurant.company
+  for (const r of restaurants) {
+    if (r?.company) return r.company
+  }
+  return null
+}
+
 // GET - Ottieni il ristorante principale e gli altri ristoranti dove lavora l'utente (OTTIMIZZATO)
 export async function GET(
   request: NextRequest,
@@ -27,29 +70,8 @@ export async function GET(
         name: true,
         email: true,
         // ✅ Company: solo campi necessari
-        company: {
-          select: {
-            id: true,
-            name: true,
-            fiscalCode: true,
-            address: true,
-            phone: true,
-            email: true,
-          }
-        },
-        // ✅ Restaurant principale: solo campi necessari
-        restaurant: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            phone: true,
-            companyId: true,
-            createdAt: true,
-            updatedAt: true,
-          }
-        },
-        // ✅ Employments con restaurants in UN'UNICA QUERY
+        company: { select: companySelect },
+        restaurant: { select: restaurantSelect },
         employments: {
           where: {
             status: { in: ['APPROVED', 'ACTIVE'] },
@@ -58,17 +80,7 @@ export async function GET(
             id: true,
             status: true,
             role: true,
-            restaurant: {
-              select: {
-                id: true,
-                name: true,
-                address: true,
-                phone: true,
-                companyId: true,
-                createdAt: true,
-                updatedAt: true,
-              }
-            }
+            restaurant: { select: restaurantSelect },
           }
         }
       }
@@ -95,12 +107,18 @@ export async function GET(
       new Set(allRestaurants.map(r => r!.id))
     ).map(id => allRestaurants.find(r => r!.id === id)!)
 
+    const company = resolveCompany(
+      userData.company,
+      userData.restaurant,
+      uniqueRestaurants
+    )
+
     // Se non ha ristoranti
     if (uniqueRestaurants.length === 0) {
       return NextResponse.json({
         success: true,
         data: null,
-        company: userData.company,
+        company,
         restaurant: null,
         restaurants: [],
         hasMultiple: false,
@@ -114,7 +132,7 @@ export async function GET(
         success: true,
         data: uniqueRestaurants[0],
         restaurant: uniqueRestaurants[0],
-        company: userData.company,
+        company,
         hasMultiple: false,
       })
     }
@@ -125,7 +143,7 @@ export async function GET(
       data: uniqueRestaurants,
       restaurants: uniqueRestaurants,
       restaurant: userData.restaurant,
-      company: userData.company,
+      company,
       primary: userData.restaurant,
       hasMultiple: true,
       count: uniqueRestaurants.length,

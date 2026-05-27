@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import type { LocationType } from '@prisma/client'
 import {
   DAYS_OF_WEEK,
+  formatCompactOpeningHours,
   getDefaultOpeningHours,
   type DayId,
   type OpeningHours,
@@ -46,12 +47,14 @@ const emptyForm = (): RoomFormState => ({
 
 type RoomsTabProps = {
   restaurantId: string | undefined
+  companyName?: string
   onMessage: (message: string) => void
   onLocationsChange?: (locations: LocationDto[]) => void
 }
 
 export default function RoomsTab({
   restaurantId,
+  companyName,
   onMessage,
   onLocationsChange,
 }: RoomsTabProps) {
@@ -80,30 +83,29 @@ export default function RoomsTab({
       }
       const list = (data.locations ?? []) as LocationDto[]
       setLocations(list)
-      onLocationsChange?.(list)
     } catch (e) {
       onMessage(`❌ ${e instanceof Error ? e.message : 'Errore caricamento'}`)
       setLocations([])
-      onLocationsChange?.([])
     } finally {
       setLoading(false)
     }
-  }, [restaurantId, onMessage, onLocationsChange])
+  }, [restaurantId, onMessage])
 
   useEffect(() => {
     void loadLocations()
   }, [loadLocations])
 
-  const groupedByOutlet = useMemo(() => {
-    const map = new Map<string, LocationDto[]>()
-    for (const loc of locations) {
-      const key = loc.outletName.trim() || 'Senza punto ristoro'
-      const arr = map.get(key) ?? []
-      arr.push(loc)
-      map.set(key, arr)
-    }
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'it'))
-  }, [locations])
+  useEffect(() => {
+    onLocationsChange?.(locations)
+  }, [locations, onLocationsChange])
+
+  const sortedLocations = useMemo(
+    () =>
+      [...locations].sort(
+        (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'it')
+      ),
+    [locations]
+  )
 
   const activeLocations = locations.filter((l) => l.isActive)
   const totalCapacity = activeLocations.reduce((s, l) => s + (l.capacity ?? 0), 0)
@@ -171,11 +173,7 @@ export default function RoomsTab({
       throw new Error((data as { error?: string }).error || 'Salvataggio fallito')
     }
     const updated = (data as { location: LocationDto }).location
-    setLocations((prev) => {
-      const next = prev.map((l) => (l.id === updated.id ? updated : l))
-      onLocationsChange?.(next)
-      return next
-    })
+    setLocations((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
     return true
   }
 
@@ -299,47 +297,6 @@ export default function RoomsTab({
     }
   }
 
-  const handleUpdateHours = async (
-    locationId: string,
-    day: DayId,
-    field: 'open' | 'close' | 'isClosed',
-    value: string | boolean
-  ) => {
-    const loc = locations.find((l) => l.id === locationId)
-    if (!loc) return
-    const hours: OpeningHours = { ...loc.openingHours }
-    const dayHours = { ...hours[day] }
-    if (field === 'isClosed') {
-      dayHours.isClosed = Boolean(value)
-    } else {
-      dayHours[field] = String(value)
-    }
-    hours[day] = dayHours
-    try {
-      await patchLocation(locationId, { openingHours: hours })
-      await loadLocations()
-    } catch (e) {
-      onMessage(`❌ ${e instanceof Error ? e.message : 'Errore orari'}`)
-    }
-  }
-
-  const handleCopyHoursToOutlet = async (source: LocationDto) => {
-    const sameOutlet = locations.filter(
-      (l) => l.outletName === source.outletName && l.id !== source.id && l.isActive
-    )
-    if (sameOutlet.length === 0) return
-    try {
-      for (const loc of sameOutlet) {
-        await patchLocation(loc.id, { openingHours: source.openingHours })
-      }
-      await loadLocations()
-      onMessage('✅ Orari copiati alle altre sale del punto ristoro')
-      setTimeout(() => onMessage(''), 2000)
-    } catch (e) {
-      onMessage(`❌ ${e instanceof Error ? e.message : 'Errore'}`)
-    }
-  }
-
   if (!restaurantId) {
     return (
       <p className="text-gray-600 text-center py-8">
@@ -374,8 +331,10 @@ export default function RoomsTab({
         </div>
       </div>
 
-      <div className="flex justify-between items-center">
-        <h4 className="text-lg font-semibold text-gray-900">🏛️ Sale per punto ristoro</h4>
+      <div className="flex justify-between items-center gap-4 flex-wrap">
+        <h4 className="text-lg font-semibold text-gray-900">
+          {companyName ? `🏛️ ${companyName}` : '🏛️ Sale'}
+        </h4>
         <button
           type="button"
           onClick={openCreate}
@@ -392,159 +351,75 @@ export default function RoomsTab({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {groupedByOutlet.map(([outletName, outletLocations]) => (
-            <Fragment key={outletName}>
-              <div className="col-span-full border-2 border-orange-100 rounded-xl px-4 py-3 bg-orange-50/30">
-                <h5 className="text-md font-bold text-gray-900 flex items-center gap-2">
-                  <span>🍽️</span>
-                  {outletName}
-                  <span className="text-xs font-normal text-gray-500">
-                    ({outletLocations.length}{' '}
-                    {outletLocations.length === 1 ? 'sala' : 'sale'})
-                  </span>
-                </h5>
-              </div>
-
-              {outletLocations.map((loc) => (
-                  <div
-                    key={loc.id}
-                    className={`border-2 rounded-lg p-4 bg-white h-full flex flex-col ${
-                      loc.isActive ? 'border-green-200' : 'border-gray-200 opacity-75'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-4xl">{loc.icon ?? '🍽️'}</span>
-                      <div className="flex flex-wrap gap-1 justify-end">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(loc)}
-                          className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium hover:bg-blue-200"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleActive(loc)}
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            loc.isActive
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {loc.isActive ? '✓' : '✗'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(loc)}
-                          className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium hover:bg-red-200"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                    <h6 className="font-semibold text-gray-900">{loc.name}</h6>
-                    <p className="text-xs text-gray-500 mt-1">{TYPE_LABELS[loc.type]}</p>
-                    <div className="text-sm text-gray-600 space-y-1 mt-2">
-                      <div className="flex justify-between">
-                        <span>Capacità</span>
-                        <span className="font-medium">{loc.capacity ?? '—'} posti</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Tavoli</span>
-                        <span className="font-medium">{loc.tables ?? '—'}</span>
-                      </div>
-                    </div>
+          {sortedLocations.map((loc) => (
+            <Fragment key={loc.id}>
+              <div
+                className={`border-2 rounded-lg p-4 bg-white h-full flex flex-col ${
+                  loc.isActive ? 'border-green-200' : 'border-gray-200 opacity-75'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-4xl">{loc.icon ?? '🍽️'}</span>
+                  <div className="flex flex-wrap gap-1 justify-end">
                     <button
                       type="button"
-                      onClick={() =>
-                        setExpandedHoursId((id) => (id === loc.id ? null : loc.id))
-                      }
-                      className="mt-3 text-xs text-orange-600 font-medium hover:underline"
+                      onClick={() => openEdit(loc)}
+                      className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium hover:bg-blue-200"
                     >
-                      {expandedHoursId === loc.id ? 'Nascondi orari' : '🕐 Orari'}
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(loc)}
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        loc.isActive
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {loc.isActive ? '✓' : '✗'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(loc)}
+                      className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium hover:bg-red-200"
+                    >
+                      🗑️
                     </button>
                   </div>
-              ))}
+                </div>
+                <h6 className="font-semibold text-gray-900">{loc.name}</h6>
+                <p className="text-xs text-gray-500 mt-1">
+                  {loc.outletName} · {TYPE_LABELS[loc.type]}
+                </p>
+                <div className="text-sm text-gray-600 space-y-1 mt-2">
+                  <div className="flex justify-between">
+                    <span>Capacità</span>
+                    <span className="font-medium">{loc.capacity ?? '—'} posti</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tavoli</span>
+                    <span className="font-medium">{loc.tables ?? '—'}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedHoursId((id) => (id === loc.id ? null : loc.id))
+                  }
+                  className="mt-3 text-xs text-orange-600 font-medium hover:underline"
+                >
+                  {expandedHoursId === loc.id ? 'Nascondi orari' : '🕐 Orari'}
+                </button>
+              </div>
 
-              {outletLocations.some((l) => expandedHoursId === l.id) &&
-                outletLocations
-                  .filter((l) => expandedHoursId === l.id)
-                  .map((loc) => (
-                    <div
-                      key={`hours-${loc.id}`}
-                      className="col-span-full border border-gray-200 rounded-lg p-4 bg-white"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">{loc.icon ?? '🍽️'}</span>
-                          <span className="font-semibold">{loc.name} — orari</span>
-                        </div>
-                        {outletLocations.filter((l) => l.isActive).length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleCopyHoursToOutlet(loc)}
-                            className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
-                          >
-                            📋 Copia alle altre sale di {outletName}
-                          </button>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        {DAYS_OF_WEEK.map((day) => {
-                          const d = loc.openingHours[day.id]
-                          return (
-                            <div
-                              key={day.id}
-                              className="flex flex-wrap items-center gap-3 bg-gray-50 rounded-lg p-2"
-                            >
-                              <div className="w-28 font-medium text-gray-900 text-sm">
-                                {day.label}
-                              </div>
-                              <label className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={!d.isClosed}
-                                  onChange={(e) =>
-                                    handleUpdateHours(
-                                      loc.id,
-                                      day.id,
-                                      'isClosed',
-                                      !e.target.checked
-                                    )
-                                  }
-                                  className="w-4 h-4 text-orange-600 rounded"
-                                />
-                                <span className="text-xs text-gray-600">Aperto</span>
-                              </label>
-                              {!d.isClosed ? (
-                                <>
-                                  <input
-                                    type="time"
-                                    value={d.open}
-                                    onChange={(e) =>
-                                      handleUpdateHours(loc.id, day.id, 'open', e.target.value)
-                                    }
-                                    className="px-2 py-1 border border-gray-300 rounded text-sm"
-                                  />
-                                  <span className="text-gray-500 text-sm">-</span>
-                                  <input
-                                    type="time"
-                                    value={d.close}
-                                    onChange={(e) =>
-                                      handleUpdateHours(loc.id, day.id, 'close', e.target.value)
-                                    }
-                                    className="px-2 py-1 border border-gray-300 rounded text-sm"
-                                  />
-                                </>
-                              ) : (
-                                <span className="text-red-600 font-medium text-sm">Chiuso</span>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
+              {expandedHoursId === loc.id && (
+                <div className="col-span-full rounded-lg border border-gray-200 bg-white px-4 py-3">
+                  <p className="text-sm text-gray-900 leading-relaxed">
+                    {formatCompactOpeningHours(loc.openingHours)}
+                  </p>
+                </div>
+              )}
             </Fragment>
           ))}
         </div>
