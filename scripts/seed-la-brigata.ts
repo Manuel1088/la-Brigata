@@ -108,7 +108,12 @@ async function main() {
       create: {
         id: `loc-${locName.toLowerCase()}-001`,
         name: locName,
+        outletName: locName,
+        type: 'RISTORANTE',
         restaurantId: restaurant.id,
+        isActive: true,
+        sortOrder: locName === 'Adele' ? 1 : 0,
+        icon: '🍽️',
         updatedAt: new Date(),
       }
     })

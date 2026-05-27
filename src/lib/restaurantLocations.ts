@@ -33,7 +33,12 @@ export async function ensureRestaurantLocations(
       create: {
         id: `loc-${name.toLowerCase()}-${restaurantId}`,
         name,
+        outletName: name,
+        type: 'RISTORANTE',
         restaurantId,
+        isActive: true,
+        sortOrder: name === 'Adele' ? 1 : 0,
+        icon: '🍽️',
         updatedAt: now,
       },
       update: { updatedAt: now },

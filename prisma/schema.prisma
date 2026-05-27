@@ -548,18 +548,36 @@ model MonthlySummary {
   @@unique([year, month, locationId, employeeId])
 }
 
+enum LocationType {
+  RISTORANTE
+  BAR
+  SKYBAR
+  COLAZIONI
+  EVENTI
+  ALTRO
+}
+
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model RestaurantLocation {
-  id           String     @id
+  id           String       @id
   name         String
+  outletName   String
+  type         LocationType @default(RISTORANTE)
+  capacity     Int?
+  tables       Int?
+  icon         String?
+  isActive     Boolean      @default(true)
+  sortOrder    Int          @default(0)
+  openingHours Json?
   address      String?
   restaurantId String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime
-  restaurants  Restaurant @relation(fields: [restaurantId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  restaurants  Restaurant   @relation(fields: [restaurantId], references: [id])
   TipEntry     TipEntry[]
 
   @@unique([restaurantId, name])
+  @@index([restaurantId, sortOrder])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
