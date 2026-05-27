@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import useSWR from 'swr'
+import useSWR, { mutate as swrMutate } from 'swr'
 import { canManageRestaurantStaff } from '@/lib/employee-create'
 import { CCNL_LEVEL_OPTIONS } from '@/lib/ccnl'
 import {
@@ -173,6 +173,7 @@ export default function EditEmployeePage() {
         const err = await res.json().catch(() => ({}))
         throw new Error((err as { error?: string }).error || 'Salvataggio fallito')
       }
+      await swrMutate((key) => Array.isArray(key) && key[0] === '/api/employees', undefined, { revalidate: true })
       window.dispatchEvent(new CustomEvent('employees_updated'))
       router.push('/team?tab=employees')
     } catch (e) {
