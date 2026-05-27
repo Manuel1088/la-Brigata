@@ -18,6 +18,8 @@ export const PROFILE_PERSONAL_FIELDS = [
 export type ProfilePersonalPayload = {
   id: string
   name?: string
+  firstName?: string | null
+  lastName?: string | null
   phone?: string | null
   secondaryEmail?: string | null
   birthDate?: string | null

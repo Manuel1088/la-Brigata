@@ -193,6 +193,8 @@ export async function POST(req: NextRequest) {
         data: {
           email: normalizedEmail,
           name: fullName,
+          firstName: firstName.trim() || null,
+          lastName: lastName.trim() || null,
           password: hashedPassword,
           role: userRole,
           hierarchyLevel,

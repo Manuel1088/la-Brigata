@@ -7,6 +7,8 @@ import { formatBirthDateForInput, splitFullName } from '@/lib/profile-fields'
 const profileSelect = {
   id: true,
   name: true,
+  firstName: true,
+  lastName: true,
   email: true,
   phone: true,
   secondaryEmail: true,
@@ -42,7 +44,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 })
     }
 
-    const { firstName, lastName } = splitFullName(user.name)
+    const split = splitFullName(user.name)
+    const firstName = user.firstName ?? split.firstName
+    const lastName = user.lastName ?? split.lastName
 
     return NextResponse.json({
       profile: {

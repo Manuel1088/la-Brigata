@@ -23,12 +23,14 @@ const patchTipsSchema = z
 
 const patchProfileSchema = z.object({
   name: z.string().min(1).optional(),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional(),
   role: z.string().optional(),
   department: z
     .enum(['cucina', 'pasticceria', 'sala', 'beverage', 'accoglienza', 'dirigenti'])
     .optional(),
   ccnlLevel: z.string().optional(),
-  locationId: z.string().nullable().optional(),
+  locationIds: z.array(z.string()).optional(),
 })
 
 async function canManageRestaurant(
@@ -59,6 +61,8 @@ function serializeUserEmployee(
   user: {
     id: string
     name: string
+    firstName?: string | null
+    lastName?: string | null
     email: string
     phone: string | null
     role: string
@@ -72,11 +76,13 @@ function serializeUserEmployee(
     notes: string | null
     skills: { skill: string }[]
   },
-  locationId: string | null = null
+  locationIds: string[] = []
 ) {
   return {
     id: user.id,
     name: user.name,
+    firstName: user.firstName ?? null,
+    lastName: user.lastName ?? null,
     email: user.email,
     phone: user.phone ?? '',
     role: user.role,
@@ -89,7 +95,7 @@ function serializeUserEmployee(
     startDate: user.startDate?.toISOString().split('T')[0] ?? '',
     notes: user.notes,
     skills: user.skills.map((s) => s.skill),
-    locationId,
+    locationIds,
     restaurantId: user.restaurantId,
   }
 }
@@ -111,6 +117,8 @@ export async function GET(
       select: {
         id: true,
         name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         phone: true,
         role: true,
@@ -134,15 +142,15 @@ export async function GET(
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
-    // Separate query for Employee.locationId to avoid stale-client issues
     const empRecord = await prisma.employee.findFirst({
       where: { userId: id },
-      select: { locationId: true },
+      select: { employeeLocations: { select: { locationId: true } } },
       orderBy: { createdAt: 'desc' },
     })
+    const locationIds = empRecord?.employeeLocations.map((el) => el.locationId) ?? []
 
     return NextResponse.json({
-      employee: serializeUserEmployee(user, empRecord?.locationId ?? null),
+      employee: serializeUserEmployee(user, locationIds),
     })
   } catch (error) {
     console.error('GET /api/employees/[id] error:', error)
@@ -189,6 +197,8 @@ export async function PATCH(
           where: { id },
           data: {
             ...(data.name ? { name: data.name.trim() } : {}),
+            ...(data.firstName !== undefined ? { firstName: data.firstName?.trim() || null } : {}),
+            ...(data.lastName !== undefined ? { lastName: data.lastName?.trim() || null } : {}),
             ...(role ? { role, hierarchyLevel: hierarchyLevelForUserRole(role) } : {}),
             ...(department ? { department } : {}),
             ...(ccnlLevel ? { ccnlLevel } : {}),
@@ -196,6 +206,8 @@ export async function PATCH(
           select: {
             id: true,
             name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             phone: true,
             role: true,
@@ -217,14 +229,24 @@ export async function PATCH(
             where: { id: linked.id },
             data: {
               ...(data.name ? { name: data.name.trim() } : {}),
-              ...(role && department
-                ? { role: toEmployeeRole(role, department) }
-                : {}),
+              ...(role && department ? { role: toEmployeeRole(role, department) } : {}),
               ...(ccnlLevel ? { ccnlLevel } : {}),
-              ...('locationId' in data ? { locationId: data.locationId ?? null } : {}),
               updatedAt: new Date(),
             },
           })
+          if (data.locationIds !== undefined) {
+            await tx.employeeLocation.deleteMany({ where: { employeeId: linked.id } })
+            if (data.locationIds.length > 0) {
+              await tx.employeeLocation.createMany({
+                data: data.locationIds.map((locId: string) => ({
+                  id: `${linked.id.slice(-8)}-${locId.slice(-8)}-${Math.random().toString(36).slice(2, 6)}`,
+                  employeeId: linked.id,
+                  locationId: locId,
+                })),
+                skipDuplicates: true,
+              })
+            }
+          }
         }
 
         return u
@@ -232,13 +254,14 @@ export async function PATCH(
 
       const updatedEmp = await prisma.employee.findFirst({
         where: { userId: id },
-        select: { locationId: true },
+        select: { employeeLocations: { select: { locationId: true } } },
         orderBy: { createdAt: 'desc' },
       })
+      const updatedLocationIds = updatedEmp?.employeeLocations.map((el) => el.locationId) ?? []
 
       return NextResponse.json({
         success: true,
-        employee: serializeUserEmployee(updated, updatedEmp?.locationId ?? null),
+        employee: serializeUserEmployee(updated, updatedLocationIds),
       })
     }
 

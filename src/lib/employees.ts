@@ -25,6 +25,8 @@ export interface EmployeeFull {
   contractTypeEnum?: 'INDETERMINATO' | 'DETERMINATO'
   ccnlLevel?: string | null
   employmentEndDate?: string
+  locationIds?: string[]
+  locationNames?: string[]
 }
 
 export interface SimpleEmployee {

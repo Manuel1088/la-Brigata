@@ -234,6 +234,17 @@ function surnameForSort(name: string): string {
   return parts[parts.length - 1]!.toLowerCase()
 }
 
+/** Etichetta badge sale: 1 sala → nome, 2-3 → "Sala1, Sala2", tutte → "Tutte" */
+function locationBadgeLabel(
+  names: string[] | undefined,
+  totalLocations: number
+): string | null {
+  if (!names || names.length === 0) return null
+  if (totalLocations > 1 && names.length >= totalLocations) return 'Tutte'
+  if (names.length <= 3) return names.join(', ')
+  return `${names.slice(0, 2).join(', ')} +${names.length - 2}`
+}
+
 /** CCNL più alto → più basso; a parità di livello, cognome A→Z. */
 function sortByCcnlDesc(a: TeamEmployee, b: TeamEmployee): number {
   const rankA = ccnlSortRank(getEmployeeCcnlLevel(a))
@@ -323,6 +334,14 @@ export default function TeamEmployees() {
     return groups
   }, [filteredEmployees])
 
+  const totalLocations = useMemo(() => {
+    const ids = new Set<string>()
+    for (const e of employees) {
+      for (const id of e.locationIds ?? []) ids.add(id)
+    }
+    return ids.size
+  }, [employees])
+
   const stats = useMemo(() => {
     const total = employees.length
     const active = employees.filter((emp) => emp.isActive).length
@@ -352,6 +371,7 @@ export default function TeamEmployees() {
 
   const renderEmployeeCard = (employee: TeamEmployee) => {
     const badge = getCardBadge(employee)
+    const locLabel = locationBadgeLabel(employee.locationNames, totalLocations)
 
     return (
       <div
@@ -376,12 +396,23 @@ export default function TeamEmployees() {
         <p className="text-xs text-gray-600 truncate mt-0.5 leading-tight">
           {getRoleDisplay(employee)}
         </p>
-        {badge && (
-          <span
-            className={`inline-flex mt-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium border leading-none ${badge.className}`}
-          >
-            {badge.label}
-          </span>
+        {(badge || locLabel) && (
+          <div className="flex items-center justify-between gap-1 mt-1.5">
+            <div>
+              {badge && (
+                <span
+                  className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border leading-none ${badge.className}`}
+                >
+                  {badge.label}
+                </span>
+              )}
+            </div>
+            {locLabel && (
+              <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border leading-none bg-orange-50 text-orange-700 border-orange-200 max-w-[60%] truncate">
+                {locLabel}
+              </span>
+            )}
+          </div>
         )}
       </div>
     )

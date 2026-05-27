@@ -152,7 +152,7 @@ export default function ProfilePage() {
     position: '',
   })
   const [myEmployee, setMyEmployee] = useState<EmployeeFull | null>(null)
-  const [locationId, setLocationId] = useState<string>('')
+  const [locationIds, setLocationIds] = useState<string[]>([])
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -229,13 +229,13 @@ export default function ProfilePage() {
     setMyEmployee(emp)
   }, [employeesList, session?.user?.id])
 
-  // Load current locationId from /api/employees/[id]
+  // Load current locationIds from /api/employees/[id]
   useEffect(() => {
     if (!session?.user?.id) return
     fetch(`/api/employees/${session.user.id}`, { credentials: 'include' })
       .then((r) => r.json())
-      .then((d: { employee?: { locationId?: string | null } }) => {
-        setLocationId(d.employee?.locationId ?? '')
+      .then((d: { employee?: { locationIds?: string[] } }) => {
+        setLocationIds(d.employee?.locationIds ?? [])
       })
       .catch(() => {})
   }, [session?.user?.id])
@@ -258,6 +258,8 @@ export default function ProfilePage() {
         body: JSON.stringify({
           id: session.user.id,
           name: joinFullName(form.firstName, form.lastName),
+          firstName: form.firstName.trim() || null,
+          lastName: form.lastName.trim() || null,
           phone: form.phone,
           secondaryEmail: form.secondaryEmail,
           birthDate: form.birthDate || null,
@@ -270,7 +272,6 @@ export default function ProfilePage() {
           sports: form.sports,
           emergencyContact: form.emergencyContact,
           emergencyPhone: form.emergencyPhone,
-          locationId: locationId || null,
         }),
       })
 
@@ -685,8 +686,13 @@ export default function ProfilePage() {
                 <div>
                   <span className="text-sm text-gray-600">Sala di appartenenza</span>
                   <p className="font-medium text-gray-900">
-                    {locationOptions.find((l) => l.id === locationId)
-                      ? `${locationOptions.find((l) => l.id === locationId)!.icon ?? ''} ${locationOptions.find((l) => l.id === locationId)!.name}`.trim()
+                    {locationIds.length > 0
+                      ? locationIds
+                          .map((lid) => {
+                            const loc = locationOptions.find((l) => l.id === lid)
+                            return loc ? `${loc.icon ?? ''} ${loc.name}`.trim() : lid
+                          })
+                          .join(', ')
                       : '—'}
                   </p>
                 </div>

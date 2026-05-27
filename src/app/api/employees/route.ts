@@ -79,27 +79,54 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ 
-      employees: filteredEmployees.map(e => ({
-        id: e.id,
-        name: e.name,
-        email: e.email,
-        phone: e.phone,
-        role: e.role,
-        level: e.hierarchyLevel,
-        department: e.department,
-        isActive: e.isActive,
-        avatar: e.avatar || '👤',
-        hourlyRate: e.hourlyRate ? parseFloat(e.hourlyRate.toString()) : 0,
-        baseSalary: e.baseSalary ? parseFloat(e.baseSalary.toString()) : undefined,
-        contractType: e.contractType,
-        contractTypeEnum: e.contractTypeEnum as string | null | undefined,
-        ccnlLevel: e.ccnlLevel ? String(e.ccnlLevel) : null,
-        weeklyHours: e.weeklyHours ?? undefined,
-        startDate: e.startDate,
-        notes: e.notes,
-        skills: e.skills.map(s => s.skill)
-      })) 
+    // Build locationIds/names per userId via EmployeeLocation join table
+    const userIds = filteredEmployees.map((e) => e.id)
+    const empLocationRows =
+      userIds.length > 0
+        ? await prisma.employee.findMany({
+            where: { userId: { in: userIds } },
+            select: {
+              userId: true,
+              employeeLocations: {
+                select: { location: { select: { id: true, name: true } } },
+              },
+            },
+          })
+        : []
+
+    // userId → [{ id, name }]
+    const userLocationsMap: Record<string, { id: string; name: string }[]> = {}
+    for (const row of empLocationRows) {
+      if (!row.userId) continue
+      userLocationsMap[row.userId] = row.employeeLocations.map((el) => el.location)
+    }
+
+    return NextResponse.json({
+      employees: filteredEmployees.map((e) => {
+        const locs = userLocationsMap[e.id] ?? []
+        return {
+          id: e.id,
+          name: e.name,
+          email: e.email,
+          phone: e.phone,
+          role: e.role,
+          level: e.hierarchyLevel,
+          department: e.department,
+          isActive: e.isActive,
+          avatar: e.avatar || '👤',
+          hourlyRate: e.hourlyRate ? parseFloat(e.hourlyRate.toString()) : 0,
+          baseSalary: e.baseSalary ? parseFloat(e.baseSalary.toString()) : undefined,
+          contractType: e.contractType,
+          contractTypeEnum: e.contractTypeEnum as string | null | undefined,
+          ccnlLevel: e.ccnlLevel ? String(e.ccnlLevel) : null,
+          weeklyHours: e.weeklyHours ?? undefined,
+          startDate: e.startDate,
+          notes: e.notes,
+          skills: e.skills.map((s) => s.skill),
+          locationIds: locs.map((l) => l.id),
+          locationNames: locs.map((l) => l.name),
+        }
+      }),
     })
   } catch (error) {
     console.error('GET /api/employees error:', error)
@@ -113,6 +140,8 @@ function buildPersonalUpdateData(
   const update: Prisma.UserUpdateInput = {}
 
   if (data.name !== undefined) update.name = String(data.name).trim()
+  if (data.firstName !== undefined) update.firstName = data.firstName?.trim() || null
+  if (data.lastName !== undefined) update.lastName = data.lastName?.trim() || null
   if (data.phone !== undefined) update.phone = data.phone?.trim() || null
   if (data.secondaryEmail !== undefined) {
     update.secondaryEmail = data.secondaryEmail?.trim() || null
@@ -179,7 +208,7 @@ export async function PUT(request: NextRequest) {
       sports,
       emergencyContact,
       emergencyPhone,
-      locationId,
+      locationIds,
     } = data
 
     if (!id) {
@@ -235,14 +264,21 @@ export async function PUT(request: NextRequest) {
         data: userData,
       })
 
-      // 1b. Aggiorna locationId sull'Employee collegato (se fornito)
-      if (locationId !== undefined) {
+      // 1b. Aggiorna EmployeeLocation (many-to-many) se fornito
+      if (locationIds !== undefined && Array.isArray(locationIds)) {
         const linked = await tx.employee.findFirst({ where: { userId: id } })
         if (linked) {
-          await tx.employee.update({
-            where: { id: linked.id },
-            data: { locationId: locationId ?? null, updatedAt: new Date() },
-          })
+          await tx.employeeLocation.deleteMany({ where: { employeeId: linked.id } })
+          if (locationIds.length > 0) {
+            await tx.employeeLocation.createMany({
+              data: (locationIds as string[]).map((locId: string) => ({
+                id: `${linked.id}-${locId}`.slice(0, 30) + Math.random().toString(36).slice(2, 8),
+                employeeId: linked.id,
+                locationId: locId,
+              })),
+              skipDuplicates: true,
+            })
+          }
         }
       }
 

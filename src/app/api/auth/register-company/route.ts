@@ -122,10 +122,13 @@ export async function POST(request: NextRequest) {
       })
 
       // 3. Crea utente proprietario con ruolo mappato
+      const ownerNameParts = ownerName.trim().split(/\s+/)
       const owner = await tx.user.create({
         data: {
           email: ownerEmail,
           name: ownerName,
+          firstName: ownerNameParts[0] ?? null,
+          lastName: ownerNameParts.length > 1 ? ownerNameParts.slice(1).join(' ') : null,
           password: hashedPassword,
           role: toUserRole(mappedRole.role),
           userType: 'OWNER',

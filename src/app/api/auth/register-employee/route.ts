@@ -215,10 +215,15 @@ export async function POST(request: NextRequest) {
       : null
 
     // Crea utente
+    const nameParts = name.trim().split(/\s+/)
+    const newFirstName = nameParts[0] ?? null
+    const newLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : null
     const user = await prisma.user.create({
       data: {
         email: normalizedEmail,
         name,
+        firstName: newFirstName,
+        lastName: newLastName,
         password: hashedPassword,
         role: toUserRole(roleKey),
         userType: 'EMPLOYEE',

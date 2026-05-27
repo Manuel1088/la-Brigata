@@ -22,12 +22,14 @@ type LocationOption = { id: string; name: string; icon: string | null; isActive:
 type EmployeeDto = {
   id: string
   name: string
+  firstName?: string | null
+  lastName?: string | null
   email: string
   role: string
   department: string
   ccnlLevel: string | null
   restaurantId?: string
-  locationId?: string | null
+  locationIds?: string[]
 }
 
 export default function EditEmployeePage() {
@@ -41,11 +43,12 @@ export default function EditEmployeePage() {
   const [error, setError] = useState<string | null>(null)
   const [restaurantId, setRestaurantId] = useState<string | null>(null)
   const [form, setForm] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     department: 'sala' as RestaurantDepartment,
     roleKey: '',
     ccnlLevel: 'LIVELLO_3',
-    locationId: '' as string,
+    locationIds: [] as string[],
   })
 
   const { data: locationsData } = useSWR<{ locations?: LocationOption[] }>(
@@ -85,12 +88,15 @@ export default function EditEmployeePage() {
         const match =
           findRoleOption(dept, emp.role) ?? getRolesForDepartment(dept)[0]
         if (emp.restaurantId) setRestaurantId(emp.restaurantId)
+        const { splitFullName } = await import('@/lib/profile-fields')
+        const split = splitFullName(emp.name)
         setForm({
-          name: emp.name,
+          firstName: emp.firstName ?? split.firstName,
+          lastName: emp.lastName ?? split.lastName,
           department: dept,
           roleKey: roleOptionKey(match),
           ccnlLevel: emp.ccnlLevel || match.suggestedCcnl,
-          locationId: emp.locationId ?? '',
+          locationIds: emp.locationIds ?? [],
         })
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Errore di caricamento')
@@ -127,6 +133,15 @@ export default function EditEmployeePage() {
     }))
   }
 
+  const toggleLocation = (id: string) => {
+    setForm((prev) => ({
+      ...prev,
+      locationIds: prev.locationIds.includes(id)
+        ? prev.locationIds.filter((l) => l !== id)
+        : [...prev.locationIds, id],
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const selected = rolesForDepartment.find((r) => roleOptionKey(r) === form.roleKey)
@@ -138,16 +153,20 @@ export default function EditEmployeePage() {
     setSubmitting(true)
     setError(null)
     try {
+      const { joinFullName } = await import('@/lib/profile-fields')
+      const fullName = joinFullName(form.firstName, form.lastName)
       const res = await fetch(`/api/employees/${employeeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          name: form.name.trim(),
+          name: fullName,
+          firstName: form.firstName.trim() || null,
+          lastName: form.lastName.trim() || null,
           role: selected.value,
           department: departmentToStorage(form.department),
           ccnlLevel: form.ccnlLevel,
-          locationId: form.locationId || null,
+          locationIds: form.locationIds,
         }),
       })
       if (!res.ok) {
@@ -177,7 +196,7 @@ export default function EditEmployeePage() {
         <div className="max-w-3xl mx-auto px-4 py-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Modifica dipendente</h1>
-            <p className="text-gray-600 text-sm">Nome, ruolo, reparto e livello CCNL</p>
+            <p className="text-gray-600 text-sm">Nome, ruolo, reparto, livello CCNL e sale</p>
           </div>
         </div>
       </header>
@@ -191,17 +210,30 @@ export default function EditEmployeePage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome completo
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome
+                </label>
+                <input
+                  type="text"
+                  value={form.firstName}
+                  onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cognome
+                </label>
+                <input
+                  type="text"
+                  value={form.lastName}
+                  onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             <div>
@@ -225,20 +257,37 @@ export default function EditEmployeePage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sala di appartenenza
+                Sale di appartenenza
               </label>
-              <select
-                value={form.locationId}
-                onChange={(e) => setForm((p) => ({ ...p, locationId: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Nessuna sala selezionata</option>
-                {locationOptions.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.icon ? `${l.icon} ` : ''}{l.name}
-                  </option>
-                ))}
-              </select>
+              {locationOptions.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">
+                  {restaurantId ? 'Nessuna sala disponibile' : 'Caricamento sale...'}
+                </p>
+              ) : (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                  {locationOptions.map((l) => (
+                    <label
+                      key={l.id}
+                      className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.locationIds.includes(l.id)}
+                        onChange={() => toggleLocation(l.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-800">
+                        {l.icon ? `${l.icon} ` : ''}{l.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {form.locationIds.length > 0 && (
+                <p className="text-xs text-gray-500 mt-1.5">
+                  {form.locationIds.length} sala{form.locationIds.length !== 1 ? 'e' : ''} selezionata{form.locationIds.length !== 1 ? '' : ''}
+                </p>
+              )}
             </div>
 
             <div>

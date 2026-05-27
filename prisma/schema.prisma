@@ -43,6 +43,8 @@ model User {
   id                 String             @id @default(cuid())
   email              String             @unique
   name               String
+  firstName          String?            @map("first_name")
+  lastName           String?            @map("last_name")
   password           String
   role               UserRole
   hierarchyLevel     Int                @map("hierarchy_level")
@@ -523,7 +525,8 @@ model Employee {
   locationId        String?             @map("location_id")
   restaurants       Restaurant          @relation(fields: [restaurantId], references: [id])
   user              User?               @relation("UserEmployee", fields: [userId], references: [id])
-  location          RestaurantLocation? @relation(fields: [locationId], references: [id])
+  location          RestaurantLocation? @relation("EmployeePrimaryLocation", fields: [locationId], references: [id])
+  employeeLocations EmployeeLocation[]
   TipDistributionV2 TipDistributionV2[]
   TipEntry          TipEntry[]
   UserSession       UserSession[]
@@ -531,6 +534,20 @@ model Employee {
   @@index([userId])
   @@index([restaurantId, userId])
   @@index([locationId])
+}
+
+model EmployeeLocation {
+  id         String             @id @default(cuid())
+  employeeId String             @map("employee_id")
+  locationId String             @map("location_id")
+  assignedAt DateTime           @default(now()) @map("assigned_at")
+  employee   Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  location   RestaurantLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, locationId])
+  @@index([employeeId])
+  @@index([locationId])
+  @@map("employee_locations")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -576,9 +593,10 @@ model RestaurantLocation {
   restaurantId String
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  restaurants  Restaurant   @relation(fields: [restaurantId], references: [id])
-  Employee     Employee[]
-  TipEntry     TipEntry[]
+  restaurants       Restaurant         @relation(fields: [restaurantId], references: [id])
+  Employee          Employee[]         @relation("EmployeePrimaryLocation")
+  employeeLocations EmployeeLocation[]
+  TipEntry          TipEntry[]
 
   @@unique([restaurantId, name])
   @@index([restaurantId, sortOrder])

@@ -45,10 +45,13 @@ export async function POST(request: NextRequest) {
     })
 
     // Crea candidato (richiede restaurantId obbligatorio dallo schema)
+    const candidateNameParts = name.trim().split(/\s+/)
     const candidate = await prisma.user.create({
       data: {
         email,
         name,
+        firstName: candidateNameParts[0] ?? null,
+        lastName: candidateNameParts.length > 1 ? candidateNameParts.slice(1).join(' ') : null,
         password: hashedPassword,
         role: 'DIPENDENTE',
         userType: 'CANDIDATE',
