@@ -87,7 +87,7 @@ export default function TopBar() {
         'analytics': 'Analytics',
         'notifications': 'Notifiche',
         'settings': 'Impostazioni',
-        'company': 'La mia attività',
+        'company': 'Azienda',
         'subscription': 'Abbonamenti',
         'admin': 'Amministrazione',
         'me': 'Profilo',

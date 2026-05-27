@@ -130,7 +130,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
         },
         {
           icon: '🏢',
-          label: 'La mia attività',
+          label: 'Azienda',
           path: '/company',
           color: '#636E72',
           visible: canCompany,

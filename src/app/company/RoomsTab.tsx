@@ -30,6 +30,7 @@ type RoomFormState = {
   tables: number
   icon: string
   isActive: boolean
+  openingHours: OpeningHours
 }
 
 const emptyForm = (): RoomFormState => ({
@@ -40,6 +41,7 @@ const emptyForm = (): RoomFormState => ({
   tables: 0,
   icon: '🍽️',
   isActive: true,
+  openingHours: getDefaultOpeningHours(),
 })
 
 type RoomsTabProps = {
@@ -107,6 +109,12 @@ export default function RoomsTab({
   const totalCapacity = activeLocations.reduce((s, l) => s + (l.capacity ?? 0), 0)
   const totalTables = activeLocations.reduce((s, l) => s + (l.tables ?? 0), 0)
 
+  const closeModal = () => {
+    setShowModal(false)
+    setEditingId(null)
+    setForm(emptyForm())
+  }
+
   const openCreate = () => {
     setEditingId(null)
     setForm(emptyForm())
@@ -123,8 +131,28 @@ export default function RoomsTab({
       tables: loc.tables ?? 0,
       icon: loc.icon ?? '🍽️',
       isActive: loc.isActive,
+      openingHours: { ...loc.openingHours },
     })
     setShowModal(true)
+  }
+
+  const updateFormHours = (
+    day: DayId,
+    field: 'open' | 'close' | 'isClosed',
+    value: string | boolean
+  ) => {
+    setForm((f) => {
+      const dayHours = { ...f.openingHours[day] }
+      if (field === 'isClosed') {
+        dayHours.isClosed = Boolean(value)
+      } else {
+        dayHours[field] = String(value)
+      }
+      return {
+        ...f,
+        openingHours: { ...f.openingHours, [day]: dayHours },
+      }
+    })
   }
 
   const patchLocation = async (locationId: string, body: Record<string, unknown>) => {
@@ -155,12 +183,17 @@ export default function RoomsTab({
     if (!restaurantId) return
     if (!form.name.trim() || !form.outletName.trim()) {
       onMessage('❌ Nome sala e punto ristoro sono obbligatori')
+      setTimeout(() => onMessage(''), 4000)
       return
     }
-    if (form.capacity <= 0 || form.tables <= 0) {
-      onMessage('❌ Capacità e tavoli devono essere maggiori di zero')
+    if (!editingId && (form.capacity <= 0 || form.tables <= 0)) {
+      onMessage('❌ Capacità e tavoli sono obbligatori per una nuova sala')
+      setTimeout(() => onMessage(''), 4000)
       return
     }
+
+    const capacityPayload = form.capacity > 0 ? form.capacity : null
+    const tablesPayload = form.tables > 0 ? form.tables : null
 
     setSaving(true)
     try {
@@ -175,10 +208,11 @@ export default function RoomsTab({
               name: form.name.trim(),
               outletName: form.outletName.trim(),
               type: form.type,
-              capacity: form.capacity,
-              tables: form.tables,
+              capacity: capacityPayload,
+              tables: tablesPayload,
               icon: form.icon,
               isActive: form.isActive,
+              openingHours: form.openingHours,
             }),
           }
         )
@@ -187,6 +221,7 @@ export default function RoomsTab({
           throw new Error((data as { error?: string }).error || 'Salvataggio fallito')
         }
         onMessage('✅ Sala aggiornata')
+        setTimeout(() => onMessage(''), 3000)
       } else {
         const res = await fetch(`/api/restaurants/${restaurantId}/locations`, {
           method: 'POST',
@@ -196,28 +231,36 @@ export default function RoomsTab({
             name: form.name.trim(),
             outletName: form.outletName.trim(),
             type: form.type,
-            capacity: form.capacity,
-            tables: form.tables,
+            capacity: capacityPayload,
+            tables: tablesPayload,
             icon: form.icon,
             isActive: form.isActive,
-            openingHours: getDefaultOpeningHours(),
+            openingHours: form.openingHours,
           }),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          throw new Error((data as { error?: string }).error || 'Creazione fallita')
+          const details = (data as { details?: { fieldErrors?: Record<string, string[]> } })
+            .details?.fieldErrors
+          const detailMsg = details
+            ? Object.values(details).flat().join(', ')
+            : ''
+          throw new Error(
+            (data as { error?: string }).error ||
+              detailMsg ||
+              'Creazione fallita'
+          )
         }
         onMessage('✅ Sala creata')
+        setTimeout(() => onMessage(''), 3000)
       }
-      setShowModal(false)
-      setForm(emptyForm())
-      setEditingId(null)
+      closeModal()
       await loadLocations()
     } catch (e) {
       onMessage(`❌ ${e instanceof Error ? e.message : 'Errore'}`)
+      setTimeout(() => onMessage(''), 5000)
     } finally {
       setSaving(false)
-      setTimeout(() => onMessage(''), 3000)
     }
   }
 
@@ -554,10 +597,12 @@ export default function RoomsTab({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Capacità</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Capacità{editingId ? ' (opz.)' : ''}
+                  </label>
                   <input
                     type="number"
-                    min={1}
+                    min={0}
                     value={form.capacity || ''}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, capacity: parseInt(e.target.value, 10) || 0 }))
@@ -566,10 +611,12 @@ export default function RoomsTab({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tavoli</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tavoli{editingId ? ' (opz.)' : ''}
+                  </label>
                   <input
                     type="number"
-                    min={1}
+                    min={0}
                     value={form.tables || ''}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, tables: parseInt(e.target.value, 10) || 0 }))
@@ -595,6 +642,55 @@ export default function RoomsTab({
                   ))}
                 </div>
               </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">🕐 Orari di apertura</h4>
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {DAYS_OF_WEEK.map((day) => {
+                    const d = form.openingHours[day.id]
+                    return (
+                      <div
+                        key={day.id}
+                        className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg p-2"
+                      >
+                        <div className="w-24 text-sm font-medium text-gray-900 shrink-0">
+                          {day.label}
+                        </div>
+                        <label className="flex items-center gap-1.5 shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={!d.isClosed}
+                            onChange={(e) =>
+                              updateFormHours(day.id, 'isClosed', !e.target.checked)
+                            }
+                            className="w-4 h-4 text-orange-600 rounded"
+                          />
+                          <span className="text-xs text-gray-600">Aperto</span>
+                        </label>
+                        {!d.isClosed ? (
+                          <>
+                            <input
+                              type="time"
+                              value={d.open}
+                              onChange={(e) => updateFormHours(day.id, 'open', e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                            <span className="text-gray-400 text-sm">–</span>
+                            <input
+                              type="time"
+                              value={d.close}
+                              onChange={(e) => updateFormHours(day.id, 'close', e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </>
+                        ) : (
+                          <span className="text-red-600 text-sm font-medium">Chiuso</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -607,11 +703,7 @@ export default function RoomsTab({
               <div className="flex gap-3 mt-6">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowModal(false)
-                    setEditingId(null)
-                    setForm(emptyForm())
-                  }}
+                  onClick={closeModal}
                   className="flex-1 py-2 border-2 border-gray-300 rounded-lg font-medium text-gray-700"
                 >
                   Annulla
