@@ -1,571 +1,726 @@
 'use client'
+
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
-// Accesso consentito a tutti gli utenti autenticati
-import { safeSum } from '@/lib/formatNumber'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatEuro } from '@/lib/utils'
 
-interface PayrollAnalysis {
-  employeeName: string
-  month: string
-  year: string
-  grossSalary: number
-  netSalary: number
-  deductions: Array<{
-    type: string
-    amount: number
-    description: string
-  }>
-  bonuses: Array<{
-    type: string
-    amount: number
-    description: string
-  }>
-  errors: Array<{
-    type: 'error' | 'warning' | 'info'
-    message: string
-    suggestion?: string
-  }>
-  recommendations: Array<{
-    category: 'deduction' | 'bonus' | 'optimization'
-    title: string
-    description: string
-    potentialSavings?: number
-  }>
+// ── Types ──────────────────────────────────────────────────────────────────
+
+type Anomaly = {
+  severity: 'error' | 'warning' | 'info'
+  code: string
+  message: string
+  suggestion: string
 }
 
-interface PayrollDocument {
+type Recommendation = {
+  category: 'deduction' | 'bonus' | 'optimization' | 'seniority' | 'fiscal'
+  title: string
+  description: string
+  potentialSavings: number
+}
+
+type CcnlComparison = {
+  theoreticalBase: number
+  actualBase: number
+  delta: number
+  deltaPercent: number
+  overtimeCorrect: boolean
+  overtimeNote: string
+  seniority: {
+    yearsMatured: number
+    expectedMonthlyScatto: number
+    scattoApplied: boolean
+    nextScattoDate: string
+  }
+}
+
+type FiscalAnalysis = {
+  bonus100Eligible: boolean
+  bonus100Note: string
+  tratIntegrativo: number
+  tratIntegrativoNote: string
+  figlioDetrazioni: number
+  coniugeDetrazioni: number
+  detrazioniMancanti: string
+  stima730: {
+    estimatedRefundOrDebt: number
+    confidence: 'low' | 'medium' | 'high'
+    note: string
+  }
+}
+
+type Extraction = {
+  month: string
+  year: string
+  grossAmount: number
+  netAmount: number
+  inpsTax: number
+  irpefTax: number
+  overtimeHours: number
+  overtimePay: number
+  nightPay: number
+  holidayPay: number
+  manceDichiarate: number
+  bonuses: Array<{ type: string; amount: number }>
+  deductions: Array<{ type: string; amount: number; description: string }>
+}
+
+type AiAnalysis = {
+  extraction: Extraction
+  ccnlComparison: CcnlComparison
+  fiscalAnalysis: FiscalAnalysis
+  anomalies: Anomaly[]
+  recommendations: Recommendation[]
+}
+
+type PayslipRecord = {
   id: string
-  type: 'busta_paga' | 'cu' | 'analisi'
-  month: string
-  year: string
+  month: number
+  year: number
   fileName: string
-  uploadDate: string
-  fileSize: number
-  status: 'uploaded' | 'processed' | 'error'
-  downloadUrl?: string
-  analysis?: PayrollAnalysis
+  netAmount: number
+  grossAmount: number
+  aiAnalysis: AiAnalysis
+  anomalies: Anomaly[]
+  ccnlComparison: CcnlComparison
+  fiscalAnalysis: FiscalAnalysis
+  createdAt: string
 }
 
-export default function PayrollSection() {
-  const { data: session } = useSession()
-  
-  const [isScanning, setIsScanning] = useState(false)
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
-  const [analysis, setAnalysis] = useState<PayrollAnalysis | null>(null)
-  const [scanHistory, setScanHistory] = useState<PayrollAnalysis[]>([])
-  const [documents, setDocuments] = useState<PayrollDocument[]>([])
-  const [selectedTab, setSelectedTab] = useState<'scan' | 'history' | 'documents'>('scan')
+type SubscriptionInfo = {
+  status: 'FREE' | 'PREMIUM' | 'EXPIRED'
+  periodEnd: string | null
+}
 
-  // Carica storico scansioni
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('payroll_scan_history')
-      if (saved) {
-        setScanHistory(JSON.parse(saved))
-      }
-    } catch (error) {
-      console.error('Error loading scan history:', error)
-    }
-  }, [])
+// ── Helpers ────────────────────────────────────────────────────────────────
 
-  // Carica documenti storici
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('payroll_documents_history')
-      if (saved) {
-        setDocuments(JSON.parse(saved))
-      } else {
-        // Dati di esempio per demo
-        const mockDocuments: PayrollDocument[] = [
-          {
-            id: 'doc_1',
-            type: 'busta_paga',
-            month: 'Dicembre',
-            year: '2024',
-            fileName: 'Busta_Paga_Dicembre_2024.pdf',
-            uploadDate: '2024-12-01',
-            fileSize: 245760,
-            status: 'processed',
-            downloadUrl: '#'
-          },
-          {
-            id: 'doc_2',
-            type: 'cu',
-            month: 'Dicembre',
-            year: '2024',
-            fileName: 'CU_Dicembre_2024.pdf',
-            uploadDate: '2024-12-15',
-            fileSize: 156432,
-            status: 'processed',
-            downloadUrl: '#'
-          },
-          {
-            id: 'doc_3',
-            type: 'analisi',
-            month: 'Novembre',
-            year: '2024',
-            fileName: 'Analisi_Payroll_Novembre_2024.pdf',
-            uploadDate: '2024-11-30',
-            fileSize: 321654,
-            status: 'processed',
-            downloadUrl: '#'
-          }
-        ]
-        setDocuments(mockDocuments)
-        localStorage.setItem('payroll_documents_history', JSON.stringify(mockDocuments))
-      }
-    } catch (error) {
-      console.error('Error loading documents:', error)
-    }
-  }, [])
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+  })
+}
 
-  // ✅ HELPER: Calcolo somma detrazioni sicuro
-  const calculateTotalDeductions = (deductions: Array<{amount: number}>) => {
-    if (!deductions || deductions.length === 0) return 0
-    return safeSum(...deductions.map(d => d.amount))
-  }
+const MONTH_NAMES = [
+  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
+]
 
-  // ✅ HELPER: Calcolo somma bonus sicuro
-  const calculateTotalBonuses = (bonuses: Array<{amount: number}>) => {
-    if (!bonuses || bonuses.length === 0) return 0
-    return safeSum(...bonuses.map(b => b.amount))
-  }
+function semaphore(severity: 'error' | 'warning' | 'info') {
+  if (severity === 'error') return '🔴'
+  if (severity === 'warning') return '🟡'
+  return '🟢'
+}
 
-  // ✅ HELPER: Formattazione file size sicura
-  const formatFileSize = (bytes: number | undefined | null): string => {
-    if (bytes == null || bytes === 0 || !isFinite(bytes)) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    const size = bytes / Math.pow(k, i)
-    return `${size.toFixed(2)} ${sizes[i]}`
-  }
+function deltaColor(delta: number) {
+  if (delta < -10) return 'text-red-600'
+  if (delta < 0) return 'text-orange-500'
+  return 'text-green-600'
+}
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setUploadedFile(file)
-    }
-  }
+function stima730Color(amount: number) {
+  if (amount > 0) return 'text-green-700'
+  if (amount < 0) return 'text-red-600'
+  return 'text-gray-600'
+}
 
-  const handleScanDocument = async () => {
-    if (!uploadedFile) return
+const CATEGORY_ICON: Record<string, string> = {
+  deduction: '📋',
+  bonus: '💰',
+  optimization: '⚡',
+  seniority: '📈',
+  fiscal: '🧾',
+}
 
-    setIsScanning(true)
-    
-    try {
-      // Simula scansione AI (in produzione sarebbe una chiamata API)
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      
-      // Genera analisi mock
-      const mockAnalysis: PayrollAnalysis = {
-        employeeName: session?.user?.name || 'Dipendente',
-        month: 'Gennaio',
-        year: '2025',
-        grossSalary: 2500.00,
-        netSalary: 1850.00,
-        deductions: [
-          { type: 'INPS', amount: 275.00, description: 'Contributi previdenziali' },
-          { type: 'IRPEF', amount: 375.00, description: 'Imposta sul reddito' }
-        ],
-        bonuses: [
-          { type: 'Produzione', amount: 150.00, description: 'Bonus produzione mensile' },
-          { type: 'Puntualità', amount: 50.00, description: 'Bonus puntualità' }
-        ],
-        errors: [
-          { type: 'warning', message: 'Contributo INPS leggermente superiore alla media', suggestion: 'Verificare il calcolo del reddito imponibile' },
-          { type: 'info', message: 'Bonus produzione applicato correttamente' }
-        ],
-        recommendations: [
-          {
-            category: 'optimization',
-            title: 'Ottimizzazione fiscale',
-            description: 'Considerare l\'applicazione di detrazioni per spese mediche',
-            potentialSavings: 120.00
-          },
-          {
-            category: 'bonus',
-            title: 'Bonus performance',
-            description: 'Valutare l\'applicazione di bonus per obiettivi raggiunti',
-            potentialSavings: 200.00
-          }
-        ]
-      }
-      
-      setAnalysis(mockAnalysis)
-      
-      // Salva nello storico
-      const updatedHistory = [mockAnalysis, ...scanHistory]
-      setScanHistory(updatedHistory)
-      localStorage.setItem('payroll_scan_history', JSON.stringify(updatedHistory))
-      
-    } catch (error) {
-      console.error('Errore nella scansione:', error)
-    } finally {
-      setIsScanning(false)
-    }
-  }
+// ── Sub-components ─────────────────────────────────────────────────────────
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'processed': return 'bg-green-100 text-green-800'
-      case 'uploaded': return 'bg-blue-100 text-blue-800'
-      case 'error': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
+function UploadZone({
+  onFile,
+  file,
+}: {
+  onFile: (f: File) => void
+  file: File | null
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'processed': return 'Elaborato'
-      case 'uploaded': return 'Caricato'
-      case 'error': return 'Errore'
-      default: return status
-    }
-  }
-
-  const getErrorIcon = (type: string) => {
-    switch (type) {
-      case 'error': return '❌'
-      case 'warning': return '⚠️'
-      case 'info': return 'ℹ️'
-      default: return '📋'
-    }
-  }
-
-  const getRecommendationIcon = (category: string) => {
-    switch (category) {
-      case 'deduction': return '💰'
-      case 'bonus': return '🎯'
-      case 'optimization': return '⚡'
-      default: return '💡'
-    }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragging(false)
+    const f = e.dataTransfer.files[0]
+    if (f) onFile(f)
   }
 
   return (
-      <div className="bg-white rounded-lg shadow">
-        {/* Tabs Navigation */}
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            <button
-              onClick={() => setSelectedTab('scan')}
-              className={`flex-1 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${
-                selectedTab === 'scan'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <span className="text-xl mr-2">🤖</span>
-              Scansione
-            </button>
-            <button
-              onClick={() => setSelectedTab('history')}
-              className={`flex-1 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${
-                selectedTab === 'history'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <span className="text-xl mr-2">📊</span>
-              Storico
-            </button>
-            <button
-              onClick={() => setSelectedTab('documents')}
-              className={`flex-1 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${
-                selectedTab === 'documents'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <span className="text-xl mr-2">📁</span>
-              Documenti
-            </button>
-          </nav>
+    <div
+      onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={handleDrop}
+      onClick={() => inputRef.current?.click()}
+      className={`cursor-pointer border-2 border-dashed rounded-xl p-8 text-center transition ${
+        dragging ? 'border-orange-400 bg-orange-50' : file ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50'
+      }`}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f) }}
+      />
+      {file ? (
+        <div>
+          <p className="text-2xl mb-2">📄</p>
+          <p className="font-semibold text-green-700">{file.name}</p>
+          <p className="text-sm text-gray-500 mt-1">{(file.size / 1024).toFixed(0)} KB · clicca per cambiare</p>
+        </div>
+      ) : (
+        <div>
+          <p className="text-4xl mb-3">📤</p>
+          <p className="font-semibold text-gray-700">Trascina o clicca per caricare la busta paga</p>
+          <p className="text-sm text-gray-400 mt-1">PDF, JPG o PNG · max 8 MB</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PremiumBanner() {
+  return (
+    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
+      <div className="flex items-start gap-4">
+        <span className="text-4xl">⭐</span>
+        <div className="flex-1">
+          <h3 className="text-lg font-bold mb-1">Piano Premium richiesto</h3>
+          <p className="text-blue-100 text-sm mb-4">
+            L'analisi AI della busta paga con confronto CCNL è disponibile solo per gli abbonati Premium.
+            Attiva il piano per €1,99/mese e ottieni 10 analisi mensili, confronto CCNL, ottimizzazioni fiscali e stima 730.
+          </p>
+          <a
+            href="/subscription"
+            className="inline-block bg-white text-blue-700 font-semibold px-5 py-2 rounded-lg hover:bg-blue-50 transition text-sm"
+          >
+            Attiva Premium →
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AnalysisResult({ record }: { record: PayslipRecord }) {
+  const ai = record.aiAnalysis
+  const ext = ai?.extraction
+  const ccnl = record.ccnlComparison ?? ai?.ccnlComparison
+  const fiscal = record.fiscalAnalysis ?? ai?.fiscalAnalysis
+  const anomalies = (record.anomalies ?? ai?.anomalies ?? []) as Anomaly[]
+  const recommendations = (ai?.recommendations ?? []) as Recommendation[]
+
+  const errors = anomalies.filter((a) => a.severity === 'error')
+  const warnings = anomalies.filter((a) => a.severity === 'warning')
+  const infos = anomalies.filter((a) => a.severity === 'info')
+
+  const overallStatus =
+    errors.length > 0 ? 'error' : warnings.length > 0 ? 'warning' : 'info'
+
+  return (
+    <div className="space-y-5">
+      {/* ── Summary header ────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">
+              {ext?.month} {ext?.year ?? record.year}
+            </h3>
+            <p className="text-sm text-gray-400">{record.fileName}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{semaphore(overallStatus)}</span>
+            <span className={`text-sm font-medium ${
+              overallStatus === 'error' ? 'text-red-600' : overallStatus === 'warning' ? 'text-orange-500' : 'text-green-600'
+            }`}>
+              {overallStatus === 'error' ? `${errors.length} errori` : overallStatus === 'warning' ? `${warnings.length} avvisi` : 'OK'}
+            </span>
+          </div>
         </div>
 
-        <div className="p-6">
-          {/* Tab Scansione */}
-          {selectedTab === 'scan' && (
-            <div className="space-y-6">
-              {/* Upload File */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition">
-                <div className="text-4xl mb-4">📄</div>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">Carica Documento Payroll</h4>
-                <p className="text-gray-600 mb-4">
-                  Carica busta paga, CU o altri documenti per l&apos;analisi AI
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs text-gray-500 mb-1">Lordo</p>
+            <p className="text-lg font-bold text-gray-900">{formatEuro(record.grossAmount || ext?.grossAmount || 0)}</p>
+          </div>
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <p className="text-xs text-gray-500 mb-1">Netto</p>
+            <p className="text-lg font-bold text-green-700">{formatEuro(record.netAmount || ext?.netAmount || 0)}</p>
+          </div>
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <p className="text-xs text-gray-500 mb-1">INPS</p>
+            <p className="text-lg font-bold text-blue-700">{formatEuro(ext?.inpsTax ?? 0)}</p>
+          </div>
+          <div className="text-center p-3 bg-purple-50 rounded-lg">
+            <p className="text-xs text-gray-500 mb-1">IRPEF</p>
+            <p className="text-lg font-bold text-purple-700">{formatEuro(ext?.irpefTax ?? 0)}</p>
+          </div>
+        </div>
+
+        {/* Extra voci */}
+        {((ext?.overtimePay ?? 0) > 0 || (ext?.nightPay ?? 0) > 0 || (ext?.manceDichiarate ?? 0) > 0) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(ext?.overtimePay ?? 0) > 0 && (
+              <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                Straordinari {formatEuro(ext!.overtimePay)} ({ext?.overtimeHours}h)
+              </span>
+            )}
+            {(ext?.nightPay ?? 0) > 0 && (
+              <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+                Notturno {formatEuro(ext!.nightPay)}
+              </span>
+            )}
+            {(ext?.manceDichiarate ?? 0) > 0 && (
+              <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                Mance dichiarate {formatEuro(ext!.manceDichiarate)}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Anomalies ─────────────────────────────────────────────────── */}
+      {anomalies.length > 0 && (
+        <div className="bg-white rounded-xl border border-red-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 bg-red-50 border-b border-red-100">
+            <h4 className="font-semibold text-red-700">Anomalie rilevate ({anomalies.length})</h4>
+          </div>
+          <div className="divide-y">
+            {anomalies.map((a, i) => (
+              <div key={i} className="px-5 py-4 flex gap-3">
+                <span className="text-xl flex-shrink-0">{semaphore(a.severity)}</span>
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">{a.message}</p>
+                  {a.suggestion && (
+                    <p className="text-sm text-gray-500 mt-0.5">→ {a.suggestion}</p>
+                  )}
+                  <span className="inline-block mt-1 text-xs text-gray-400 font-mono">{a.code}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── CCNL comparison ───────────────────────────────────────────── */}
+      {ccnl && (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <div className="px-5 py-3 bg-gray-50 border-b">
+            <h4 className="font-semibold text-gray-800">Confronto CCNL Turismo 2026</h4>
+          </div>
+          <div className="p-5 space-y-3">
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div className="text-center p-3 rounded-lg bg-gray-50">
+                <p className="text-xs text-gray-500 mb-1">Tabellare teorico</p>
+                <p className="text-base font-bold text-gray-700">{formatEuro(ccnl.theoreticalBase)}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-gray-50">
+                <p className="text-xs text-gray-500 mb-1">Base effettiva</p>
+                <p className="text-base font-bold text-gray-700">{formatEuro(ccnl.actualBase)}</p>
+              </div>
+              <div className={`text-center p-3 rounded-lg ${ccnl.delta < 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+                <p className="text-xs text-gray-500 mb-1">Differenza</p>
+                <p className={`text-base font-bold ${deltaColor(ccnl.delta)}`}>
+                  {ccnl.delta >= 0 ? '+' : ''}{formatEuro(ccnl.delta)}
+                  <span className="text-xs ml-1">({ccnl.deltaPercent >= 0 ? '+' : ''}{ccnl.deltaPercent.toFixed(1)}%)</span>
                 </p>
-                
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload"
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer"
-                >
-                  📎 Seleziona File
-                </label>
-                
-                {uploadedFile && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-700">
-                      <strong>File selezionato:</strong> {uploadedFile.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Dimensione: {formatFileSize(uploadedFile.size)}
-                    </p>
+              </div>
+            </div>
+
+            {/* Straordinari */}
+            <div className={`flex items-center gap-2 p-3 rounded-lg ${ccnl.overtimeCorrect ? 'bg-green-50' : 'bg-amber-50'}`}>
+              <span>{ccnl.overtimeCorrect ? '🟢' : '🟡'}</span>
+              <span className="text-sm">Straordinari: {ccnl.overtimeNote || (ccnl.overtimeCorrect ? 'Corretti' : 'Da verificare')}</span>
+            </div>
+
+            {/* Scatti anzianità */}
+            {ccnl.seniority && (
+              <div className={`p-3 rounded-lg ${ccnl.seniority.scattoApplied ? 'bg-green-50' : ccnl.seniority.expectedMonthlyScatto > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                <p className="text-sm font-medium text-gray-800">
+                  {ccnl.seniority.scattoApplied ? '🟢' : ccnl.seniority.expectedMonthlyScatto > 0 ? '🔴' : '🟢'}{' '}
+                  Anzianità: {ccnl.seniority.yearsMatured} anni maturati
+                </p>
+                {ccnl.seniority.expectedMonthlyScatto > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Scatto atteso: {formatEuro(ccnl.seniority.expectedMonthlyScatto)}/mese
+                    {!ccnl.seniority.scattoApplied && ' — non applicato in busta'}
+                    {ccnl.seniority.nextScattoDate && ` · Prossimo: ${ccnl.seniority.nextScattoDate}`}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Fiscal analysis ───────────────────────────────────────────── */}
+      {fiscal && (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <div className="px-5 py-3 bg-gray-50 border-b">
+            <h4 className="font-semibold text-gray-800">Analisi fiscale e detrazioni</h4>
+          </div>
+          <div className="p-5 space-y-3">
+            {/* Bonus 100€ */}
+            <div className={`flex items-start gap-3 p-3 rounded-lg ${fiscal.bonus100Eligible ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
+              <span>{fiscal.bonus100Eligible ? '🟡' : '🟢'}</span>
+              <div>
+                <p className="text-sm font-medium text-gray-800">Bonus 100€ (ex tredicesima)</p>
+                <p className="text-xs text-gray-500 mt-0.5">{fiscal.bonus100Note}</p>
+              </div>
+            </div>
+
+            {/* Trattamento integrativo */}
+            <div className={`flex items-start gap-3 p-3 rounded-lg ${fiscal.tratIntegrativo > 0 ? 'bg-green-50' : 'bg-gray-50'}`}>
+              <span>{fiscal.tratIntegrativo > 0 ? '🟢' : '🟡'}</span>
+              <div>
+                <p className="text-sm font-medium text-gray-800">Trattamento integrativo</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {fiscal.tratIntegrativo > 0 ? `${formatEuro(fiscal.tratIntegrativo)}/mese applicato · ` : ''}{fiscal.tratIntegrativoNote}
+                </p>
+              </div>
+            </div>
+
+            {/* Detrazioni figli/coniuge */}
+            {(fiscal.figlioDetrazioni > 0 || fiscal.coniugeDetrazioni > 0) && (
+              <div className="grid grid-cols-2 gap-3">
+                {fiscal.figlioDetrazioni > 0 && (
+                  <div className="p-3 bg-blue-50 rounded-lg text-center">
+                    <p className="text-xs text-gray-500">Detr. figli a carico</p>
+                    <p className="font-bold text-blue-700">{formatEuro(fiscal.figlioDetrazioni)}/mese</p>
+                  </div>
+                )}
+                {fiscal.coniugeDetrazioni > 0 && (
+                  <div className="p-3 bg-pink-50 rounded-lg text-center">
+                    <p className="text-xs text-gray-500">Detr. coniuge a carico</p>
+                    <p className="font-bold text-pink-700">{formatEuro(fiscal.coniugeDetrazioni)}/mese</p>
                   </div>
                 )}
               </div>
+            )}
 
-              {/* Pulsante Scansione */}
-              {uploadedFile && (
-                <div className="text-center">
-                  <button
-                    onClick={handleScanDocument}
-                    disabled={isScanning}
-                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isScanning ? (
-                      <>
-                        <span className="animate-spin mr-2">⏳</span>
-                        Analizzando documento...
-                      </>
-                    ) : (
-                      <>
-                        🤖 Avvia Analisi AI
-                      </>
+            {/* Detrazioni mancanti */}
+            {fiscal.detrazioniMancanti && fiscal.detrazioniMancanti !== 'non determinato' && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs font-medium text-yellow-800">⚠️ Detrazioni non applicate o da verificare:</p>
+                <p className="text-xs text-yellow-700 mt-0.5">{fiscal.detrazioniMancanti}</p>
+              </div>
+            )}
+
+            {/* Stima 730 */}
+            {fiscal.stima730 && (
+              <div className={`p-4 rounded-xl border-2 ${fiscal.stima730.estimatedRefundOrDebt >= 0 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {fiscal.stima730.estimatedRefundOrDebt >= 0 ? '🧾 Stima rimborso 730' : '🧾 Stima debito 730'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">Affidabilità: {fiscal.stima730.confidence}</p>
+                  </div>
+                  <p className={`text-2xl font-bold ${stima730Color(fiscal.stima730.estimatedRefundOrDebt)}`}>
+                    {fiscal.stima730.estimatedRefundOrDebt >= 0 ? '+' : ''}{formatEuro(fiscal.stima730.estimatedRefundOrDebt)}
+                  </p>
+                </div>
+                {fiscal.stima730.note && (
+                  <p className="text-xs text-gray-600 mt-2 pt-2 border-t border-current/20">{fiscal.stima730.note}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Recommendations ───────────────────────────────────────────── */}
+      {recommendations.length > 0 && (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <div className="px-5 py-3 bg-gray-50 border-b">
+            <h4 className="font-semibold text-gray-800">Ottimizzazioni consigliate</h4>
+          </div>
+          <div className="divide-y">
+            {recommendations.map((r, i) => (
+              <div key={i} className="px-5 py-4 flex gap-3">
+                <span className="text-xl flex-shrink-0">{CATEGORY_ICON[r.category] ?? '💡'}</span>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-gray-900 text-sm">{r.title}</p>
+                    {r.potentialSavings > 0 && (
+                      <span className="text-green-600 text-sm font-bold flex-shrink-0">
+                        +{formatEuro(r.potentialSavings)}/anno
+                      </span>
                     )}
-                  </button>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-0.5">{r.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
+
+export default function PayrollSection() {
+  const { data: session } = useSession()
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
+  const [usedThisMonth, setUsedThisMonth] = useState(0)
+  const [remainingThisMonth, setRemainingThisMonth] = useState(10)
+  const [selectedTab, setSelectedTab] = useState<'scan' | 'history'>('scan')
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [currentAnalysis, setCurrentAnalysis] = useState<PayslipRecord | null>(null)
+  const [history, setHistory] = useState<PayslipRecord[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(true)
+
+  const isPremium = subscription?.status === 'PREMIUM'
+
+  // ── Load subscription ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!session?.user?.id) return
+    fetch('/api/stripe/subscription', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.employee) {
+          setSubscription({ status: data.employee.status, periodEnd: data.employee.periodEnd ?? null })
+        } else {
+          setSubscription({ status: 'FREE', periodEnd: null })
+        }
+      })
+      .catch(() => setSubscription({ status: 'FREE', periodEnd: null }))
+  }, [session?.user?.id])
+
+  // ── Load history ───────────────────────────────────────────────────────
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetch('/api/payslip/history', { credentials: 'include' })
+      if (!res.ok) throw new Error()
+      const data = (await res.json()) as {
+        analyses: PayslipRecord[]
+        usedThisMonth: number
+        remainingThisMonth: number
+      }
+      setHistory(data.analyses)
+      setUsedThisMonth(data.usedThisMonth)
+      setRemainingThisMonth(data.remainingThisMonth)
+    } catch {
+      // silence — history is non-critical
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadHistory()
+  }, [loadHistory])
+
+  // ── Analyze ────────────────────────────────────────────────────────────
+  const handleAnalyze = async () => {
+    if (!uploadedFile) return
+    setIsAnalyzing(true)
+    setError(null)
+    setCurrentAnalysis(null)
+    try {
+      const fileBase64 = await fileToBase64(uploadedFile)
+      const res = await fetch('/api/payslip/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          fileBase64,
+          fileName: uploadedFile.name,
+          mimeType: uploadedFile.type || 'application/pdf',
+        }),
+      })
+      const data = (await res.json()) as {
+        error?: string
+        code?: string
+        upgradeUrl?: string
+        analysis?: PayslipRecord
+        usedThisMonth?: number
+        remainingThisMonth?: number
+      }
+      if (!res.ok) {
+        if (data.code === 'NOT_PREMIUM' || data.code === 'EXPIRED') {
+          setSubscription({ status: 'FREE', periodEnd: null })
+        }
+        throw new Error(data.error ?? 'Errore analisi')
+      }
+      if (data.analysis) {
+        setCurrentAnalysis(data.analysis)
+        setUsedThisMonth(data.usedThisMonth ?? usedThisMonth + 1)
+        setRemainingThisMonth(data.remainingThisMonth ?? Math.max(0, remainingThisMonth - 1))
+        void loadHistory()
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Errore sconosciuto')
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Buste Paga</h1>
+          <p className="text-sm text-gray-500 mt-1">Analisi AI con confronto CCNL Turismo</p>
+        </div>
+        {isPremium && (
+          <div className="text-right">
+            <p className="text-xs text-gray-400">Analisi questo mese</p>
+            <p className="text-sm font-semibold text-gray-700">
+              {usedThisMonth} / 10 usate · <span className="text-green-600">{remainingThisMonth} rimaste</span>
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white rounded-xl shadow-sm border">
+        <div className="border-b flex">
+          {(['scan', 'history'] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setSelectedTab(tab)}
+              className={`flex-1 py-3 text-sm font-medium transition ${
+                selectedTab === tab
+                  ? 'border-b-2 border-orange-500 text-orange-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab === 'scan' ? '🤖 Analisi AI' : '📋 Storico'}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6">
+          {/* ── SCAN TAB ─────────────────────────────────────────────── */}
+          {selectedTab === 'scan' && (
+            <div className="space-y-5">
+              {!isPremium && subscription !== null && <PremiumBanner />}
+
+              {isPremium && remainingThisMonth === 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+                  ⚠️ Hai esaurito le 10 analisi mensili incluse nel piano Premium. Le analisi si ricaricano il 1° del mese.
                 </div>
               )}
 
-              {/* Risultati Analisi */}
-              {analysis && (
-                <div className="space-y-6">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <h4 className="text-lg font-semibold text-green-800 mb-2">
-                      ✅ Analisi Completata
-                    </h4>
-                    <p className="text-green-700">
-                      Documento analizzato con successo per {analysis.employeeName} - {analysis.month} {analysis.year}
-                    </p>
-                  </div>
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                  🔴 {error}
+                </div>
+              )}
 
-                  {/* Riepilogo Finanziario */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-blue-50 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {formatEuro(analysis.grossSalary)}
-                      </div>
-                      <div className="text-sm text-blue-700">Stipendio Lordo</div>
-                    </div>
-                    <div className="bg-red-50 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-red-600">
-                        -{formatEuro(calculateTotalDeductions(analysis.deductions))}
-                      </div>
-                      <div className="text-sm text-red-700">Detrazioni</div>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-green-600">
-                        {formatEuro(analysis.netSalary)}
-                      </div>
-                      <div className="text-sm text-green-700">Stipendio Netto</div>
-                    </div>
-                  </div>
+              {!currentAnalysis && (
+                <div className="space-y-4">
+                  <UploadZone onFile={(f) => { setUploadedFile(f); setError(null) }} file={uploadedFile} />
 
-                  {/* Dettagli Detrazioni e Bonus */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Detrazioni */}
-                    <div className="bg-white border rounded-lg p-4">
-                      <h5 className="font-semibold text-gray-900 mb-3">📉 Detrazioni</h5>
-                      <div className="space-y-2">
-                        {analysis.deductions.map((deduction, index) => (
-                          <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                            <div>
-                              <div className="font-medium text-gray-900">{deduction.type}</div>
-                              <div className="text-sm text-gray-600">{deduction.description}</div>
-                            </div>
-                            <div className="font-semibold text-red-600">
-                              -{formatEuro(deduction.amount)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Bonus */}
-                    <div className="bg-white border rounded-lg p-4">
-                      <h5 className="font-semibold text-gray-900 mb-3">🎯 Bonus</h5>
-                      <div className="space-y-2">
-                        {analysis.bonuses.map((bonus, index) => (
-                          <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                            <div>
-                              <div className="font-medium text-gray-900">{bonus.type}</div>
-                              <div className="text-sm text-gray-600">{bonus.description}</div>
-                            </div>
-                            <div className="font-semibold text-green-600">
-                              +{formatEuro(bonus.amount)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Errori e Avvisi */}
-                  {analysis.errors.length > 0 && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <h5 className="font-semibold text-yellow-800 mb-3">⚠️ Avvisi e Note</h5>
-                      <div className="space-y-2">
-                        {analysis.errors.map((error, index) => (
-                          <div key={index} className="flex items-start gap-2">
-                            <span className="text-lg flex-shrink-0">{getErrorIcon(error.type)}</span>
-                            <div>
-                              <div className="font-medium text-yellow-800">{error.message}</div>
-                              {error.suggestion && (
-                                <div className="text-sm text-yellow-700 mt-1">{error.suggestion}</div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  {uploadedFile && (
+                    <button
+                      type="button"
+                      onClick={() => void handleAnalyze()}
+                      disabled={isAnalyzing || !isPremium || remainingThisMonth === 0}
+                      className="w-full py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Analisi in corso con Claude AI…
+                        </>
+                      ) : (
+                        '🤖 Avvia analisi AI'
+                      )}
+                    </button>
                   )}
+                </div>
+              )}
 
-                  {/* Raccomandazioni */}
-                  {analysis.recommendations.length > 0 && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h5 className="font-semibold text-blue-800 mb-3">💡 Raccomandazioni AI</h5>
-                      <div className="space-y-3">
-                        {analysis.recommendations.map((rec, index) => (
-                          <div key={index} className="flex items-start gap-3">
-                            <span className="text-lg flex-shrink-0">{getRecommendationIcon(rec.category)}</span>
-                            <div className="flex-1">
-                              <div className="font-medium text-blue-800">{rec.title}</div>
-                              <div className="text-sm text-blue-700 mt-1">{rec.description}</div>
-                              {rec.potentialSavings && (
-                                <div className="text-sm font-medium text-green-600 mt-1">
-                                  Potenziale risparmio: {formatEuro(rec.potentialSavings)}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              {currentAnalysis && (
+                <div>
+                  <div className="flex justify-end mb-4">
+                    <button
+                      type="button"
+                      onClick={() => { setCurrentAnalysis(null); setUploadedFile(null) }}
+                      className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+                    >
+                      + Analizza un'altra busta
+                    </button>
+                  </div>
+                  <AnalysisResult record={currentAnalysis} />
                 </div>
               )}
             </div>
           )}
 
-          {/* Tab Storico */}
+          {/* ── HISTORY TAB ──────────────────────────────────────────── */}
           {selectedTab === 'history' && (
             <div className="space-y-4">
-              {scanHistory.length === 0 ? (
+              {historyLoading ? (
                 <div className="text-center py-8">
-                  <div className="text-4xl mb-2">📊</div>
-                  <p className="text-gray-500">Nessuna analisi precedente</p>
-                  <p className="text-sm text-gray-400 mt-1">Carica un documento per iniziare</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto" />
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <p className="text-4xl mb-3">📭</p>
+                  <p className="text-lg font-medium text-gray-500">Nessuna analisi salvata</p>
+                  <p className="text-sm mt-1">Le analisi vengono salvate automaticamente dopo ogni scansione</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {scanHistory.map((item, index) => (
-                    <div key={index} className="border rounded-lg p-4 hover:bg-gray-50 transition">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <h4 className="font-medium text-gray-900">{item.employeeName}</h4>
-                          <p className="text-sm text-gray-600">{item.month} {item.year}</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-gray-900">
-                            {formatEuro(item.netSalary)}
-                          </div>
-                          <div className="text-sm text-gray-600">Netto</div>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600">Lordo:</span>
-                          <div className="font-medium">{formatEuro(item.grossSalary)}</div>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Detrazioni:</span>
-                          <div className="font-medium text-red-600">
-                            -{formatEuro(calculateTotalDeductions(item.deductions))}
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Bonus:</span>
-                          <div className="font-medium text-green-600">
-                            +{formatEuro(calculateTotalBonuses(item.bonuses))}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-                        <span>{item.errors.length} avvisi</span>
-                        <span>{item.recommendations.length} raccomandazioni</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                <>
+                  <p className="text-sm text-gray-500">{history.length} analisi salvate</p>
+                  {history.map((record) => {
+                    const anomalies = (record.anomalies ?? []) as Anomaly[]
+                    const errors = anomalies.filter((a) => a.severity === 'error').length
+                    const warnings = anomalies.filter((a) => a.severity === 'warning').length
+                    const status = errors > 0 ? 'error' : warnings > 0 ? 'warning' : 'info'
 
-          {/* Tab Documenti */}
-          {selectedTab === 'documents' && (
-            <div className="space-y-4">
-              {documents.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="text-4xl mb-2">📁</div>
-                  <p className="text-gray-500">Nessun documento caricato</p>
-                  <p className="text-sm text-gray-400 mt-1">I documenti caricati appariranno qui</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {documents.map((doc) => (
-                    <div key={doc.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="text-2xl">
-                            {doc.type === 'busta_paga' ? '💰' : doc.type === 'cu' ? '📋' : '📊'}
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-gray-900">{doc.fileName}</h4>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span>{doc.month} {doc.year}</span>
-                              <span>{formatFileSize(doc.fileSize)}</span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(doc.status)}`}>
-                                {getStatusLabel(doc.status)}
-                              </span>
+                    return (
+                      <details key={record.id} className="bg-white border rounded-xl overflow-hidden group">
+                        <summary className="px-5 py-4 cursor-pointer flex items-center justify-between hover:bg-gray-50 transition list-none">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{semaphore(status)}</span>
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {MONTH_NAMES[(record.month ?? 1) - 1]} {record.year}
+                              </p>
+                              <p className="text-xs text-gray-400">{record.fileName}</p>
                             </div>
                           </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <p className="font-semibold text-gray-800">{formatEuro(record.netAmount)}</p>
+                              <p className="text-xs text-gray-400">netto</p>
+                            </div>
+                            <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                          </div>
+                        </summary>
+                        <div className="border-t px-5 py-5">
+                          <AnalysisResult record={record} />
                         </div>
-                        
-                        <div className="flex gap-2">
-                          <button className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm">
-                            📥 Scarica
-                          </button>
-                          <button className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 transition text-sm">
-                            🔍 Analizza
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      </details>
+                    )
+                  })}
+                </>
               )}
             </div>
           )}
         </div>
       </div>
+    </div>
   )
 }

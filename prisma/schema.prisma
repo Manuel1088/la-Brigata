@@ -97,6 +97,7 @@ model User {
   leaveEntitlements  LeaveEntitlement[]
   leaveRequests      LeaveRequest[]
   payrolls           Payroll[]
+  payslipAnalyses    PayslipAnalysis[]
   shifts             Shift[]
   swapRequestsMade   ShiftSwapRequest[] @relation("SwapRequester")
   swapRequestsTarget ShiftSwapRequest[] @relation("SwapTarget")
@@ -232,6 +233,25 @@ model Payroll {
 
   @@unique([employeeId, month, year])
   @@map("payrolls")
+}
+
+model PayslipAnalysis {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  month          Int
+  year           Int
+  fileName       String   @map("file_name")
+  netAmount      Decimal  @map("net_amount")
+  grossAmount    Decimal  @map("gross_amount")
+  aiAnalysis     Json     @map("ai_analysis")
+  anomalies      Json
+  ccnlComparison Json     @map("ccnl_comparison")
+  fiscalAnalysis Json     @map("fiscal_analysis")
+  createdAt      DateTime @default(now()) @map("created_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, year, month])
+  @@map("payslip_analyses")
 }
 
 model LeaveRequest {

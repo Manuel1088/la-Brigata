@@ -12,6 +12,7 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.99.0",
     "@hookform/resolvers": "^5.2.1",
     "@prisma/client": "^6.17.0",
     "@stripe/stripe-js": "^9.6.0",

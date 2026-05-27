@@ -559,6 +559,16 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       return
     }
 
+    // Assenze speciali
+    if (['RIPOSO', 'FERIE', 'ROL', 'RO'].includes(shiftId)) {
+      newShifts[cellKey] = { employee: name, time: shiftId, department: selectedDepartment }
+      setShifts(newShifts)
+      void saveShifts(newShifts)
+      setIsShiftSelectorOpen(false)
+      setSelectedEmployee(null)
+      return
+    }
+
     // Turni statici (fallback)
     const shift = departmentShifts[selectedDepartment as keyof typeof departmentShifts]?.find(s => s.id === shiftId)
     
@@ -575,6 +585,18 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       newShifts[cellKey] = { employee: name, time: shift.time, department: selectedDepartment }
     }
 
+    setShifts(newShifts)
+    void saveShifts(newShifts)
+    setIsShiftSelectorOpen(false)
+    setSelectedEmployee(null)
+  }
+
+  const handleRemoveShift = () => {
+    if (!selectedEmployee) return
+    const { name, dayIndex } = selectedEmployee
+    const cellKey = shiftCellKey(name, dayIndex)
+    const newShifts = { ...shifts }
+    delete newShifts[cellKey]
     setShifts(newShifts)
     void saveShifts(newShifts)
     setIsShiftSelectorOpen(false)
@@ -859,10 +881,14 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                           onClick={() => handleCellClick(employee.name, dayIndex)}
                           className={`
                             w-full px-3 py-2 rounded-lg text-sm font-medium transition
-                            ${shift?.time === 'RIPOSO' 
-                              ? 'bg-gray-100 text-gray-600' 
+                            ${shift?.time === 'RIPOSO'
+                              ? 'bg-gray-100 text-gray-600'
                               : shift?.time === 'FERIE'
-                              ? 'bg-red-100 text-red-600'
+                              ? 'bg-green-100 text-green-700'
+                              : shift?.time === 'ROL'
+                              ? 'bg-amber-100 text-amber-700'
+                              : shift?.time === 'RO'
+                              ? 'bg-yellow-100 text-yellow-700'
                               : shift?.time
                               ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                               : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
@@ -888,81 +914,176 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       </div>
 
       {/* Modal selezione turno */}
-      {isShiftSelectorOpen && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">
-              {selectedEmployee.isEdit
-                ? `Modifica turno — ${selectedEmployee.name}`
-                : `Assegna turno — ${selectedEmployee.name}`}
-            </h3>
-            <div className="space-y-2 max-h-72 overflow-y-auto">
-              {/* Turni dal DB (se presenti) */}
-              {dbTemplates.length > 0 && (
-                <>
-                  {dbTemplates.map((tpl) => (
-                    <button
-                      key={tpl.id}
-                      onClick={() => handleShiftSelect(`tpl_${tpl.id}`)}
-                      className="w-full text-left p-3 rounded-lg border hover:bg-orange-50 transition flex items-center gap-3"
-                    >
-                      <span
-                        className="inline-block w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: tpl.color }}
-                      />
-                      <div>
-                        <div className="font-medium text-gray-900">{tpl.name}</div>
-                        <div className="text-sm text-gray-500">{tpl.startTime} – {tpl.endTime}</div>
-                      </div>
-                    </button>
-                  ))}
-                  <div className="border-t my-2" />
-                </>
-              )}
+      {isShiftSelectorOpen && selectedEmployee && (() => {
+        const currentTime = shifts[shiftCellKey(selectedEmployee.name, selectedEmployee.dayIndex)]?.time
 
-              {/* Riposo + Personalizzato sempre presenti */}
-              <button
-                onClick={() => handleShiftSelect('riposo')}
-                className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition"
-              >
-                <div className="font-medium">😴 Riposo</div>
-                <div className="text-sm text-gray-500">Giorno di riposo programmato</div>
-              </button>
-              <button
-                onClick={() => handleShiftSelect('personalizzato')}
-                className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition"
-              >
-                <div className="font-medium">⚙️ Personalizzato</div>
-                <div className="text-sm text-gray-500">Inserisci orario manualmente</div>
-              </button>
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="px-5 pt-5 pb-3 border-b">
+                <h3 className="text-base font-semibold text-gray-900">
+                  {selectedEmployee.isEdit ? 'Modifica turno' : 'Assegna turno'}
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">{selectedEmployee.name}</p>
+                {currentTime && (
+                  <p className="text-xs text-orange-600 font-medium mt-1">
+                    Turno attuale: {currentTime}
+                  </p>
+                )}
+              </div>
 
-              {/* Se non ci sono template nel DB, mostra anche i turni statici */}
-              {dbTemplates.length === 0 &&
-                departmentShifts[selectedDepartment as keyof typeof departmentShifts]
-                  ?.filter((s) => s.id !== 'riposo' && s.id !== 'personalizzato')
-                  .map((shift) => (
-                    <button
-                      key={shift.id}
-                      onClick={() => handleShiftSelect(shift.id)}
-                      className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition"
-                    >
-                      <div className="font-medium">{shift.name}</div>
-                      <div className="text-sm text-gray-600">{shift.time}</div>
-                      <div className="text-xs text-gray-500">{shift.description}</div>
-                    </button>
-                  ))}
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                onClick={() => setIsShiftSelectorOpen(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-              >
-                Annulla
-              </button>
+              {/* Scrollable body */}
+              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+                {/* Turni template dal DB — griglia 2 colonne */}
+                {dbTemplates.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Turni</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {dbTemplates.map((tpl) => {
+                        const tplTime = `${tpl.startTime}-${tpl.endTime}`
+                        const isCurrent = currentTime === tplTime
+                        return (
+                          <button
+                            key={tpl.id}
+                            onClick={() => handleShiftSelect(`tpl_${tpl.id}`)}
+                            style={isCurrent ? { borderColor: tpl.color } : undefined}
+                            className={`relative text-left p-3 rounded-lg border-2 transition hover:shadow-sm ${
+                              isCurrent
+                                ? 'bg-orange-50'
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {isCurrent && (
+                              <span className="absolute top-1.5 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                                style={{ backgroundColor: tpl.color }}>
+                                Attuale
+                              </span>
+                            )}
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span
+                                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: tpl.color }}
+                              />
+                              <span className="text-xs font-medium text-gray-700 truncate">{tpl.name}</span>
+                            </div>
+                            <div className="text-base font-bold text-gray-900 leading-tight">
+                              {tpl.startTime}
+                            </div>
+                            <div className="text-xs text-gray-500">– {tpl.endTime}</div>
+                          </button>
+                        )
+                      })}
+                      {/* Personalizzato */}
+                      <button
+                        onClick={() => handleShiftSelect('personalizzato')}
+                        className="text-left p-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition"
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-xs">⚙️</span>
+                          <span className="text-xs font-medium text-gray-600">Personalizzato</span>
+                        </div>
+                        <div className="text-sm text-gray-400">Inserisci orario</div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback turni statici se nessun template nel DB */}
+                {dbTemplates.length === 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Turni</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {departmentShifts[selectedDepartment as keyof typeof departmentShifts]
+                        ?.filter((s) => s.id !== 'riposo' && s.id !== 'personalizzato')
+                        .map((shift) => {
+                          const isCurrent = currentTime === shift.time
+                          return (
+                            <button
+                              key={shift.id}
+                              onClick={() => handleShiftSelect(shift.id)}
+                              className={`text-left p-3 rounded-lg border-2 transition hover:shadow-sm ${
+                                isCurrent
+                                  ? 'border-blue-400 bg-blue-50'
+                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {isCurrent && (
+                                <span className="block text-[10px] font-bold text-blue-600 mb-0.5">Attuale</span>
+                              )}
+                              <div className="text-xs font-medium text-gray-700 mb-1 truncate">{shift.name}</div>
+                              <div className="text-base font-bold text-gray-900">{shift.time.split('-')[0]}</div>
+                              <div className="text-xs text-gray-500">– {shift.time.split('-')[1]}</div>
+                            </button>
+                          )
+                        })}
+                      <button
+                        onClick={() => handleShiftSelect('personalizzato')}
+                        className="text-left p-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition"
+                      >
+                        <div className="text-xs font-medium text-gray-600 mb-1">⚙️ Personalizzato</div>
+                        <div className="text-sm text-gray-400">Inserisci orario</div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sezione assenze */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Assenze</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { id: 'RIPOSO', label: 'Riposo', short: 'R',  bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300', activeBg: 'bg-gray-200' },
+                      { id: 'FERIE',  label: 'Ferie',  short: 'F',  bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-300', activeBg: 'bg-green-100' },
+                      { id: 'ROL',    label: 'ROL',    short: 'ROL',bg: 'bg-amber-50',  text: 'text-amber-700', border: 'border-amber-300', activeBg: 'bg-amber-100' },
+                      { id: 'RO',     label: 'RO',     short: 'RO', bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-300', activeBg: 'bg-yellow-100' },
+                    ].map((absence) => {
+                      const isCurrent = currentTime === absence.id
+                      return (
+                        <button
+                          key={absence.id}
+                          onClick={() => handleShiftSelect(absence.id)}
+                          className={`py-3 rounded-lg border-2 transition font-semibold text-sm ${
+                            isCurrent
+                              ? `${absence.activeBg} ${absence.text} ${absence.border} border-2`
+                              : `${absence.bg} ${absence.text} border-transparent hover:border-current`
+                          }`}
+                        >
+                          <div className="text-base font-bold">{absence.short}</div>
+                          {isCurrent && (
+                            <div className="text-[10px] font-normal mt-0.5">Attuale</div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-3 border-t flex items-center justify-between gap-2">
+                {currentTime ? (
+                  <button
+                    onClick={handleRemoveShift}
+                    className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition font-medium"
+                  >
+                    🗑 Rimuovi turno
+                  </button>
+                ) : (
+                  <div />
+                )}
+                <button
+                  onClick={() => setIsShiftSelectorOpen(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm"
+                >
+                  Annulla
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Modal richiesta cambio verticale */}
       {isSwapModalOpen && swapSource && (
