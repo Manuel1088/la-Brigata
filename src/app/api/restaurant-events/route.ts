@@ -53,6 +53,7 @@ export async function GET() {
       description: e.description ?? undefined,
       icon: eventIcon(uiType),
       expectedGuests: e.expectedGuests,
+      splitTipsByMeal: e.splitTipsByMeal,
     }
   })
 
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
     type?: string
     description?: string
     expectedGuests?: number
+    splitTipsByMeal?: boolean
   }
   try {
     body = await request.json()
@@ -98,6 +100,7 @@ export async function POST(request: NextRequest) {
   const uiType = body.type ?? 'special'
   const eventType = UI_TO_EVENT_TYPE[uiType] ?? EventType.EVENTO_SPECIALE
   const date = new Date(`${dateStr}T12:00:00.000Z`)
+  const splitTipsByMeal = uiType === 'holiday' ? (body.splitTipsByMeal ?? false) : false
 
   const created = await prisma.restaurantEvent.create({
     data: {
@@ -107,6 +110,7 @@ export async function POST(request: NextRequest) {
       date,
       expectedGuests: typeof body.expectedGuests === 'number' ? body.expectedGuests : 0,
       eventType,
+      splitTipsByMeal,
     },
   })
 
@@ -119,6 +123,7 @@ export async function POST(request: NextRequest) {
       type: uiType,
       description: created.description ?? undefined,
       icon: eventIcon(uiType),
+      splitTipsByMeal: created.splitTipsByMeal,
     },
   })
 }

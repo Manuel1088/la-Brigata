@@ -272,15 +272,16 @@ model CCNLRules {
 }
 
 model RestaurantEvent {
-  id             String             @id @default(cuid())
-  restaurantId   String             @map("restaurant_id")
-  name           String
-  description    String?
-  date           DateTime
-  expectedGuests Int                @default(0) @map("expected_guests")
-  eventType      EventType          @map("event_type")
-  restaurant     Restaurant         @relation(fields: [restaurantId], references: [id])
-  staffNeeded    StaffRequirement[]
+  id               String             @id @default(cuid())
+  restaurantId     String             @map("restaurant_id")
+  name             String
+  description      String?
+  date             DateTime
+  expectedGuests   Int                @default(0) @map("expected_guests")
+  eventType        EventType          @map("event_type")
+  splitTipsByMeal  Boolean            @default(false) @map("split_tips_by_meal")
+  restaurant       Restaurant         @relation(fields: [restaurantId], references: [id])
+  staffNeeded      StaffRequirement[]
 
   @@unique([restaurantId, date, name])
   @@map("restaurant_events")

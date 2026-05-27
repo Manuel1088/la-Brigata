@@ -38,10 +38,12 @@ async function main() {
             date,
             expectedGuests: 0,
             eventType: EventType.FESTA,
+            splitTipsByMeal: true,
           },
           update: {
             description: h.description,
             eventType: EventType.FESTA,
+            splitTipsByMeal: true,
           },
         })
         created++

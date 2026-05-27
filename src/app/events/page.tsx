@@ -11,6 +11,7 @@ interface CompanyEvent {
   type: 'closure' | 'holiday' | 'team_building' | 'special'
   description?: string
   icon: string
+  splitTipsByMeal?: boolean
 }
 
 const EMPTY_FORM = {
@@ -18,6 +19,20 @@ const EMPTY_FORM = {
   date: '',
   type: 'special' as CompanyEvent['type'],
   description: '',
+  splitTipsByMeal: false,
+}
+
+function getEventTypeBadge(type: string) {
+  switch (type) {
+    case 'closure':
+      return { label: 'Chiusura', bg: 'bg-red-100', text: 'text-red-700' }
+    case 'holiday':
+      return { label: 'Festività', bg: 'bg-purple-100', text: 'text-purple-700' }
+    case 'team_building':
+      return { label: 'Aziendale', bg: 'bg-green-100', text: 'text-green-700' }
+    default:
+      return { label: 'Speciale', bg: 'bg-blue-100', text: 'text-blue-700' }
+  }
 }
 
 export default function EventsPage() {
@@ -33,12 +48,10 @@ export default function EventsPage() {
       session?.user?.ccnlLevel ?? null,
       session?.user?.dbGrantedPermissionIds ?? []
     )
-  }, [
-    session?.user?.role,
-    session?.user?.ccnlLevel,
-    session?.user?.dbGrantedPermissionIds,
-  ])
+  }, [session?.user?.role, session?.user?.ccnlLevel, session?.user?.dbGrantedPermissionIds])
 
+  const currentYear = new Date().getFullYear()
+  const [selectedYear, setSelectedYear] = useState(currentYear)
   const [events, setEvents] = useState<CompanyEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -71,6 +84,11 @@ export default function EventsPage() {
     }
     void loadEvents()
   }, [status, session?.user?.id, mayManageCompany, loadEvents, router])
+
+  const eventsForYear = useMemo(
+    () => events.filter((e) => e.date.startsWith(String(selectedYear))),
+    [events, selectedYear]
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -106,73 +124,95 @@ export default function EventsPage() {
 
   if (!session || !mayManageCompany) return null
 
-  const getEventTypeBadge = (type: string) => {
-    switch (type) {
-      case 'closure': return { label: 'Ristorante Chiuso', bg: 'bg-red-100', text: 'text-red-800' }
-      case 'holiday': return { label: 'Festività', bg: 'bg-purple-100', text: 'text-purple-800' }
-      case 'team_building': return { label: 'Evento Aziendale', bg: 'bg-green-100', text: 'text-green-800' }
-      case 'special': return { label: 'Evento Speciale', bg: 'bg-blue-100', text: 'text-blue-800' }
-      default: return { label: 'Altro', bg: 'bg-gray-100', text: 'text-gray-800' }
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="space-y-4">
-          {events.map((event) => {
-            const badge = getEventTypeBadge(event.type)
-            return (
-              <div key={event.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="text-4xl">{event.icon}</div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900 text-lg">{event.name}</h4>
-                      <p className="text-sm text-gray-600">
-                        {new Date(event.date).toLocaleDateString('it-IT', {
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </p>
-                      <span
-                        className={`text-xs ${badge.bg} ${badge.text} px-2 py-1 rounded-full mt-1 inline-block`}
-                      >
-                        {badge.label}
-                      </span>
-                      {event.description && (
-                        <p className="text-sm text-gray-500 mt-2">{event.description}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
 
+        {/* Year navigation */}
+        <div className="flex items-center justify-between mb-6">
           <button
             type="button"
-            onClick={() => setShowAddModal(true)}
-            className="w-full border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 hover:bg-purple-50/50 transition cursor-pointer"
+            onClick={() => setSelectedYear((y) => y - 1)}
+            className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 shadow-sm text-gray-600 hover:text-gray-900 transition"
+            aria-label="Anno precedente"
           >
-            <div className="text-4xl mb-3">📅</div>
-            <p className="text-gray-600 mb-1 font-medium">Aggiungi eventi che impattano i turni</p>
-            <p className="text-sm text-gray-500">
-              Chiusure • Festività • Team Building • Eventi Speciali
-            </p>
+            ←
+          </button>
+          <h2 className="text-xl font-bold text-gray-900">{selectedYear}</h2>
+          <button
+            type="button"
+            onClick={() => setSelectedYear((y) => y + 1)}
+            className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 shadow-sm text-gray-600 hover:text-gray-900 transition"
+            aria-label="Anno successivo"
+          >
+            →
           </button>
         </div>
 
-        <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-          <p className="text-sm text-purple-700">
-            Gli eventi aziendali vengono mostrati automaticamente nel calendario turni e impattano
-            la pianificazione
+        {/* Event grid */}
+        {eventsForYear.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <div className="text-4xl mb-3">📅</div>
+            <p>Nessun evento per il {selectedYear}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+            {eventsForYear.map((event) => {
+              const badge = getEventTypeBadge(event.type)
+              return (
+                <div
+                  key={event.id}
+                  className="bg-white border border-gray-200 rounded-lg p-3 flex items-start gap-3 shadow-sm hover:shadow-md transition"
+                >
+                  <div className="text-2xl shrink-0 mt-0.5">{event.icon}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 text-sm truncate">{event.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {new Date(event.date).toLocaleDateString('it-IT', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      <span className={`text-xs ${badge.bg} ${badge.text} px-1.5 py-0.5 rounded-full font-medium`}>
+                        {badge.label}
+                      </span>
+                      {event.splitTipsByMeal && (
+                        <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                          🍽️ Mance divise
+                        </span>
+                      )}
+                    </div>
+                    {event.description && (
+                      <p className="text-xs text-gray-400 mt-1 truncate">{event.description}</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Add button */}
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 hover:bg-purple-50/50 transition cursor-pointer"
+        >
+          <div className="text-3xl mb-2">📅</div>
+          <p className="text-gray-600 font-medium text-sm">Aggiungi evento</p>
+          <p className="text-xs text-gray-400 mt-0.5">Chiusure · Festività · Team Building · Speciali</p>
+        </button>
+
+        <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <p className="text-xs text-purple-700">
+            Gli eventi aziendali vengono mostrati automaticamente nel calendario turni e impattano la pianificazione.
           </p>
         </div>
       </main>
 
+      {/* Add modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
@@ -185,7 +225,7 @@ export default function EventsPage() {
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 />
               </div>
               <div>
@@ -195,17 +235,18 @@ export default function EventsPage() {
                   required
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                 <select
                   value={form.type}
-                  onChange={(e) =>
-                    setForm({ ...form, type: e.target.value as CompanyEvent['type'] })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                  onChange={(e) => {
+                    const t = e.target.value as CompanyEvent['type']
+                    setForm({ ...form, type: t, splitTipsByMeal: t === 'holiday' ? form.splitTipsByMeal : false })
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
                 >
                   <option value="closure">Chiusura</option>
                   <option value="holiday">Festività</option>
@@ -221,9 +262,25 @@ export default function EventsPage() {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 />
               </div>
+
+              {/* splitTipsByMeal — visible only for holiday */}
+              {form.type === 'holiday' && (
+                <label className="flex items-center gap-3 cursor-pointer select-none p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <input
+                    type="checkbox"
+                    checked={form.splitTipsByMeal}
+                    onChange={(e) => setForm({ ...form, splitTipsByMeal: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-400"
+                  />
+                  <span className="text-sm text-amber-800 font-medium">
+                    🍽️ Dividi mance pranzo/cena
+                  </span>
+                </label>
+              )}
+
               <div className="flex gap-2 justify-end pt-2">
                 <button
                   type="button"
@@ -231,14 +288,14 @@ export default function EventsPage() {
                     setShowAddModal(false)
                     setForm(EMPTY_FORM)
                   }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
                 >
                   Annulla
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
                 >
                   {saving ? 'Salvataggio...' : 'Salva'}
                 </button>
