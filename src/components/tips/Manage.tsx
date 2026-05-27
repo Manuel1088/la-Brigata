@@ -2,6 +2,8 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
+import { usePermissions } from '@/hooks/usePermissions'
+import type { OfficeExportData } from '@/lib/pdf-tips'
 
 type PointsType = { [key: string]: number }
 type RestDaysType = { [key: string]: [string, string?] }
@@ -35,6 +37,7 @@ async function patchEmployeeScore(employeeId: string, score: number): Promise<vo
 export default function TipsManage() {
   const { data: session } = useSession()
   const restaurantId = session?.user?.restaurantId
+  const { canManageTips } = usePermissions()
 
   const { employees: employeesData, isLoading } = useEmployeeContext()
   const employees: Employee[] = useMemo(
@@ -72,6 +75,37 @@ export default function TipsManage() {
   const [savingScores, setSavingScores] = useState(false)
   const pendingPatches = useRef<Map<string, number>>(new Map())
   const patchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ── Office PDF export ──────────────────────────────────────────────────────
+  const now = new Date()
+  const [officePdfMonth, setOfficePdfMonth] = useState(now.getMonth())
+  const [officePdfYear, setOfficePdfYear] = useState(now.getFullYear())
+  const [officePdfLoading, setOfficePdfLoading] = useState(false)
+  const [officePdfError, setOfficePdfError] = useState<string | null>(null)
+
+  const handleDownloadOfficePdf = async () => {
+    setOfficePdfLoading(true)
+    setOfficePdfError(null)
+    try {
+      const params = new URLSearchParams({
+        month: String(officePdfMonth),
+        year: String(officePdfYear),
+        ...(restaurantId ? { restaurantId } : {}),
+      })
+      const res = await fetch(`/api/tips/summary/export?${params}`, { credentials: 'include' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error((body as { error?: string }).error ?? 'Errore export')
+      }
+      const data = (await res.json()) as OfficeExportData
+      const { downloadOfficePdf } = await import('@/lib/pdf-tips')
+      await downloadOfficePdf(data)
+    } catch (e) {
+      setOfficePdfError(e instanceof Error ? e.message : 'Errore generazione PDF')
+    } finally {
+      setOfficePdfLoading(false)
+    }
+  }
 
   const defaultPoints = useMemo(
     () => employees.reduce((acc, emp) => ({ ...acc, [emp.name]: 5 }), {} as PointsType),
@@ -521,6 +555,52 @@ export default function TipsManage() {
           </button>
         </div>
       </div>
+
+      {canManageTips() && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">Riepilogo mance ufficio personale</h2>
+          <p className="text-sm text-gray-500 mb-5">
+            Genera il PDF riepilogativo mensile con i totali per ogni dipendente.
+          </p>
+          <div className="flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mese</label>
+              <select
+                value={officePdfMonth}
+                onChange={(e) => { setOfficePdfMonth(Number(e.target.value)); setOfficePdfError(null) }}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              >
+                {['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'].map((m, i) => (
+                  <option key={i} value={i}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Anno</label>
+              <select
+                value={officePdfYear}
+                onChange={(e) => { setOfficePdfYear(Number(e.target.value)); setOfficePdfError(null) }}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              >
+                {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleDownloadOfficePdf()}
+              disabled={officePdfLoading}
+              className="px-5 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              {officePdfLoading ? 'Generazione…' : 'Scarica riepilogo PDF'}
+            </button>
+          </div>
+          {officePdfError && (
+            <p className="mt-3 text-sm text-red-600">{officePdfError}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

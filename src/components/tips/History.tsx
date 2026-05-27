@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { safeSum, safeAverage } from '@/lib/formatNumber'
 import { formatEuro } from '@/lib/utils'
+import type { EmployeeExportData } from '@/lib/pdf-tips'
 
 type TipEntryRow = {
   id: string
@@ -177,6 +178,37 @@ export default function TipsHistory() {
 
   const hasActiveFilters =
     filterType !== 'all' || filterLocation !== 'all' || filterDateFrom || filterDateTo
+
+  // ── PDF export (employee only) ────────────────────────────────────────────
+  const [pdfFrom, setPdfFrom] = useState('')
+  const [pdfTo, setPdfTo] = useState('')
+  const [pdfType, setPdfType] = useState<'all' | 'cash' | 'card' | 'foreign'>('all')
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+
+  const handleDownloadEmployeePdf = async () => {
+    if (!pdfFrom || !pdfTo) {
+      setPdfError('Seleziona un periodo valido (da data e a data)')
+      return
+    }
+    setPdfLoading(true)
+    setPdfError(null)
+    try {
+      const params = new URLSearchParams({ from: pdfFrom, to: pdfTo, type: pdfType })
+      const res = await fetch(`/api/tips/my/export?${params}`, { credentials: 'include' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error((body as { error?: string }).error ?? 'Errore export')
+      }
+      const data = (await res.json()) as EmployeeExportData
+      const { downloadEmployeePdf } = await import('@/lib/pdf-tips')
+      await downloadEmployeePdf(data)
+    } catch (e) {
+      setPdfError(e instanceof Error ? e.message : 'Errore generazione PDF')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -361,6 +393,58 @@ export default function TipsHistory() {
           </div>
         )}
       </div>
+
+      {isEmployee && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Esporta PDF personale</h3>
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Da data</label>
+              <input
+                type="date"
+                value={pdfFrom}
+                onChange={(e) => { setPdfFrom(e.target.value); setPdfError(null) }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">A data</label>
+              <input
+                type="date"
+                value={pdfTo}
+                onChange={(e) => { setPdfTo(e.target.value); setPdfError(null) }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo mance</label>
+              <select
+                value={pdfType}
+                onChange={(e) => setPdfType(e.target.value as typeof pdfType)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              >
+                <option value="all">Tutti</option>
+                <option value="cash">Contanti</option>
+                <option value="card">Carta</option>
+                <option value="foreign">Valute estere</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => void handleDownloadEmployeePdf()}
+                disabled={pdfLoading || !pdfFrom || !pdfTo}
+                className="w-full px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {pdfLoading ? 'Generazione…' : 'Scarica PDF'}
+              </button>
+            </div>
+          </div>
+          {pdfError && (
+            <p className="text-sm text-red-600">{pdfError}</p>
+          )}
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b">
