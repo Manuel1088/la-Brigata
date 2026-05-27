@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import type { LocationType } from '@prisma/client'
 import {
   DAYS_OF_WEEK,
@@ -348,22 +348,24 @@ export default function RoomsTab({
           <p className="text-sm">Aggiungi le sale dei tuoi punti ristoro (es. Mirabelle, Adele).</p>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {groupedByOutlet.map(([outletName, outletLocations]) => (
-            <section key={outletName} className="border-2 border-orange-100 rounded-xl p-4 bg-orange-50/30">
-              <h5 className="text-md font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <span>🍽️</span>
-                {outletName}
-                <span className="text-xs font-normal text-gray-500">
-                  ({outletLocations.length} {outletLocations.length === 1 ? 'sala' : 'sale'})
-                </span>
-              </h5>
+            <Fragment key={outletName}>
+              <div className="col-span-full border-2 border-orange-100 rounded-xl px-4 py-3 bg-orange-50/30">
+                <h5 className="text-md font-bold text-gray-900 flex items-center gap-2">
+                  <span>🍽️</span>
+                  {outletName}
+                  <span className="text-xs font-normal text-gray-500">
+                    ({outletLocations.length}{' '}
+                    {outletLocations.length === 1 ? 'sala' : 'sale'})
+                  </span>
+                </h5>
+              </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                {outletLocations.map((loc) => (
+              {outletLocations.map((loc) => (
                   <div
                     key={loc.id}
-                    className={`border-2 rounded-lg p-4 bg-white ${
+                    className={`border-2 rounded-lg p-4 bg-white h-full flex flex-col ${
                       loc.isActive ? 'border-green-200' : 'border-gray-200 opacity-75'
                     }`}
                   >
@@ -419,8 +421,7 @@ export default function RoomsTab({
                       {expandedHoursId === loc.id ? 'Nascondi orari' : '🕐 Orari'}
                     </button>
                   </div>
-                ))}
-              </div>
+              ))}
 
               {outletLocations.some((l) => expandedHoursId === l.id) &&
                 outletLocations
@@ -428,7 +429,7 @@ export default function RoomsTab({
                   .map((loc) => (
                     <div
                       key={`hours-${loc.id}`}
-                      className="border border-gray-200 rounded-lg p-4 bg-white mb-4"
+                      className="col-span-full border border-gray-200 rounded-lg p-4 bg-white"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
@@ -501,7 +502,7 @@ export default function RoomsTab({
                       </div>
                     </div>
                   ))}
-            </section>
+            </Fragment>
           ))}
         </div>
       )}
