@@ -520,14 +520,17 @@ model Employee {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime
   createdBy         String?
+  locationId        String?             @map("location_id")
   restaurants       Restaurant          @relation(fields: [restaurantId], references: [id])
   user              User?               @relation("UserEmployee", fields: [userId], references: [id])
+  location          RestaurantLocation? @relation(fields: [locationId], references: [id])
   TipDistributionV2 TipDistributionV2[]
   TipEntry          TipEntry[]
   UserSession       UserSession[]
 
   @@index([userId])
   @@index([restaurantId, userId])
+  @@index([locationId])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -574,6 +577,7 @@ model RestaurantLocation {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   restaurants  Restaurant   @relation(fields: [restaurantId], references: [id])
+  Employee     Employee[]
   TipEntry     TipEntry[]
 
   @@unique([restaurantId, name])

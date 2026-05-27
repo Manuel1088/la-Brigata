@@ -21,16 +21,15 @@ const patchTipsSchema = z
   })
   .strict()
 
-const patchProfileSchema = z
-  .object({
-    name: z.string().min(1).optional(),
-    role: z.string().optional(),
-    department: z
-      .enum(['cucina', 'pasticceria', 'sala', 'beverage', 'accoglienza', 'dirigenti'])
-      .optional(),
-    ccnlLevel: z.string().optional(),
-  })
-  .strict()
+const patchProfileSchema = z.object({
+  name: z.string().min(1).optional(),
+  role: z.string().optional(),
+  department: z
+    .enum(['cucina', 'pasticceria', 'sala', 'beverage', 'accoglienza', 'dirigenti'])
+    .optional(),
+  ccnlLevel: z.string().optional(),
+  locationId: z.string().nullable().optional(),
+})
 
 async function canManageRestaurant(
   userId: string,
@@ -56,21 +55,25 @@ async function canManageRestaurant(
   )
 }
 
-function serializeUserEmployee(user: {
-  id: string
-  name: string
-  email: string
-  phone: string | null
-  role: string
-  department: string | null
-  hierarchyLevel: number
-  ccnlLevel: string | null
-  avatar: string | null
-  startDate: Date | null
-  contractType: string | null
-  notes: string | null
-  skills: { skill: string }[]
-}) {
+function serializeUserEmployee(
+  user: {
+    id: string
+    name: string
+    email: string
+    phone: string | null
+    role: string
+    department: string | null
+    hierarchyLevel: number
+    ccnlLevel: string | null
+    restaurantId: string | null
+    avatar: string | null
+    startDate: Date | null
+    contractType: string | null
+    notes: string | null
+    skills: { skill: string }[]
+  },
+  locationId: string | null = null
+) {
   return {
     id: user.id,
     name: user.name,
@@ -86,6 +89,8 @@ function serializeUserEmployee(user: {
     startDate: user.startDate?.toISOString().split('T')[0] ?? '',
     notes: user.notes,
     skills: user.skills.map((s) => s.skill),
+    locationId,
+    restaurantId: user.restaurantId,
   }
 }
 
@@ -129,7 +134,16 @@ export async function GET(
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
-    return NextResponse.json({ employee: serializeUserEmployee(user) })
+    // Separate query for Employee.locationId to avoid stale-client issues
+    const empRecord = await prisma.employee.findFirst({
+      where: { userId: id },
+      select: { locationId: true },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return NextResponse.json({
+      employee: serializeUserEmployee(user, empRecord?.locationId ?? null),
+    })
   } catch (error) {
     console.error('GET /api/employees/[id] error:', error)
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
@@ -188,6 +202,7 @@ export async function PATCH(
             department: true,
             hierarchyLevel: true,
             ccnlLevel: true,
+            restaurantId: true,
             avatar: true,
             startDate: true,
             contractType: true,
@@ -197,7 +212,7 @@ export async function PATCH(
         })
 
         const linked = await tx.employee.findFirst({ where: { userId: id } })
-        if (linked && (role || department || ccnlLevel)) {
+        if (linked) {
           await tx.employee.update({
             where: { id: linked.id },
             data: {
@@ -206,6 +221,7 @@ export async function PATCH(
                 ? { role: toEmployeeRole(role, department) }
                 : {}),
               ...(ccnlLevel ? { ccnlLevel } : {}),
+              ...('locationId' in data ? { locationId: data.locationId ?? null } : {}),
               updatedAt: new Date(),
             },
           })
@@ -214,9 +230,15 @@ export async function PATCH(
         return u
       })
 
+      const updatedEmp = await prisma.employee.findFirst({
+        where: { userId: id },
+        select: { locationId: true },
+        orderBy: { createdAt: 'desc' },
+      })
+
       return NextResponse.json({
         success: true,
-        employee: serializeUserEmployee(updated),
+        employee: serializeUserEmployee(updated, updatedEmp?.locationId ?? null),
       })
     }
 

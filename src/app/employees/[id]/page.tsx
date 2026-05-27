@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import useSWR from 'swr'
 import { canManageRestaurantStaff } from '@/lib/employee-create'
 import { CCNL_LEVEL_OPTIONS } from '@/lib/ccnl'
 import {
@@ -16,6 +17,8 @@ import {
   RESTAURANT_DEPARTMENTS,
 } from '@/lib/restaurant-roles'
 
+type LocationOption = { id: string; name: string; icon: string | null; isActive: boolean }
+
 type EmployeeDto = {
   id: string
   name: string
@@ -23,6 +26,8 @@ type EmployeeDto = {
   role: string
   department: string
   ccnlLevel: string | null
+  restaurantId?: string
+  locationId?: string | null
 }
 
 export default function EditEmployeePage() {
@@ -34,12 +39,21 @@ export default function EditEmployeePage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [restaurantId, setRestaurantId] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     department: 'sala' as RestaurantDepartment,
     roleKey: '',
     ccnlLevel: 'LIVELLO_3',
+    locationId: '' as string,
   })
+
+  const { data: locationsData } = useSWR<{ locations?: LocationOption[] }>(
+    restaurantId ? `/api/restaurants/${restaurantId}/locations` : null,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false }
+  )
+  const locationOptions = (locationsData?.locations ?? []).filter((l) => l.isActive)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -70,11 +84,13 @@ export default function EditEmployeePage() {
         const dept = departmentFromStorage(emp.department || 'sala')
         const match =
           findRoleOption(dept, emp.role) ?? getRolesForDepartment(dept)[0]
+        if (emp.restaurantId) setRestaurantId(emp.restaurantId)
         setForm({
           name: emp.name,
           department: dept,
           roleKey: roleOptionKey(match),
           ccnlLevel: emp.ccnlLevel || match.suggestedCcnl,
+          locationId: emp.locationId ?? '',
         })
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Errore di caricamento')
@@ -131,6 +147,7 @@ export default function EditEmployeePage() {
           role: selected.value,
           department: departmentToStorage(form.department),
           ccnlLevel: form.ccnlLevel,
+          locationId: form.locationId || null,
         }),
       })
       if (!res.ok) {
@@ -201,6 +218,24 @@ export default function EditEmployeePage() {
                 {RESTAURANT_DEPARTMENTS.map((d) => (
                   <option key={d.value} value={d.value}>
                     {d.icon} {d.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sala di appartenenza
+              </label>
+              <select
+                value={form.locationId}
+                onChange={(e) => setForm((p) => ({ ...p, locationId: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Nessuna sala selezionata</option>
+                {locationOptions.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.icon ? `${l.icon} ` : ''}{l.name}
                   </option>
                 ))}
               </select>

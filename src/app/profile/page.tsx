@@ -3,7 +3,9 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import useSWR from 'swr'
 import type { EmployeeFull } from '@/lib/employees'
+import { useCompanyData } from '@/hooks/useCompanyData'
 import { formatEuro } from '@/lib/utils'
 import { useEmployees } from '@/hooks/useEmployees'
 import { userDisplayTitle } from '@/lib/user-role-display'
@@ -15,6 +17,9 @@ import {
   getCcnlMonthlyBase,
   isCcnlLevel,
 } from '@/lib/ccnl'
+
+type LocationOption = { id: string; name: string; icon: string | null }
+type LocationsApiResponse = { locations?: LocationOption[] }
 
 type ProfileTab = 'personale' | 'lavoro' | 'sicurezza' | 'documenti'
 
@@ -147,6 +152,7 @@ export default function ProfilePage() {
     position: '',
   })
   const [myEmployee, setMyEmployee] = useState<EmployeeFull | null>(null)
+  const [locationId, setLocationId] = useState<string>('')
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -155,6 +161,20 @@ export default function ProfilePage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false)
 
   const { employees: employeesList } = useEmployees({ active: true })
+
+  const { company: companyData } = useCompanyData(session?.user?.id)
+  const companyName = (companyData as { name?: string } | null)?.name ?? null
+  const companyFiscalCode = (companyData as { fiscalCode?: string } | null)?.fiscalCode ?? null
+
+  const restaurantId = session?.user?.restaurantId as string | undefined
+  const { data: locationsData } = useSWR<LocationsApiResponse>(
+    restaurantId ? `/api/restaurants/${restaurantId}/locations` : null,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false }
+  )
+  const locationOptions: LocationOption[] = (locationsData?.locations ?? []).filter(
+    (l) => (l as LocationOption & { isActive?: boolean }).isActive !== false
+  )
 
   const loadProfile = useCallback(async () => {
     setIsLoadingProfile(true)
@@ -209,6 +229,17 @@ export default function ProfilePage() {
     setMyEmployee(emp)
   }, [employeesList, session?.user?.id])
 
+  // Load current locationId from /api/employees/[id]
+  useEffect(() => {
+    if (!session?.user?.id) return
+    fetch(`/api/employees/${session.user.id}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d: { employee?: { locationId?: string | null } }) => {
+        setLocationId(d.employee?.locationId ?? '')
+      })
+      .catch(() => {})
+  }, [session?.user?.id])
+
   const displayName = [form.firstName, form.lastName].filter(Boolean).join(' ') || session?.user?.name || 'Utente'
   const roleLabel = userDisplayTitle(meta.position || session?.user?.position, meta.role || session?.user?.role)
   const departmentLabel = formatDepartmentLabel(meta.department || session?.user?.department || '')
@@ -239,6 +270,7 @@ export default function ProfilePage() {
           sports: form.sports,
           emergencyContact: form.emergencyContact,
           emergencyPhone: form.emergencyPhone,
+          locationId: locationId || null,
         }),
       })
 
@@ -651,12 +683,28 @@ export default function ProfilePage() {
                   <p className="font-medium text-gray-900">{myEmployee.department || '—'}</p>
                 </div>
                 <div>
+                  <span className="text-sm text-gray-600">Sala di appartenenza</span>
+                  <p className="font-medium text-gray-900">
+                    {locationOptions.find((l) => l.id === locationId)
+                      ? `${locationOptions.find((l) => l.id === locationId)!.icon ?? ''} ${locationOptions.find((l) => l.id === locationId)!.name}`.trim()
+                      : '—'}
+                  </p>
+                </div>
+                <div>
                   <span className="text-sm text-gray-600">Data assunzione</span>
                   <p className="font-medium text-gray-900">
                     {myEmployee.startDate
                       ? new Date(myEmployee.startDate).toLocaleDateString('it-IT')
                       : '—'}
                   </p>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">Azienda</span>
+                  <p className="font-medium text-gray-900">{companyName ?? '—'}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">P.IVA / Cod. fiscale</span>
+                  <p className="font-medium text-gray-900">{companyFiscalCode ?? '—'}</p>
                 </div>
               </div>
             )}

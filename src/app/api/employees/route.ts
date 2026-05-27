@@ -179,6 +179,7 @@ export async function PUT(request: NextRequest) {
       sports,
       emergencyContact,
       emergencyPhone,
+      locationId,
     } = data
 
     if (!id) {
@@ -233,6 +234,17 @@ export async function PUT(request: NextRequest) {
         where: { id },
         data: userData,
       })
+
+      // 1b. Aggiorna locationId sull'Employee collegato (se fornito)
+      if (locationId !== undefined) {
+        const linked = await tx.employee.findFirst({ where: { userId: id } })
+        if (linked) {
+          await tx.employee.update({
+            where: { id: linked.id },
+            data: { locationId: locationId ?? null, updatedAt: new Date() },
+          })
+        }
+      }
 
       // 2. Aggiorna le skills se fornite
       if (skills !== undefined && Array.isArray(skills)) {
