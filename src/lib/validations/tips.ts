@@ -10,6 +10,10 @@ export const postTipsBodySchema = z.object({
     cash: z.coerce.number().min(0).optional(),
     card: z.coerce.number().min(0).optional(),
     foreign: z.coerce.number().min(0).optional(),
+    /** Lordo carta (prima di commissioni/tasse) */
+    cardGrossAmount: z.coerce.number().min(0).optional(),
+    /** Netto carta (importo distribuibile dopo commissioni) */
+    cardNetAmount: z.coerce.number().min(0).optional(),
   }),
   notes: z.string().max(2000).optional(),
 })

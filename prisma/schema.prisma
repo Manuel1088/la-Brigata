@@ -22,6 +22,7 @@ model Restaurant {
   Employee           Employee[]
   RestaurantLocation RestaurantLocation[]
   TipEntry           TipEntry[]
+  tipCardAdjustments TipCardAdjustment[]
   bookings           Booking[]
   customers          Customer[]
   ccnlRules          CCNLRules[]
@@ -631,6 +632,8 @@ model TipEntry {
   location           String
   type               PaymentType
   amount             Decimal
+  grossAmount        Decimal?           @map("gross_amount")
+  netAmount          Decimal?           @map("net_amount")
   time               String?
   notes              String?
   restaurantId       String
@@ -644,6 +647,22 @@ model TipEntry {
 
   @@index([createdAt])
   @@index([date, locationId])
+}
+
+model TipCardAdjustment {
+  id            String     @id @default(cuid())
+  restaurantId  String     @map("restaurant_id")
+  month         Int
+  year          Int
+  grossAmount   Decimal    @map("gross_amount")
+  netAmount     Decimal    @map("net_amount")
+  taxDifference Decimal    @map("tax_difference")
+  appliedAt     DateTime?  @map("applied_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId, year, month])
+  @@map("tip_card_adjustments")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
