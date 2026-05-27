@@ -13,8 +13,6 @@ export async function POST(request: NextRequest) {
     // Elimina in ordine di dipendenza per evitare violazioni FK
     await prisma.$transaction(async (tx) => {
       // Tips
-      try { await tx.tipDistribution.deleteMany({}) } catch {}
-      try { await tx.dailyTips.deleteMany({}) } catch {}
       try { await tx.tipEntry.deleteMany({}) } catch {}
       try { await tx.tipDistributionV2?.deleteMany({}) } catch {}
 

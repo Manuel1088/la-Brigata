@@ -63,6 +63,15 @@ export async function POST(
         reviewedBy: session.user.id
       }
     })
+
+    // Sincronizza User.restaurantId e User.companyId con l'employment approvato
+    await prisma.user.update({
+      where: { id: employment.userId },
+      data: {
+        restaurantId: employment.restaurantId,
+        companyId: employment.restaurant.companyId ?? undefined,
+      },
+    })
     
     return NextResponse.json({
       success: true,

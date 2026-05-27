@@ -33,9 +33,6 @@ async function main() {
     const delLeaveBalance = await prisma.leaveBalance.deleteMany()
     console.log(`✅ LeaveBalances eliminati: ${delLeaveBalance.count}`)
     
-    const delTipDist = await prisma.tipDistribution.deleteMany()
-    console.log(`✅ TipDistributions eliminati: ${delTipDist.count}`)
-    
     const delSkills = await prisma.employeeSkill.deleteMany()
     console.log(`✅ EmployeeSkills eliminati: ${delSkills.count}`)
     

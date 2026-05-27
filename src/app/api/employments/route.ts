@@ -288,28 +288,25 @@ export async function PATCH(request: NextRequest) {
     if (department !== undefined) dataToUpdate.department = department
 
     const employment = await prisma.employment.update({
-      where: {
-        id,
-      },
+      where: { id },
       data: dataToUpdate,
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-        restaurant: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-          },
-        },
+        user: { select: { id: true, name: true, email: true, phone: true } },
+        restaurant: { select: { id: true, name: true, address: true, companyId: true } },
       },
     })
+
+    // Quando un employment diventa ACTIVE o APPROVED, sincronizza User.restaurantId / companyId
+    const newStatus = (dataToUpdate.status as string | undefined)?.toUpperCase()
+    if (newStatus === 'ACTIVE' || newStatus === 'APPROVED') {
+      await prisma.user.update({
+        where: { id: employment.userId },
+        data: {
+          restaurantId: employment.restaurantId,
+          companyId: employment.restaurant.companyId ?? undefined,
+        },
+      })
+    }
 
     return NextResponse.json({
       success: true,

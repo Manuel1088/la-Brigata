@@ -26,7 +26,6 @@ model Restaurant {
   bookings           Booking[]
   customers          Customer[]
   ccnlRules          CCNLRules[]
-  tips               DailyTips[]
   leavePolicies      LeavePolicy[]
   events             RestaurantEvent[]
   shifts             Shift[]
@@ -100,7 +99,6 @@ model User {
   shifts             Shift[]
   swapRequestsMade   ShiftSwapRequest[] @relation("SwapRequester")
   swapRequestsTarget ShiftSwapRequest[] @relation("SwapTarget")
-  tipDistributions   TipDistribution[]
   userPermissions    UserPermission[]
   company            Company?           @relation("CompanyUsers", fields: [companyId], references: [id])
   informalCompany    InformalCompany?   @relation("InformalCompanyUsers", fields: [informalCompanyId], references: [id])
@@ -184,33 +182,6 @@ model ShiftSwapRequest {
   @@map("shift_swap_requests")
 }
 
-model DailyTips {
-  id                  String            @id @default(cuid())
-  restaurantId        String            @map("restaurant_id")
-  date                DateTime
-  cashTips            Decimal           @default(0) @map("cash_tips")
-  cardTips            Decimal           @default(0) @map("card_tips")
-  foreignCurrencyTips Decimal           @default(0) @map("foreign_currency_tips")
-  enteredBy           String            @map("entered_by")
-  createdAt           DateTime          @default(now())
-  restaurant          Restaurant        @relation(fields: [restaurantId], references: [id])
-  distributions       TipDistribution[]
-
-  @@unique([restaurantId, date])
-  @@map("daily_tips")
-}
-
-model TipDistribution {
-  id          String    @id @default(cuid())
-  dailyTipsId String    @map("daily_tips_id")
-  userId      String    @map("user_id")
-  amount      Decimal
-  createdAt   DateTime  @default(now())
-  dailyTips   DailyTips @relation(fields: [dailyTipsId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
-
-  @@map("tip_distributions")
-}
 
 model Payroll {
   id            String   @id @default(cuid())

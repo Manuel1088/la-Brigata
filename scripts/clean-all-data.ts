@@ -36,9 +36,6 @@ async function main() {
     // Elimina in ordine (rispettando le foreign key)
     
     // 1. Dati dipendenti da altre tabelle
-    const delTipDist = await prisma.tipDistribution.deleteMany()
-    console.log(`✅ TipDistributions eliminati: ${delTipDist.count}`)
-    
     const delLeaveReq = await prisma.leaveRequest.deleteMany()
     console.log(`✅ LeaveRequests eliminati: ${delLeaveReq.count}`)
     
@@ -56,9 +53,6 @@ async function main() {
     
     const delTipEntries = await prisma.tipEntry.deleteMany()
     console.log(`✅ TipEntries eliminati: ${delTipEntries.count}`)
-    
-    const delDailyTips = await prisma.dailyTips.deleteMany()
-    console.log(`✅ DailyTips eliminati: ${delDailyTips.count}`)
     
     const delBookings = await prisma.booking.deleteMany()
     console.log(`✅ Bookings eliminati: ${delBookings.count}`)
