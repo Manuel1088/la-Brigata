@@ -2,24 +2,19 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import useSWR from 'swr'
-import { usePermissions } from '@/hooks/usePermissions'
-import { UserRole } from '@/types/roles'
 import { formatEuro } from '@/lib/utils'
 import { shiftHubLabel } from '@/lib/shifts'
+import { ccnlMeetsMinimum } from '@/lib/permissions'
+import { isManagerRole } from '@/lib/roles'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import PlatformAdminDashboard from '@/components/dashboard/PlatformAdminDashboard'
-import DashboardTasksWidget from '@/components/dashboard/DashboardTasksWidget'
 
-interface HubShift {
-  id: string
-  time: string
-  department: string
-  status: string
-}
+// ── Types ──────────────────────────────────────────────────────────────────
 
-interface MeHubData {
+type HubShift = { id: string; time: string; department: string; status: string }
+type MeHubData = {
   todayShift: HubShift | null
   monthlyTips?: {
     total: number
@@ -29,675 +24,642 @@ interface MeHubData {
     monthLabel: string
   }
 }
-
-type LeaveBalance = {
-  type: string
-  total: number
-  used: number
-  remaining: number
-  percentage: number
+type LeaveBalance = { type: string; total: number; used: number; remaining: number }
+type LeavesData = {
+  balances?: LeaveBalance[]
+  requests?: Array<{ id: string; type: string; startDate: string; endDate: string; status: string }>
 }
-
-type LeaveRequestRow = {
+type TaskRow = {
   id: string
-  type: string
-  startDate: string
-  endDate: string
+  title: string
+  dueDate: string | null
+  priority: 'ALTA' | 'MEDIA' | 'BASSA'
   status: string
 }
-
-type LeavesHubData = {
-  balances?: LeaveBalance[]
-  requests?: LeaveRequestRow[]
+type NotifRow = {
+  id: string
+  title: string
+  body?: string
+  isRead: boolean
+  isUrgent?: boolean
+  createdAt: string
+  category?: string
 }
 
-const hubFetcher = (url: string) =>
-  fetch(url, { credentials: 'include' }).then((res) => {
-    if (!res.ok) throw new Error('Failed to load hub')
-    return res.json() as Promise<MeHubData>
+// ── Fetcher ────────────────────────────────────────────────────────────────
+
+const cFetch = (url: string) =>
+  fetch(url, { credentials: 'include' }).then((r) => {
+    if (!r.ok) throw new Error(`${r.status}`)
+    return r.json()
   })
 
-const leavesFetcher = (url: string) =>
-  fetch(url, { credentials: 'include' }).then((res) => {
-    if (!res.ok) throw new Error('Failed to load leaves')
-    return res.json() as Promise<LeavesHubData>
-  })
+// ── Helpers ────────────────────────────────────────────────────────────────
 
-function formatLeaveRange(startDate: string, endDate: string): string {
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
-  const startLabel = start.toLocaleDateString('it-IT', opts)
-  const endLabel = end.toLocaleDateString('it-IT', opts)
-  if (startDate.slice(0, 10) === endDate.slice(0, 10)) return startLabel
-  return `${startLabel} – ${endLabel}`
+function greet(firstName?: string | null, name?: string | null): string {
+  const h = new Date().getHours()
+  const word = h >= 6 && h < 12 ? 'Buongiorno' : h >= 12 && h < 18 ? 'Buon pomeriggio' : 'Buonasera'
+  const display = firstName?.trim() || name?.split(' ')[0] || ''
+  return display ? `${word}, ${display}` : word
 }
 
-function leaveSummary(
-  type: 'VACATION' | 'ROL',
-  balances: LeaveBalance[],
-  requests: LeaveRequestRow[]
-) {
-  const balance = balances.find((b) => b.type === type)
-  const remaining = balance?.remaining ?? 0
+function todayLabel(): string {
+  return new Date().toLocaleDateString('it-IT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+}
+
+function priorityDot(p: 'ALTA' | 'MEDIA' | 'BASSA'): string {
+  if (p === 'ALTA') return 'bg-red-500'
+  if (p === 'MEDIA') return 'bg-amber-400'
+  return 'bg-gray-300'
+}
+
+function taskDueLabel(iso: string | null): { text: string; cls: string } {
+  if (!iso) return { text: '', cls: '' }
+  const due = new Date(iso)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-
-  const futureApproved = requests
-    .filter(
-      (r) =>
-        r.type === type &&
-        r.status === 'APPROVED' &&
-        new Date(r.endDate) >= today
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-    )
-
-  const pendingCount = requests.filter(
-    (r) => r.type === type && r.status === 'PENDING'
-  ).length
-
-  const remainingLabel =
-    type === 'VACATION'
-      ? remaining === 1
-        ? '1 giorno residuo'
-        : `${remaining} giorni residui`
-      : remaining === 1
-        ? '1 ora residua'
-        : `${remaining} ore residue`
-
-  return {
-    remaining,
-    remainingLabel,
-    futureApproved,
-    pendingCount,
-  }
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  if (due < today) return { text: 'Scaduto', cls: 'text-red-500' }
+  if (due < tomorrow) return { text: 'Oggi', cls: 'text-amber-500' }
+  return { text: due.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }), cls: 'text-gray-400' }
 }
 
-// Color Palette La Brigata
-const COLORS = {
-  coral: '#E17055',
-  orange: '#FDCB6E',
-  yellow: '#F9CA24',
-  lightBlue: '#74B9FF',
-  darkBlue: '#2D3436'
-}
+// ── Small card shell ───────────────────────────────────────────────────────
 
-interface DashboardAction {
-  id: string
+function Card({
+  icon,
+  title,
+  children,
+  accent,
+  error,
+}: {
   icon: string
-  label: string
-  path: string
-  color: string
-  roles?: UserRole[]
+  title: string
+  children?: React.ReactNode
+  accent?: string
+  error?: boolean
+}) {
+  return (
+    <div className={`bg-white rounded-xl shadow-sm border overflow-hidden ${accent ? `border-t-4 ${accent}` : ''}`}>
+      <div className="px-5 pt-4 pb-1 flex items-center gap-2">
+        <span className="text-lg">{icon}</span>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</p>
+      </div>
+      <div className="px-5 pb-5">
+        {error ? (
+          <p className="text-sm text-gray-400 italic mt-2">Dati non disponibili</p>
+        ) : (
+          children
+        )}
+      </div>
+    </div>
+  )
 }
+
+// ── Turno oggi ─────────────────────────────────────────────────────────────
+
+function ShiftCard({ hub, loading }: { hub: MeHubData | undefined; loading: boolean }) {
+  if (loading) return <Card icon="🕐" title="Il mio turno" accent="border-blue-400"><div className="h-10 animate-pulse bg-gray-100 rounded mt-2" /></Card>
+
+  const label = shiftHubLabel(hub?.todayShift ?? null)
+  const toneColor =
+    label.tone === 'rest' ? 'text-gray-400' : label.tone === 'leave' ? 'text-green-600' : 'text-gray-900'
+
+  return (
+    <Card icon="🕐" title="Il mio turno oggi" accent="border-blue-400">
+      <p className={`text-2xl font-bold mt-2 ${toneColor}`}>{label.title}</p>
+      <p className="text-sm text-gray-500 mt-0.5">{label.subtitle}</p>
+      {hub?.todayShift?.department && (
+        <p className="text-xs text-gray-400 mt-1">📍 {hub.todayShift.department}</p>
+      )}
+    </Card>
+  )
+}
+
+// ── Ferie / ROL ────────────────────────────────────────────────────────────
+
+function LeaveCard({
+  leaves,
+  loading,
+  error,
+}: {
+  leaves: LeavesData | undefined
+  loading: boolean
+  error: boolean
+}) {
+  if (loading) return (
+    <Card icon="🏖️" title="Ferie e ROL">
+      <div className="h-10 animate-pulse bg-gray-100 rounded mt-2" />
+    </Card>
+  )
+
+  const vac = leaves?.balances?.find((b) => b.type === 'VACATION')
+  const rol = leaves?.balances?.find((b) => b.type === 'ROL')
+
+  return (
+    <Card icon="🏖️" title="Ferie e ROL" accent="border-green-400" error={error && !leaves}>
+      <div className="mt-2 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-600">Ferie</span>
+          <span className="text-lg font-bold text-green-700">
+            {vac ? `${vac.remaining}g` : '—'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-600">ROL</span>
+          <span className="text-lg font-bold text-teal-700">
+            {rol ? `${rol.remaining}h` : '—'}
+          </span>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// ── Mance personali ────────────────────────────────────────────────────────
+
+function PersonalTipsCard({ hub, loading }: { hub: MeHubData | undefined; loading: boolean }) {
+  if (loading) return <Card icon="💰" title="Le mie mance"><div className="h-10 animate-pulse bg-gray-100 rounded mt-2" /></Card>
+
+  const tips = hub?.monthlyTips
+  return (
+    <Card icon="💰" title="Le mie mance (mese)" accent="border-amber-400">
+      {tips ? (
+        <>
+          <p className="text-2xl font-bold text-amber-600 mt-2">{formatEuro(tips.total)}</p>
+          <p className="text-sm text-gray-500 mt-0.5 capitalize">{tips.monthLabel} · {tips.daysWithTips} {tips.daysWithTips === 1 ? 'giorno' : 'giorni'}</p>
+        </>
+      ) : (
+        <p className="text-sm text-gray-400 italic mt-2">Nessuna mance questo mese</p>
+      )}
+    </Card>
+  )
+}
+
+// ── Task urgenti ───────────────────────────────────────────────────────────
+
+function UrgentTasksCard({
+  tasks,
+  loading,
+  error,
+  onComplete,
+}: {
+  tasks: TaskRow[] | undefined
+  loading: boolean
+  error: boolean
+  onComplete: (id: string) => void
+}) {
+  if (loading) return <Card icon="📋" title="Task urgenti"><div className="h-16 animate-pulse bg-gray-100 rounded mt-2" /></Card>
+  const top3 = (tasks ?? []).filter((t) => t.status !== 'COMPLETATO').slice(0, 3)
+
+  return (
+    <Card icon="📋" title="I miei task" accent="border-orange-400" error={error && !tasks}>
+      {top3.length === 0 ? (
+        <p className="text-sm text-gray-400 italic mt-2">Nessun task in attesa</p>
+      ) : (
+        <div className="mt-2 space-y-2">
+          {top3.map((t) => {
+            const due = taskDueLabel(t.dueDate)
+            return (
+              <div key={t.id} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onComplete(t.id)}
+                  className="flex-shrink-0 w-4 h-4 rounded border-2 border-gray-300 hover:border-green-400 transition"
+                />
+                <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priorityDot(t.priority)}`} />
+                <span className="text-sm text-gray-800 flex-1 truncate">{t.title}</span>
+                {due.text && (
+                  <span className={`text-xs flex-shrink-0 font-medium ${due.cls}`}>{due.text}</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ── Ultima notifica ────────────────────────────────────────────────────────
+
+function NotificationCard({
+  notif,
+  loading,
+  error,
+}: {
+  notif: NotifRow | undefined
+  loading: boolean
+  error: boolean
+}) {
+  if (loading) return <Card icon="🔔" title="Notifiche"><div className="h-10 animate-pulse bg-gray-100 rounded mt-2" /></Card>
+
+  return (
+    <Card icon="🔔" title="Ultima notifica" error={error && !notif}>
+      {!notif ? (
+        <p className="text-sm text-gray-400 italic mt-2">Nessuna notifica</p>
+      ) : (
+        <div className="mt-2">
+          <div className="flex items-start gap-2">
+            {!notif.isRead && <span className="flex-shrink-0 mt-1 w-2 h-2 rounded-full bg-orange-500" />}
+            <div>
+              <p className="text-sm font-medium text-gray-900">{notif.title}</p>
+              {notif.body && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notif.body}</p>}
+              <p className="text-xs text-gray-400 mt-1">
+                {new Date(notif.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ── Dept tasks ─────────────────────────────────────────────────────────────
+
+function DeptTasksCard({ tasks, loading, error }: { tasks: TaskRow[] | undefined; loading: boolean; error: boolean }) {
+  if (loading) return <Card icon="📋" title="Task reparto oggi"><div className="h-10 animate-pulse bg-gray-100 rounded mt-2" /></Card>
+  const list = tasks ?? []
+
+  return (
+    <Card icon="📋" title="Task reparto — in scadenza oggi" accent="border-purple-400" error={error && !tasks}>
+      {list.length === 0 ? (
+        <p className="text-sm text-gray-400 italic mt-2">Nessun task in scadenza oggi</p>
+      ) : (
+        <div className="mt-2 space-y-2">
+          {list.slice(0, 4).map((t) => (
+            <div key={t.id} className="flex items-center gap-2">
+              <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priorityDot(t.priority)}`} />
+              <span className="text-sm text-gray-800 flex-1 truncate">{t.title}</span>
+              <span className="text-xs text-amber-500 font-medium">Oggi</span>
+            </div>
+          ))}
+          {list.length > 4 && <p className="text-xs text-gray-400">+{list.length - 4} altri</p>}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ── Manager inbox ──────────────────────────────────────────────────────────
+
+type InboxItem = { id: string; label: string; icon: string; path: string; urgent?: boolean }
+
+function InboxCard({
+  pendingCount,
+  pendingEmployments,
+  yesterdayTipsTotal,
+  router,
+}: {
+  pendingCount: number | undefined
+  pendingEmployments: number
+  yesterdayTipsTotal: number
+  router: ReturnType<typeof useRouter>
+}) {
+  const items: InboxItem[] = []
+
+  if (pendingEmployments > 0) {
+    items.push({
+      id: 'hires',
+      label: `${pendingEmployments} ${pendingEmployments === 1 ? 'candidatura' : 'candidature'} in attesa`,
+      icon: '👤',
+      path: '/approvals?tab=candidatures',
+      urgent: true,
+    })
+  }
+
+  const otherPending = (pendingCount ?? 0) - pendingEmployments
+  if (otherPending > 0) {
+    items.push({
+      id: 'approvals',
+      label: `${otherPending} ${otherPending === 1 ? 'richiesta' : 'richieste'} da approvare`,
+      icon: '✅',
+      path: '/approvals',
+    })
+  }
+
+  if (yesterdayTipsTotal === 0) {
+    items.push({
+      id: 'tips',
+      label: 'Mance ieri non ancora inserite',
+      icon: '💰',
+      path: '/mance?tab=insert',
+      urgent: true,
+    })
+  }
+
+  return (
+    <Card icon="📥" title="Da fare" accent="border-red-400">
+      {items.length === 0 ? (
+        <p className="text-sm text-green-600 font-medium mt-2">✓ Nessuna azione richiesta</p>
+      ) : (
+        <div className="mt-2 space-y-2">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => router.push(item.path)}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition ${
+                item.urgent
+                  ? 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <span>{item.icon}</span>
+              <span className="flex-1">{item.label}</span>
+              <span className="text-gray-400 text-xs">→</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ── Restaurant tips ────────────────────────────────────────────────────────
+
+function RestaurantTipsCard({
+  total,
+  days,
+  loading,
+  error,
+}: {
+  total: number
+  days: number
+  loading: boolean
+  error: boolean
+}) {
+  if (loading) return <Card icon="💰" title="Mance ristorante"><div className="h-10 animate-pulse bg-gray-100 rounded mt-2" /></Card>
+  return (
+    <Card icon="💰" title="Mance ristorante (mese)" accent="border-amber-400" error={error}>
+      <p className="text-2xl font-bold text-amber-600 mt-2">{formatEuro(total)}</p>
+      {days > 0 && (
+        <p className="text-sm text-gray-500 mt-0.5">{days} {days === 1 ? 'giorno' : 'giorni'} con inserimenti</p>
+      )}
+    </Card>
+  )
+}
+
+// ── Main dashboard ─────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { userRole } = usePermissions()
-  
-  // ✅ NUOVO: Hook ottimizzato per dashboard (1 API invece di 4!)
-  const {
-    company,
-    restaurant,
-    stats,
-    widgets,
-    pendingEmployments,
-    isLoading: isLoadingDashboard,
-  } = useDashboardData()
-  
-  // States con valori di default sicuri
-  const [monthlyTips, setMonthlyTips] = useState<number>(0)
-  const [monthlyTipsDays, setMonthlyTipsDays] = useState<number>(0)
-  const [tipsLoading, setTipsLoading] = useState(true)
-  const [tipsView, setTipsView] = useState<'restaurant' | 'personal'>('personal')
-  // Redirect se non autenticato
+
   useEffect(() => {
     if (status === 'loading') return
-    if (!session) {
-      router.push('/login')
-    }
+    if (!session) router.push('/login')
   }, [session, status, router])
 
-  const isPlatformAdmin =
-    session?.user?.role === 'ADMIN' && session?.user?.level === 11
+  // ── Role detection ────────────────────────────────────────────────────
+  const userRole = (session?.user?.role as string) ?? ''
+  const ccnlLevel = session?.user?.ccnlLevel ?? null
+  const isManager = isManagerRole(userRole)
+  const showDeptSection = isManager || ccnlMeetsMinimum(ccnlLevel, 'LIVELLO_3')
+  const isPlatformAdmin = session?.user?.role === 'ADMIN' && session?.user?.level === 11
 
-  const isRestaurantTipsRole = (role: string | undefined): boolean => {
-    const r = (role || '').toUpperCase()
-    return r === 'ADMIN' || r === 'MANAGER'
+  // ── Batch data ────────────────────────────────────────────────────────
+  const { widgets, pendingEmployments, isLoading: batchLoading } = useDashboardData()
+
+  // ── Personal data ─────────────────────────────────────────────────────
+  const { data: hubData, isLoading: hubLoading, error: hubError } =
+    useSWR<MeHubData>(
+      status === 'authenticated' ? '/api/me/hub' : null,
+      cFetch,
+      { revalidateOnFocus: true }
+    )
+
+  const { data: leavesData, isLoading: leavesLoading, error: leavesError } =
+    useSWR<LeavesData>(
+      status === 'authenticated' ? '/api/leaves?includeBalances=true' : null,
+      cFetch,
+      { revalidateOnFocus: false }
+    )
+
+  const { data: tasksRaw, isLoading: tasksLoading, error: tasksError, mutate: mutateTasks } =
+    useSWR<{ tasks: TaskRow[] }>(
+      status === 'authenticated' ? '/api/tasks?scope=mine&status=DA_FARE' : null,
+      cFetch,
+      { revalidateOnFocus: true }
+    )
+
+  const { data: notifRaw, isLoading: notifLoading, error: notifError } =
+    useSWR<{ notifications: NotifRow[] }>(
+      status === 'authenticated' ? '/api/notifications' : null,
+      cFetch,
+      { revalidateOnFocus: false }
+    )
+
+  // ── L2-3 dept tasks ───────────────────────────────────────────────────
+  const { data: deptTasksRaw, isLoading: deptTasksLoading, error: deptTasksError } =
+    useSWR<{ tasks: TaskRow[] }>(
+      showDeptSection && status === 'authenticated' ? '/api/tasks?scope=department&due=today' : null,
+      cFetch,
+      { revalidateOnFocus: false }
+    )
+
+  // ── Manager: restaurant tips ──────────────────────────────────────────
+  const now = new Date()
+  const { data: tipsSummaryRaw, isLoading: tipsLoading, error: tipsError } =
+    useSWR<{ summary?: { monthTotal?: number; monthDaysWithTips?: number } }>(
+      isManager && status === 'authenticated'
+        ? `/api/tips/summary?year=${now.getFullYear()}&month=${now.getMonth()}`
+        : null,
+      cFetch,
+      { revalidateOnFocus: false }
+    )
+
+  // ── Manager: pending approvals count ─────────────────────────────────
+  const { data: pendingCountRaw } =
+    useSWR<{ total: number }>(
+      isManager && status === 'authenticated' ? '/api/approvals/pending-count' : null,
+      cFetch,
+      { revalidateOnFocus: true }
+    )
+
+  // ── Task complete handler ─────────────────────────────────────────────
+  const handleCompleteTask = async (id: string) => {
+    try {
+      await fetch(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'COMPLETATO' }),
+      })
+      await mutateTasks()
+    } catch {
+      /* ignore */
+    }
   }
 
-  const isManagerOrAdmin =
-    userRole === UserRole.ADMIN ||
-    userRole === UserRole.MANAGER ||
-    isRestaurantTipsRole(session?.user?.role as string | undefined)
-
-  const showPersonalShift = !isManagerOrAdmin
-  const { data: hubData, isLoading: hubLoading } = useSWR<MeHubData>(
-    showPersonalShift && status === 'authenticated' ? '/api/me/hub' : null,
-    hubFetcher,
-    { revalidateOnFocus: true }
-  )
-  const { data: leavesData, isLoading: leavesLoading } = useSWR<LeavesHubData>(
-    showPersonalShift && status === 'authenticated'
-      ? '/api/leaves?includeBalances=true'
-      : null,
-    leavesFetcher,
-    { revalidateOnFocus: true }
-  )
-
-  // Manager/Admin: totale mance ristorante del mese corrente
-  useEffect(() => {
-    if (!session?.user?.id || showPersonalShift) return
-
-    let cancelled = false
-    const loadRestaurantTips = async () => {
-      setTipsLoading(true)
-      try {
-        const now = new Date()
-        const params = `year=${now.getFullYear()}&month=${now.getMonth()}`
-        const res = await fetch(`/api/tips/summary?${params}`, {
-          credentials: 'include',
-        })
-        if (!res.ok) {
-          if (!cancelled) {
-            setMonthlyTips(0)
-            setMonthlyTipsDays(0)
-            setTipsView('restaurant')
-          }
-          return
-        }
-        const data = (await res.json()) as {
-          summary?: { monthTotal?: number; monthDaysWithTips?: number }
-        }
-        if (!cancelled) {
-          setTipsView('restaurant')
-          setMonthlyTips(Number(data.summary?.monthTotal ?? 0))
-          setMonthlyTipsDays(Number(data.summary?.monthDaysWithTips ?? 0))
-        }
-      } catch (error) {
-        console.error('Error loading monthly tips:', error)
-        if (!cancelled) {
-          setMonthlyTips(0)
-          setMonthlyTipsDays(0)
-        }
-      } finally {
-        if (!cancelled) setTipsLoading(false)
-      }
-    }
-
-    void loadRestaurantTips()
-    return () => {
-      cancelled = true
-    }
-  }, [session?.user?.id, session?.user?.restaurantId, showPersonalShift])
-
-  // Dipendente: stesso totale mese di /me (da /api/me/hub, non oggi)
-  useEffect(() => {
-    if (!showPersonalShift) return
-    setTipsView('personal')
-    if (hubLoading) {
-      setTipsLoading(true)
-      return
-    }
-    setTipsLoading(false)
-    setMonthlyTips(Number(hubData?.monthlyTips?.total ?? 0))
-    setMonthlyTipsDays(Number(hubData?.monthlyTips?.daysWithTips ?? 0))
-  }, [showPersonalShift, hubLoading, hubData?.monthlyTips])
-  const todayShift = shiftHubLabel(hubData?.todayShift ?? null)
-
-  const leaveBalances = leavesData?.balances ?? []
-  const leaveRequests = leavesData?.requests ?? []
-  const vacationSummary = leaveSummary('VACATION', leaveBalances, leaveRequests)
-  const rolSummary = leaveSummary('ROL', leaveBalances, leaveRequests)
-
-  // Helper: Get greeting
-  const getGreeting = (): string => {
-    const hour = new Date().getHours()
-    if (hour < 12) return 'Buongiorno'
-    if (hour < 18) return 'Buon pomeriggio'
-    return 'Buonasera'
-  }
-
-  // Dashboard actions based on role
-  const dashboardActions: DashboardAction[] = [
-    {
-      id: 'tips',
-      icon: '💰',
-      label: 'Le Mie Mance',
-      path: '/tips',
-      color: COLORS.yellow,
-      // Nascondi per Proprietario/Admin per coerenza con sidebar
-      roles: [
-        UserRole.DIPENDENTE,
-        UserRole.CASSIERE,
-        UserRole.HEAD_CHEF,
-        UserRole.HEAD_BARMAN,
-        UserRole.HEAD_SOMMELIER,
-        UserRole.DIPENDENTE_SALA,
-        UserRole.DIPENDENTE_BAR,
-        UserRole.CAMERIERE,
-        UserRole.CAMERIERE_SENIOR,
-        UserRole.CUOCO_QUALIFICATO,
-        UserRole.CHEF,
-        UserRole.CAPO_PARTITA,
-        UserRole.SOUS_CHEF,
-        UserRole.RUNNER,
-        UserRole.LAVAPIATTI
-      ]
-    },
-    {
-      id: 'shifts',
-      icon: '📅',
-      label: 'I Miei Turni',
-      path: '/shifts',
-      color: COLORS.lightBlue,
-      // Nascondi per Proprietario/Admin per coerenza con sidebar
-      roles: [
-        UserRole.DIPENDENTE,
-        UserRole.CASSIERE,
-        UserRole.HEAD_CHEF,
-        UserRole.HEAD_BARMAN,
-        UserRole.HEAD_SOMMELIER,
-        UserRole.DIPENDENTE_SALA,
-        UserRole.DIPENDENTE_BAR,
-        UserRole.CAMERIERE,
-        UserRole.CAMERIERE_SENIOR,
-        UserRole.CUOCO_QUALIFICATO,
-        UserRole.CHEF,
-        UserRole.CAPO_PARTITA,
-        UserRole.SOUS_CHEF,
-        UserRole.RUNNER,
-        UserRole.LAVAPIATTI
-      ]
-    },
-  ]
-
-  // Filter actions based on user role
-  const availableActions = dashboardActions.filter(action => 
-    !action.roles || action.roles.includes(userRole as UserRole)
-  )
-
-  // Loading state
+  // ── Loading state ─────────────────────────────────────────────────────
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Caricamento...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-red-50">
+        <div className="text-xl text-gray-500">Caricamento…</div>
       </div>
     )
   }
-
   if (!session) return null
+  if (isPlatformAdmin) return <PlatformAdminDashboard />
 
-  if (isPlatformAdmin) {
-    return <PlatformAdminDashboard userName={session.user?.name} />
-  }
+  // ── Derived values ────────────────────────────────────────────────────
+  const urgentTasks = (tasksRaw?.tasks ?? [])
+    .filter((t) => t.status !== 'COMPLETATO')
+    .sort((a, b) => {
+      const aO = a.dueDate && new Date(a.dueDate) < new Date() ? 0 : a.dueDate ? 1 : 2
+      const bO = b.dueDate && new Date(b.dueDate) < new Date() ? 0 : b.dueDate ? 1 : 2
+      if (aO !== bO) return aO - bO
+      const pr: Record<string, number> = { ALTA: 0, MEDIA: 1, BASSA: 2 }
+      return (pr[a.priority] ?? 1) - (pr[b.priority] ?? 1)
+    })
 
-  const statCardClass =
-    'bg-white rounded-2xl p-4 shadow-sm h-full flex flex-col'
-  const statLinkClass =
-    'text-sm text-orange-600 font-semibold hover:underline mt-auto pt-2 inline-block self-start'
-  const employeeCardsGridClass =
-    'grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 items-stretch'
+  const lastNotif = notifRaw?.notifications?.find((n) => !n.isRead) ?? notifRaw?.notifications?.[0]
 
+  const restaurantTipsTotal = Number(tipsSummaryRaw?.summary?.monthTotal ?? 0)
+  const restaurantTipsDays = Number(tipsSummaryRaw?.summary?.monthDaysWithTips ?? 0)
+
+  // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            {getGreeting()}, {session.user?.name?.split(' ')[0] || 'Team'}! 👋
+      <main className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
+
+        {/* Greeting */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {greet(null, session.user?.name)}
           </h1>
-          <p className="text-gray-600 mt-2">
-            Ecco la tua panoramica per oggi
-          </p>
+          <p className="text-sm text-gray-500 capitalize mt-0.5">{todayLabel()}</p>
         </div>
 
-        {/* Azioni rapide */}
-        {availableActions.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 max-w-md">
-            {availableActions.map((action) => (
-              <button
-                key={action.id}
-                type="button"
-                onClick={() => router.push(action.path)}
-                className="bg-white rounded-2xl p-5 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-md flex flex-col items-center gap-2"
-                style={{ borderTop: `4px solid ${action.color}` }}
-              >
-                <span className="text-2xl">{action.icon}</span>
-                <span className="font-semibold text-gray-800 text-center text-sm">
-                  {action.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+        {/* ── Row 1: Turno + Ferie + ROL ─────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <ShiftCard hub={hubData} loading={hubLoading} />
+          <LeaveCard leaves={leavesData} loading={leavesLoading} error={!!leavesError} />
 
-        {showPersonalShift ? (
-          <div className={employeeCardsGridClass}>
-            {/* Riga 1: Turno + Prenotazioni + vuoto */}
-            <div
-              className={`col-span-1 ${statCardClass} border-t-4 border-orange-500`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-gray-600">Il tuo turno oggi</p>
-                  <p className="text-lg font-bold text-gray-900 mt-0.5 leading-tight">
-                    {hubLoading ? '…' : todayShift.title}
-                  </p>
-                  {!hubLoading && todayShift.subtitle ? (
-                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                      {todayShift.subtitle}
-                    </p>
-                  ) : null}
-                </div>
-                <span className="text-xl shrink-0">📅</span>
-              </div>
+          {/* Quick actions */}
+          <div className="bg-white rounded-xl shadow-sm border p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">⚡</span>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Accesso rapido</p>
+            </div>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => router.push('/mance')}
+                className="w-full text-left px-3 py-2 rounded-lg bg-amber-50 text-amber-700 text-sm font-medium hover:bg-amber-100 transition"
+              >
+                💰 Le mie mance
+              </button>
               <button
                 type="button"
                 onClick={() => router.push('/shifts')}
-                className={statLinkClass}
+                className="w-full text-left px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100 transition"
               >
-                I miei turni →
+                📅 I miei turni
               </button>
-            </div>
-
-            <div className={`col-span-1 ${statCardClass} border-t-4 border-indigo-400`}>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm text-gray-600">Prenotazioni oggi</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {isLoadingDashboard ? '…' : widgets.bookingsTodayCount}
-                  </p>
-                </div>
-                <span className="text-xl shrink-0">📋</span>
-              </div>
               <button
                 type="button"
-                onClick={() => router.push('/operations')}
-                className={statLinkClass}
+                onClick={() => router.push('/tasks')}
+                className="w-full text-left px-3 py-2 rounded-lg bg-orange-50 text-orange-700 text-sm font-medium hover:bg-orange-100 transition"
               >
-                Gestisci →
-              </button>
-            </div>
-            <div className="hidden md:block md:col-span-1" aria-hidden />
-
-            {/* Riga 2: Ferie + ROL + vuoto */}
-            <div className={`col-span-1 ${statCardClass} border-t-4 border-blue-400`}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm text-gray-600">Ferie</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {leavesLoading ? '…' : vacationSummary.remainingLabel}
-                  </p>
-                  {!leavesLoading && vacationSummary.pendingCount > 0 && (
-                    <p className="text-xs text-amber-700">
-                      {vacationSummary.pendingCount} in attesa
-                    </p>
-                  )}
-                  {!leavesLoading &&
-                    vacationSummary.pendingCount === 0 &&
-                    vacationSummary.futureApproved.length > 0 && (
-                      <p className="text-xs text-gray-500 truncate">
-                        {vacationSummary.futureApproved
-                          .slice(0, 1)
-                          .map((r) => formatLeaveRange(r.startDate, r.endDate))
-                          .join('')}
-                      </p>
-                    )}
-                </div>
-                <span className="text-xl shrink-0">🏖️</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push('/leaves')}
-                className={statLinkClass}
-              >
-                Ferie →
-              </button>
-            </div>
-
-            <div className={`col-span-1 ${statCardClass} border-t-4 border-emerald-400`}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm text-gray-600">Rol</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {leavesLoading ? '…' : rolSummary.remainingLabel}
-                  </p>
-                  {!leavesLoading && rolSummary.pendingCount > 0 && (
-                    <p className="text-xs text-amber-700">
-                      {rolSummary.pendingCount} in attesa
-                    </p>
-                  )}
-                  {!leavesLoading &&
-                    rolSummary.pendingCount === 0 &&
-                    rolSummary.futureApproved.length > 0 && (
-                      <p className="text-xs text-gray-500 truncate">
-                        {rolSummary.futureApproved
-                          .slice(0, 1)
-                          .map((r) => formatLeaveRange(r.startDate, r.endDate))
-                          .join('')}
-                      </p>
-                    )}
-                </div>
-                <span className="text-xl shrink-0">⏰</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push('/leaves')}
-                className={statLinkClass}
-              >
-                Rol →
-              </button>
-            </div>
-            <div className="hidden md:block md:col-span-1" aria-hidden />
-
-            {/* Riga 3: Mance + vuoto (2 colonne) */}
-            <div className={`col-span-1 ${statCardClass} border-t-4 border-amber-400`}>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm text-gray-600">
-                    {tipsView === 'restaurant'
-                      ? 'Mance ristorante (mese)'
-                      : 'Le tue mance (mese)'}
-                  </p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {tipsLoading ? '…' : formatEuro(monthlyTips)}
-                  </p>
-                  {!tipsLoading && monthlyTipsDays > 0 && (
-                    <p className="text-xs text-gray-500">
-                      {monthlyTipsDays} giorn{monthlyTipsDays === 1 ? 'o' : 'i'} con{' '}
-                      {tipsView === 'restaurant' ? 'inserimenti' : 'mance'}
-                    </p>
-                  )}
-                </div>
-                <span className="text-xl shrink-0">💰</span>
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(tipsView === 'restaurant' ? '/team/mance' : '/tips')
-                }
-                className={statLinkClass}
-              >
-                Vedi dettagli →
-              </button>
-            </div>
-            <div className="hidden md:block md:col-span-2" aria-hidden />
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 items-stretch">
-              <div className={`${statCardClass} border-t-4 border-orange-500 shadow-md`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm text-gray-600">In turno oggi</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {isLoadingDashboard ? '…' : widgets.shiftsTodayCount}
-                    </p>
-                    <p className="text-xs text-gray-500">dipendenti presenti</p>
-                  </div>
-                  <span className="text-xl shrink-0">👥</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => router.push('/shifts')}
-                  className={statLinkClass}
-                >
-                  Calendario turni →
-                </button>
-              </div>
-
-              <div className={`${statCardClass} border-t-4 border-indigo-400`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm text-gray-600">Prenotazioni oggi</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {isLoadingDashboard ? '…' : widgets.bookingsTodayCount}
-                    </p>
-                  </div>
-                  <span className="text-xl shrink-0">📋</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => router.push('/operations')}
-                  className={statLinkClass}
-                >
-                  Gestisci →
-                </button>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <div className={`${statCardClass} border-t-4 border-amber-400`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm text-gray-600">Mance ristorante (mese)</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {tipsLoading ? '…' : formatEuro(monthlyTips)}
-                    </p>
-                    {!tipsLoading && monthlyTipsDays > 0 && (
-                      <p className="text-xs text-gray-500">
-                        {monthlyTipsDays} giorn{monthlyTipsDays === 1 ? 'o' : 'i'} con
-                        inserimenti
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-xl shrink-0">💰</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => router.push('/team/mance')}
-                  className={statLinkClass}
-                >
-                  Vedi dettagli →
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {widgets.hasEvents && (
-          <div className="mb-8">
-            <div className={statCardClass}>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm text-gray-600">Eventi questa settimana</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {widgets.weeklyEventsCount}
-                  </p>
-                </div>
-                <span className="text-xl shrink-0">📅</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push('/shifts')}
-                className={statLinkClass}
-              >
-                Vedi calendario →
+                📋 I miei task
               </button>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* ✅ DATI REALI DA API BATCH - Company & Team Info */}
-        {!isLoadingDashboard && (company || stats.totalEmployees > 0 || pendingEmployments.length > 0) && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            
-            {/* Company Info */}
-            {company && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Azienda</p>
-                    <p className="text-lg font-bold text-gray-900">{company.name}</p>
-                  </div>
-                  <div className="text-3xl">🏢</div>
-                </div>
-                {restaurant && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    📍 {restaurant.name}
+        {/* ── Row 2: Mance personali + Task urgenti + Notifica ───────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <PersonalTipsCard hub={hubData} loading={hubLoading} />
+          <UrgentTasksCard
+            tasks={urgentTasks}
+            loading={tasksLoading}
+            error={!!tasksError}
+            onComplete={(id) => void handleCompleteTask(id)}
+          />
+          <NotificationCard notif={lastNotif} loading={notifLoading} error={!!notifError} />
+        </div>
+
+        {/* ── L2-3: Chi è in turno + Task reparto ────────────────────────── */}
+        {showDeptSection && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Staff in turno oggi */}
+            <Card icon="👥" title="Chi è in turno oggi" accent="border-indigo-400">
+              {batchLoading ? (
+                <div className="h-10 animate-pulse bg-gray-100 rounded mt-2" />
+              ) : (
+                <>
+                  <p className="text-3xl font-bold text-indigo-700 mt-2">{widgets.shiftsTodayCount}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {widgets.shiftsTodayCount === 1
+                      ? 'persona in turno'
+                      : 'persone in turno'}
                   </p>
-                )}
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => router.push('/shifts')}
+                    className="text-xs text-indigo-600 font-semibold mt-2 hover:underline"
+                  >
+                    Vedi calendario →
+                  </button>
+                </>
+              )}
+            </Card>
 
-            {/* Pending Requests (solo per manager/owner) */}
-            {pendingEmployments.length > 0 && (
-              <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-sm text-orange-700 font-medium">Richieste in attesa</p>
-                    <p className="text-2xl font-bold text-orange-600">{pendingEmployments.length}</p>
-                  </div>
-                  <div className="text-3xl">⏳</div>
-                </div>
-                <button
-                  onClick={() => router.push('/approvals?tab=candidatures')}
-                  className="text-sm text-orange-600 font-semibold hover:underline"
-                >
-                  Gestisci →
-                </button>
-              </div>
-            )}
-
-            {/* Team Stats */}
-            {stats.totalEmployees > 0 && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Team</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalEmployees}</p>
-                  </div>
-                  <div className="text-3xl">👥</div>
-                </div>
-                <div className="space-y-1 text-sm text-gray-600">
-                  {stats.activeContracts > 0 && (
-                    <p>✅ {stats.activeContracts} contratti attivi</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => router.push('/team')}
-                  className="text-sm text-orange-600 font-semibold hover:underline mt-2"
-                >
-                  Vedi team →
-                </button>
-              </div>
-            )}
+            <DeptTasksCard
+              tasks={deptTasksRaw?.tasks}
+              loading={deptTasksLoading}
+              error={!!deptTasksError}
+            />
           </div>
         )}
 
-        {/* Task widget — i 3 task più urgenti del giorno */}
-        <DashboardTasksWidget />
+        {/* ── Manager: Inbox + Prenotazioni + Mance ristorante ───────────── */}
+        {isManager && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <InboxCard
+              pendingCount={pendingCountRaw?.total}
+              pendingEmployments={pendingEmployments.length}
+              yesterdayTipsTotal={widgets.yesterdayTipsTotal}
+              router={router}
+            />
 
-      </div>
+            {/* Prenotazioni oggi */}
+            <Card icon="🍽️" title="Coperti oggi" accent="border-teal-400">
+              {batchLoading ? (
+                <div className="h-10 animate-pulse bg-gray-100 rounded mt-2" />
+              ) : (
+                <>
+                  <p className="text-3xl font-bold text-teal-700 mt-2">{widgets.bookingsTodayCount}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">prenotazioni oggi</p>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/operations')}
+                    className="text-xs text-teal-600 font-semibold mt-2 hover:underline"
+                  >
+                    Gestisci →
+                  </button>
+                </>
+              )}
+            </Card>
+
+            <RestaurantTipsCard
+              total={restaurantTipsTotal}
+              days={restaurantTipsDays}
+              loading={tipsLoading}
+              error={!!tipsError}
+            />
+          </div>
+        )}
+
+      </main>
     </div>
   )
 }
