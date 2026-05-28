@@ -40,6 +40,11 @@ export async function ensureCategoryPermissionsExist(): Promise<void> {
       category: 'report',
     },
     {
+      name: 'category_task',
+      description: 'Gestione task (bundle CCNL/override)',
+      category: 'task',
+    },
+    {
       name: 'category_delega',
       description: 'Delega gestione permessi ai livelli inferiori',
       category: 'admin',
@@ -196,7 +201,8 @@ export async function loadCategoryGrantsForUsers(
 function permissionCategoryFor(cat: PermissionCategory): Permission['category'] {
   if (cat === 'delega') return 'admin'
   if (cat === 'staff') return 'personale'
-  return cat
+  if (cat === 'task') return 'task'
+  return cat as Permission['category']
 }
 
 export function registerCategoryPermissionDefs(): void {

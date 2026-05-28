@@ -11,7 +11,7 @@ export interface Permission {
   id: string
   name: string
   description: string
-  category: 'personale' | 'mance' | 'turni' | 'report' | 'admin' | 'ferie' | 'payroll' | 'settings'
+  category: 'personale' | 'mance' | 'turni' | 'report' | 'admin' | 'ferie' | 'payroll' | 'settings' | 'task'
   level: number // Livello minimo richiesto
 }
 
@@ -418,7 +418,44 @@ export const PERMISSIONS: Record<string, Permission> = {
     description: 'Modificare le impostazioni aziendali e configurazioni',
     category: 'settings',
     level: 8
-  }
+  },
+
+  // ✅ TASK (5 permessi)
+  TASK_VIEW: {
+    id: 'task_view',
+    name: 'Visualizzare Task',
+    description: 'Vedere i propri task assegnati',
+    category: 'task',
+    level: 1,
+  },
+  TASK_COMPLETE: {
+    id: 'task_complete',
+    name: 'Completare Task',
+    description: 'Segnare come completato un task assegnato',
+    category: 'task',
+    level: 1,
+  },
+  TASK_CREATE: {
+    id: 'task_create',
+    name: 'Creare Task',
+    description: 'Creare task e assegnarli ad altri',
+    category: 'task',
+    level: 6,
+  },
+  TASK_MANAGE: {
+    id: 'task_manage',
+    name: 'Gestire Task',
+    description: 'Modificare ed eliminare tutti i task del ristorante',
+    category: 'task',
+    level: 7,
+  },
+  TASK_ASSIGN_ROLE: {
+    id: 'task_assign_role',
+    name: 'Assegnare Task a Ruolo',
+    description: 'Assegnare task a un intero ruolo invece di una persona specifica',
+    category: 'task',
+    level: 7,
+  },
 }
 
 // Permessi aggiuntivi per pagine/azioni
@@ -473,7 +510,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_view_all', 'ferie_export', 'ferie_calendar', 'ferie_balance',
     'report_basic', 'report_advanced', 'report_financial', 'report_export', 'report_schedule',
     'admin_audit', 'admin_access', 'manage_company_settings',
-    'bookings_view','bookings_manage','areas_manage','customers_view','customers_manage'
+    'bookings_view','bookings_manage','areas_manage','customers_view','customers_manage',
+    'task_view', 'task_complete', 'task_create', 'task_manage', 'task_assign_role',
   ],
   MANAGER: [
     'personale_view', 'personale_create', 'personale_edit', 'personale_activate', 'personale_export', 'personale_skills',
@@ -483,7 +521,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'payroll_view', 'payroll_scan', 'payroll_manage',
     'report_basic', 'report_advanced', 'report_export',
     'admin_access', 'manage_company_settings',
-    'bookings_view','bookings_manage','areas_manage','customers_view','customers_manage'
+    'bookings_view','bookings_manage','areas_manage','customers_view','customers_manage',
+    'task_view', 'task_complete', 'task_create', 'task_manage', 'task_assign_role',
   ],
   RESPONSABILE_SALA: [
     'personale_view', 'personale_export',
@@ -491,7 +530,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'turni_view', 'turni_manage', 'turni_assign',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_calendar',
     'report_basic', 'report_export',
-    'bookings_view','bookings_manage','customers_view'
+    'bookings_view','bookings_manage','customers_view',
+    'task_view', 'task_complete', 'task_create', 'task_manage', 'task_assign_role',
   ],
   HEAD_CHEF: [
     'personale_view', 'personale_export',
@@ -499,7 +539,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'turni_view', 'turni_manage', 'turni_assign',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_calendar',
     'report_basic', 'report_export',
-    'bookings_view','customers_view'
+    'bookings_view','customers_view',
+    'task_view', 'task_complete', 'task_create', 'task_manage', 'task_assign_role',
   ],
   HEAD_BARMAN: [
     'personale_view', 'personale_export',
@@ -507,7 +548,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'turni_view', 'turni_manage', 'turni_assign',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_calendar',
     'report_basic', 'report_export',
-    'bookings_view','customers_view'
+    'bookings_view','customers_view',
+    'task_view', 'task_complete', 'task_create', 'task_manage', 'task_assign_role',
   ],
   HEAD_SOMMELIER: [
     'personale_view', 'personale_export',
@@ -515,7 +557,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'turni_view', 'turni_manage', 'turni_assign',
     'ferie_view', 'ferie_request', 'ferie_approve', 'ferie_calendar',
     'report_basic', 'report_export',
-    'bookings_view','customers_view'
+    'bookings_view','customers_view',
+    'task_view', 'task_complete', 'task_create', 'task_manage', 'task_assign_role',
   ],
   CASSIERE: [
     'personale_view',
@@ -523,7 +566,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'turni_view',
     'ferie_view', 'ferie_request',
     'report_basic',
-    'bookings_view','customers_view'
+    'bookings_view','customers_view',
+    'task_view', 'task_complete',
   ],
   DIPENDENTE: [
     'personale_view',
@@ -531,7 +575,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'turni_view',
     'ferie_view', 'ferie_request',
     'payroll_view', 'payroll_scan',
-    'bookings_view'
+    'bookings_view',
+    'task_view', 'task_complete',
   ]
 }
 
@@ -592,7 +637,7 @@ const RESTAURANT_FULL_PERMISSION_IDS = ALL_PERMISSION_IDS.filter(
 )
 
 /** Incrementi per livello operativo (L6 → L1). */
-const CCNL_L6 = ['edit_personal_info', 'turni_view', 'mance_view'] as const
+const CCNL_L6 = ['edit_personal_info', 'turni_view', 'mance_view', 'task_view', 'task_complete'] as const
 const CCNL_L5_ADD = ['ferie_view', 'ferie_request', 'payroll_view'] as const
 const CCNL_L4_ADD = ['turni_swap_request'] as const
 const CCNL_L3_ADD = ['personale_view'] as const
@@ -605,6 +650,7 @@ const CCNL_L2_ADD = [
   'turni_approve',
   'mance_manage',
   'mance_calculate',
+  'task_create',
 ] as const
 const CCNL_L1_ADD = [
   'ferie_view_all',
@@ -613,6 +659,8 @@ const CCNL_L1_ADD = [
   'report_export',
   'bookings_view',
   'customers_view',
+  'task_manage',
+  'task_assign_role',
 ] as const
 
 function unionSets(...groups: readonly (readonly string[])[]): string[] {

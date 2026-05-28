@@ -80,6 +80,13 @@ export function usePermissions() {
     return canAny(['mance_manage', 'mance_calculate', 'mance_approve'])
   }
 
+  // ✅ Task permissions
+  const canViewTasks = (): boolean => can('task_view')
+  const canCompleteTasks = (): boolean => can('task_complete')
+  const canCreateTasks = (): boolean => can('task_create')
+  const canManageTasks = (): boolean => can('task_manage')
+  const canAssignTaskToRole = (): boolean => can('task_assign_role')
+
   const canGestioneTurni = (): boolean => {
     return (
       can('gestione_turni') ||
@@ -180,6 +187,11 @@ export function usePermissions() {
 
     canManageEmployees,
     canManageTips,
+    canViewTasks,
+    canCompleteTasks,
+    canCreateTasks,
+    canManageTasks,
+    canAssignTaskToRole,
     canGestioneTurni,
     canManageShifts,
     canManageLeaves,

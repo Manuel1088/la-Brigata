@@ -35,6 +35,7 @@ model Restaurant {
   company            Company?             @relation(fields: [companyId], references: [id])
   employments        Employment[]         @relation("RestaurantEmployments")
   shiftTemplates     ShiftTemplate[]
+  tasks              Task[]
 
   @@index([companyId])
   @@map("restaurants")
@@ -99,6 +100,9 @@ model User {
   payrolls           Payroll[]
   payslipAnalyses    PayslipAnalysis[]
   shifts             Shift[]
+  tasksAssigned      Task[]            @relation("TasksAssigned")
+  tasksCreated       Task[]            @relation("TasksCreated")
+  tasksCompleted     Task[]            @relation("TasksCompleted")
   swapRequestsMade   ShiftSwapRequest[] @relation("SwapRequester")
   swapRequestsTarget ShiftSwapRequest[] @relation("SwapTarget")
   userPermissions    UserPermission[]
@@ -161,6 +165,24 @@ enum ShiftSwapStatus {
   REJECTED
 }
 
+enum TaskPriority {
+  ALTA
+  MEDIA
+  BASSA
+}
+
+enum TaskStatus {
+  DA_FARE
+  IN_CORSO
+  COMPLETATO
+}
+
+enum TaskRecurringType {
+  GIORNALIERO
+  SETTIMANALE
+  MENSILE
+}
+
 enum ShiftTemplateType {
   PRANZO
   CENA
@@ -185,6 +207,34 @@ model ShiftTemplate {
 
   @@index([restaurantId, isActive])
   @@map("shift_templates")
+}
+
+model Task {
+  id              String             @id @default(cuid())
+  restaurantId    String             @map("restaurant_id")
+  assignedToId    String?            @map("assigned_to_id")
+  assignedToRole  String?            @map("assigned_to_role")
+  assignedById    String             @map("assigned_by_id")
+  title           String
+  description     String?
+  dueDate         DateTime?          @map("due_date")
+  priority        TaskPriority       @default(MEDIA)
+  status          TaskStatus         @default(DA_FARE)
+  isRecurring     Boolean            @default(false) @map("is_recurring")
+  recurringType   TaskRecurringType? @map("recurring_type")
+  completedAt     DateTime?          @map("completed_at")
+  completedById   String?            @map("completed_by_id")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  restaurant      Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  assignedTo      User?              @relation("TasksAssigned", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedBy      User               @relation("TasksCreated", fields: [assignedById], references: [id])
+  completedBy     User?              @relation("TasksCompleted", fields: [completedById], references: [id])
+
+  @@index([restaurantId, status])
+  @@index([assignedToId, status])
+  @@index([dueDate])
+  @@map("tasks")
 }
 
 model ShiftSwapRequest {

@@ -118,6 +118,7 @@ export async function GET() {
           ferie: false,
           staff: false,
           report: false,
+          task: false,
           delega: false,
         },
       }

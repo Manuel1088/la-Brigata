@@ -21,6 +21,7 @@ export const PERMISSION_CATEGORIES = [
   'ferie',
   'staff',
   'report',
+  'task',
   'delega',
 ] as const
 
@@ -33,6 +34,7 @@ export const CATEGORY_DB_IDS: Record<PermissionCategory, string> = {
   ferie: 'category_ferie',
   staff: 'category_staff',
   report: 'category_report',
+  task: 'category_task',
   delega: 'category_delega',
 }
 
@@ -42,6 +44,7 @@ export const CATEGORY_LABELS: Record<PermissionCategory, string> = {
   ferie: 'Ferie',
   staff: 'Staff',
   report: 'Report',
+  task: 'Task',
   delega: 'Delega',
 }
 
@@ -88,6 +91,13 @@ export const CATEGORY_EXPANDED_PERMISSIONS: Record<PermissionCategory, string[]>
     'customers_view',
     'customers_manage',
   ],
+  task: [
+    'task_view',
+    'task_complete',
+    'task_create',
+    'task_manage',
+    'task_assign_role',
+  ],
   delega: ['perm_delega_manage'],
 }
 
@@ -99,6 +109,7 @@ export const EMPTY_CATEGORY_GRANTS: CategoryGrants = {
   ferie: false,
   staff: false,
   report: false,
+  task: false,
   delega: false,
 }
 

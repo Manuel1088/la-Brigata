@@ -10,6 +10,7 @@ import { formatEuro } from '@/lib/utils'
 import { shiftHubLabel } from '@/lib/shifts'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import PlatformAdminDashboard from '@/components/dashboard/PlatformAdminDashboard'
+import DashboardTasksWidget from '@/components/dashboard/DashboardTasksWidget'
 
 interface HubShift {
   id: string
@@ -692,6 +693,9 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+
+        {/* Task widget — i 3 task più urgenti del giorno */}
+        <DashboardTasksWidget />
 
       </div>
     </div>

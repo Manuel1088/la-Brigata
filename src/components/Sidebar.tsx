@@ -129,6 +129,13 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           visible: canGestioneBase,
         },
         {
+          icon: '📋',
+          label: 'Task',
+          path: '/tasks',
+          color: '#00B894',
+          visible: canGestioneBase,
+        },
+        {
           icon: '🏢',
           label: 'Azienda',
           path: '/company',
