@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import { createLocationSchema } from '@/lib/validations/locations'
+import { resolveRestaurantAccess } from '@/lib/restaurant-access'
 import {
   buildLocationCreateData,
   nextSortOrder,
@@ -14,17 +17,29 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireManageCompanySession()
-    if (!auth.ok) return auth.response
-
     const { id: restaurantId } = await params
     if (!restaurantId) {
       return NextResponse.json({ error: 'ID ristorante richiesto' }, { status: 400 })
     }
 
-    const allowed = await requireRestaurantManageAccess(auth.session.user!.id!, restaurantId)
-    if (!allowed) {
-      return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
+
+    // Lettura consentita a chiunque abbia accesso al ristorante (es. staff con
+    // bookings_view), non solo ai manager azienda. La scrittura (POST) resta gestita.
+    const access = await resolveRestaurantAccess(session.user.id, restaurantId)
+    if (!access.allowed) {
+      const auth = await requireManageCompanySession()
+      if (!auth.ok) return auth.response
+      const allowed = await requireRestaurantManageAccess(
+        auth.session.user!.id!,
+        restaurantId
+      )
+      if (!allowed) {
+        return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
+      }
     }
 
     const rows = await prisma.restaurantLocation.findMany({

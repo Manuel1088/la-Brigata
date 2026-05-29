@@ -4,8 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useCompanyData } from '@/hooks/useCompanyData'
-
 interface Booking {
   id: string
   customerName: string
@@ -17,6 +15,7 @@ interface Booking {
   tableNumber: number | null
   status: string
   notes: string
+  area?: string | null
   createdAt: string
 }
 
@@ -61,7 +60,6 @@ export default function OperationsBookings() {
   const [selectedTime, setSelectedTime] = useState<string>('19:00')
   const [selectedArea, setSelectedArea] = useState<string>('')
   const [areas, setAreas] = useState<Array<{id: string, name: string}>>([])
-  const [areasKey, setAreasKey] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
@@ -89,34 +87,42 @@ export default function OperationsBookings() {
     tableNumber: null as number | null
   })
 
-  const { data: companyData } = useCompanyData(session?.user?.id)
   const restaurantId = session?.user?.restaurantId as string | undefined
 
-  // Carica aree di prenotazione
+  // Carica le Sale attive del ristorante dal DB (RestaurantLocation)
   useEffect(() => {
     let cancelled = false
-    const fiscal: string | undefined = (companyData as { company?: { fiscalCode?: string } } | undefined)?.company?.fiscalCode
-    if (!fiscal) return
-    const key = `booking_areas_v1::${fiscal}`
-    setAreasKey(key)
-    const load = () => {
+    const load = async () => {
+      if (!restaurantId) return
       try {
-        const raw = localStorage.getItem(key)
-        const areasData = raw ? JSON.parse(raw) : [] as Array<{ id: string; name: string }>
-        const areaList = (areasData || []).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name }))
+        const res = await fetch(`/api/restaurants/${restaurantId}/locations`, {
+          credentials: 'include',
+        })
+        if (!res.ok) throw new Error('load failed')
+        const data = await res.json()
+        const areaList = ((data.locations ?? []) as Array<{
+          id: string
+          name: string
+          outletName: string
+          isActive: boolean
+        }>)
+          .filter((l) => l.isActive)
+          .map((l) => ({ id: l.id, name: l.outletName?.trim() || l.name }))
         if (!cancelled) {
           setAreas(areaList)
-          if (!selectedArea && areaList.length > 0) setSelectedArea(areaList[0].id)
+          setSelectedArea((prev) =>
+            prev || (areaList.length > 0 ? areaList[0].id : '')
+          )
         }
       } catch {
         if (!cancelled) setAreas([])
       }
     }
     load()
-    const onUpdate = () => load()
-    try { window.addEventListener('booking_areas_updated', onUpdate) } catch {}
-    return () => { try { window.removeEventListener('booking_areas_updated', onUpdate) } catch {}; cancelled = true }
-  }, [selectedArea, companyData])
+    return () => {
+      cancelled = true
+    }
+  }, [restaurantId])
 
   // Carica prenotazioni da API
   useEffect(() => {
@@ -380,6 +386,13 @@ export default function OperationsBookings() {
 
   const formatTime = (time: string) => {
     return time.slice(0, 5) // HH:MM format
+  }
+
+  // Risolve il valore 'area' di una prenotazione: se corrisponde a una Sala
+  // del DB mostra il nome, altrimenti mostra il testo legacy senza rompersi.
+  const areaName = (value: string | null | undefined): string => {
+    if (!value) return ''
+    return areas.find((a) => a.id === value)?.name ?? value
   }
 
   const getStatusColor = (status: string) => {
@@ -685,6 +698,12 @@ export default function OperationsBookings() {
                               {booking.tableNumber ? `Tavolo ${booking.tableNumber}` : 'Non assegnato'}
                             </span>
                           </div>
+                          {booking.area && (
+                            <div>
+                              <span className="text-gray-600">Sala:</span>
+                              <span className="ml-2 font-medium">{areaName(booking.area)}</span>
+                            </div>
+                          )}
                         </div>
                         
                         {booking.notes && (

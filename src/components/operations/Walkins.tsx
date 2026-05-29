@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { PermissionGuard } from '@/components/PermissionGuard'
-import { useCompanyData } from '@/hooks/useCompanyData'
 
 interface WalkinEntry {
   id: string
@@ -20,22 +20,41 @@ export default function WalkinsReport() {
   const [areas, setAreas] = useState<Array<{id: string, name: string}>>([])
   const [walkins, setWalkins] = useState<WalkinEntry[]>([])
 
-  const { data: companyData } = useCompanyData(undefined)
+  const { data: session } = useSession()
+  const restaurantId = session?.user?.restaurantId as string | undefined
 
+  // Carica le Sale attive del ristorante dal DB (stesse di /company)
   useEffect(() => {
-    const fiscal: string | undefined = (companyData as { company?: { fiscalCode?: string } } | undefined)?.company?.fiscalCode
-    if (!fiscal) return
-    const key = `booking_areas_v1::${fiscal}`
-    try {
-      const raw = localStorage.getItem(key)
-      const areasData = raw ? JSON.parse(raw) : [] as Array<{ id: string; name: string }>
-      const list = (areasData || []).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name }))
-      setAreas(list)
-      if (!selectedArea && list.length > 0) setSelectedArea(list[0].id)
-    } catch {
-      setAreas([])
+    let cancelled = false
+    const load = async () => {
+      if (!restaurantId) return
+      try {
+        const res = await fetch(`/api/restaurants/${restaurantId}/locations`, {
+          credentials: 'include',
+        })
+        if (!res.ok) throw new Error('load failed')
+        const data = await res.json()
+        const list = ((data.locations ?? []) as Array<{
+          id: string
+          name: string
+          outletName: string
+          isActive: boolean
+        }>)
+          .filter((l) => l.isActive)
+          .map((l) => ({ id: l.id, name: l.outletName?.trim() || l.name }))
+        if (!cancelled) {
+          setAreas(list)
+          setSelectedArea((prev) => prev || (list.length > 0 ? list[0].id : ''))
+        }
+      } catch {
+        if (!cancelled) setAreas([])
+      }
     }
-  }, [companyData, selectedArea])
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [restaurantId])
 
   useEffect(() => {
     let cancelled = false
