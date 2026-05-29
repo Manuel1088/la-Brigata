@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import useSWR from 'swr'
 import { formatEuro } from '@/lib/utils'
-import { shiftHubLabel } from '@/lib/shifts'
+import { shiftHubLabel, toDateOnlyIso } from '@/lib/shifts'
 import { ccnlMeetsMinimum } from '@/lib/permissions'
 import { isManagerRole } from '@/lib/roles'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -450,6 +450,123 @@ function InboxCard({
   )
 }
 
+// ── Coperti (confronto anno su anno) ────────────────────────────────────────
+
+type CoversBreakdown = {
+  date: string
+  bookings: number
+  events: number
+  walkins: number
+  total: number
+}
+type CoversData = {
+  current: CoversBreakdown
+  previous: CoversBreakdown & { hasData: boolean }
+  changePercent: number | null
+}
+
+function fmtCoversDay(iso: string, withYear: boolean): string {
+  const d = new Date(`${iso}T12:00:00`)
+  const s = d.toLocaleDateString('it-IT', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    ...(withYear ? { year: 'numeric' } : {}),
+  })
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function CoversWidget({
+  data,
+  loading,
+  error,
+}: {
+  data: CoversData | undefined
+  loading: boolean
+  error: boolean
+}) {
+  if (loading) {
+    return (
+      <Card icon="🍽️" title="Coperti">
+        <div className="h-28 animate-pulse bg-gray-100 rounded mt-2" />
+      </Card>
+    )
+  }
+  if (error || !data) {
+    return <Card icon="🍽️" title="Coperti" error />
+  }
+
+  const { current, previous, changePercent } = data
+  const hasPrev = previous.hasData
+  const num = (n: number) => (n === 0 ? '—' : String(n))
+  const prevNum = (n: number) => (!hasPrev ? '—' : n === 0 ? '—' : String(n))
+
+  const leftLabel = fmtCoversDay(current.date, false)
+  const rightLabel = fmtCoversDay(previous.date, true)
+
+  return (
+    <Card icon="🍽️" title="Coperti" accent="border-teal-400">
+      <div className="mt-2 grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm">
+        {/* Header */}
+        <div />
+        <div className="text-right font-semibold text-gray-700 w-16">OGGI</div>
+        <div className="text-right font-semibold text-gray-500 w-20 pl-4 border-l border-gray-200">
+          {rightLabel.replace(/ \d{4}$/, '')}
+        </div>
+
+        {/* Sub-header date */}
+        <div className="text-xs text-gray-400">{leftLabel}</div>
+        <div className="text-right text-xs text-gray-400 w-16">&nbsp;</div>
+        <div className="text-right text-xs text-gray-400 w-20 pl-4 border-l border-gray-200">
+          {hasPrev ? previous.date.slice(0, 4) : ''}
+        </div>
+
+        {/* Prenotazioni */}
+        <div className="text-gray-600">Prenotazioni</div>
+        <div className="text-right w-16">{num(current.bookings)}</div>
+        <div className="text-right w-20 pl-4 border-l border-gray-200">{prevNum(previous.bookings)}</div>
+
+        {/* Pax eventi */}
+        <div className="text-gray-600">Pax eventi</div>
+        <div className="text-right w-16">{num(current.events)}</div>
+        <div className="text-right w-20 pl-4 border-l border-gray-200">{prevNum(previous.events)}</div>
+
+        {/* Passanti */}
+        <div className="text-gray-600">Passanti</div>
+        <div className="text-right w-16">{num(current.walkins)}</div>
+        <div className="text-right w-20 pl-4 border-l border-gray-200">{prevNum(previous.walkins)}</div>
+
+        {/* Totale */}
+        <div className="font-bold text-gray-900 border-t border-gray-200 pt-2">TOTALE</div>
+        <div className="text-right font-bold text-gray-900 w-16 border-t border-gray-200 pt-2">
+          {current.total}
+        </div>
+        <div className="text-right font-bold text-gray-900 w-20 pl-4 border-t border-l border-gray-200 pt-2">
+          {hasPrev ? previous.total : '—'}
+        </div>
+
+        {/* Variazione % */}
+        {changePercent !== null && (
+          <>
+            <div />
+            <div className="w-16" />
+            <div className="text-right w-20 pl-4 border-l border-gray-200">
+              <span
+                className={`text-xs font-semibold ${
+                  changePercent >= 0 ? 'text-green-600' : 'text-red-500'
+                }`}
+              >
+                {changePercent >= 0 ? '📈' : '📉'} {changePercent > 0 ? '+' : ''}
+                {changePercent}%
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 // ── Main dashboard ─────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -462,7 +579,7 @@ export default function DashboardPage() {
   }, [session, status, router])
 
   // ── Role detection ────────────────────────────────────────────────────
-  const { canManageTasks, canManageTips } = usePermissions()
+  const { can, canManageTasks, canManageTips } = usePermissions()
   const userRole = (session?.user?.role as string) ?? ''
   const ccnlLevel = session?.user?.ccnlLevel ?? null
   const isManager = isManagerRole(userRole)
@@ -472,6 +589,8 @@ export default function DashboardPage() {
     isManager || canManageTasks() || ccnlMeetsMinimum(ccnlLevel, 'LIVELLO_2')
   // Mance ristorante: manager oppure chi può gestire le mance
   const showRestaurantTips = isManager || canManageTips()
+  // Coperti: manager oppure chi può vedere le prenotazioni
+  const showCovers = isManager || can('bookings_view')
   const isPlatformAdmin = session?.user?.role === 'ADMIN' && session?.user?.level === 11
 
   // ── Batch data ────────────────────────────────────────────────────────
@@ -523,6 +642,16 @@ export default function DashboardPage() {
     useSWR<{ summary?: { monthTotal?: number; monthDaysWithTips?: number } }>(
       showRestaurantTips && status === 'authenticated'
         ? `/api/tips/summary?year=${now.getFullYear()}&month=${now.getMonth()}`
+        : null,
+      cFetch,
+      { revalidateOnFocus: false }
+    )
+
+  // ── Coperti (confronto anno su anno) ──────────────────────────────────
+  const { data: coversRaw, isLoading: coversLoading, error: coversError } =
+    useSWR<CoversData>(
+      showCovers && status === 'authenticated'
+        ? `/api/dashboard/covers?date=${toDateOnlyIso(now)}`
         : null,
       cFetch,
       { revalidateOnFocus: false }
@@ -646,34 +775,25 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Manager: Inbox + Prenotazioni ──────────────────────────────── */}
-        {isManager && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InboxCard
-              pendingCount={pendingCountRaw?.total}
-              pendingEmployments={pendingEmployments.length}
-              yesterdayTipsTotal={widgets.yesterdayTipsTotal}
-              router={router}
-            />
+        {/* ── Manager + bookings_view: Inbox + Coperti (YoY) ─────────────── */}
+        {(isManager || showCovers) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+            {isManager && (
+              <InboxCard
+                pendingCount={pendingCountRaw?.total}
+                pendingEmployments={pendingEmployments.length}
+                yesterdayTipsTotal={widgets.yesterdayTipsTotal}
+                router={router}
+              />
+            )}
 
-            {/* Prenotazioni oggi */}
-            <Card icon="🍽️" title="Coperti oggi" accent="border-teal-400">
-              {batchLoading ? (
-                <div className="h-10 animate-pulse bg-gray-100 rounded mt-2" />
-              ) : (
-                <>
-                  <p className="text-3xl font-bold text-teal-700 mt-2">{widgets.bookingsTodayCount}</p>
-                  <p className="text-sm text-gray-500 mt-0.5">prenotazioni oggi</p>
-                  <button
-                    type="button"
-                    onClick={() => router.push('/operations')}
-                    className="text-xs text-teal-600 font-semibold mt-2 hover:underline"
-                  >
-                    Gestisci →
-                  </button>
-                </>
-              )}
-            </Card>
+            {showCovers && (
+              <CoversWidget
+                data={coversRaw}
+                loading={coversLoading}
+                error={!!coversError}
+              />
+            )}
           </div>
         )}
 
