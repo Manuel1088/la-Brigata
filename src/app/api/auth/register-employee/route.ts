@@ -77,16 +77,27 @@ export async function POST(request: NextRequest) {
       
       if (!foundCompany) {
         return NextResponse.json(
-          { error: 'Azienda non trovata con questo codice fiscale. Verifica il CF o crea un gruppo temporaneo.' },
+          { error: 'Codice Fiscale azienda non trovato. Verifica con il tuo datore di lavoro.' },
           { status: 404 }
         )
       }
-      
+
       companyId = foundCompany.id
-      
-      // Usa il primo ristorante dell'azienda o creane uno
+
       if (foundCompany.restaurants && foundCompany.restaurants.length > 0) {
+        // TODO: se l'azienda ha più ristoranti, permettere al dipendente di
+        // scegliere la sede invece di agganciare automaticamente la prima.
         restaurantId = foundCompany.restaurants[0].id
+      } else {
+        // Azienda senza ristoranti (edge case): crea la sede principale
+        // scoping esplicitamente alla company corretta.
+        const created = await prisma.restaurant.create({
+          data: {
+            name: `${foundCompany.name} - Sede Principale`,
+            companyId: foundCompany.id,
+          },
+        })
+        restaurantId = created.id
       }
     }
     
@@ -125,22 +136,13 @@ export async function POST(request: NextRequest) {
       teamCode = `TEAM_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     }
 
-    // Assicurati di avere un restaurantId valido (campo richiesto nello schema)
-    // restaurantId già dichiarato sopra
-    const anyRestaurant = await prisma.restaurant.findFirst({
-      where: {
-        OR: [
-          companyId ? { companyId } : undefined,
-          { companyId: null }
-        ].filter(Boolean) as Array<{ companyId?: string | null }>
-      }
-    })
-    if (anyRestaurant) {
-      restaurantId = anyRestaurant.id
-    } else {
+    // Per team informali o indipendenti (nessuna azienda registrata tramite CF)
+    // crea una sede dedicata. NON agganciare mai a ristoranti di altre aziende
+    // (rimosso il vecchio fallback findFirst({ companyId: null })).
+    if (!restaurantId) {
       const created = await prisma.restaurant.create({
         data: {
-          name: teamName || `Team ${teamCode || name}`,
+          name: teamName || informalCompanyData?.name || `Team ${teamCode || name}`,
           address: null,
           phone: null,
           companyId: companyId || undefined
