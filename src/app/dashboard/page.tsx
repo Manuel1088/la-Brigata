@@ -8,6 +8,7 @@ import { formatEuro } from '@/lib/utils'
 import { shiftHubLabel } from '@/lib/shifts'
 import { ccnlMeetsMinimum } from '@/lib/permissions'
 import { isManagerRole } from '@/lib/roles'
+import { usePermissions } from '@/hooks/usePermissions'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import PlatformAdminDashboard from '@/components/dashboard/PlatformAdminDashboard'
 
@@ -24,6 +25,16 @@ type MeHubData = {
     monthLabel: string
   }
 }
+type MyTipsData = {
+  monthLabel?: string
+  summary?: {
+    total: number
+    cash: number
+    card: number
+    foreign: number
+    daysWithTips: number
+  }
+}
 type LeaveBalance = { type: string; total: number; used: number; remaining: number }
 type LeavesData = {
   balances?: LeaveBalance[]
@@ -35,14 +46,22 @@ type TaskRow = {
   dueDate: string | null
   priority: 'ALTA' | 'MEDIA' | 'BASSA'
   status: string
+  assignedToRole?: string | null
+  assignedTo?: {
+    id: string
+    firstName?: string | null
+    lastName?: string | null
+    name?: string | null
+    role?: string | null
+  } | null
 }
 type NotifRow = {
   id: string
   title: string
-  body?: string
+  message?: string
   isRead: boolean
   isUrgent?: boolean
-  createdAt: string
+  timestamp?: string
   category?: string
 }
 
@@ -71,10 +90,33 @@ function todayLabel(): string {
   })
 }
 
+function formatNotifDate(iso?: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return null
+  return d.toLocaleDateString('it-IT', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function priorityDot(p: 'ALTA' | 'MEDIA' | 'BASSA'): string {
   if (p === 'ALTA') return 'bg-red-500'
   if (p === 'MEDIA') return 'bg-amber-400'
   return 'bg-gray-300'
+}
+
+function assigneeLabel(t: TaskRow): string {
+  const a = t.assignedTo
+  if (a) {
+    const full = [a.firstName, a.lastName].filter(Boolean).join(' ').trim()
+    if (full) return full
+    if (a.name?.trim()) return a.name
+  }
+  if (t.assignedToRole?.trim()) return t.assignedToRole
+  return 'Non assegnato'
 }
 
 function taskDueLabel(iso: string | null): { text: string; cls: string } {
@@ -181,66 +223,175 @@ function LeaveCard({
   )
 }
 
-// ── Mance personali ────────────────────────────────────────────────────────
+// ── Mance widget unificato (Le mie mance + Mance ristorante) ────────────────
 
-function PersonalTipsCard({ hub, loading }: { hub: MeHubData | undefined; loading: boolean }) {
-  if (loading) return <Card icon="💰" title="Le mie mance"><div className="h-10 animate-pulse bg-gray-100 rounded mt-2" /></Card>
+function TipsWidget({
+  myTips,
+  myLoading,
+  myError,
+  showRestaurant,
+  restaurantTotal,
+  restaurantDays,
+  restaurantLoading,
+  restaurantError,
+}: {
+  myTips: MyTipsData | undefined
+  myLoading: boolean
+  myError: boolean
+  showRestaurant: boolean
+  restaurantTotal: number
+  restaurantDays: number
+  restaurantLoading: boolean
+  restaurantError: boolean
+}) {
+  const s = myTips?.summary
 
-  const tips = hub?.monthlyTips
   return (
-    <Card icon="💰" title="Le mie mance (mese)" accent="border-amber-400">
-      {tips ? (
+    <Card icon="💰" title="Mance" accent="border-amber-400">
+      {/* Le mie mance */}
+      <div className="mt-1">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+          Le mie mance (mese)
+        </p>
+        {myLoading ? (
+          <div className="h-12 animate-pulse bg-gray-100 rounded" />
+        ) : myError && !myTips ? (
+          <p className="text-sm text-gray-400 italic">Dati non disponibili</p>
+        ) : !s || s.total === 0 ? (
+          <p className="text-sm text-gray-400 italic">Nessuna mancia questo mese</p>
+        ) : (
+          <>
+            <p className="text-2xl font-bold text-amber-600">{formatEuro(s.total)}</p>
+            <div className="flex gap-4 mt-1 text-sm text-gray-500">
+              <span>💵 {formatEuro(s.cash)}</span>
+              <span>💳 {formatEuro(s.card)}</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Mance ristorante — solo per manager / chi gestisce le mance */}
+      {showRestaurant && (
         <>
-          <p className="text-2xl font-bold text-amber-600 mt-2">{formatEuro(tips.total)}</p>
-          <p className="text-sm text-gray-500 mt-0.5 capitalize">{tips.monthLabel} · {tips.daysWithTips} {tips.daysWithTips === 1 ? 'giorno' : 'giorni'}</p>
+          <hr className="my-4 border-gray-100" />
+          <div>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              Mance ristorante (mese)
+            </p>
+            {restaurantLoading ? (
+              <div className="h-12 animate-pulse bg-gray-100 rounded" />
+            ) : restaurantError ? (
+              <p className="text-sm text-gray-400 italic">Dati non disponibili</p>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-amber-600">{formatEuro(restaurantTotal)}</p>
+                {restaurantDays > 0 && (
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {restaurantDays} {restaurantDays === 1 ? 'giorno' : 'giorni'} con inserimenti
+                  </p>
+                )}
+              </>
+            )}
+          </div>
         </>
-      ) : (
-        <p className="text-sm text-gray-400 italic mt-2">Nessuna mance questo mese</p>
       )}
     </Card>
   )
 }
 
-// ── Task urgenti ───────────────────────────────────────────────────────────
+// ── Task widget unificato (I miei task + Task reparto) ──────────────────────
 
-function UrgentTasksCard({
-  tasks,
-  loading,
-  error,
+function TaskWidget({
+  myTasks,
+  myLoading,
+  myError,
   onComplete,
+  showDept,
+  deptTasks,
+  deptLoading,
+  deptError,
 }: {
-  tasks: TaskRow[] | undefined
-  loading: boolean
-  error: boolean
+  myTasks: TaskRow[] | undefined
+  myLoading: boolean
+  myError: boolean
   onComplete: (id: string) => void
+  showDept: boolean
+  deptTasks: TaskRow[] | undefined
+  deptLoading: boolean
+  deptError: boolean
 }) {
-  if (loading) return <Card icon="📋" title="Task urgenti"><div className="h-16 animate-pulse bg-gray-100 rounded mt-2" /></Card>
-  const top3 = (tasks ?? []).filter((t) => t.status !== 'COMPLETATO').slice(0, 3)
+  const top3 = (myTasks ?? []).filter((t) => t.status !== 'COMPLETATO').slice(0, 3)
+  const deptList = (deptTasks ?? []).filter((t) => t.status !== 'COMPLETATO')
 
   return (
-    <Card icon="📋" title="I miei task" accent="border-orange-400" error={error && !tasks}>
-      {top3.length === 0 ? (
-        <p className="text-sm text-gray-400 italic mt-2">Nessun task in attesa</p>
-      ) : (
-        <div className="mt-2 space-y-2">
-          {top3.map((t) => {
-            const due = taskDueLabel(t.dueDate)
-            return (
-              <div key={t.id} className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onComplete(t.id)}
-                  className="flex-shrink-0 w-4 h-4 rounded border-2 border-gray-300 hover:border-green-400 transition"
-                />
-                <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priorityDot(t.priority)}`} />
-                <span className="text-sm text-gray-800 flex-1 truncate">{t.title}</span>
-                {due.text && (
-                  <span className={`text-xs flex-shrink-0 font-medium ${due.cls}`}>{due.text}</span>
+    <Card icon="📋" title="Task" accent="border-orange-400">
+      {/* I miei task */}
+      <div className="mt-1">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+          I miei task
+        </p>
+        {myLoading ? (
+          <div className="h-12 animate-pulse bg-gray-100 rounded" />
+        ) : myError && !myTasks ? (
+          <p className="text-sm text-gray-400 italic">Dati non disponibili</p>
+        ) : top3.length === 0 ? (
+          <p className="text-sm text-gray-400 italic">Nessun task in attesa</p>
+        ) : (
+          <div className="space-y-2">
+            {top3.map((t) => {
+              const due = taskDueLabel(t.dueDate)
+              return (
+                <div key={t.id} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onComplete(t.id)}
+                    className="flex-shrink-0 w-4 h-4 rounded border-2 border-gray-300 hover:border-green-400 transition"
+                  />
+                  <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priorityDot(t.priority)}`} />
+                  <span className="text-sm text-gray-800 flex-1 truncate">{t.title}</span>
+                  {due.text && (
+                    <span className={`text-xs flex-shrink-0 font-medium ${due.cls}`}>{due.text}</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Task reparto — solo per chi gestisce il reparto */}
+      {showDept && (
+        <>
+          <hr className="my-4 border-gray-100" />
+          <div>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              Task reparto — in scadenza oggi
+            </p>
+            {deptLoading ? (
+              <div className="h-12 animate-pulse bg-gray-100 rounded" />
+            ) : deptError && !deptTasks ? (
+              <p className="text-sm text-gray-400 italic">Dati non disponibili</p>
+            ) : deptList.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Nessun task in scadenza oggi</p>
+            ) : (
+              <div className="space-y-2">
+                {deptList.slice(0, 4).map((t) => (
+                  <div key={t.id} className="flex items-center gap-2">
+                    <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priorityDot(t.priority)}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800 truncate">{t.title}</p>
+                      <p className="text-xs text-gray-400 truncate">{assigneeLabel(t)}</p>
+                    </div>
+                    <span className="text-xs flex-shrink-0 text-amber-500 font-medium">Oggi</span>
+                  </div>
+                ))}
+                {deptList.length > 4 && (
+                  <p className="text-xs text-gray-400">+{deptList.length - 4} altri</p>
                 )}
               </div>
-            )
-          })}
-        </div>
+            )}
+          </div>
+        </>
       )}
     </Card>
   )
@@ -269,38 +420,12 @@ function NotificationCard({
             {!notif.isRead && <span className="flex-shrink-0 mt-1 w-2 h-2 rounded-full bg-orange-500" />}
             <div>
               <p className="text-sm font-medium text-gray-900">{notif.title}</p>
-              {notif.body && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notif.body}</p>}
-              <p className="text-xs text-gray-400 mt-1">
-                {new Date(notif.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-              </p>
+              {notif.message && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notif.message}</p>}
+              {formatNotifDate(notif.timestamp) && (
+                <p className="text-xs text-gray-400 mt-1">{formatNotifDate(notif.timestamp)}</p>
+              )}
             </div>
           </div>
-        </div>
-      )}
-    </Card>
-  )
-}
-
-// ── Dept tasks ─────────────────────────────────────────────────────────────
-
-function DeptTasksCard({ tasks, loading, error }: { tasks: TaskRow[] | undefined; loading: boolean; error: boolean }) {
-  if (loading) return <Card icon="📋" title="Task reparto oggi"><div className="h-10 animate-pulse bg-gray-100 rounded mt-2" /></Card>
-  const list = tasks ?? []
-
-  return (
-    <Card icon="📋" title="Task reparto — in scadenza oggi" accent="border-purple-400" error={error && !tasks}>
-      {list.length === 0 ? (
-        <p className="text-sm text-gray-400 italic mt-2">Nessun task in scadenza oggi</p>
-      ) : (
-        <div className="mt-2 space-y-2">
-          {list.slice(0, 4).map((t) => (
-            <div key={t.id} className="flex items-center gap-2">
-              <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priorityDot(t.priority)}`} />
-              <span className="text-sm text-gray-800 flex-1 truncate">{t.title}</span>
-              <span className="text-xs text-amber-500 font-medium">Oggi</span>
-            </div>
-          ))}
-          {list.length > 4 && <p className="text-xs text-gray-400">+{list.length - 4} altri</p>}
         </div>
       )}
     </Card>
@@ -382,30 +507,6 @@ function InboxCard({
   )
 }
 
-// ── Restaurant tips ────────────────────────────────────────────────────────
-
-function RestaurantTipsCard({
-  total,
-  days,
-  loading,
-  error,
-}: {
-  total: number
-  days: number
-  loading: boolean
-  error: boolean
-}) {
-  if (loading) return <Card icon="💰" title="Mance ristorante"><div className="h-10 animate-pulse bg-gray-100 rounded mt-2" /></Card>
-  return (
-    <Card icon="💰" title="Mance ristorante (mese)" accent="border-amber-400" error={error}>
-      <p className="text-2xl font-bold text-amber-600 mt-2">{formatEuro(total)}</p>
-      {days > 0 && (
-        <p className="text-sm text-gray-500 mt-0.5">{days} {days === 1 ? 'giorno' : 'giorni'} con inserimenti</p>
-      )}
-    </Card>
-  )
-}
-
 // ── Main dashboard ─────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -418,10 +519,16 @@ export default function DashboardPage() {
   }, [session, status, router])
 
   // ── Role detection ────────────────────────────────────────────────────
+  const { canManageTasks, canManageTips } = usePermissions()
   const userRole = (session?.user?.role as string) ?? ''
   const ccnlLevel = session?.user?.ccnlLevel ?? null
   const isManager = isManagerRole(userRole)
   const showDeptSection = isManager || ccnlMeetsMinimum(ccnlLevel, 'LIVELLO_3')
+  // Task reparto: L2+ (capo turno/responsabile) oppure chi può gestire i task
+  const canViewDeptTasks =
+    isManager || canManageTasks() || ccnlMeetsMinimum(ccnlLevel, 'LIVELLO_2')
+  // Mance ristorante: manager oppure chi può gestire le mance
+  const showRestaurantTips = isManager || canManageTips()
   const isPlatformAdmin = session?.user?.role === 'ADMIN' && session?.user?.level === 11
 
   // ── Batch data ────────────────────────────────────────────────────────
@@ -456,19 +563,29 @@ export default function DashboardPage() {
       { revalidateOnFocus: false }
     )
 
-  // ── L2-3 dept tasks ───────────────────────────────────────────────────
+  // ── Task reparto (L2+ / canManageTasks) ───────────────────────────────
   const { data: deptTasksRaw, isLoading: deptTasksLoading, error: deptTasksError } =
     useSWR<{ tasks: TaskRow[] }>(
-      showDeptSection && status === 'authenticated' ? '/api/tasks?scope=department&due=today' : null,
+      canViewDeptTasks && status === 'authenticated' ? '/api/tasks?scope=department&due=today' : null,
       cFetch,
       { revalidateOnFocus: false }
     )
 
-  // ── Manager: restaurant tips ──────────────────────────────────────────
+  // ── Mance personali (contanti / carta / totale) ───────────────────────
   const now = new Date()
+  const { data: myTipsRaw, isLoading: myTipsLoading, error: myTipsError } =
+    useSWR<MyTipsData>(
+      status === 'authenticated'
+        ? `/api/tips/my?year=${now.getFullYear()}&month=${now.getMonth()}`
+        : null,
+      cFetch,
+      { revalidateOnFocus: false }
+    )
+
+  // ── Mance ristorante (manager / canManageTips) ────────────────────────
   const { data: tipsSummaryRaw, isLoading: tipsLoading, error: tipsError } =
     useSWR<{ summary?: { monthTotal?: number; monthDaysWithTips?: number } }>(
-      isManager && status === 'authenticated'
+      showRestaurantTips && status === 'authenticated'
         ? `/api/tips/summary?year=${now.getFullYear()}&month=${now.getMonth()}`
         : null,
       cFetch,
@@ -538,59 +655,40 @@ export default function DashboardPage() {
           <p className="text-sm text-gray-500 capitalize mt-0.5">{todayLabel()}</p>
         </div>
 
-        {/* ── Row 1: Turno + Ferie + ROL ─────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* ── Row 1: Turno + Ferie/ROL ───────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ShiftCard hub={hubData} loading={hubLoading} />
           <LeaveCard leaves={leavesData} loading={leavesLoading} error={!!leavesError} />
-
-          {/* Quick actions */}
-          <div className="bg-white rounded-xl shadow-sm border p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">⚡</span>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Accesso rapido</p>
-            </div>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => router.push('/mance')}
-                className="w-full text-left px-3 py-2 rounded-lg bg-amber-50 text-amber-700 text-sm font-medium hover:bg-amber-100 transition"
-              >
-                💰 Le mie mance
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push('/shifts')}
-                className="w-full text-left px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100 transition"
-              >
-                📅 I miei turni
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push('/tasks')}
-                className="w-full text-left px-3 py-2 rounded-lg bg-orange-50 text-orange-700 text-sm font-medium hover:bg-orange-100 transition"
-              >
-                📋 I miei task
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* ── Row 2: Mance personali + Task urgenti + Notifica ───────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <PersonalTipsCard hub={hubData} loading={hubLoading} />
-          <UrgentTasksCard
-            tasks={urgentTasks}
-            loading={tasksLoading}
-            error={!!tasksError}
+        {/* ── Row 2: Mance (unificato) + Task (unificato) + Notifica ─────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+          <TipsWidget
+            myTips={myTipsRaw}
+            myLoading={myTipsLoading}
+            myError={!!myTipsError}
+            showRestaurant={showRestaurantTips}
+            restaurantTotal={restaurantTipsTotal}
+            restaurantDays={restaurantTipsDays}
+            restaurantLoading={tipsLoading}
+            restaurantError={!!tipsError}
+          />
+          <TaskWidget
+            myTasks={urgentTasks}
+            myLoading={tasksLoading}
+            myError={!!tasksError}
             onComplete={(id) => void handleCompleteTask(id)}
+            showDept={canViewDeptTasks}
+            deptTasks={deptTasksRaw?.tasks}
+            deptLoading={deptTasksLoading}
+            deptError={!!deptTasksError}
           />
           <NotificationCard notif={lastNotif} loading={notifLoading} error={!!notifError} />
         </div>
 
-        {/* ── L2-3: Chi è in turno + Task reparto ────────────────────────── */}
+        {/* ── L2-3: Chi è in turno oggi nel reparto ──────────────────────── */}
         {showDeptSection && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Staff in turno oggi */}
+          <div className="grid grid-cols-1">
             <Card icon="👥" title="Chi è in turno oggi" accent="border-indigo-400">
               {batchLoading ? (
                 <div className="h-10 animate-pulse bg-gray-100 rounded mt-2" />
@@ -612,18 +710,12 @@ export default function DashboardPage() {
                 </>
               )}
             </Card>
-
-            <DeptTasksCard
-              tasks={deptTasksRaw?.tasks}
-              loading={deptTasksLoading}
-              error={!!deptTasksError}
-            />
           </div>
         )}
 
-        {/* ── Manager: Inbox + Prenotazioni + Mance ristorante ───────────── */}
+        {/* ── Manager: Inbox + Prenotazioni ──────────────────────────────── */}
         {isManager && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InboxCard
               pendingCount={pendingCountRaw?.total}
               pendingEmployments={pendingEmployments.length}
@@ -649,13 +741,6 @@ export default function DashboardPage() {
                 </>
               )}
             </Card>
-
-            <RestaurantTipsCard
-              total={restaurantTipsTotal}
-              days={restaurantTipsDays}
-              loading={tipsLoading}
-              error={!!tipsError}
-            />
           </div>
         )}
 
