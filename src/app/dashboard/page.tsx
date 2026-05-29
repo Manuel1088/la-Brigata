@@ -55,16 +55,6 @@ type TaskRow = {
     role?: string | null
   } | null
 }
-type NotifRow = {
-  id: string
-  title: string
-  message?: string
-  isRead: boolean
-  isUrgent?: boolean
-  timestamp?: string
-  category?: string
-}
-
 // ── Fetcher ────────────────────────────────────────────────────────────────
 
 const cFetch = (url: string) =>
@@ -87,18 +77,6 @@ function todayLabel(): string {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  })
-}
-
-function formatNotifDate(iso?: string | null): string | null {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return null
-  return d.toLocaleDateString('it-IT', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
   })
 }
 
@@ -397,41 +375,6 @@ function TaskWidget({
   )
 }
 
-// ── Ultima notifica ────────────────────────────────────────────────────────
-
-function NotificationCard({
-  notif,
-  loading,
-  error,
-}: {
-  notif: NotifRow | undefined
-  loading: boolean
-  error: boolean
-}) {
-  if (loading) return <Card icon="🔔" title="Notifiche"><div className="h-10 animate-pulse bg-gray-100 rounded mt-2" /></Card>
-
-  return (
-    <Card icon="🔔" title="Ultima notifica" error={error && !notif}>
-      {!notif ? (
-        <p className="text-sm text-gray-400 italic mt-2">Nessuna notifica</p>
-      ) : (
-        <div className="mt-2">
-          <div className="flex items-start gap-2">
-            {!notif.isRead && <span className="flex-shrink-0 mt-1 w-2 h-2 rounded-full bg-orange-500" />}
-            <div>
-              <p className="text-sm font-medium text-gray-900">{notif.title}</p>
-              {notif.message && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notif.message}</p>}
-              {formatNotifDate(notif.timestamp) && (
-                <p className="text-xs text-gray-400 mt-1">{formatNotifDate(notif.timestamp)}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </Card>
-  )
-}
-
 // ── Manager inbox ──────────────────────────────────────────────────────────
 
 type InboxItem = { id: string; label: string; icon: string; path: string; urgent?: boolean }
@@ -556,13 +499,6 @@ export default function DashboardPage() {
       { revalidateOnFocus: true }
     )
 
-  const { data: notifRaw, isLoading: notifLoading, error: notifError } =
-    useSWR<{ notifications: NotifRow[] }>(
-      status === 'authenticated' ? '/api/notifications' : null,
-      cFetch,
-      { revalidateOnFocus: false }
-    )
-
   // ── Task reparto (L2+ / canManageTasks) ───────────────────────────────
   const { data: deptTasksRaw, isLoading: deptTasksLoading, error: deptTasksError } =
     useSWR<{ tasks: TaskRow[] }>(
@@ -637,8 +573,6 @@ export default function DashboardPage() {
       return (pr[a.priority] ?? 1) - (pr[b.priority] ?? 1)
     })
 
-  const lastNotif = notifRaw?.notifications?.find((n) => !n.isRead) ?? notifRaw?.notifications?.[0]
-
   const restaurantTipsTotal = Number(tipsSummaryRaw?.summary?.monthTotal ?? 0)
   const restaurantTipsDays = Number(tipsSummaryRaw?.summary?.monthDaysWithTips ?? 0)
 
@@ -661,8 +595,8 @@ export default function DashboardPage() {
           <LeaveCard leaves={leavesData} loading={leavesLoading} error={!!leavesError} />
         </div>
 
-        {/* ── Row 2: Mance (unificato) + Task (unificato) + Notifica ─────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+        {/* ── Row 2: Mance (unificato) + Task (unificato) ────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           <TipsWidget
             myTips={myTipsRaw}
             myLoading={myTipsLoading}
@@ -683,7 +617,6 @@ export default function DashboardPage() {
             deptLoading={deptTasksLoading}
             deptError={!!deptTasksError}
           />
-          <NotificationCard notif={lastNotif} loading={notifLoading} error={!!notifError} />
         </div>
 
         {/* ── L2-3: Chi è in turno oggi nel reparto ──────────────────────── */}

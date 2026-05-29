@@ -144,15 +144,40 @@ export default function OperationsBookings() {
     loadBookings()
   }, [selectedDate, selectedArea, restaurantId])
 
-  // Carica passanti
+  // Carica passanti dal DB (API condivisa, non più localStorage)
   useEffect(() => {
-    try {
-      const key = `walkins_v1::${selectedDate}::${selectedArea}`
-      const raw = localStorage.getItem(key)
-      const data = raw ? JSON.parse(raw) : []
-      setWalkins(data)
-    } catch {
-      setWalkins([])
+    let cancelled = false
+    const load = async () => {
+      if (!selectedDate) return
+      try {
+        const params = new URLSearchParams({ date: selectedDate })
+        if (selectedArea) params.set('area', selectedArea)
+        const res = await fetch(`/api/walkins?${params.toString()}`, {
+          credentials: 'include',
+        })
+        if (!res.ok) throw new Error('load failed')
+        const data = await res.json()
+        if (!cancelled) {
+          const list: WalkinEntry[] = (data.walkins ?? []).map(
+            (w: { id: string; date: string; time: string | null; tableNumber: number | null; covers: number; areaId: string | null; createdAt: string }) => ({
+              id: w.id,
+              date: w.date,
+              time: w.time ?? '',
+              tableNumber: w.tableNumber,
+              covers: w.covers,
+              areaId: w.areaId ?? '',
+              createdAt: w.createdAt,
+            })
+          )
+          setWalkins(list)
+        }
+      } catch {
+        if (!cancelled) setWalkins([])
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
     }
   }, [selectedDate, selectedArea])
 
@@ -523,27 +548,43 @@ export default function OperationsBookings() {
                 />
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const now = new Date()
                   const hour = now.getHours()
                   let bucketTime = '19:00'
                   if (hour >= 21) bucketTime = '21:00'
                   else if (hour >= 19) bucketTime = '19:00'
                   else if (hour >= 12 && hour <= 15) bucketTime = '12:00'
-                  const entry: WalkinEntry = {
-                    id: crypto.randomUUID(),
-                    date: selectedDate,
-                    time: bucketTime,
-                    tableNumber: 1,
-                    covers: walkinCovers,
-                    areaId: selectedArea,
-                    createdAt: new Date().toISOString()
+                  try {
+                    const res = await fetch('/api/walkins', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({
+                        date: selectedDate,
+                        time: bucketTime,
+                        covers: walkinCovers,
+                        area: selectedArea || null,
+                        tableNumber: 1,
+                      }),
+                    })
+                    if (!res.ok) throw new Error('save failed')
+                    const data = await res.json()
+                    const w = data.walkin
+                    const entry: WalkinEntry = {
+                      id: w.id,
+                      date: w.date,
+                      time: w.time ?? bucketTime,
+                      tableNumber: w.tableNumber,
+                      covers: w.covers,
+                      areaId: w.areaId ?? selectedArea,
+                      createdAt: w.createdAt,
+                    }
+                    setWalkins((prev) => [...prev, entry])
+                    setMessage('✅ Passanti registrati')
+                  } catch {
+                    setMessage('❌ Errore nel salvataggio passanti')
                   }
-                  const key = `walkins_v1::${selectedDate}::${selectedArea}`
-                  const next = [...walkins, entry]
-                  try { localStorage.setItem(key, JSON.stringify(next)) } catch {}
-                  setWalkins(next)
-                  setMessage('✅ Passanti registrati')
                   setTimeout(() => setMessage(''), 2000)
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
@@ -574,11 +615,18 @@ export default function OperationsBookings() {
                         <span className="text-gray-600">{w.tableNumber ? `Tavolo ${w.tableNumber}` : 'Tavolo non specificato'}</span>
                       </div>
                       <button
-                        onClick={() => {
-                          const key = `walkins_v1::${selectedDate}::${selectedArea}`
-                          const next = walkins.filter(x => x.id !== w.id)
-                          try { localStorage.setItem(key, JSON.stringify(next)) } catch {}
-                          setWalkins(next)
+                        onClick={async () => {
+                          const prev = walkins
+                          setWalkins(prev.filter(x => x.id !== w.id))
+                          try {
+                            const res = await fetch(`/api/walkins/${w.id}`, {
+                              method: 'DELETE',
+                              credentials: 'include',
+                            })
+                            if (!res.ok) throw new Error('delete failed')
+                          } catch {
+                            setWalkins(prev)
+                          }
                         }}
                         className="px-2 py-1 text-red-600 hover:bg-red-50 rounded transition text-sm"
                       >

@@ -38,13 +38,38 @@ export default function WalkinsReport() {
   }, [companyData, selectedArea])
 
   useEffect(() => {
-    try {
-      const key = `walkins_v1::${selectedDate}::${selectedArea}`
-      const raw = localStorage.getItem(key)
-      const data = raw ? JSON.parse(raw) : []
-      setWalkins(data)
-    } catch {
-      setWalkins([])
+    let cancelled = false
+    const load = async () => {
+      if (!selectedDate) return
+      try {
+        const params = new URLSearchParams({ date: selectedDate })
+        if (selectedArea) params.set('area', selectedArea)
+        const res = await fetch(`/api/walkins?${params.toString()}`, {
+          credentials: 'include',
+        })
+        if (!res.ok) throw new Error('load failed')
+        const data = await res.json()
+        if (!cancelled) {
+          const list: WalkinEntry[] = (data.walkins ?? []).map(
+            (w: { id: string; date: string; time: string | null; tableNumber: number | null; covers: number; areaId: string | null; createdAt: string }) => ({
+              id: w.id,
+              date: w.date,
+              time: w.time ?? '',
+              tableNumber: w.tableNumber,
+              covers: w.covers,
+              areaId: w.areaId ?? '',
+              createdAt: w.createdAt,
+            })
+          )
+          setWalkins(list)
+        }
+      } catch {
+        if (!cancelled) setWalkins([])
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
     }
   }, [selectedDate, selectedArea])
 
@@ -129,11 +154,18 @@ export default function WalkinsReport() {
                       <span className="text-gray-600">{w.tableNumber ? `Tavolo ${w.tableNumber}` : 'Tavolo non specificato'}</span>
                     </div>
                     <button
-                      onClick={() => {
-                        const key = `walkins_v1::${selectedDate}::${selectedArea}`
-                        const next = walkins.filter(x => x.id !== w.id)
-                        try { localStorage.setItem(key, JSON.stringify(next)) } catch {}
-                        setWalkins(next)
+                      onClick={async () => {
+                        const prev = walkins
+                        setWalkins(prev.filter(x => x.id !== w.id))
+                        try {
+                          const res = await fetch(`/api/walkins/${w.id}`, {
+                            method: 'DELETE',
+                            credentials: 'include',
+                          })
+                          if (!res.ok) throw new Error('delete failed')
+                        } catch {
+                          setWalkins(prev)
+                        }
                       }}
                       className="px-2 py-1 text-red-600 hover:bg-red-50 rounded transition text-sm"
                     >
