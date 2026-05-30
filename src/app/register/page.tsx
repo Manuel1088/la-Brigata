@@ -313,48 +313,43 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
     companyFiscalCode: '',
     level: ''
   })
-  const [uploadedPayroll, setUploadedPayroll] = useState<File | null>(null)
-  const [isAnalyzingPayroll, setIsAnalyzingPayroll] = useState(false)
-  const [extractedPayrollData, setExtractedPayrollData] = useState<{ companyName?: string, fiscalCode?: string, position?: string, level?: string, ferieResidue?: number, rolResidui?: number } | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [employeeFirstName, setEmployeeFirstName] = useState('')
   const [employeeLastName, setEmployeeLastName] = useState('')
 
-  const mapPositionToDeptAndLevel = (pos: string): { dept: EmployeeRegistration['department'], level: string } => {
-    const dept: EmployeeRegistration['department'] = pos.includes('Chef') || pos.includes('Cuoco') ? 'cucina'
-      : (pos.includes('Bar') || pos.includes('Barman') || pos.includes('Sommelier')) ? 'beverage'
-      : (pos.includes('Cassier') || pos.includes('Hostes') || pos.includes('Hostess')) ? 'accoglienza'
-      : (pos.includes('Dirett') || pos.includes('Manager')) ? 'dirigenti'
-      : pos.includes('Lavapiatti') ? 'sala' : 'sala'
-    const level = pos.includes('Direttore') ? 'QA'
-      : pos.includes('Restaurant Manager') ? 'QB'
-      : pos.includes('Head Sommelier') ? '3'
-      : pos.includes('Sommelier') ? '3'
-      : pos.includes('Head Barman') ? '3'
-      : pos.includes('Barman') ? '4'
-      : pos.includes('Barista') ? '5'
-      : pos.includes('Chef de Rang') ? '4'
-      : pos.includes('Chef') ? '2'
-      : pos.includes('Sous Chef') ? '3'
-      : pos.includes('Cuoco') ? '4'
-      : pos.includes('Cassier') ? '4'
-      : (pos.includes('Hostes') || pos.includes('Hostess')) ? '5'
-      : pos.includes('Lavapiatti') ? '6'
-      : '6S'
-    return { dept, level }
-  }
+  type LookupStatus = 'idle' | 'loading' | 'found' | 'notfound' | 'invalid'
+  const [companyLookupStatus, setCompanyLookupStatus] = useState<LookupStatus>('idle')
+  const [companyLookup, setCompanyLookup] = useState<{ companyName: string; restaurantName: string | null; colleaguesCount: number } | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const simulatePayrollExtraction = async (file: File) => {
-    // Placeholder di estrazione: in produzione integra OCR/AI
-    await new Promise(r => setTimeout(r, 1200))
-    // Demo: valori fittizi per precompilazione
-    return {
-      companyName: 'Ristorante Demo Srl',
-      fiscalCode: 'ABCDEF12G34H567I',
-      position: 'Cameriere',
-      level: '5',
-      ferieResidue: 10,
-      rolResidui: 8,
+  // Normalizzazione P.IVA: rimuovi spazi, prefisso IT, uppercase → 11 cifre
+  const normalizeVat = (raw: string) => raw.replace(/\s+/g, '').replace(/^IT/i, '').toUpperCase()
+
+  const runCompanyLookup = async (raw: string) => {
+    const vat = normalizeVat(raw)
+    if (!/^\d{11}$/.test(vat)) {
+      setCompanyLookup(null)
+      setCompanyLookupStatus(vat.length > 0 ? 'invalid' : 'idle')
+      return
+    }
+    setCompanyLookupStatus('loading')
+    try {
+      const res = await fetch(`/api/companies/lookup?vat=${encodeURIComponent(vat)}`)
+      const data = await res.json()
+      if (res.ok && data.found) {
+        setCompanyLookup({
+          companyName: data.companyName,
+          restaurantName: data.restaurantName ?? null,
+          colleaguesCount: data.colleaguesCount ?? 0,
+        })
+        setCompanyLookupStatus('found')
+        // Auto-compila Nome Azienda con la sede (o ragione sociale) trovata
+        setFormData(prev => ({ ...prev, companyName: data.restaurantName || data.companyName }))
+      } else {
+        setCompanyLookup(null)
+        setCompanyLookupStatus('notfound')
+      }
+    } catch {
+      setCompanyLookupStatus('idle')
     }
   }
 
@@ -415,7 +410,8 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
           placeholder="Nome Azienda"
           value={formData.companyName || ''}
           onChange={(e) => setFormData({...formData, companyName: e.target.value})}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          readOnly={companyLookupStatus === 'found'}
+          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${companyLookupStatus === 'found' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
         />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -525,106 +521,45 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
           </div>
         </div>
         
-        {/* Upload Busta Paga (opzionale ma consigliato) */}
-        <div className="border rounded-lg p-4 bg-gray-50">
-          <div className="flex items-center justify-between mb-2">
-            <div className="font-medium text-gray-900">Carica Busta Paga (PDF/Immagine)</div>
-            {extractedPayrollData && (
-              <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">Dati estratti</span>
-            )}
-          </div>
-          <div className="flex flex-col gap-3">
-            <input
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => setUploadedPayroll(e.target.files?.[0] || null)}
-              className="block w-full"
-              ref={fileInputRef}
-            />
-            <p className="text-xs text-gray-500">Usiamo la busta paga per precompilare i dati (non memorizziamo il file).</p>
-            <div className="flex flex-wrap items-center gap-2 justify-center">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!uploadedPayroll) {
-                    fileInputRef.current?.click()
-                    return
-                  }
-                  setIsAnalyzingPayroll(true)
-                  try {
-                    const data = await simulatePayrollExtraction(uploadedPayroll)
-                    setExtractedPayrollData(data)
-                  } finally {
-                    setIsAnalyzingPayroll(false)
-                  }
-                }}
-                disabled={isAnalyzingPayroll}
-                className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-              >
-                {isAnalyzingPayroll ? 'Analisi…' : 'Analizza'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!extractedPayrollData) {
-                    alert('Analizza prima la busta paga per applicare i dati')
-                    return
-                  }
-                  const { companyName, fiscalCode, position, level, ferieResidue, rolResidui } = extractedPayrollData
-                  const mapping = mapPositionToDeptAndLevel(position || '')
-                  setFormData(prev => ({
-                    ...prev,
-                    companyName: companyName || prev.companyName,
-                    companyFiscalCode: fiscalCode || prev.companyFiscalCode,
-                    position: position || prev.position,
-                    department: mapping.dept,
-                    level: level || mapping.level
-                  }))
-                  try {
-                    localStorage.setItem('payroll_residui_preview', JSON.stringify({ ferieResidue, rolResidui }))
-                  } catch {}
-                }}
-                className="px-3 py-2 bg-green-600 text-white rounded disabled:opacity-50"
-              >
-                Applica dati estratti
-              </button>
-            </div>
-          </div>
-          {extractedPayrollData && (
-            <div className="mt-3 text-sm text-gray-700 grid md:grid-cols-3 gap-3">
-              <div><span className="text-gray-500">Azienda:</span> <span className="font-medium">{extractedPayrollData.companyName}</span></div>
-              <div><span className="text-gray-500">CF/P.IVA:</span> <span className="font-medium">{extractedPayrollData.fiscalCode}</span></div>
-              <div><span className="text-gray-500">Mansione:</span> <span className="font-medium">{extractedPayrollData.position}</span></div>
-              <div><span className="text-gray-500">Livello:</span> <span className="font-medium">{extractedPayrollData.level}</span></div>
-              <div><span className="text-gray-500">Ferie Residue:</span> <span className="font-medium">{extractedPayrollData.ferieResidue}</span></div>
-              <div><span className="text-gray-500">ROL Residui:</span> <span className="font-medium">{extractedPayrollData.rolResidui}</span></div>
+        <div>
+          <input
+            type="text"
+            placeholder="Codice Fiscale Ristorante *"
+            required
+            value={formData.companyFiscalCode}
+            onChange={(e) => {
+              const val = e.target.value.toUpperCase()
+              setFormData({ ...formData, companyFiscalCode: val })
+              if (debounceRef.current) clearTimeout(debounceRef.current)
+              const vat = normalizeVat(val)
+              if (/^\d{11}$/.test(vat)) {
+                debounceRef.current = setTimeout(() => runCompanyLookup(val), 600)
+              } else {
+                setCompanyLookup(null)
+                setCompanyLookupStatus(vat.length > 0 ? 'invalid' : 'idle')
+              }
+            }}
+            onBlur={() => {
+              if (debounceRef.current) clearTimeout(debounceRef.current)
+              runCompanyLookup(formData.companyFiscalCode)
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+          {companyLookupStatus === 'loading' && (
+            <p className="mt-1 text-sm text-gray-500">Ricerca azienda...</p>
+          )}
+          {companyLookupStatus === 'invalid' && (
+            <p className="mt-1 text-xs text-amber-600">Formato P.IVA non valido</p>
+          )}
+          {companyLookupStatus === 'found' && companyLookup && (
+            <div className="mt-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+              ✅ Azienda trovata: <span className="font-medium">{companyLookup.restaurantName || companyLookup.companyName}</span> — {companyLookup.colleaguesCount} {companyLookup.colleaguesCount === 1 ? 'collega' : 'colleghi'} già registrati
             </div>
           )}
+          {companyLookupStatus === 'notfound' && (
+            <p className="mt-2 text-sm text-gray-600">📝 Sarai il primo del tuo ristorante!</p>
+          )}
         </div>
-        
-        <input
-          type="text"
-          placeholder="Codice Fiscale Ristorante *"
-          required
-          value={formData.companyFiscalCode}
-          onChange={(e) => setFormData({...formData, companyFiscalCode: e.target.value.toUpperCase()})}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          onBlur={async () => {
-            const cf = formData.companyFiscalCode.trim()
-            if (!cf) return
-            try {
-              const res = await fetch(`/api/companies?cf=${encodeURIComponent(cf)}`)
-              const data = await res.json()
-              if (data?.company) {
-                alert(`Azienda trovata: ${data.company.name}`)
-              } else if (Array.isArray(data?.companies)) {
-                type SimpleCompany = { name: string; fiscalCode?: string }
-                const match = (data.companies as SimpleCompany[]).find((c) => (c.fiscalCode || '').toUpperCase() === cf.toUpperCase())
-                if (match) alert(`Azienda trovata: ${match.name}`)
-              }
-            } catch {}
-          }}
-        />
         
         <input
           type="password"
