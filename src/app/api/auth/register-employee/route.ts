@@ -288,6 +288,65 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 🎉 Riconoscimento reciproco tra colleghi + benvenuto.
+    // Non bloccante: eventuali errori non interrompono la registrazione.
+    try {
+      const companyDisplayName = foundCompany?.name || 'La Brigata'
+      const newcomerName = name.trim()
+
+      if (companyId) {
+        // Tutti gli altri utenti della stessa azienda (escluso il nuovo iscritto)
+        const colleagues = await prisma.user.findMany({
+          where: { companyId, id: { not: user.id } },
+          select: { id: true },
+        })
+        const totalUsers = colleagues.length + 1 // include il nuovo iscritto
+
+        // Notifica ai colleghi già registrati
+        for (const colleague of colleagues) {
+          try {
+            await createNotification({
+              type: 'INFO',
+              category: 'PERSONNEL',
+              title: '👋 Nuovo collega su La Brigata',
+              message: `👋 Anche ${newcomerName} si è appena unito/a su La Brigata! Siete in ${totalUsers} sull'app.`,
+              userId: colleague.id,
+              isUrgent: false,
+            })
+          } catch (colleagueNotifError) {
+            console.error('Errore notifica collega:', colleagueNotifError)
+          }
+        }
+
+        // Notifica di benvenuto al nuovo utente
+        const welcomeMessage =
+          colleagues.length > 0
+            ? `🎉 Sei entrato in ${companyDisplayName}! Ci sono già ${totalUsers - 1} colleghi su La Brigata.`
+            : `🎉 Sei il primo di ${companyDisplayName} su La Brigata! Invita i tuoi colleghi.`
+        await createNotification({
+          type: 'SUCCESS',
+          category: 'PERSONNEL',
+          title: '🎉 Benvenuto su La Brigata',
+          message: welcomeMessage,
+          userId: user.id,
+          isUrgent: false,
+        })
+      } else {
+        // Azienda non registrata (orfana dal lookup P.IVA): salta le notifiche
+        // colleghi, manda solo il benvenuto al nuovo utente.
+        await createNotification({
+          type: 'SUCCESS',
+          category: 'PERSONNEL',
+          title: '🎉 Benvenuto su La Brigata',
+          message: `🎉 Sei il primo di ${companyDisplayName} su La Brigata! Invita i tuoi colleghi.`,
+          userId: user.id,
+          isUrgent: false,
+        })
+      }
+    } catch (welcomeNotifError) {
+      console.error('Errore notifiche benvenuto/colleghi:', welcomeNotifError)
+    }
+
     return NextResponse.json({ 
       success: true, 
       userId: user.id,
