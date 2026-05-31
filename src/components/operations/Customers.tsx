@@ -1,7 +1,21 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import type { Customer } from '@/lib/customers'
+type Customer = {
+  id: string
+  name: string
+  phone?: string
+  email?: string
+  totalBookings: number
+  totalGuests: number
+  lastVisitDate: string
+  lunchCount: number
+  dinnerCount: number
+  allergies?: string
+  recurrences?: string
+  preferences?: string
+  notes?: string
+}
 import { PermissionGuard } from '@/components/PermissionGuard'
 import { usePermissions } from '@/hooks/usePermissions'
 

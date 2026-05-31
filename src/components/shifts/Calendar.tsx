@@ -209,17 +209,6 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     }
   }, [employeesData])
 
-  // ✅ Carica configurazioni riposi
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('rest_rules_department_v1')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        setDeptConfigs(prev => ({ ...prev, ...parsed }))
-      }
-    } catch {}
-  }, [])
-
   // ✅ Carica turni personalizzati
   useEffect(() => {
     try {

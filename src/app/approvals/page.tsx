@@ -8,7 +8,7 @@ import ApprovalsSwaps from '@/components/approvals/Swaps'
 import ApprovalsEmployees from '@/components/approvals/Employees'
 import ApprovalsLeaves from '@/components/approvals/Leaves'
 import ApprovalsCandidatures from '@/components/approvals/Candidatures'
-import { normalizeSwapStatus } from '@/lib/shift-swap-storage'
+import { normalizeSwapStatus } from '@/lib/shift-swap-status'
 
 export interface ApprovalItem {
   id: string

@@ -6,7 +6,7 @@ import { useAudit } from '@/hooks/useAudit'
 import {
   normalizeSwapStatus,
   type ShiftSwapStatus,
-} from '@/lib/shift-swap-storage'
+} from '@/lib/shift-swap-status'
 import { ccnlMeetsMinimum } from '@/lib/permissions'
 import { CCNLLevel } from '@/lib/ccnl'
 
