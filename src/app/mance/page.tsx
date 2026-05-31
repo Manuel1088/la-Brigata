@@ -165,22 +165,7 @@ export default function MancePage() {
               {activeTab === 'insert' && showInsert && <TipsInsert />}
               {activeTab === 'division' && showDivision && <TipsManage />}
               {activeTab === 'gestione' && showGestione && <TipsDaily />}
-              {activeTab === 'storico' && (
-                <div className="space-y-6">
-                  <TipsHistory />
-                  <div className="flex justify-end pt-2 border-t border-gray-100">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        window.alert('Esporta PDF — disponibile a breve')
-                      }}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
-                    >
-                      Esporta PDF
-                    </button>
-                  </div>
-                </div>
-              )}
+              {activeTab === 'storico' && <TipsHistory />}
             </div>
           </div>
         </div>
