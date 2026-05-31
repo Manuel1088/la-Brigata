@@ -15,6 +15,25 @@ type DepartmentKey = 'cucina' | 'sala' | 'beverage'
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'] as const
 const CCNL_LEVELS = ['QA', '1', '2', '3', '4', '5', '6'] as const
 
+/** Converte l'enum CCNL del DB nel valore semplificato usato dalla select. */
+const CCNL_ENUM_TO_SIMPLE: Record<string, string> = {
+  QA: 'QA',
+  QB: 'QB',
+  LIVELLO_1: '1',
+  LIVELLO_2: '2',
+  LIVELLO_3: '3',
+  LIVELLO_4: '4',
+  LIVELLO_5: '5',
+  LIVELLO_6S: '6S',
+  LIVELLO_6: '6',
+  LIVELLO_7: '7',
+}
+
+function ccnlEnumToSimple(value: string | null | undefined): string {
+  if (!value) return ''
+  return CCNL_ENUM_TO_SIMPLE[value] ?? ''
+}
+
 interface Employee {
   name: string
   role: string
@@ -22,15 +41,22 @@ interface Employee {
 }
 
 async function patchEmployeeScore(employeeId: string, score: number): Promise<void> {
+  await patchEmployeeFields(employeeId, { score })
+}
+
+async function patchEmployeeFields(
+  employeeId: string,
+  payload: Record<string, unknown>
+): Promise<void> {
   const res = await fetch(`/api/employees/${employeeId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ score }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    throw new Error((data as { error?: string }).error || 'Errore salvataggio punteggio')
+    throw new Error((data as { error?: string }).error || 'Errore salvataggio')
   }
 }
 
@@ -112,30 +138,42 @@ export default function TipsManage() {
     [employees]
   )
 
-  // Riposi / CCNL / reparto da localStorage (non ancora su DB)
+  // Config reparto (punti + uso punteggio reparto) dal DB
   useEffect(() => {
-    try {
-      const savedRestDays = localStorage.getItem('employeeRestDays')
-      const savedCcnl = localStorage.getItem('employeeCCNL')
-      const savedDeptPoints = localStorage.getItem('departmentPoints')
-      const savedDeptChecks = localStorage.getItem('departmentChecks')
-
-      setRestDays(savedRestDays ? JSON.parse(savedRestDays) : {})
-      setCcnlLevels(savedCcnl ? JSON.parse(savedCcnl) : {})
-      setDepartmentPoints(
-        savedDeptPoints ? JSON.parse(savedDeptPoints) : { cucina: 5, sala: 5, beverage: 5 }
-      )
-      setDepartmentChecks(
-        savedDeptChecks ? JSON.parse(savedDeptChecks) : { cucina: false, sala: false, beverage: false }
-      )
-    } catch (error) {
-      console.error('Error loading from localStorage:', error)
-    } finally {
+    if (!restaurantId) {
       setIsHydrated(true)
+      return
     }
-  }, [])
 
-  // Punteggi da Employee.score (Supabase)
+    let cancelled = false
+
+    const loadConfig = async () => {
+      try {
+        const res = await fetch(`/api/restaurants/${restaurantId}/tip-department-config`, {
+          credentials: 'include',
+        })
+        if (!res.ok) throw new Error('Caricamento config reparto fallito')
+        const data = (await res.json()) as {
+          departmentPoints?: DepartmentPointsType
+          departmentChecks?: DepartmentChecksType
+        }
+        if (cancelled) return
+        if (data.departmentPoints) setDepartmentPoints(data.departmentPoints)
+        if (data.departmentChecks) setDepartmentChecks(data.departmentChecks)
+      } catch (error) {
+        console.error('Error loading department config:', error)
+      } finally {
+        if (!cancelled) setIsHydrated(true)
+      }
+    }
+
+    loadConfig()
+    return () => {
+      cancelled = true
+    }
+  }, [restaurantId])
+
+  // Punteggi / riposi / CCNL da Employee (DB)
   useEffect(() => {
     if (!restaurantId) {
       setScoresLoading(false)
@@ -152,18 +190,32 @@ export default function TipsManage() {
         })
         if (!res.ok) throw new Error('Caricamento punteggi fallito')
         const data = (await res.json()) as {
-          employees: Array<{ id: string; name: string; score: number }>
+          employees: Array<{
+            id: string
+            name: string
+            score: number
+            restDays?: string[] | null
+            ccnlLevel?: string | null
+          }>
         }
         if (cancelled) return
 
         const nextPoints: PointsType = {}
         const nextIds: Record<string, string> = {}
+        const nextRestDays: RestDaysType = {}
+        const nextCcnl: CcnlLevelsType = {}
         for (const emp of data.employees) {
           nextPoints[emp.name] = emp.score
           nextIds[emp.name] = emp.id
+          const days = Array.isArray(emp.restDays) ? emp.restDays : []
+          if (days.length > 0) nextRestDays[emp.name] = [days[0] ?? '', days[1] ?? '']
+          const simple = ccnlEnumToSimple(emp.ccnlLevel)
+          if (simple) nextCcnl[emp.name] = simple
         }
         setPoints(nextPoints)
         setEmployeeIds(nextIds)
+        setRestDays(nextRestDays)
+        setCcnlLevels(nextCcnl)
       } catch (error) {
         console.error('Error loading scores:', error)
         if (!cancelled) setPoints({})
@@ -183,23 +235,6 @@ export default function TipsManage() {
       setPoints(defaultPoints)
     }
   }, [employees, defaultPoints, isHydrated, points, scoresLoading])
-
-  useEffect(() => {
-    if (!isHydrated) return
-
-    const timer = setTimeout(() => {
-      try {
-        localStorage.setItem('employeeRestDays', JSON.stringify(restDays))
-        localStorage.setItem('employeeCCNL', JSON.stringify(ccnlLevels))
-        localStorage.setItem('departmentPoints', JSON.stringify(departmentPoints))
-        localStorage.setItem('departmentChecks', JSON.stringify(departmentChecks))
-      } catch (error) {
-        console.error('Error saving to localStorage:', error)
-      }
-    }, 1000)
-
-    return () => clearTimeout(timer)
-  }, [restDays, ccnlLevels, departmentPoints, departmentChecks, isHydrated])
 
   const flushPendingPatches = useCallback(async () => {
     const pending = new Map(pendingPatches.current)
@@ -251,18 +286,59 @@ export default function TipsManage() {
     [validatePointsInput, schedulePatch]
   )
 
-  const updateRestDay = useCallback((name: string, index: 0 | 1, value: string) => {
-    setRestDays((prev) => {
-      const current = prev[name] || ['', '']
+  const updateRestDay = useCallback(
+    (name: string, index: 0 | 1, value: string) => {
+      const current = restDays[name] || ['', '']
       const updated: [string, string?] = [...current] as [string, string?]
       updated[index] = value
-      return { ...prev, [name]: updated }
-    })
-  }, [])
+      setRestDays((prev) => ({ ...prev, [name]: updated }))
 
-  const updateCcnlLevel = useCallback((name: string, level: string) => {
-    setCcnlLevels((prev) => ({ ...prev, [name]: level }))
-  }, [])
+      const employeeId = employeeIds[name]
+      if (employeeId) {
+        const daysToSave = (updated as Array<string | undefined>).filter(
+          (d): d is string => !!d
+        )
+        void patchEmployeeFields(employeeId, { restDays: daysToSave }).catch((error) => {
+          console.error('Error saving rest days:', error)
+          setSavedMessage('❌ Errore salvataggio riposi')
+          setTimeout(() => setSavedMessage(''), 3000)
+        })
+      }
+    },
+    [restDays, employeeIds]
+  )
+
+  const updateCcnlLevel = useCallback(
+    (name: string, level: string) => {
+      setCcnlLevels((prev) => ({ ...prev, [name]: level }))
+      const employeeId = employeeIds[name]
+      if (employeeId) {
+        void patchEmployeeFields(employeeId, { ccnlLevel: level }).catch((error) => {
+          console.error('Error saving CCNL level:', error)
+          setSavedMessage('❌ Errore salvataggio livello CCNL')
+          setTimeout(() => setSavedMessage(''), 3000)
+        })
+      }
+    },
+    [employeeIds]
+  )
+
+  const saveDepartmentConfig = useCallback(
+    async (dp: DepartmentPointsType, dc: DepartmentChecksType) => {
+      if (!restaurantId) return
+      const res = await fetch(`/api/restaurants/${restaurantId}/tip-department-config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ departmentPoints: dp, departmentChecks: dc }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { error?: string }).error || 'Errore salvataggio config reparto')
+      }
+    },
+    [restaurantId]
+  )
 
   const saveAllScores = useCallback(async () => {
     const entries = Object.entries(points).filter(([name]) => employeeIds[name])
@@ -297,47 +373,45 @@ export default function TipsManage() {
       return
     }
 
+    const resetDeptPoints: DepartmentPointsType = { cucina: 5, sala: 5, beverage: 5 }
+    const resetDeptChecks: DepartmentChecksType = {
+      cucina: false,
+      sala: false,
+      beverage: false,
+    }
+
     setPoints(defaultPoints)
     setRestDays({})
     setCcnlLevels({})
-    setDepartmentPoints({ cucina: 5, sala: 5, beverage: 5 })
-    setDepartmentChecks({ cucina: false, sala: false, beverage: false })
-
-    localStorage.removeItem('employeeRestDays')
-    localStorage.removeItem('employeeCCNL')
-    localStorage.removeItem('departmentPoints')
-    localStorage.removeItem('departmentChecks')
+    setDepartmentPoints(resetDeptPoints)
+    setDepartmentChecks(resetDeptChecks)
 
     const ids = Object.values(employeeIds)
-    if (ids.length > 0) {
-      setSavingScores(true)
-      try {
-        await Promise.all(ids.map((id) => patchEmployeeScore(id, 5)))
-        setSavedMessage('🔄 Punti resettati (5) e salvati su database!')
-      } catch {
-        setSavedMessage('⚠️ Reset locale ok, errore salvataggio su database')
-      } finally {
-        setSavingScores(false)
-      }
-    } else {
-      setSavedMessage('🔄 Punti resettati ai valori default!')
+    setSavingScores(true)
+    try {
+      await Promise.all(
+        ids.map((id) => patchEmployeeFields(id, { score: 5, restDays: [], ccnlLevel: '' }))
+      )
+      await saveDepartmentConfig(resetDeptPoints, resetDeptChecks)
+      setSavedMessage('🔄 Punti resettati e salvati su database!')
+    } catch {
+      setSavedMessage('⚠️ Reset locale ok, errore salvataggio su database')
+    } finally {
+      setSavingScores(false)
     }
     setTimeout(() => setSavedMessage(''), 3000)
-  }, [defaultPoints, employeeIds])
+  }, [defaultPoints, employeeIds, saveDepartmentConfig])
 
   const savePoints = useCallback(async () => {
     try {
-      localStorage.setItem('employeeRestDays', JSON.stringify(restDays))
-      localStorage.setItem('employeeCCNL', JSON.stringify(ccnlLevels))
-      localStorage.setItem('departmentPoints', JSON.stringify(departmentPoints))
-      localStorage.setItem('departmentChecks', JSON.stringify(departmentChecks))
       await saveAllScores()
+      await saveDepartmentConfig(departmentPoints, departmentChecks)
     } catch (error) {
       console.error('Error saving:', error)
       setSavedMessage('❌ Errore durante il salvataggio')
       setTimeout(() => setSavedMessage(''), 3000)
     }
-  }, [restDays, ccnlLevels, departmentPoints, departmentChecks, saveAllScores])
+  }, [saveAllScores, saveDepartmentConfig, departmentPoints, departmentChecks])
 
   const departmentTotals = useMemo(
     () => ({
@@ -529,8 +603,7 @@ export default function TipsManage() {
         <div className="px-6 py-4 border-b">
           <h2 className="text-xl font-semibold text-gray-900">⚖️ Gestione punti mance</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Punteggio 1–10 salvato su database (Employee.score). Riposi e CCNL restano in locale fino
-            a migrazione.
+            Punteggio 1–10, riposi, livello CCNL e configurazione reparto sono salvati su database.
           </p>
         </div>
 

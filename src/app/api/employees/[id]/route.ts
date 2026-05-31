@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { z } from 'zod'
-import type { CCNLLevel, Prisma } from '@prisma/client'
+import { CCNLLevel } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import {
@@ -12,12 +13,47 @@ import {
 import { isManagerRole } from '@/lib/roles'
 import { normalizeDepartmentInput } from '@/lib/restaurant-roles'
 
-const patchTipsSchema = z
+/**
+ * Mappa i valori CCNL semplificati usati dalla UI ('QA','QB','1'…'7','6S')
+ * o valori già in formato enum verso l'enum Prisma CCNLLevel.
+ */
+const CCNL_SIMPLE_TO_ENUM: Record<string, CCNLLevel> = {
+  QA: CCNLLevel.QA,
+  QB: CCNLLevel.QB,
+  '1': CCNLLevel.LIVELLO_1,
+  '2': CCNLLevel.LIVELLO_2,
+  '3': CCNLLevel.LIVELLO_3,
+  '4': CCNLLevel.LIVELLO_4,
+  '5': CCNLLevel.LIVELLO_5,
+  '6S': CCNLLevel.LIVELLO_6S,
+  '6': CCNLLevel.LIVELLO_6,
+  '7': CCNLLevel.LIVELLO_7,
+}
+
+/**
+ * Risolve un valore CCNL in ingresso:
+ *  - stringa vuota → null (azzera il livello)
+ *  - valore semplificato o già-enum valido → CCNLLevel
+ *  - altrimenti → 'INVALID'
+ */
+function resolveCcnlLevel(raw: string): CCNLLevel | null | 'INVALID' {
+  const trimmed = raw.trim()
+  if (trimmed === '') return null
+  const upper = trimmed.toUpperCase()
+  const mapped = CCNL_SIMPLE_TO_ENUM[upper] ?? upper
+  return (Object.values(CCNLLevel) as string[]).includes(mapped)
+    ? (mapped as CCNLLevel)
+    : 'INVALID'
+}
+
+const patchEmployeeSchema = z
   .object({
     score: z.number().int().min(1).max(10).optional(),
     canInsertTips: z.boolean().optional(),
     canEditTips: z.boolean().optional(),
     canDeleteTips: z.boolean().optional(),
+    restDays: z.array(z.string()).optional(),
+    ccnlLevel: z.string().optional(),
   })
   .strict()
 
@@ -30,6 +66,7 @@ const patchProfileSchema = z.object({
     .enum(['cucina', 'pasticceria', 'sala', 'beverage', 'accoglienza', 'dirigenti'])
     .optional(),
   ccnlLevel: z.string().optional(),
+  restDays: z.array(z.string()).optional(),
   locationIds: z.array(z.string()).optional(),
 })
 
@@ -158,7 +195,11 @@ export async function GET(
   }
 }
 
-/** PATCH /api/employees/[id] — profilo User o permessi mance Employee */
+/**
+ * PATCH /api/employees/[id]
+ * - Se [id] è un User → ramo PROFILO (anagrafica + CCNL + riposi su Employee collegato).
+ * - Se [id] è un Employee → ramo MANCE (score/permessi + riposi + CCNL su Employee e User collegato).
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -172,17 +213,23 @@ export async function PATCH(
     const { id } = await params
     const body = await request.json()
 
-    const profileParsed = patchProfileSchema.safeParse(body)
-    if (profileParsed.success) {
-      const data = profileParsed.data
-      const user = await prisma.user.findUnique({
-        where: { id },
-        select: { id: true, restaurantId: true },
-      })
-      if (!user) {
-        return NextResponse.json({ error: 'Dipendente non trovato' }, { status: 404 })
+    const userRow = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, restaurantId: true },
+    })
+
+    // ── RAMO PROFILO (id = User) ───────────────────────────────────────────
+    if (userRow) {
+      const profileParsed = patchProfileSchema.safeParse(body)
+      if (!profileParsed.success) {
+        return NextResponse.json(
+          { error: 'Body non valido', details: profileParsed.error.flatten() },
+          { status: 400 }
+        )
       }
-      if (!(await canManageRestaurant(session.user.id, user.restaurantId))) {
+      const data = profileParsed.data
+
+      if (!(await canManageRestaurant(session.user.id, userRow.restaurantId))) {
         return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
       }
 
@@ -190,7 +237,15 @@ export async function PATCH(
       const department = data.department
         ? normalizeDepartmentInput(data.department)
         : undefined
-      const ccnlLevel = data.ccnlLevel as CCNLLevel | undefined
+
+      let ccnlLevel: CCNLLevel | null | undefined = undefined
+      if (data.ccnlLevel !== undefined) {
+        const resolved = resolveCcnlLevel(data.ccnlLevel)
+        if (resolved === 'INVALID') {
+          return NextResponse.json({ error: 'Livello CCNL non valido' }, { status: 400 })
+        }
+        ccnlLevel = resolved
+      }
 
       const updated = await prisma.$transaction(async (tx) => {
         const u = await tx.user.update({
@@ -201,7 +256,7 @@ export async function PATCH(
             ...(data.lastName !== undefined ? { lastName: data.lastName?.trim() || null } : {}),
             ...(role ? { role, hierarchyLevel: hierarchyLevelForUserRole(role) } : {}),
             ...(department ? { department } : {}),
-            ...(ccnlLevel ? { ccnlLevel } : {}),
+            ...(ccnlLevel !== undefined ? { ccnlLevel } : {}),
           },
           select: {
             id: true,
@@ -230,7 +285,8 @@ export async function PATCH(
             data: {
               ...(data.name ? { name: data.name.trim() } : {}),
               ...(role && department ? { role: toEmployeeRole(role, department) } : {}),
-              ...(ccnlLevel ? { ccnlLevel } : {}),
+              ...(ccnlLevel !== undefined ? { ccnlLevel } : {}),
+              ...(data.restDays !== undefined ? { restDays: data.restDays } : {}),
               updatedAt: new Date(),
             },
           })
@@ -265,17 +321,18 @@ export async function PATCH(
       })
     }
 
-    const tipsParsed = patchTipsSchema.safeParse(body)
-    if (!tipsParsed.success) {
+    // ── RAMO MANCE (id = Employee) ─────────────────────────────────────────
+    const empParsed = patchEmployeeSchema.safeParse(body)
+    if (!empParsed.success) {
       return NextResponse.json(
-        { error: 'Body non valido', details: tipsParsed.error.flatten() },
+        { error: 'Body non valido', details: empParsed.error.flatten() },
         { status: 400 }
       )
     }
 
     const employee = await prisma.employee.findUnique({
       where: { id },
-      select: { id: true, name: true, restaurantId: true, score: true },
+      select: { id: true, name: true, restaurantId: true, score: true, userId: true },
     })
 
     if (!employee) {
@@ -286,29 +343,46 @@ export async function PATCH(
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
-    const tipData: Prisma.EmployeeUpdateInput = { updatedAt: new Date() }
-    if (tipsParsed.data.score !== undefined) tipData.score = tipsParsed.data.score
-    if (tipsParsed.data.canInsertTips !== undefined) {
-      tipData.canInsertTips = tipsParsed.data.canInsertTips
-    }
-    if (tipsParsed.data.canEditTips !== undefined) {
-      tipData.canEditTips = tipsParsed.data.canEditTips
-    }
-    if (tipsParsed.data.canDeleteTips !== undefined) {
-      tipData.canDeleteTips = tipsParsed.data.canDeleteTips
+    let ccnlLevel: CCNLLevel | null | undefined = undefined
+    if (empParsed.data.ccnlLevel !== undefined) {
+      const resolved = resolveCcnlLevel(empParsed.data.ccnlLevel)
+      if (resolved === 'INVALID') {
+        return NextResponse.json({ error: 'Livello CCNL non valido' }, { status: 400 })
+      }
+      ccnlLevel = resolved
     }
 
-    const updated = await prisma.employee.update({
-      where: { id },
-      data: tipData,
-      select: {
-        id: true,
-        name: true,
-        score: true,
-        canInsertTips: true,
-        canEditTips: true,
-        canDeleteTips: true,
-      },
+    const empData: Prisma.EmployeeUpdateInput = { updatedAt: new Date() }
+    if (empParsed.data.score !== undefined) empData.score = empParsed.data.score
+    if (empParsed.data.canInsertTips !== undefined) empData.canInsertTips = empParsed.data.canInsertTips
+    if (empParsed.data.canEditTips !== undefined) empData.canEditTips = empParsed.data.canEditTips
+    if (empParsed.data.canDeleteTips !== undefined) empData.canDeleteTips = empParsed.data.canDeleteTips
+    if (empParsed.data.restDays !== undefined) empData.restDays = empParsed.data.restDays
+    if (ccnlLevel !== undefined) empData.ccnlLevel = ccnlLevel
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const e = await tx.employee.update({
+        where: { id },
+        data: empData,
+        select: {
+          id: true,
+          name: true,
+          score: true,
+          restDays: true,
+          ccnlLevel: true,
+          canInsertTips: true,
+          canEditTips: true,
+          canDeleteTips: true,
+        },
+      })
+      // Sincronizza il CCNL anche sull'utente collegato
+      if (ccnlLevel !== undefined && employee.userId) {
+        await tx.user.update({
+          where: { id: employee.userId },
+          data: { ccnlLevel },
+        })
+      }
+      return e
     })
 
     return NextResponse.json({ success: true, employee: updated })

@@ -668,6 +668,8 @@ function unionSets(...groups: readonly (readonly string[])[]): string[] {
 }
 
 const CCNL_PERMISSIONS_BY_LEVEL: Record<CcnlLevelType, string[]> = {
+  [CCNLLevel.LIVELLO_7]: [...CCNL_L6],
+  [CCNLLevel.LIVELLO_6S]: [...CCNL_L6],
   [CCNLLevel.LIVELLO_6]: [...CCNL_L6],
   [CCNLLevel.LIVELLO_5]: unionSets(CCNL_L6, CCNL_L5_ADD),
   [CCNLLevel.LIVELLO_4]: unionSets(CCNL_L6, CCNL_L5_ADD, CCNL_L4_ADD),

@@ -39,6 +39,7 @@ model Restaurant {
   walkins            Walkin[]
   inviteCodes        InviteCode[]
   pendingInvites     PendingInvite[]
+  tipDepartmentConfigs TipDepartmentConfig[]
 
   @@index([companyId])
   @@map("restaurants")
@@ -561,6 +562,21 @@ model PendingInvite {
   @@map("pending_invites")
 }
 
+model TipDepartmentConfig {
+  id                 String     @id @default(cuid())
+  restaurantId       String     @map("restaurant_id")
+  department         String
+  points             Int        @default(5)
+  useDepartmentScore Boolean    @default(false) @map("use_department_score")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  restaurant         Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, department])
+  @@index([restaurantId])
+  @@map("tip_department_config")
+}
+
 model EmployeeSkill {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
@@ -898,7 +914,9 @@ enum CCNLLevel {
   LIVELLO_3
   LIVELLO_4
   LIVELLO_5
+  LIVELLO_6S
   LIVELLO_6
+  LIVELLO_7
 }
 
 enum LeaveType {

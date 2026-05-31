@@ -7,7 +7,9 @@ export type CCNLLevel =
   | 'LIVELLO_3'
   | 'LIVELLO_4'
   | 'LIVELLO_5'
+  | 'LIVELLO_6S'
   | 'LIVELLO_6'
+  | 'LIVELLO_7'
 
 export const CCNLLevel = {
   QA: 'QA',
@@ -17,7 +19,9 @@ export const CCNLLevel = {
   LIVELLO_3: 'LIVELLO_3',
   LIVELLO_4: 'LIVELLO_4',
   LIVELLO_5: 'LIVELLO_5',
+  LIVELLO_6S: 'LIVELLO_6S',
   LIVELLO_6: 'LIVELLO_6',
+  LIVELLO_7: 'LIVELLO_7',
 } as const
 
 export type CCCategory = 'QUADRI' | 'IMPIEGATI' | 'OPERAI'
@@ -48,7 +52,9 @@ export const CCNL_LEVEL_ORDER: CCNLLevel[] = [
   CCNLLevel.LIVELLO_3,
   CCNLLevel.LIVELLO_4,
   CCNLLevel.LIVELLO_5,
+  CCNLLevel.LIVELLO_6S,
   CCNLLevel.LIVELLO_6,
+  CCNLLevel.LIVELLO_7,
 ]
 
 export const CCNL_LEVELS: Record<CCNLLevel, CCNLLevelInfo> = {
@@ -162,6 +168,20 @@ export const CCNL_LEVELS: Record<CCNLLevel, CCNLLevelInfo> = {
     nightRate: 1.2,
     holidayRate: 1.5,
   },
+  [CCNLLevel.LIVELLO_6S]: {
+    level: CCNLLevel.LIVELLO_6S,
+    category: 'OPERAI',
+    code: '6S',
+    title: 'Sesto livello super',
+    description: 'Operai con competenze intermedie superiori al sesto livello base',
+    typicalRoles: ['Commis di sala senior', 'Aiuto cuoco esperto'],
+    monthlyBase2026: 1500.0,
+    hierarchy: 1,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
   [CCNLLevel.LIVELLO_6]: {
     level: CCNLLevel.LIVELLO_6,
     category: 'OPERAI',
@@ -171,6 +191,20 @@ export const CCNL_LEVELS: Record<CCNLLevel, CCNLLevelInfo> = {
     typicalRoles: ['Runner', 'Lavapiatti', 'Addetto pulizie', 'Commis sala'],
     monthlyBase2026: 1465.0,
     hierarchy: 1,
+    weeklyHours: 40,
+    overtimeRate: 1.25,
+    nightRate: 1.2,
+    holidayRate: 1.5,
+  },
+  [CCNLLevel.LIVELLO_7]: {
+    level: CCNLLevel.LIVELLO_7,
+    category: 'OPERAI',
+    code: '7',
+    title: 'Settimo livello operai',
+    description: 'Mansioni semplici di primo inserimento con macchine attrezzate',
+    typicalRoles: ['Addetto generico', 'Primo inserimento'],
+    monthlyBase2026: 1400.0,
+    hierarchy: 0,
     weeklyHours: 40,
     overtimeRate: 1.25,
     nightRate: 1.2,
