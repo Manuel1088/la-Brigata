@@ -2,7 +2,8 @@
 export function isAuthPath(pathname: string | null | undefined): boolean {
   if (!pathname) return false
   const base = pathname.split('?')[0].replace(/\/$/, '') || '/'
-  return base === '/' || base === '/login' || base === '/register'
+  // /onboarding è uno step bloccante a tutto schermo: niente sidebar/nav (nessuna via d'uscita)
+  return base === '/' || base === '/login' || base === '/register' || base === '/onboarding'
 }
 
 /**

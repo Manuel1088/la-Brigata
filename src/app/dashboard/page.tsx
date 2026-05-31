@@ -55,6 +55,13 @@ type TaskRow = {
     role?: string | null
   } | null
 }
+type OnboardingStatus = {
+  isOwnerOrManager: boolean
+  restaurantId: string | null
+  hasLocations: boolean
+  hasEmployees: boolean
+  needsOnboarding: boolean
+}
 // ── Fetcher ────────────────────────────────────────────────────────────────
 
 const cFetch = (url: string) =>
@@ -665,6 +672,18 @@ export default function DashboardPage() {
       { revalidateOnFocus: true }
     )
 
+  // ── Onboarding: redirect titolare senza Sale + banner "nessun dipendente" ─
+  const { data: onboarding } =
+    useSWR<OnboardingStatus>(
+      status === 'authenticated' && !isPlatformAdmin ? '/api/onboarding/status' : null,
+      cFetch,
+      { revalidateOnFocus: true }
+    )
+
+  useEffect(() => {
+    if (onboarding?.needsOnboarding) router.replace('/onboarding')
+  }, [onboarding, router])
+
   // ── Task complete handler ─────────────────────────────────────────────
   const handleCompleteTask = async (id: string) => {
     try {
@@ -690,6 +709,11 @@ export default function DashboardPage() {
   }
   if (!session) return null
   if (isPlatformAdmin) return <PlatformAdminDashboard />
+  // Titolare/manager senza Sale: wizard bloccante (redirect gestito nell'effect)
+  if (onboarding?.needsOnboarding) return null
+
+  const showNoEmployeesBanner =
+    !!onboarding?.isOwnerOrManager && onboarding.hasLocations && !onboarding.hasEmployees
 
   // ── Derived values ────────────────────────────────────────────────────
   const urgentTasks = (tasksRaw?.tasks ?? [])
@@ -717,6 +741,22 @@ export default function DashboardPage() {
           </h1>
           <p className="text-sm text-gray-500 capitalize mt-0.5">{todayLabel()}</p>
         </div>
+
+        {/* Banner: nessun dipendente ancora aggiunto (solo titolare/manager) */}
+        {showNoEmployeesBanner && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+            <p className="text-sm text-amber-800">
+              ⚠️ Non hai ancora aggiunto dipendenti.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push('/onboarding?step=2')}
+              className="shrink-0 text-sm font-semibold text-amber-800 underline hover:text-amber-900"
+            >
+              Aggiungi ora →
+            </button>
+          </div>
+        )}
 
         {/* ── Row 1: Turno + Ferie/ROL ───────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
