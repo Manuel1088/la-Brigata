@@ -4,11 +4,9 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { logLogin, logLogout } from '@/lib/audit'
 import { loadSessionPermissionPayload } from '@/lib/auth-session-permissions'
 import {
-  inferCcnlFromEmployeeRole,
   inferCcnlFromRole,
   resolveSessionCcnlLevel,
 } from '@/lib/ccnl-infer'
-import { getEmployeesFullClient } from '@/lib/employees'
 import { compare } from 'bcryptjs'
 import { prisma } from '@/lib/db'
 
@@ -41,22 +39,6 @@ const roleConfig = {
   DIPENDENTE: { level: 5, name: 'Dipendente', avatar: '👤' }
 }
 
-// Account demo con credenziali specifiche
-const demoAccounts = {
-  'admin': { 
-    password: 'admin123', 
-    user: { 
-      id: '1', 
-      email: 'admin@brigata.it', 
-      name: 'Amministratore', 
-      role: 'ADMIN',
-      level: 11,  // Team La Brigata
-      avatar: '🛡️'
-    } 
-  },
-  // 🗑️ Tutti gli altri account demo sono stati rimossi
-  // Gli utenti reali verranno caricati dal database PostgreSQL
-}
 
 export const authOptions: AuthOptions = {
   // Usa SECRET stabile: env in prod, fallback dev per evitare warning/decryption fail
@@ -116,79 +98,6 @@ export const authOptions: AuthOptions = {
           }
         } catch {}
 
-        // 2) Account demo
-        // Estrai username dall'email (prima parte prima di @)
-        const username = email.split('@')[0]
-        
-        // Verifica credenziali demo
-        if (demoAccounts[username as keyof typeof demoAccounts]) {
-          const account = demoAccounts[username as keyof typeof demoAccounts]
-          if (account.password === credentials.password) {
-            // Mappa account admin
-            const loginToEmployeeId: Record<string, string> = {
-              admin: '1'  // 🛡️ SOLO ADMIN disponibile
-            }
-            const mappedId = loginToEmployeeId[username]
-            // Collega tutti i demo (tranne admin) ad una stessa azienda demo
-            let companyId: string | null = null
-            if (username !== 'admin') {
-              try {
-                const demoFiscalCode = 'DEMO_CF_0001'
-                const demoName = 'Azienda Demo'
-                const company = await prisma.company.upsert({
-                  where: { fiscalCode: demoFiscalCode },
-                  update: {},
-                  create: { name: demoName, fiscalCode: demoFiscalCode, isActive: true }
-                })
-                companyId = company.id
-              } catch {}
-            }
-            const user: User = {
-              id: mappedId || account.user.id,
-              email: account.user.email,
-              name: account.user.name,
-              role: account.user.role as UserRoleString,
-              level: account.user.level,
-              avatar: account.user.avatar,
-              companyId
-            } as unknown as User
-            await logLogin((user as unknown as { id: string }).id)
-            return user
-          }
-        }
-
-        // 3) Login demo per ogni dipendente: usa la loro email e password "demo"
-        try {
-          const employees = getEmployeesFullClient()
-          const found = employees.find(e => e.email.toLowerCase() === email)
-          if (found && credentials.password === 'demo') {
-            // Mappa i ruoli dei dipendenti alle categorie della piattaforma
-            const roleMap: Record<string, string> = {
-              EXECUTIVE_CHEF: 'HEAD_CHEF',
-              SOUS_CHEF: 'HEAD_CHEF',
-              CHEF_DE_PARTIE: 'DIPENDENTE',
-              DIPENDENTE_SALA: 'DIPENDENTE',
-              DIPENDENTE_BAR: 'DIPENDENTE'
-            }
-            const mappedRole = (roleMap[found.role] || 'DIPENDENTE') as UserRoleString
-            const demoCcnl =
-              (found as { ccnlLevel?: string | null }).ccnlLevel ??
-              inferCcnlFromEmployeeRole(found.role) ??
-              inferCcnlFromRole(found.role)
-            const user: User = {
-              id: found.id,
-              email: found.email,
-              name: found.name,
-              role: mappedRole,
-              level: found.level || 5,
-              ccnlLevel: demoCcnl,
-              avatar: found.avatar || '👤'
-            } as unknown as User
-            await logLogin((user as unknown as { id: string }).id)
-            return user
-          }
-        } catch {}
-        
         return null
       }
     })
