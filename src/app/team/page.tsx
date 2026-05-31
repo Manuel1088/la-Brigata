@@ -5,7 +5,6 @@ import { Suspense, useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { canManageRestaurantStaff } from '@/lib/employee-create'
 import TeamEmployees from '@/components/team/Employees'
-import TeamAccess from '@/components/team/Access'
 
 function TeamPageContent() {
   const { data: session, status } = useSession()
@@ -23,7 +22,7 @@ function TeamPageContent() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'employees' || tab === 'access') {
+    if (tab === 'employees') {
       setActiveTab(tab)
     }
   }, [searchParams])
@@ -65,13 +64,6 @@ function TeamPageContent() {
       component: TeamEmployees,
       permission: canManageTeam
     },
-    { 
-      id: 'access', 
-      label: 'Accessi', 
-      icon: '🔐', 
-      component: TeamAccess,
-      permission: canAccessAdmin()
-    }
   ]
 
   const visibleTabs = tabs.filter(tab => tab.permission)
