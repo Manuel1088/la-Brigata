@@ -60,6 +60,7 @@ type OnboardingStatus = {
   restaurantId: string | null
   hasLocations: boolean
   hasEmployees: boolean
+  subscriptionStatus: 'FREE' | 'BASIC' | 'PRO' | 'EXPIRED' | null
   needsOnboarding: boolean
 }
 // ── Fetcher ────────────────────────────────────────────────────────────────
@@ -714,6 +715,8 @@ export default function DashboardPage() {
 
   const showNoEmployeesBanner =
     !!onboarding?.isOwnerOrManager && onboarding.hasLocations && !onboarding.hasEmployees
+  const showExpiredBanner =
+    !!onboarding?.isOwnerOrManager && onboarding.subscriptionStatus === 'EXPIRED'
 
   // ── Derived values ────────────────────────────────────────────────────
   const urgentTasks = (tasksRaw?.tasks ?? [])
@@ -741,6 +744,22 @@ export default function DashboardPage() {
           </h1>
           <p className="text-sm text-gray-500 capitalize mt-0.5">{todayLabel()}</p>
         </div>
+
+        {/* Banner: abbonamento ristorante scaduto (solo titolare/manager) */}
+        {showExpiredBanner && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3">
+            <p className="text-sm font-medium text-red-800">
+              ⚠️ Il tuo abbonamento è scaduto.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push('/subscription')}
+              className="shrink-0 text-sm font-semibold text-red-800 underline hover:text-red-900"
+            >
+              Rinnova ora →
+            </button>
+          </div>
+        )}
 
         {/* Banner: nessun dipendente ancora aggiunto (solo titolare/manager) */}
         {showNoEmployeesBanner && (

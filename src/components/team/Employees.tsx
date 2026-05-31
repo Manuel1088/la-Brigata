@@ -259,6 +259,13 @@ function sortByCcnlDesc(a: TeamEmployee, b: TeamEmployee): number {
   return a.name.localeCompare(b.name, 'it', { sensitivity: 'base' })
 }
 
+type PendingInviteRow = {
+  id: string
+  name: string
+  email: string
+  expiresAt: string
+}
+
 export default function TeamEmployees() {
   const router = useRouter()
   const { canManageEmployees } = usePermissions()
@@ -266,7 +273,66 @@ export default function TeamEmployees() {
   const [searchOpen, setSearchOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
+  const [pendingInvites, setPendingInvites] = useState<PendingInviteRow[]>([])
+  const [resendingId, setResendingId] = useState<string | null>(null)
+  const [inviteNotice, setInviteNotice] = useState<string | null>(null)
+
   const { employees: employeesData, mutate } = useEmployeeContext()
+
+  const loadInvites = useMemo(
+    () => async () => {
+      if (!canManageEmployees()) return
+      try {
+        const res = await fetch('/api/employees/invite', { credentials: 'include' })
+        if (!res.ok) return
+        const data = await res.json()
+        setPendingInvites(
+          (data.invites ?? []).map((i: PendingInviteRow) => ({
+            id: i.id,
+            name: i.name,
+            email: i.email,
+            expiresAt: i.expiresAt,
+          }))
+        )
+      } catch {
+        /* noop */
+      }
+    },
+    [canManageEmployees]
+  )
+
+  useEffect(() => {
+    void loadInvites()
+    const refresh = () => void loadInvites()
+    window.addEventListener('invites_updated', refresh)
+    return () => window.removeEventListener('invites_updated', refresh)
+  }, [loadInvites])
+
+  const handleResend = async (id: string) => {
+    setResendingId(id)
+    setInviteNotice(null)
+    try {
+      const res = await fetch(`/api/employees/invite/${id}/resend`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setInviteNotice(data.error ?? 'Errore durante il reinvio')
+      } else {
+        setInviteNotice(
+          data.emailSent
+            ? 'Invito reinviato via email ✅'
+            : 'Invito rigenerato (email non configurata)'
+        )
+        void loadInvites()
+      }
+    } catch {
+      setInviteNotice('Errore di connessione')
+    } finally {
+      setResendingId(null)
+    }
+  }
 
   useEffect(() => {
     const refresh = () => {
@@ -454,6 +520,47 @@ export default function TeamEmployees() {
             <div className="text-sm text-orange-700">Ruoli</div>
           </div>
         </div>
+
+        {canManageEmployees() && pendingInvites.length > 0 && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Inviti in attesa ({pendingInvites.length})
+              </h3>
+            </div>
+            {inviteNotice && (
+              <div className="px-6 pt-3 text-sm text-gray-600">{inviteNotice}</div>
+            )}
+            <div className="p-4 sm:p-6 space-y-2">
+              {pendingInvites.map((invite) => (
+                <div
+                  key={invite.id}
+                  className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {invite.name || invite.email}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">{invite.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border bg-amber-50 text-amber-700 border-amber-200">
+                      In attesa
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleResend(invite.id)}
+                      disabled={resendingId === invite.id}
+                      className="text-xs px-2.5 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition disabled:opacity-50"
+                    >
+                      {resendingId === invite.id ? 'Invio...' : 'Rinvia invito'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center gap-3">

@@ -6,7 +6,6 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { canManageRestaurantStaff } from '@/lib/employee-create'
 import TeamEmployees from '@/components/team/Employees'
 import TeamAccess from '@/components/team/Access'
-import TeamInvites from '@/components/team/Invites'
 
 function TeamPageContent() {
   const { data: session, status } = useSession()
@@ -42,6 +41,19 @@ function TeamPageContent() {
       )
       window.dispatchEvent(new CustomEvent('employees_updated'))
       router.replace('/team?tab=employees')
+    } else if (searchParams.get('invited') === '1') {
+      const email = searchParams.get('email')
+        ? decodeURIComponent(searchParams.get('email')!)
+        : 'il dipendente'
+      const emailSent = searchParams.get('emailSent') === '1'
+      setSuccessMessage(
+        emailSent
+          ? `✅ Invito inviato a ${email}`
+          : `✅ Invito creato per ${email} (email non configurata — condividi il link manualmente)`
+      )
+      window.dispatchEvent(new CustomEvent('employees_updated'))
+      window.dispatchEvent(new CustomEvent('invites_updated'))
+      router.replace('/team?tab=employees')
     }
   }, [searchParams, router])
 
@@ -51,13 +63,6 @@ function TeamPageContent() {
       label: 'Team', 
       icon: '👥', 
       component: TeamEmployees,
-      permission: canManageTeam
-    },
-    {
-      id: 'invites',
-      label: 'Inviti',
-      icon: '🔗',
-      component: TeamInvites,
       permission: canManageTeam
     },
     { 

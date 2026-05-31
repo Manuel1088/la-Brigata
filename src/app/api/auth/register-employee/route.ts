@@ -13,7 +13,7 @@ import {
   departmentFromStorage,
   suggestedCcnlForRole,
 } from '@/lib/restaurant-roles'
-import { normalizeInviteCode, isInviteCodeUsable } from '@/lib/invite-codes'
+import { isPendingInviteUsable } from '@/lib/pending-invite'
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       companyFiscalCode,
       informalCompanyData,
       teamName,
-      inviteCode
+      inviteToken
     } = data as {
       name: string
       email: string
@@ -44,24 +44,22 @@ export async function POST(request: NextRequest) {
       companyFiscalCode?: string
       informalCompanyData?: { name: string; address: string; city: string; type: string; description?: string }
       teamName?: string
-      inviteCode?: string
+      inviteToken?: string
     }
 
-    const normalizedEmail = email.toLowerCase()
-
-    // Risoluzione codice invito (se presente bypassa il lookup P.IVA)
+    // Risoluzione invito (PendingInvite). Se presente bypassa il lookup P.IVA
+    // e l'email è quella autorevole dell'invito.
     let inviteRecord:
-      | { id: string; companyId: string; restaurantId: string; companyName: string }
+      | { id: string; companyId: string; restaurantId: string; companyName: string; email: string }
       | null = null
-    if (inviteCode && inviteCode.trim()) {
-      const normalizedCode = normalizeInviteCode(inviteCode)
-      const found = await prisma.inviteCode.findUnique({
-        where: { code: normalizedCode },
+    if (inviteToken && inviteToken.trim()) {
+      const found = await prisma.pendingInvite.findUnique({
+        where: { token: inviteToken.trim() },
         include: { company: { select: { name: true } } },
       })
-      if (!found || !isInviteCodeUsable(found)) {
+      if (!found || !isPendingInviteUsable(found)) {
         return NextResponse.json(
-          { error: 'Codice invito non valido, scaduto o esaurito.' },
+          { error: 'Invito non valido, scaduto o già utilizzato.' },
           { status: 400 }
         )
       }
@@ -70,8 +68,11 @@ export async function POST(request: NextRequest) {
         companyId: found.companyId,
         restaurantId: found.restaurantId,
         companyName: found.company.name,
+        email: found.email,
       }
     }
+
+    const normalizedEmail = (inviteRecord?.email ?? email).toLowerCase()
 
     // Verifica se email già esiste
     const existingUser = await prisma.user.findUnique({
@@ -109,9 +110,9 @@ export async function POST(request: NextRequest) {
               reviewedAt: new Date(),
             },
           })
-          await tx.inviteCode.update({
+          await tx.pendingInvite.update({
             where: { id: inviteRecord!.id },
-            data: { usedCount: { increment: 1 } },
+            data: { acceptedAt: new Date() },
           })
         })
 
@@ -341,14 +342,14 @@ export async function POST(request: NextRequest) {
         employmentActive = !!inviteRecord
 
         if (inviteRecord) {
-          // Codice invito usato: incrementa il contatore utilizzi
+          // Invito consumato: segna come accettato (token monouso)
           try {
-            await prisma.inviteCode.update({
+            await prisma.pendingInvite.update({
               where: { id: inviteRecord.id },
-              data: { usedCount: { increment: 1 } },
+              data: { acceptedAt: new Date() },
             })
           } catch (incErr) {
-            console.error('Errore incremento usedCount invito:', incErr)
+            console.error('Errore aggiornamento invito:', incErr)
           }
         } else {
           // 🔔 Solo per il flusso CF: notifica i manager per l'approvazione

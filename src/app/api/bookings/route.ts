@@ -3,6 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import { resolveRestaurantAccess } from '@/lib/restaurant-access'
+import {
+  requireActiveRestaurantPlan,
+  subscriptionErrorResponse,
+} from '@/lib/subscription-guard'
 import { dateFromIso } from '@/lib/shifts'
 import {
   bookingTimeFromParts,
@@ -98,6 +102,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
+    await requireActiveRestaurantPlan(data.restaurantId)
+
     const visitDate = bookingTimeFromParts(data.date, data.time)
     const customer = await upsertCustomerForBooking({
       restaurantId: data.restaurantId,
@@ -138,6 +144,8 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
+    const subErr = subscriptionErrorResponse(error)
+    if (subErr) return subErr
     console.error('POST /api/bookings error:', error)
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
   }

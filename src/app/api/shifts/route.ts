@@ -26,6 +26,10 @@ function eachDayIsoInRange(rangeFrom: string, rangeTo: string): string[] {
 
 import { isManagerRole } from '@/lib/roles'
 import { resolveRestaurantAccess } from '@/lib/restaurant-access'
+import {
+  requireActiveRestaurantPlan,
+  subscriptionErrorResponse,
+} from '@/lib/subscription-guard'
 import { hasGestioneTurni } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
@@ -150,6 +154,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Permessi insufficienti' }, { status: 403 })
     }
 
+    await requireActiveRestaurantPlan(restaurantId)
+
     const rangeStart = dateFromIso(rangeFrom)
     const rangeEnd = new Date(`${rangeTo}T23:59:59.999`)
 
@@ -210,6 +216,8 @@ export async function POST(request: NextRequest) {
       distributionsRecalculated,
     })
   } catch (error) {
+    const subErr = subscriptionErrorResponse(error)
+    if (subErr) return subErr
     console.error('POST /api/shifts error:', error)
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
   }

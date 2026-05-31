@@ -13,6 +13,10 @@ import {
   ensureRestaurantLocations,
   MANAGER_ROLES,
 } from '@/lib/restaurantLocations'
+import {
+  requireActiveRestaurantPlan,
+  subscriptionErrorResponse,
+} from '@/lib/subscription-guard'
 
 /** GET /api/tips?restaurantId= — location del ristorante */
 export async function GET(request: NextRequest) {
@@ -102,6 +106,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
+    await requireActiveRestaurantPlan(restaurantId)
+
     const canInsert = MANAGER_ROLES.has(String(dbUser?.role))
     if (!canInsert) {
       const employee = await resolveEmployeeForUser(prisma, session.user.id, restaurantId)
@@ -176,6 +182,8 @@ export async function POST(request: NextRequest) {
       warning: distributionResult.warning,
     })
   } catch (error) {
+    const subErr = subscriptionErrorResponse(error)
+    if (subErr) return subErr
     console.error('POST /api/tips error:', error)
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
   }

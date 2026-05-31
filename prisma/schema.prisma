@@ -38,6 +38,7 @@ model Restaurant {
   tasks              Task[]
   walkins            Walkin[]
   inviteCodes        InviteCode[]
+  pendingInvites     PendingInvite[]
 
   @@index([companyId])
   @@map("restaurants")
@@ -119,6 +120,7 @@ model User {
   notifications             Notification[]
   walkinsCreated            Walkin[]                 @relation("WalkinsCreated")
   inviteCodesCreated        InviteCode[]             @relation("InviteCodesCreated")
+  pendingInvitesSent        PendingInvite[]          @relation("PendingInvitesSent")
 
   @@index([companyId])
   @@index([companyId, isActive])
@@ -533,6 +535,32 @@ model InviteCode {
   @@map("invite_codes")
 }
 
+model PendingInvite {
+  id           String     @id @default(cuid())
+  firstName    String     @map("first_name")
+  lastName     String     @map("last_name")
+  email        String
+  role         String
+  department   String?
+  position     String?
+  companyId    String     @map("company_id")
+  restaurantId String     @map("restaurant_id")
+  token        String     @unique
+  invitedBy    String     @map("invited_by")
+  expiresAt    DateTime   @map("expires_at")
+  acceptedAt   DateTime?  @map("accepted_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  company      Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  inviter      User       @relation("PendingInvitesSent", fields: [invitedBy], references: [id])
+
+  @@index([companyId])
+  @@index([restaurantId])
+  @@index([email])
+  @@map("pending_invites")
+}
+
 model EmployeeSkill {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
@@ -597,6 +625,7 @@ model Company {
   users            User[]            @relation("CompanyUsers")
   restaurants      Restaurant[]
   inviteCodes      InviteCode[]
+  pendingInvites   PendingInvite[]
 
   @@map("companies")
 }

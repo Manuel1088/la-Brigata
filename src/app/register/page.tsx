@@ -1,16 +1,56 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CompanyRegistration, EmployeeRegistration, CandidateRegistration } from '@/types/registration'
 
 type RegistrationType = 'company' | 'employee' | 'candidate'
 
+export type InvitePrefill = {
+  token: string
+  firstName: string
+  lastName: string
+  email: string
+  companyName: string
+  role?: string
+  department?: string
+  position?: string
+}
+
 export default function RegisterPage() {
   const [step, setStep] = useState(1)
   const [registrationType, setRegistrationType] = useState<RegistrationType | null>(null)
   const [loading, setLoading] = useState(false)
+  const [invitePrefill, setInvitePrefill] = useState<InvitePrefill | null>(null)
   const router = useRouter()
+
+  // Invito via email: /register?invite=TOKEN → precompila e va allo step dipendente
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('invite')
+    if (!token) return
+    let cancelled = false
+    fetch(`/api/employees/invite/verify?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled || !data?.valid) return
+        setInvitePrefill({
+          token,
+          firstName: data.firstName ?? '',
+          lastName: data.lastName ?? '',
+          email: data.email ?? '',
+          companyName: data.restaurantName ?? data.companyName ?? '',
+          role: data.role ?? undefined,
+          department: data.department ?? undefined,
+          position: data.position ?? undefined,
+        })
+        setRegistrationType('employee')
+        setStep(2)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Overload-like typed handler (single implementation with union types)
   async function handleRegistration(
@@ -77,6 +117,7 @@ export default function RegisterPage() {
               onSubmit={(data) => handleRegistration('employee', data)}
               onBack={() => setStep(1)}
               loading={loading}
+              invitePrefill={invitePrefill}
             />
           )}
           
@@ -300,7 +341,8 @@ function CompanyRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (dat
 }
 
 // Form registrazione dipendente (versione base)
-function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (data: EmployeeRegistration) => void, onBack: () => void, loading: boolean }) {
+function EmployeeRegistrationForm({ onSubmit, onBack, loading, invitePrefill }: { onSubmit: (data: EmployeeRegistration) => void, onBack: () => void, loading: boolean, invitePrefill?: InvitePrefill | null }) {
+  const isInvite = !!invitePrefill
   const [formData, setFormData] = useState<EmployeeRegistration>({
     name: '',
     email: '',
@@ -321,35 +363,22 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
   const [companyLookup, setCompanyLookup] = useState<{ companyName: string; restaurantName: string | null; colleaguesCount: number } | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Codice invito (alternativa al CF/P.IVA)
-  type InviteStatus = 'idle' | 'loading' | 'valid' | 'invalid'
-  const [inviteStatus, setInviteStatus] = useState<InviteStatus>('idle')
-  const [inviteCompanyName, setInviteCompanyName] = useState<string | null>(null)
-  const inviteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const inviteValid = inviteStatus === 'valid'
-
-  const runInviteLookup = async (raw: string) => {
-    const code = raw.trim().toUpperCase().replace(/\s+/g, '')
-    if (!code) {
-      setInviteStatus('idle')
-      setInviteCompanyName(null)
-      return
-    }
-    setInviteStatus('loading')
-    try {
-      const res = await fetch(`/api/companies/invite/${encodeURIComponent(code)}`)
-      const data = await res.json()
-      if (res.ok && data.valid) {
-        setInviteCompanyName(data.companyName)
-        setInviteStatus('valid')
-      } else {
-        setInviteCompanyName(null)
-        setInviteStatus('invalid')
-      }
-    } catch {
-      setInviteStatus('invalid')
-    }
-  }
+  // Precompila i campi quando si arriva da un invito email
+  useEffect(() => {
+    if (!invitePrefill) return
+    setEmployeeFirstName(invitePrefill.firstName)
+    setEmployeeLastName(invitePrefill.lastName)
+    setFormData((prev) => ({
+      ...prev,
+      name: `${invitePrefill.firstName} ${invitePrefill.lastName}`.trim(),
+      email: invitePrefill.email,
+      companyName: invitePrefill.companyName,
+      position: invitePrefill.position ?? prev.position,
+      department: (invitePrefill.department as EmployeeRegistration['department']) ?? prev.department,
+      role: invitePrefill.role ?? prev.role,
+      inviteToken: invitePrefill.token,
+    }))
+  }, [invitePrefill])
 
   // Normalizzazione P.IVA: rimuovi spazi, prefisso IT, uppercase → 11 cifre
   const normalizeVat = (raw: string) => raw.replace(/\s+/g, '').replace(/^IT/i, '').toUpperCase()
@@ -386,7 +415,7 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
   return (
     <form onSubmit={(e) => {
       e.preventDefault()
-      if (!formData.level) {
+      if (!isInvite && !formData.level) {
         alert('Seleziona il livello')
         return
       }
@@ -398,32 +427,40 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
         </button>
         <h3 className="text-xl font-semibold text-center">Registrazione Dipendente</h3>
       </div>
-      
+
+      {isInvite && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          🎉 Sei stato invitato in <span className="font-medium">{invitePrefill?.companyName}</span>. Completa la registrazione scegliendo una password.
+        </div>
+      )}
+
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input
             type="text"
             placeholder="Nome *"
             required
+            readOnly={isInvite}
             value={employeeFirstName}
             onChange={(e) => {
               const val = e.target.value
               setEmployeeFirstName(val)
               setFormData({ ...formData, name: `${val} ${employeeLastName}`.trim() })
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${isInvite ? 'bg-gray-100 cursor-not-allowed' : ''}`}
           />
           <input
             type="text"
             placeholder="Cognome *"
             required
+            readOnly={isInvite}
             value={employeeLastName}
             onChange={(e) => {
               const val = e.target.value
               setEmployeeLastName(val)
               setFormData({ ...formData, name: `${employeeFirstName} ${val}`.trim() })
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${isInvite ? 'bg-gray-100 cursor-not-allowed' : ''}`}
           />
         </div>
         
@@ -431,19 +468,21 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
           type="email"
           placeholder="Email *"
           required
+          readOnly={isInvite}
           value={formData.email}
           onChange={(e) => setFormData({...formData, email: e.target.value})}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${isInvite ? 'bg-gray-100 cursor-not-allowed' : ''}`}
         />
         <input
           type="text"
           placeholder="Nome Azienda"
           value={formData.companyName || ''}
           onChange={(e) => setFormData({...formData, companyName: e.target.value})}
-          readOnly={companyLookupStatus === 'found'}
-          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${companyLookupStatus === 'found' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+          readOnly={isInvite || companyLookupStatus === 'found'}
+          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${(isInvite || companyLookupStatus === 'found') ? 'bg-gray-100 cursor-not-allowed' : ''}`}
         />
-        
+
+        {!isInvite && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Mansione</label>
@@ -550,49 +589,14 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
             )}
           </div>
         </div>
-        
-        {/* Codice invito (alternativa al CF/P.IVA) */}
+        )}
+
+        {!isInvite && (
         <div>
           <input
             type="text"
-            placeholder="Hai un codice invito? (opzionale)"
-            value={formData.inviteCode || ''}
-            onChange={(e) => {
-              const val = e.target.value.toUpperCase()
-              setFormData({ ...formData, inviteCode: val })
-              if (inviteDebounceRef.current) clearTimeout(inviteDebounceRef.current)
-              if (val.trim()) {
-                inviteDebounceRef.current = setTimeout(() => runInviteLookup(val), 500)
-              } else {
-                setInviteStatus('idle')
-                setInviteCompanyName(null)
-              }
-            }}
-            onBlur={() => {
-              if (inviteDebounceRef.current) clearTimeout(inviteDebounceRef.current)
-              if ((formData.inviteCode || '').trim()) runInviteLookup(formData.inviteCode || '')
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          />
-          {inviteStatus === 'loading' && (
-            <p className="mt-1 text-sm text-gray-500">Verifica codice...</p>
-          )}
-          {inviteStatus === 'valid' && (
-            <div className="mt-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-              ✅ Codice valido: entrerai in <span className="font-medium">{inviteCompanyName}</span>
-            </div>
-          )}
-          {inviteStatus === 'invalid' && (
-            <p className="mt-1 text-xs text-amber-600">Codice invito non valido o scaduto</p>
-          )}
-        </div>
-
-        <div className={inviteValid ? 'opacity-50' : ''}>
-          <input
-            type="text"
-            placeholder={inviteValid ? 'Codice Fiscale Ristorante (non necessario)' : 'Codice Fiscale Ristorante *'}
-            required={!inviteValid}
-            disabled={inviteValid}
+            placeholder="Codice Fiscale Ristorante *"
+            required
             value={formData.companyFiscalCode}
             onChange={(e) => {
               const val = e.target.value.toUpperCase()
@@ -627,6 +631,7 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
             <p className="mt-2 text-sm text-gray-600">📝 Sarai il primo del tuo ristorante!</p>
           )}
         </div>
+        )}
         
         <input
           type="password"

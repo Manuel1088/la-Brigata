@@ -27,13 +27,18 @@ export async function GET() {
       restaurantId: null,
       hasLocations: false,
       hasEmployees: false,
+      subscriptionStatus: null,
       needsOnboarding: false,
     })
   }
 
-  const [locationsCount, employeesCount] = await Promise.all([
+  const [locationsCount, employeesCount, restaurant] = await Promise.all([
     prisma.restaurantLocation.count({ where: { restaurantId } }),
     prisma.employment.count({ where: { restaurantId, status: 'ACTIVE' } }),
+    prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { subscriptionStatus: true },
+    }),
   ])
 
   const hasLocations = locationsCount > 0
@@ -44,6 +49,7 @@ export async function GET() {
     restaurantId,
     hasLocations,
     hasEmployees,
+    subscriptionStatus: restaurant?.subscriptionStatus ?? null,
     // Wizard bloccante solo per titolare/manager senza alcuna Sala
     needsOnboarding: isOwnerOrManager && !hasLocations,
   })
