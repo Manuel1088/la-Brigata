@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
+import { assertManagerOfUser } from '@/lib/restaurant-access'
 
 const companySelect = {
   id: true,
@@ -50,6 +53,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Non autorizzato' }, { status: 401 })
+    }
+
     const { id: userId } = await params
 
     if (!userId) {
@@ -60,6 +68,14 @@ export async function GET(
         },
         { status: 400 }
       )
+    }
+
+    // Stesso utente → sempre consentito; altrimenti deve essere un manager/admin del target
+    if (session.user.id !== userId) {
+      const allowed = await assertManagerOfUser(session.user.id, userId)
+      if (!allowed) {
+        return NextResponse.json({ success: false, error: 'Accesso negato' }, { status: 403 })
+      }
     }
 
     // ✅ SINGLE OPTIMIZED QUERY con select specifico

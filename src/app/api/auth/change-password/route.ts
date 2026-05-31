@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
+
     const body = await request.json()
-    const { userId, currentPassword, newPassword } = body
+    const { currentPassword, newPassword } = body
 
     // Validazione
-    if (!userId || !currentPassword || !newPassword) {
+    if (!currentPassword || !newPassword) {
       return NextResponse.json(
         { error: 'Dati mancanti' },
         { status: 400 }
@@ -22,9 +29,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Trova l'utente
+    // Trova l'utente dalla sessione — mai dal body
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: session.user.id },
       select: {
         id: true,
         password: true,
@@ -40,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     // Verifica password attuale
     const isPasswordValid = await bcrypt.compare(currentPassword, user.password)
-    
+
     if (!isPasswordValid) {
       return NextResponse.json(
         { error: 'Password attuale non corretta' },
@@ -53,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // Aggiorna password
     await prisma.user.update({
-      where: { id: userId },
+      where: { id: session.user.id },
       data: { password: hashedPassword }
     })
 
