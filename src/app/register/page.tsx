@@ -321,6 +321,36 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
   const [companyLookup, setCompanyLookup] = useState<{ companyName: string; restaurantName: string | null; colleaguesCount: number } | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Codice invito (alternativa al CF/P.IVA)
+  type InviteStatus = 'idle' | 'loading' | 'valid' | 'invalid'
+  const [inviteStatus, setInviteStatus] = useState<InviteStatus>('idle')
+  const [inviteCompanyName, setInviteCompanyName] = useState<string | null>(null)
+  const inviteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inviteValid = inviteStatus === 'valid'
+
+  const runInviteLookup = async (raw: string) => {
+    const code = raw.trim().toUpperCase().replace(/\s+/g, '')
+    if (!code) {
+      setInviteStatus('idle')
+      setInviteCompanyName(null)
+      return
+    }
+    setInviteStatus('loading')
+    try {
+      const res = await fetch(`/api/companies/invite/${encodeURIComponent(code)}`)
+      const data = await res.json()
+      if (res.ok && data.valid) {
+        setInviteCompanyName(data.companyName)
+        setInviteStatus('valid')
+      } else {
+        setInviteCompanyName(null)
+        setInviteStatus('invalid')
+      }
+    } catch {
+      setInviteStatus('invalid')
+    }
+  }
+
   // Normalizzazione P.IVA: rimuovi spazi, prefisso IT, uppercase → 11 cifre
   const normalizeVat = (raw: string) => raw.replace(/\s+/g, '').replace(/^IT/i, '').toUpperCase()
 
@@ -521,11 +551,48 @@ function EmployeeRegistrationForm({ onSubmit, onBack, loading }: { onSubmit: (da
           </div>
         </div>
         
+        {/* Codice invito (alternativa al CF/P.IVA) */}
         <div>
           <input
             type="text"
-            placeholder="Codice Fiscale Ristorante *"
-            required
+            placeholder="Hai un codice invito? (opzionale)"
+            value={formData.inviteCode || ''}
+            onChange={(e) => {
+              const val = e.target.value.toUpperCase()
+              setFormData({ ...formData, inviteCode: val })
+              if (inviteDebounceRef.current) clearTimeout(inviteDebounceRef.current)
+              if (val.trim()) {
+                inviteDebounceRef.current = setTimeout(() => runInviteLookup(val), 500)
+              } else {
+                setInviteStatus('idle')
+                setInviteCompanyName(null)
+              }
+            }}
+            onBlur={() => {
+              if (inviteDebounceRef.current) clearTimeout(inviteDebounceRef.current)
+              if ((formData.inviteCode || '').trim()) runInviteLookup(formData.inviteCode || '')
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+          {inviteStatus === 'loading' && (
+            <p className="mt-1 text-sm text-gray-500">Verifica codice...</p>
+          )}
+          {inviteStatus === 'valid' && (
+            <div className="mt-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+              ✅ Codice valido: entrerai in <span className="font-medium">{inviteCompanyName}</span>
+            </div>
+          )}
+          {inviteStatus === 'invalid' && (
+            <p className="mt-1 text-xs text-amber-600">Codice invito non valido o scaduto</p>
+          )}
+        </div>
+
+        <div className={inviteValid ? 'opacity-50' : ''}>
+          <input
+            type="text"
+            placeholder={inviteValid ? 'Codice Fiscale Ristorante (non necessario)' : 'Codice Fiscale Ristorante *'}
+            required={!inviteValid}
+            disabled={inviteValid}
             value={formData.companyFiscalCode}
             onChange={(e) => {
               const val = e.target.value.toUpperCase()

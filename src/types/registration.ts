@@ -30,6 +30,7 @@ export interface EmployeeRegistration {
   role: string
   userType: 'EMPLOYEE'
   companyFiscalCode: string
+  inviteCode?: string
   informalCompanyData?: {
     name: string
     address: string

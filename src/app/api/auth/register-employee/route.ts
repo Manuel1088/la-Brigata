@@ -13,6 +13,7 @@ import {
   departmentFromStorage,
   suggestedCcnlForRole,
 } from '@/lib/restaurant-roles'
+import { normalizeInviteCode, isInviteCodeUsable } from '@/lib/invite-codes'
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +30,8 @@ export async function POST(request: NextRequest) {
       role,
       companyFiscalCode,
       informalCompanyData,
-      teamName
+      teamName,
+      inviteCode
     } = data as {
       name: string
       email: string
@@ -42,15 +44,85 @@ export async function POST(request: NextRequest) {
       companyFiscalCode?: string
       informalCompanyData?: { name: string; address: string; city: string; type: string; description?: string }
       teamName?: string
+      inviteCode?: string
+    }
+
+    const normalizedEmail = email.toLowerCase()
+
+    // Risoluzione codice invito (se presente bypassa il lookup P.IVA)
+    let inviteRecord:
+      | { id: string; companyId: string; restaurantId: string; companyName: string }
+      | null = null
+    if (inviteCode && inviteCode.trim()) {
+      const normalizedCode = normalizeInviteCode(inviteCode)
+      const found = await prisma.inviteCode.findUnique({
+        where: { code: normalizedCode },
+        include: { company: { select: { name: true } } },
+      })
+      if (!found || !isInviteCodeUsable(found)) {
+        return NextResponse.json(
+          { error: 'Codice invito non valido, scaduto o esaurito.' },
+          { status: 400 }
+        )
+      }
+      inviteRecord = {
+        id: found.id,
+        companyId: found.companyId,
+        restaurantId: found.restaurantId,
+        companyName: found.company.name,
+      }
     }
 
     // Verifica se email già esiste
-    const normalizedEmail = email.toLowerCase()
     const existingUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail }
+      where: { email: normalizedEmail },
+      select: { id: true, name: true, companyId: true },
     })
-    
+
     if (existingUser) {
+      // Dedupe: con codice invito valido collega l'utente orfano (senza azienda)
+      // alla company del codice, SENZA duplicare il record User.
+      if (inviteRecord && !existingUser.companyId) {
+        await prisma.$transaction(async (tx) => {
+          await tx.user.update({
+            where: { id: existingUser.id },
+            data: {
+              companyId: inviteRecord!.companyId,
+              restaurantId: inviteRecord!.restaurantId,
+            },
+          })
+          await tx.employment.upsert({
+            where: {
+              userId_restaurantId: {
+                userId: existingUser.id,
+                restaurantId: inviteRecord!.restaurantId,
+              },
+            },
+            update: { status: 'ACTIVE', reviewedAt: new Date() },
+            create: {
+              userId: existingUser.id,
+              restaurantId: inviteRecord!.restaurantId,
+              status: 'ACTIVE',
+              role: PrismaUserRole.DIPENDENTE,
+              department: department || null,
+              requestedAt: new Date(),
+              reviewedAt: new Date(),
+            },
+          })
+          await tx.inviteCode.update({
+            where: { id: inviteRecord!.id },
+            data: { usedCount: { increment: 1 } },
+          })
+        })
+
+        return NextResponse.json({
+          success: true,
+          userId: existingUser.id,
+          status: 'ACTIVE',
+          message: `✅ Sei entrato in ${inviteRecord.companyName}!`,
+        })
+      }
+
       return NextResponse.json(
         { error: 'Email già registrata' },
         { status: 400 }
@@ -65,9 +137,14 @@ export async function POST(request: NextRequest) {
     let teamCode: string | null = null
     let restaurantId: string | undefined = undefined
 
-    // CASO 1: Collegamento ad azienda esistente tramite CF
+    // CASO 0: Codice invito → collega direttamente a company + ristorante del codice
     let foundCompany: { id: string; name: string; restaurants?: Array<{ id: string }> } | null = null
-    if (companyFiscalCode) {
+    if (inviteRecord) {
+      companyId = inviteRecord.companyId
+      restaurantId = inviteRecord.restaurantId
+    }
+    // CASO 1: Collegamento ad azienda esistente tramite CF
+    else if (companyFiscalCode) {
       foundCompany = await prisma.company.findUnique({
         where: { fiscalCode: companyFiscalCode },
         include: {
@@ -242,46 +319,62 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // 🔥 NUOVO: Se collegato ad azienda registrata, crea Employment PENDING
+    // Crea Employment. Con codice invito è pre-autorizzato (ACTIVE), altrimenti
+    // resta PENDING e richiede l'approvazione del manager.
     let employmentId: string | null = null
+    let employmentActive = false
     if (companyId && restaurantId) {
       try {
         const employment = await prisma.employment.create({
           data: {
             userId: user.id,
             restaurantId: restaurantId,
-            status: 'PENDING', // ⏳ Richiede approvazione
+            status: inviteRecord ? 'ACTIVE' : 'PENDING',
             role: toUserRole(mappedRole || role || 'DIPENDENTE'),
             department: department || null,
-            requestedAt: new Date()
+            requestedAt: new Date(),
+            reviewedAt: inviteRecord ? new Date() : null,
           }
         })
-        
+
         employmentId = employment.id
-        
-        // 🔔 Crea notifica per approvazione (owner/manager)
-        try {
-          await createNotification({
-            type: 'URGENT',
-            category: 'PERSONNEL',
-            title: '👥 Nuovo dipendente in attesa',
-            message: `${user.name} richiede approvazione per ${(foundCompany?.name) || 'azienda'} (${department || '—'})`,
-            isUrgent: true,
-            actions: [
-              { label: 'Visualizza Richieste', action: '/approvals', variant: 'primary', icon: '👁️' },
-              { label: 'Vai alle approvazioni', action: '/approvals?tab=candidatures', variant: 'secondary', icon: '✅' }
-            ],
-            metadata: {
-              employmentId: employment.id,
-              userId: user.id,
-              companyId: foundCompany?.id || companyId || '',
-              restaurantId,
-            },
-          })
-        } catch (notifError) {
-          console.error('Errore creazione notifica:', notifError)
+        employmentActive = !!inviteRecord
+
+        if (inviteRecord) {
+          // Codice invito usato: incrementa il contatore utilizzi
+          try {
+            await prisma.inviteCode.update({
+              where: { id: inviteRecord.id },
+              data: { usedCount: { increment: 1 } },
+            })
+          } catch (incErr) {
+            console.error('Errore incremento usedCount invito:', incErr)
+          }
+        } else {
+          // 🔔 Solo per il flusso CF: notifica i manager per l'approvazione
+          try {
+            await createNotification({
+              type: 'URGENT',
+              category: 'PERSONNEL',
+              title: '👥 Nuovo dipendente in attesa',
+              message: `${user.name} richiede approvazione per ${(foundCompany?.name) || 'azienda'} (${department || '—'})`,
+              isUrgent: true,
+              actions: [
+                { label: 'Visualizza Richieste', action: '/approvals', variant: 'primary', icon: '👁️' },
+                { label: 'Vai alle approvazioni', action: '/approvals?tab=candidatures', variant: 'secondary', icon: '✅' }
+              ],
+              metadata: {
+                employmentId: employment.id,
+                userId: user.id,
+                companyId: foundCompany?.id || companyId || '',
+                restaurantId,
+              },
+            })
+          } catch (notifError) {
+            console.error('Errore creazione notifica:', notifError)
+          }
         }
-        
+
       } catch (employmentError) {
         console.error('Errore creazione employment:', employmentError)
         // Non blocchiamo la registrazione se employment fallisce
@@ -291,7 +384,7 @@ export async function POST(request: NextRequest) {
     // 🎉 Riconoscimento reciproco tra colleghi + benvenuto.
     // Non bloccante: eventuali errori non interrompono la registrazione.
     try {
-      const companyDisplayName = foundCompany?.name || 'La Brigata'
+      const companyDisplayName = inviteRecord?.companyName || foundCompany?.name || 'La Brigata'
       const newcomerName = name.trim()
 
       if (companyId) {
@@ -347,14 +440,16 @@ export async function POST(request: NextRequest) {
       console.error('Errore notifiche benvenuto/colleghi:', welcomeNotifError)
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       userId: user.id,
       employmentId: employmentId,
-      status: employmentId ? 'PENDING' : 'ACTIVE',
-      message: employmentId 
-        ? 'Registrazione completata! La tua richiesta è in attesa di approvazione dal proprietario.' 
-        : 'Registrazione completata con successo!'
+      status: employmentActive ? 'ACTIVE' : employmentId ? 'PENDING' : 'ACTIVE',
+      message: inviteRecord
+        ? `✅ Sei entrato in ${inviteRecord.companyName}!`
+        : employmentId
+          ? 'Registrazione completata! La tua richiesta è in attesa di approvazione dal proprietario.'
+          : 'Registrazione completata con successo!'
     })
 
   } catch (error) {

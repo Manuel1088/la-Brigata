@@ -6,6 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { canManageRestaurantStaff } from '@/lib/employee-create'
 import TeamEmployees from '@/components/team/Employees'
 import TeamAccess from '@/components/team/Access'
+import TeamInvites from '@/components/team/Invites'
 
 function TeamPageContent() {
   const { data: session, status } = useSession()
@@ -50,6 +51,13 @@ function TeamPageContent() {
       label: 'Team', 
       icon: '👥', 
       component: TeamEmployees,
+      permission: canManageTeam
+    },
+    {
+      id: 'invites',
+      label: 'Inviti',
+      icon: '🔗',
+      component: TeamInvites,
       permission: canManageTeam
     },
     { 

@@ -37,6 +37,7 @@ model Restaurant {
   shiftTemplates     ShiftTemplate[]
   tasks              Task[]
   walkins            Walkin[]
+  inviteCodes        InviteCode[]
 
   @@index([companyId])
   @@map("restaurants")
@@ -117,6 +118,7 @@ model User {
   vatAggNotificationsReceived VatAggregationNotification[] @relation("VatAggRecipient")
   notifications             Notification[]
   walkinsCreated            Walkin[]                 @relation("WalkinsCreated")
+  inviteCodesCreated        InviteCode[]             @relation("InviteCodesCreated")
 
   @@index([companyId])
   @@index([companyId, isActive])
@@ -510,6 +512,27 @@ model Walkin {
   @@map("walkins")
 }
 
+model InviteCode {
+  id           String     @id @default(cuid())
+  code         String     @unique
+  companyId    String     @map("company_id")
+  restaurantId String     @map("restaurant_id")
+  createdBy    String     @map("created_by")
+  expiresAt    DateTime   @map("expires_at")
+  maxUses      Int        @default(50) @map("max_uses")
+  usedCount    Int        @default(0) @map("used_count")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  company      Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  creator      User       @relation("InviteCodesCreated", fields: [createdBy], references: [id])
+
+  @@index([companyId])
+  @@index([code])
+  @@map("invite_codes")
+}
+
 model EmployeeSkill {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
@@ -573,6 +596,7 @@ model Company {
   informalTeams    InformalCompany[]
   users            User[]            @relation("CompanyUsers")
   restaurants      Restaurant[]
+  inviteCodes      InviteCode[]
 
   @@map("companies")
 }
