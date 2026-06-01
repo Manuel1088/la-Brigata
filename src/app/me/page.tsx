@@ -271,30 +271,6 @@ export default function MeHubPage() {
         )}
       </div>
 
-      {/* Bottom nav mobile */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 safe-area-pb z-30 md:hidden">
-        <div className="max-w-lg mx-auto flex justify-around py-2">
-          {[
-            { label: 'Home', icon: '🏠', path: '/me', active: true },
-            { label: 'Turni', icon: '📅', path: '/shifts' },
-            { label: 'Mance', icon: '💰', path: '/tips' },
-            { label: 'Profilo', icon: '👤', path: '/profile' },
-          ].map((item) => (
-            <button
-              key={item.path}
-              type="button"
-              onClick={() => router.push(item.path)}
-              className={`flex flex-col items-center py-1 px-3 min-w-[64px] ${
-                item.active ? 'text-orange-600' : 'text-gray-500'
-              }`}
-            >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-[10px] font-medium mt-0.5">{item.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
-
       <style jsx>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
