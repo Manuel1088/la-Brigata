@@ -181,7 +181,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
       title: 'IMPOSTAZIONI',
       sectionVisible: true,
       items: [
-        { icon: '⚙️', label: 'Impostazioni', path: '/settings' },
+        // nascosto per beta - salvataggio non implementato
         { icon: '🔔', label: 'Notifiche', path: '/notifications', color: '#74B9FF' },
         { icon: '💳', label: 'Abbonamenti', path: '/subscription', color: '#FDCB6E' },
       ],
