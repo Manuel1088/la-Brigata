@@ -3,7 +3,6 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, type ReactElement } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useNotifications } from '@/hooks/useNotifications'
 import ApprovalsSwaps from '@/components/approvals/Swaps'
 import ApprovalsEmployees from '@/components/approvals/Employees'
 import ApprovalsLeaves from '@/components/approvals/Leaves'
@@ -52,8 +51,6 @@ export default function ApprovalsPage() {
     canManageEmployees,
     canManageShifts
   } = usePermissions()
-  const { notifyCustom } = useNotifications()
-
   // Stabilizza i permessi come boolean per evitare effetti che si ripetono ad ogni render
   const canEmployees = canManageEmployees()
   const canShifts = canManageShifts()
@@ -271,27 +268,6 @@ export default function ApprovalsPage() {
     }
   }, [visibleTabs, activeTab])
 
-  const handleBulkAction = async (action: string, _itemIds: string[]) => {
-    try {
-      // Implementa azioni bulk
-      switch (action) {
-        case 'approve_all':
-          notifyCustom('SUCCESS', 'SYSTEM', 'Approvazioni', 'Tutte le richieste sono state approvate')
-          break
-        case 'reject_all':
-          notifyCustom('WARNING', 'SYSTEM', 'Approvazioni', 'Tutte le richieste sono state rifiutate')
-          break
-        default:
-          notifyCustom('INFO', 'SYSTEM', 'Azione completata', `Azione ${action} completata`)
-      }
-      
-      // Aggiorna conteggio
-      window.dispatchEvent(new CustomEvent('approvals_updated'))
-    } catch {
-      notifyCustom('ERROR', 'SYSTEM', 'Approvazioni', 'Errore nell\'esecuzione dell\'azione')
-    }
-  }
-
   if (status === 'loading' || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -316,20 +292,6 @@ export default function ApprovalsPage() {
                   <p className="text-sm text-red-700">Richieste in sospeso</p>
                 </div>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleBulkAction('approve_all', [])}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
-              >
-                Approva tutto
-              </button>
-              <button
-                onClick={() => handleBulkAction('reject_all', [])}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
-              >
-                Rifiuta tutto
-              </button>
             </div>
           </div>
         )}
