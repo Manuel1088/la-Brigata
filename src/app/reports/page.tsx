@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import ReportsFinancial from '@/components/reports/Financial'
 import ReportsOperational from '@/components/reports/Operational'
-import ReportsPersonnel from '@/components/reports/Personnel'
 import AnalyticsDashboard from '@/components/analytics/Dashboard'
 import AnalyticsOperations from '@/components/analytics/Operations'
 import AnalyticsPredictions from '@/components/analytics/Predictions'
@@ -25,7 +24,6 @@ export default function ReportsPage() {
     canViewAdvancedReports,
     canViewFinancialReports,
     canViewAnalytics,
-    canExportReports,
   } = usePermissions()
 
   const canViewAnalyticsTabs =
@@ -63,13 +61,7 @@ export default function ReportsPage() {
       component: ReportsOperational,
       permission: canViewBasicReports(),
     },
-    {
-      id: 'personnel',
-      label: 'Personale',
-      icon: '👥',
-      component: ReportsPersonnel,
-      permission: canViewBasicReports(),
-    },
+    // nascosto per beta - dati HR (presenze, performance, formazione, soddisfazione) non implementati nel DB
     {
       id: 'dashboard',
       label: 'Dashboard',
@@ -150,18 +142,6 @@ export default function ReportsPage() {
             ))}
           </div>
         </div>
-        {canExportReports() && (
-          <div className="flex justify-end mt-6">
-            <button
-              onClick={() => {
-                console.log('Export all reports')
-              }}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
-            >
-              Esporta tutto
-            </button>
-          </div>
-        )}
       </main>
     </div>
   )
