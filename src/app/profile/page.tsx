@@ -21,7 +21,7 @@ import {
 type LocationOption = { id: string; name: string; icon: string | null }
 type LocationsApiResponse = { locations?: LocationOption[] }
 
-type ProfileTab = 'personale' | 'lavoro' | 'sicurezza' | 'documenti'
+type ProfileTab = 'personale' | 'lavoro' | 'sicurezza'
 
 type ProfileForm = {
   firstName: string
@@ -382,7 +382,7 @@ export default function ProfilePage() {
     { id: 'personale', label: 'Personale' },
     ...(showWorkTab ? [{ id: 'lavoro' as const, label: 'Lavoro' }] : []),
     { id: 'sicurezza', label: 'Sicurezza' },
-    { id: 'documenti', label: 'Documenti' },
+    // nascosto per beta - buste paga, CU e contratti non implementati
   ]
 
   return (
@@ -799,13 +799,6 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {activeTab === 'documenti' && (
-              <div className="text-center py-12 text-gray-600">
-                <div className="text-4xl mb-3">📁</div>
-                <p className="font-medium text-gray-800">Prossimamente</p>
-                <p className="text-sm mt-2">Buste paga, CU e contratti saranno disponibili qui.</p>
-              </div>
-            )}
           </div>
         </div>
       </main>
