@@ -6,8 +6,6 @@ import { usePermissions } from '@/hooks/usePermissions'
 import ReportsFinancial from '@/components/reports/Financial'
 import ReportsOperational from '@/components/reports/Operational'
 import AnalyticsDashboard from '@/components/analytics/Dashboard'
-import AnalyticsOperations from '@/components/analytics/Operations'
-import AnalyticsPredictions from '@/components/analytics/Predictions'
 
 export default function ReportsPage() {
   const { data: session, status } = useSession()
@@ -69,20 +67,7 @@ export default function ReportsPage() {
       component: AnalyticsDashboard,
       permission: canViewAnalyticsTabs,
     },
-    {
-      id: 'operations',
-      label: 'Operazioni',
-      icon: '⚙️',
-      component: AnalyticsOperations,
-      permission: canViewAnalyticsTabs,
-    },
-    {
-      id: 'predictions',
-      label: 'Previsioni',
-      icon: '🔮',
-      component: AnalyticsPredictions,
-      permission: canViewAnalyticsTabs,
-    },
+    // nascosto per beta - KPI hardcoded finti (87%, 42min, €47.200, setTimeout fake)
   ]
 
   const visibleTabs = tabs.filter((tab) => tab.permission)
