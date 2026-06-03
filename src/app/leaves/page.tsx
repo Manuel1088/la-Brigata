@@ -20,6 +20,7 @@ type LeaveRequestRow = {
   startDate: string
   endDate: string
   requestedHours: number | null
+  certificateNumber: string | null
   reason: string | null
   status: string
   createdAt: string
@@ -32,6 +33,7 @@ type LeaveFormState = {
   endDate: string
   reason: string
   requestedHours: string
+  certificateNumber: string
 }
 
 const emptyLeaveForm = (): LeaveFormState => ({
@@ -40,7 +42,11 @@ const emptyLeaveForm = (): LeaveFormState => ({
   endDate: '',
   reason: '',
   requestedHours: '',
+  certificateNumber: '',
 })
+
+const isSickLeaveType = (type: string) =>
+  type === 'SICK_LEAVE' || type === 'SICK_LEAVE_CHILD'
 
 export default function LeavesPage() {
   const { data: session, status } = useSession()
@@ -57,6 +63,7 @@ export default function LeavesPage() {
         endDate: day,
         reason: form.reason,
         requestedHours: '',
+        certificateNumber: '',
       })
       return
     }
@@ -66,6 +73,7 @@ export default function LeavesPage() {
       endDate: form.endDate || form.startDate,
       reason: form.reason,
       requestedHours: '',
+      certificateNumber: isSickLeaveType(newType) ? form.certificateNumber : '',
     })
   }
   const userId: string = session?.user?.id || ''
@@ -92,6 +100,7 @@ export default function LeavesPage() {
   const [myRequests, setMyRequests] = useState<LeaveRequestRow[]>([])
   const [balances, setBalances] = useState<LeaveBalance[]>([])
   const isRolForm = form.type === 'ROL'
+  const isSickLeaveForm = isSickLeaveType(form.type)
   const rolRemaining = balances.find((b) => b.type === 'ROL')?.remaining ?? 0
 
   const loadMine = async () => {
@@ -393,6 +402,25 @@ export default function LeavesPage() {
                     </>
                   )}
                 </div>
+                {isSickLeaveForm && (
+                  <div className="mt-3">
+                    <label className="block text-sm text-gray-700 mb-1">
+                      Numero certificato medico
+                    </label>
+                    <input
+                      type="text"
+                      value={form.certificateNumber}
+                      onChange={(e) =>
+                        setForm({ ...form, certificateNumber: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Es. numero protocollo INPS"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Facoltativo: puoi aggiungerlo anche in un secondo momento.
+                    </p>
+                  </div>
+                )}
                 <div className="mt-3">
                   <label className="block text-sm text-gray-700 mb-1">Motivo (opzionale)</label>
                   <input type="text" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Es. Vacanza famiglia" />
@@ -408,6 +436,7 @@ export default function LeavesPage() {
                         endDate: string
                         reason?: string
                         requestedHours?: number
+                        certificateNumber?: string
                       }
 
                       if (isRolForm) {
@@ -447,6 +476,10 @@ export default function LeavesPage() {
                           startDate: form.startDate,
                           endDate: form.endDate,
                           reason: form.reason || undefined,
+                        }
+                        if (isSickLeaveForm) {
+                          const cert = form.certificateNumber.trim()
+                          if (cert) payload.certificateNumber = cert
                         }
                       }
 
@@ -513,6 +546,14 @@ export default function LeavesPage() {
                               </>
                             )}
                           </div>
+                          {isSickLeaveType(req.type) && (
+                            <div className="text-sm text-gray-600 mt-1">
+                              Certificato:{' '}
+                              {req.certificateNumber?.trim()
+                                ? req.certificateNumber
+                                : 'non fornito'}
+                            </div>
+                          )}
                           {req.reason && (
                             <div className="text-sm text-gray-600 mt-1">{req.reason}</div>
                           )}

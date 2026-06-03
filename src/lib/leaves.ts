@@ -82,6 +82,8 @@ export type LeaveRequestDto = {
   type: string
   /** Ore richieste (solo ROL); null per tipi a giorni. */
   requestedHours: number | null
+  /** Numero certificato medico (solo malattia). */
+  certificateNumber: string | null
   reason: string | null
   status: string
   isUrgent: boolean
@@ -266,6 +268,7 @@ export function serializeLeaveRequest(row: {
   endDate: Date
   type: LeaveType
   requestedHours?: Decimal | null
+  certificateNumber?: string | null
   reason: string | null
   status: string
   isUrgent: boolean
@@ -287,6 +290,7 @@ export function serializeLeaveRequest(row: {
     type: row.type,
     requestedHours:
       row.requestedHours != null ? leaveBalanceAmount(row.requestedHours) : null,
+    certificateNumber: row.certificateNumber?.trim() || null,
     reason: row.reason,
     status: row.status,
     isUrgent: row.isUrgent,

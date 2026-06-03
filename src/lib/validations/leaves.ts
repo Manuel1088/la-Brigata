@@ -6,6 +6,12 @@ import {
 
 const dateIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD')
 
+const SICK_LEAVE_TYPES = ['SICK_LEAVE', 'SICK_LEAVE_CHILD'] as const
+
+function isSickLeaveType(type: LeaveTypeId): boolean {
+  return (SICK_LEAVE_TYPES as readonly string[]).includes(type)
+}
+
 /** Re-export: tipi richiedibili dal form (PAID_LEAVE escluso: requestable false). */
 export { SUPPORTED_LEAVE_TYPES } from '@/lib/leave-types'
 
@@ -48,6 +54,8 @@ export const postLeaveBodySchema = z
       .optional(),
     reason: z.string().max(2000).optional(),
     isUrgent: z.boolean().optional(),
+    /** Numero certificato (solo malattia); opzionale in creazione. */
+    certificateNumber: z.string().trim().max(100).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === 'ROL') {
@@ -58,13 +66,20 @@ export const postLeaveBodySchema = z
           path: ['requestedHours'],
         })
       }
-      return
-    }
-    if (data.requestedHours != null) {
+    } else if (data.requestedHours != null) {
       ctx.addIssue({
         code: 'custom',
         message: 'requestedHours consentito solo per il ROL',
         path: ['requestedHours'],
+      })
+    }
+
+    const cert = data.certificateNumber?.trim()
+    if (cert && !isSickLeaveType(data.type)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'certificateNumber consentito solo per malattia',
+        path: ['certificateNumber'],
       })
     }
   })

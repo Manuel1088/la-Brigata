@@ -172,8 +172,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { startDate, endDate, type, reason, isUrgent, requestedHours } =
+    const { startDate, endDate, type, reason, isUrgent, requestedHours, certificateNumber } =
       parsed.data
+    const sickLeave =
+      type === 'SICK_LEAVE' || type === 'SICK_LEAVE_CHILD'
+    const certTrimmed = certificateNumber?.trim()
     const start = dateFromIso(startDate)
     const end = dateFromIso(endDate)
 
@@ -215,6 +218,8 @@ export async function POST(request: NextRequest) {
         endDate: end,
         type,
         requestedHours: type === 'ROL' ? requestedHours : null,
+        certificateNumber:
+          sickLeave && certTrimmed ? certTrimmed : null,
         reason: reason ?? null,
         status: 'PENDING',
         isUrgent: isUrgent ?? false,

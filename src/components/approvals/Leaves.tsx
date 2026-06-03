@@ -10,10 +10,14 @@ export type LeaveRequestItem = {
   type: string
   startDate: string
   endDate: string
+  certificateNumber: string | null
   reason: string | null
   status: string
   createdAt: string
 }
+
+const isSickLeaveType = (type: string) =>
+  type === 'SICK_LEAVE' || type === 'SICK_LEAVE_CHILD'
 
 export default function ApprovalsLeaves({ onUpdate }: { onUpdate: () => void }) {
   const { data: session } = useSession()
@@ -154,6 +158,14 @@ export default function ApprovalsLeaves({ onUpdate }: { onUpdate: () => void }) 
                     {new Date(item.startDate).toLocaleDateString('it-IT')} -{' '}
                     {new Date(item.endDate).toLocaleDateString('it-IT')}
                   </div>
+                  {isSickLeaveType(item.type) && (
+                    <div className="text-sm text-gray-600 mt-1">
+                      Certificato:{' '}
+                      {item.certificateNumber?.trim()
+                        ? item.certificateNumber
+                        : 'non fornito'}
+                    </div>
+                  )}
                   {item.reason && (
                     <div className="text-sm text-gray-600 mt-1">{item.reason}</div>
                   )}
