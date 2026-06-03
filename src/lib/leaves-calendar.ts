@@ -1,5 +1,6 @@
 /** Client: ferie approvate per calendario turni (GET /api/leaves). */
 
+import { getLeaveTypeDefinition, leaveTypeToShiftCell } from '@/lib/leave-types'
 import { dateFromIso, type ShiftGridCell } from '@/lib/shifts'
 
 export type ApprovedLeaveRow = {
@@ -7,6 +8,19 @@ export type ApprovedLeaveRow = {
   startDate: string
   endDate: string
   status: string
+  /** LeaveType da GET /api/leaves → serializeLeaveRequest */
+  type: string
+}
+
+function shiftCellForApprovedLeave(leaveType: string): string {
+  const def = getLeaveTypeDefinition(leaveType)
+  if (!def) {
+    console.warn(
+      `[leaves-calendar] Tipo assenza sconosciuto "${leaveType}", overlay con FERIE`
+    )
+    return 'FERIE'
+  }
+  return leaveTypeToShiftCell(def.id)
 }
 
 export async function fetchApprovedLeavesForMonths(
@@ -27,7 +41,7 @@ export async function fetchApprovedLeavesForMonths(
     const data = (await res.json()) as { requests?: ApprovedLeaveRow[] }
     for (const req of data.requests ?? []) {
       if (req.status !== 'APPROVED') continue
-      const key = `${req.userId}:${req.startDate}:${req.endDate}`
+      const key = `${req.userId}:${req.startDate}:${req.endDate}:${req.type}`
       if (seen.has(key)) continue
       seen.add(key)
       rows.push(req)
@@ -48,7 +62,7 @@ export function monthsInDateRange(start: Date, end: Date): Array<{ year: number;
   return out
 }
 
-/** Sovrappone celle FERIE approvate sulla griglia turni visibile. */
+/** Sovrappone assenze approvate sulla griglia (stessa cella di persistApprovedLeaveOnShifts). */
 export function applyApprovedLeavesToShiftGrid(
   grid: Record<string, ShiftGridCell>,
   leaves: ApprovedLeaveRow[],
@@ -59,6 +73,7 @@ export function applyApprovedLeavesToShiftGrid(
   for (const leave of leaves) {
     const name = nameByUserId.get(leave.userId)
     if (!name) continue
+    const cellTime = shiftCellForApprovedLeave(leave.type)
     const start = dateFromIso(leave.startDate)
     const end = dateFromIso(leave.endDate)
     weekDates.forEach((date, dayIndex) => {
@@ -68,7 +83,7 @@ export function applyApprovedLeavesToShiftGrid(
       const key = `${name}-${dayIndex}`
       next[key] = {
         employee: name,
-        time: 'FERIE',
+        time: cellTime,
         department: next[key]?.department ?? 'sala',
         role: next[key]?.role,
       }
