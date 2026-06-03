@@ -2,6 +2,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactElement } from 'react'
+import { LEAVE_TYPE_DEFINITIONS } from '@/lib/leave-types'
 import { LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS } from '@/lib/leaves'
 
 type LeaveBalance = {
@@ -277,10 +278,11 @@ export default function LeavesPage() {
                         onChange={(e) => setForm({ ...form, type: e.target.value })}
                         className="w-full px-3 h-10 border border-gray-300 rounded-lg bg-white appearance-none pr-8"
                       >
-                      <option value="VACATION">Ferie</option>
-                      <option value="ROL">ROL</option>
-                      <option value="PAID_LEAVE">Permesso retribuito</option>
-                      <option value="SICK_LEAVE">Malattia</option>
+                      {LEAVE_TYPE_DEFINITIONS.map((def) => (
+                        <option key={def.id} value={def.id}>
+                          {def.label}
+                        </option>
+                      ))}
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
                         <svg className="w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

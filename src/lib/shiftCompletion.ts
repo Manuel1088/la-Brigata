@@ -23,9 +23,9 @@ export type ShiftCompletionEmployee = {
 }
 
 /**
- * La moda propone SOLO lavoro o RIPOSO. Le assenze (ferie, malattia, permessi, ROL, RO, congedi, …)
- * non si "prevedono": non votano mai nel calcolo della moda (weekday né moda assoluta).
- * Whitelist: isWorkShiftTime(time) oppure time === 'RIPOSO'; tutto il resto è ignorato come voto.
+ * La moda propone SOLO lavoro o RIPOSO (whitelist locale: isWorkShiftTime + RIPOSO).
+ * In leave-types.ts tutte le assenze hanno countsInModaVotes: false — non votano nello storico.
+ * FERIE, ROL, RO, malattia, congedi, permessi, … sono ignorati in collectEmployeeHistoricalTimes.
  */
 export function isModaHistoricalVote(time: string): boolean {
   if (time === 'RIPOSO') return true

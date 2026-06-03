@@ -1,6 +1,12 @@
 import type { LeaveType, PrismaClient } from '@prisma/client'
+import {
+  LEGACY_LEAVE_TYPE_DEFINITIONS,
+  LEAVE_TYPE_DEFINITIONS,
+  type LeaveTypeId,
+} from '@/lib/leave-types'
 import { dateFromIso, toDateOnlyIso } from '@/lib/shifts'
-import { SUPPORTED_LEAVE_TYPES } from '@/lib/validations/leaves'
+
+export { LEAVE_TYPE_LABELS, SUPPORTED_LEAVE_TYPES } from '@/lib/leave-types'
 
 export const LEAVE_APPROVER_ROLES = new Set([
   'ADMIN',
@@ -10,19 +16,50 @@ export const LEAVE_APPROVER_ROLES = new Set([
   'RESTAURANT_MANAGER',
 ])
 
-export const LEAVE_TYPE_LABELS: Record<string, string> = {
-  VACATION: 'Ferie',
-  SICK_LEAVE: 'Malattia',
-  ROL: 'ROL',
-  PAID_LEAVE: 'Permesso retribuito',
-}
-
 export const LEAVE_STATUS_LABELS: Record<string, string> = {
   PENDING: 'In attesa',
   APPROVED: 'Approvata',
   REJECTED: 'Rifiutata',
   CANCELLED: 'Annullata',
   EXPIRED: 'Scaduta',
+}
+
+/** Tipi con saldo (fonte unica: tracksBalance), incluso PAID_LEAVE legacy. */
+const BALANCE_TRACKED_LEAVE_TYPES = [
+  ...LEAVE_TYPE_DEFINITIONS,
+  ...LEGACY_LEAVE_TYPE_DEFINITIONS,
+]
+  .filter((d) => d.tracksBalance)
+  .map((d) => d.id) as LeaveType[]
+
+type LeaveEntitlementTotals = {
+  vacationDays: number
+  rolHours: number
+  paidLeaveDays: number
+  parentalDays: number
+  unionDays: number
+}
+
+function balanceTotalForType(
+  type: LeaveTypeId,
+  entitlement: LeaveEntitlementTotals
+): number | null {
+  switch (type) {
+    case 'VACATION':
+      return entitlement.vacationDays
+    case 'ROL':
+      return entitlement.rolHours
+    case 'PAID_LEAVE':
+      return entitlement.paidLeaveDays
+    case 'SICK_LEAVE':
+      return 180
+    case 'PARENTAL_LEAVE':
+      return entitlement.parentalDays
+    case 'UNION_LEAVE':
+      return entitlement.unionDays
+    default:
+      return null
+  }
 }
 
 export type LeaveBalanceDto = {
@@ -88,12 +125,14 @@ export async function ensureLeaveEntitlementAndBalances(
     update: {},
   })
 
-  const specs: Array<{ type: LeaveType; total: number }> = [
-    { type: 'VACATION', total: entitlement.vacationDays },
-    { type: 'ROL', total: entitlement.rolHours },
-    { type: 'PAID_LEAVE', total: entitlement.paidLeaveDays },
-    { type: 'SICK_LEAVE', total: 180 },
-  ]
+  const specs: Array<{ type: LeaveType; total: number }> = []
+
+  for (const def of [...LEAVE_TYPE_DEFINITIONS, ...LEGACY_LEAVE_TYPE_DEFINITIONS]) {
+    if (!def.tracksBalance) continue
+    const total = balanceTotalForType(def.id, entitlement)
+    if (total === null) continue
+    specs.push({ type: def.id as LeaveType, total })
+  }
 
   for (const spec of specs) {
     const existing = await prisma.leaveBalance.findUnique({
@@ -132,7 +171,7 @@ export async function getLeaveBalancesForUser(
     where: {
       userId,
       year,
-      type: { in: [...SUPPORTED_LEAVE_TYPES] },
+      type: { in: BALANCE_TRACKED_LEAVE_TYPES },
     },
   })
 

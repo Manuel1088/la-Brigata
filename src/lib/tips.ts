@@ -1,4 +1,5 @@
 import type { PaymentType, PrismaClient } from '@prisma/client'
+import { SHIFT_CELLS_INCLUDED_IN_TIPS } from '@/lib/leave-types'
 import {
   dateFromIso,
   decodeShiftTime,
@@ -60,12 +61,15 @@ export async function resolveEmployeeForUser(
 }
 
 /**
- * Statuto mance Mirabelle: oltre al lavoro (orario HH:mm–HH:mm, anche spezzato),
- * solo queste assenze danno diritto alla quota mance.
- * RO = Recupero Ore (incluso). NON confondere con RECUPERO_RIPOSO (escluso).
- * Malattia, congedi, permessi, riposi e tipi futuri non in elenco → esclusi.
+ * Statuto mance Mirabelle — assenze in quota (oltre al lavoro):
+ * - FERIE, ROL da leave-types (includedInTips → SHIFT_CELLS_INCLUDED_IN_TIPS)
+ * - RO = Recupero Ore: solo etichetta turno manuale, non è LeaveType, ma entra per statuto
+ * NON confondere RO con RECUPERO_RIPOSO (escluso).
  */
-export const ABSENCES_INCLUDED_IN_TIPS = new Set(['FERIE', 'ROL', 'RO'])
+export const ABSENCES_INCLUDED_IN_TIPS: ReadonlySet<string> = new Set([
+  ...SHIFT_CELLS_INCLUDED_IN_TIPS,
+  'RO',
+])
 
 /** Regola statuto su etichetta turno già decodificata (testabile senza DB). */
 export function isIncludedInTipsDistribution(decodedTime: string): boolean {

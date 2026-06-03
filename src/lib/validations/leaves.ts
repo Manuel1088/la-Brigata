@@ -1,15 +1,20 @@
 import { z } from 'zod'
+import {
+  REQUESTABLE_LEAVE_TYPES,
+  type LeaveTypeId,
+} from '@/lib/leave-types'
 
 const dateIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD')
 
-export const SUPPORTED_LEAVE_TYPES = [
-  'VACATION',
-  'SICK_LEAVE',
-  'ROL',
-  'PAID_LEAVE',
-] as const
+/** Re-export: tipi richiedibili dal form (PAID_LEAVE escluso: requestable false). */
+export { SUPPORTED_LEAVE_TYPES } from '@/lib/leave-types'
 
-export const leaveTypeSchema = z.enum(SUPPORTED_LEAVE_TYPES)
+const requestableLeaveTypes = REQUESTABLE_LEAVE_TYPES as [
+  LeaveTypeId,
+  ...LeaveTypeId[],
+]
+
+export const leaveTypeSchema = z.enum(requestableLeaveTypes)
 
 export const leaveStatusSchema = z.enum([
   'PENDING',
