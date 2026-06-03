@@ -73,6 +73,16 @@ export function isPresentShift(status: string, startTime: Date, endTime: Date): 
   return time !== 'RIPOSO' && time !== 'FERIE'
 }
 
+/** Segmento orario turno lavorativo (es. "06:00-14:00", anche in turni spezzati). */
+const SHIFT_TIME_SEGMENT_RE = /^(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})$/
+
+/** True se l'etichetta decodificata è un turno con orario (non RIPOSO/FERIE/MALATTIA ecc.). */
+export function isWorkShiftTime(time: string): boolean {
+  if (!time) return false
+  const segments = time.split('/').map((s) => s.trim())
+  return segments.some((segment) => SHIFT_TIME_SEGMENT_RE.test(segment))
+}
+
 /** Durata in ore da etichetta turno (es. "17:00-01:00", anche oltre mezzanotte e spezzati) */
 export function hoursFromShiftTimeLabel(time: string): number {
   if (time === 'RIPOSO' || time === 'FERIE') return 0
@@ -81,7 +91,7 @@ export function hoursFromShiftTimeLabel(time: string): number {
   let totalMinutes = 0
 
   for (const segment of segments) {
-    const match = segment.match(/^(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})$/)
+    const match = segment.match(SHIFT_TIME_SEGMENT_RE)
     if (!match) continue
 
     const sh = Number(match[1])

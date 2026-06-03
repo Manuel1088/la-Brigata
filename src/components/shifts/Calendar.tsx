@@ -1,7 +1,9 @@
 'use client'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useAutoScheduler } from '@/lib/autoScheduler'
+// TODO rimuovere con autoScheduler
+// import { useAutoScheduler } from '@/lib/autoScheduler'
+import { runModaCompletion } from '@/lib/shiftCompletion'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -220,7 +222,8 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
   }, [])
 
   const restaurantId = session?.user?.restaurantId as string | undefined
-  const { generateSchedule } = useAutoScheduler(restaurantId)
+  // TODO rimuovere con autoScheduler
+  // const { generateSchedule } = useAutoScheduler(restaurantId)
 
   // ── Turni template dal DB ──────────────────────────────────────────────────
   const [dbTemplates, setDbTemplates] = useState<Array<{
@@ -271,16 +274,14 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     return dates
   }, [viewMode])
 
-  // ✅ Carica turni da API
-  useEffect(() => {
-    if (!restaurantId || status !== 'authenticated') return
+  const reloadShifts = useCallback(
+    async (isActive: () => boolean = () => true) => {
+      if (!restaurantId || status !== 'authenticated') return
 
-    const weekDates = getWeekDates(currentWeek)
-    const fromDate = toDateOnlyIso(weekDates[0])
-    const numDays = weekDates.length
+      const weekDates = getWeekDates(currentWeek)
+      const fromDate = toDateOnlyIso(weekDates[0])
+      const numDays = weekDates.length
 
-    let cancelled = false
-    const load = async () => {
       setIsLoadingShifts(true)
       try {
         const params = new URLSearchParams({
@@ -291,7 +292,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
         const res = await fetch(`/api/shifts?${params}`, { credentials: 'include' })
         if (!res.ok) throw new Error('Failed to load shifts')
         const data = await res.json()
-        if (cancelled) return
+        if (!isActive()) return
 
         let grid = shiftsToGrid(data.shifts ?? [], weekDates, nameByUserId)
         const months = monthsInDateRange(
@@ -299,26 +300,33 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
           weekDates[weekDates.length - 1]
         )
         const approvedLeaves = await fetchApprovedLeavesForMonths(months)
-        if (!cancelled) {
-          grid = applyApprovedLeavesToShiftGrid(
-            grid,
-            approvedLeaves,
-            weekDates,
-            nameByUserId
-          )
-        }
+        if (!isActive()) return
+
+        grid = applyApprovedLeavesToShiftGrid(
+          grid,
+          approvedLeaves,
+          weekDates,
+          nameByUserId
+        )
         setShifts(grid)
       } catch (error) {
         console.error('Errore caricamento turni:', error)
-        if (!cancelled) setShifts({})
+        if (isActive()) setShifts({})
       } finally {
-        if (!cancelled) setIsLoadingShifts(false)
+        if (isActive()) setIsLoadingShifts(false)
       }
-    }
+    },
+    [restaurantId, status, currentWeek, getWeekDates, nameByUserId]
+  )
 
-    load()
-    return () => { cancelled = true }
-  }, [currentWeek, viewMode, restaurantId, status, getWeekDates, swapVersion, nameByUserId])
+  // ✅ Carica turni da API
+  useEffect(() => {
+    let cancelled = false
+    void reloadShifts(() => !cancelled)
+    return () => {
+      cancelled = true
+    }
+  }, [reloadShifts, swapVersion])
 
   useEffect(() => {
     const onSwapUpdated = () => setSwapVersion((v) => v + 1)
@@ -699,24 +707,6 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     closeSwapModal()
   }
 
-  // ✅ Generazione automatica
-  const handleGenerateSchedule = async () => {
-    setIsGenerating(true)
-    try {
-      const result = await generateSchedule(getWeekDates(currentWeek)[0])
-      if (result.success && result.schedule) {
-        setShifts(result.schedule)
-        notifyCustom('SUCCESS','SHIFTS','Auto-scheduler','Turni generati e salvati su database!')
-      } else {
-        notifyCustom('ERROR','SHIFTS','Auto-scheduler','Errore nella generazione automatica')
-      }
-    } catch (error) {
-      notifyCustom('ERROR','SHIFTS','Auto-scheduler','Errore nella generazione automatica')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
   // ✅ Filtri dipendenti
   const filteredEmployees = useMemo(() => {
     if (selectedDepartment === 'direzione') {
@@ -728,6 +718,61 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     }
     return employees.filter(emp => emp.department === selectedDepartment)
   }, [employees, selectedDepartment])
+
+  const handleGenerateSchedule = async () => {
+    if (!restaurantId) {
+      notifyCustom('ERROR', 'SHIFTS', 'Completamento turni', 'Ristorante non configurato')
+      return
+    }
+
+    if (viewMode === 'month') {
+      notifyCustom(
+        'INFO',
+        'SHIFTS',
+        'Completamento turni',
+        'Passa alla vista settimana o due settimane per completare i turni'
+      )
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const weeksToFill = viewMode === 'twoWeeks' ? 2 : 1
+      const result = await runModaCompletion({
+        restaurantId,
+        weekStart: getWeekDates(currentWeek)[0],
+        department: selectedDepartment,
+        employees: filteredEmployees.map((e) => ({
+          id: e.id,
+          name: e.name,
+          department: e.department,
+        })),
+        weeksToFill,
+      })
+
+      if (result.success) {
+        await reloadShifts()
+        notifyCustom(
+          'SUCCESS',
+          'SHIFTS',
+          'Completamento turni',
+          'Turni completati e salvati su database!'
+        )
+      } else {
+        notifyCustom(
+          'ERROR',
+          'SHIFTS',
+          'Completamento turni',
+          result.error?.message ?? 'Errore nel completamento turni'
+        )
+      }
+    } catch (error) {
+      console.error('Errore completamento turni:', error)
+      notifyCustom('ERROR', 'SHIFTS', 'Completamento turni', 'Errore nel completamento turni')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
 
   const getColleaguesOnDay = useCallback(
     (dayIndex: number) => {
@@ -789,8 +834,8 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
               type="button"
               onClick={handleGenerateSchedule}
               disabled={isGenerating}
-              title="Genera turni automaticamente"
-              aria-label="Genera turni automaticamente"
+              title="Completa turni dalle settimane precedenti"
+              aria-label="Completa turni dalle settimane precedenti"
               className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50 text-lg"
             >
               {isGenerating ? '…' : '🧠'}

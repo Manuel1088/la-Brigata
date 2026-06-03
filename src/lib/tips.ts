@@ -1,5 +1,10 @@
 import type { PaymentType, PrismaClient } from '@prisma/client'
-import { dateFromIso, decodeShiftTime, toDateOnlyIso } from '@/lib/shifts'
+import {
+  dateFromIso,
+  decodeShiftTime,
+  isWorkShiftTime,
+  toDateOnlyIso,
+} from '@/lib/shifts'
 
 export type TipAmountInput = {
   cash?: number
@@ -55,13 +60,28 @@ export async function resolveEmployeeForUser(
 }
 
 /**
- * Turni presenti validi per la divisione mance:
- * - RIPOSO (rest) → escluso
- * - FERIE, ROL, RO e tutti i turni lavorativi → inclusi
+ * Statuto mance Mirabelle: oltre al lavoro (orario HH:mm–HH:mm, anche spezzato),
+ * solo queste assenze danno diritto alla quota mance.
+ * RO = Recupero Ore (incluso). NON confondere con RECUPERO_RIPOSO (escluso).
+ * Malattia, congedi, permessi, riposi e tipi futuri non in elenco → esclusi.
  */
-function isPresentForTips(status: string, startTime: Date, endTime: Date): boolean {
+export const ABSENCES_INCLUDED_IN_TIPS = new Set(['FERIE', 'ROL', 'RO'])
+
+/** Regola statuto su etichetta turno già decodificata (testabile senza DB). */
+export function isIncludedInTipsDistribution(decodedTime: string): boolean {
+  if (isWorkShiftTime(decodedTime)) return true
+  if (ABSENCES_INCLUDED_IN_TIPS.has(decodedTime)) return true
+  return false
+}
+
+/** Presenza per divisione mance da riga Shift (status + orari). */
+export function isPresentForTips(
+  status: string,
+  startTime: Date,
+  endTime: Date
+): boolean {
   const time = decodeShiftTime(status, startTime, endTime)
-  return time !== 'RIPOSO'
+  return isIncludedInTipsDistribution(time)
 }
 
 /** Classifica un turno per il periodo pasto (pranzo/cena) in caso di splitTipsByMeal. */
@@ -72,9 +92,9 @@ const SPLIT_HOUR = 17 * 60 // 17:00 in minuti
 function mealPeriodForShift(status: string, startTime: Date, endTime: Date): MealPeriod {
   const time = decodeShiftTime(status, startTime, endTime)
 
-  // Assenze retribuite → contano per entrambi i periodi
+  // Solo turni già filtrati da isPresentForTips; assenze in quota mance → entrambi i pasti
   if (time === 'RIPOSO') return 'pranzo' // non dovrebbe arrivare qui
-  if (time === 'FERIE' || time === 'ROL' || time === 'RO') return 'both'
+  if (ABSENCES_INCLUDED_IN_TIPS.has(time)) return 'both'
 
   const startMin = startTime.getHours() * 60 + startTime.getMinutes()
   let endMin = endTime.getHours() * 60 + endTime.getMinutes()
