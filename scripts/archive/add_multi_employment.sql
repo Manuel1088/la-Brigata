@@ -42,4 +42,3 @@ CREATE INDEX IF NOT EXISTS idx_employments_active ON employments(status) WHERE s
 COMMENT ON TABLE employments IS 'Manages user employment relationships with restaurants';
 COMMENT ON COLUMN employments.status IS 'Employment status: PENDING, APPROVED, ACTIVE, REJECTED, TERMINATED';
 COMMENT ON COLUMN employments.role IS 'User role in this specific restaurant';
-
