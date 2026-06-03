@@ -5,6 +5,7 @@ import {
 } from '@/lib/leaves-calendar'
 import {
   getMonday,
+  isWorkShiftTime,
   shiftCellKey,
   shiftsToGrid,
   toDateOnlyIso,
@@ -19,6 +20,16 @@ export type ShiftCompletionEmployee = {
   id: string
   name: string
   department: string
+}
+
+/**
+ * La moda propone SOLO lavoro o RIPOSO. Le assenze (ferie, malattia, permessi, ROL, RO, congedi, …)
+ * non si "prevedono": non votano mai nel calcolo della moda (weekday né moda assoluta).
+ * Whitelist: isWorkShiftTime(time) oppure time === 'RIPOSO'; tutto il resto è ignorato come voto.
+ */
+export function isModaHistoricalVote(time: string): boolean {
+  if (time === 'RIPOSO') return true
+  return isWorkShiftTime(time)
 }
 
 /** Coerente con Calendar: turno di lavoro = time presente e non assenza. */
@@ -74,7 +85,7 @@ function collectEmployeeHistoricalTimes(
   for (const week of historicalWeeks) {
     for (let day = 0; day < 7; day++) {
       const time = week[shiftCellKey(employeeName, day)]?.time
-      if (time !== undefined) out.push(time)
+      if (time !== undefined && isModaHistoricalVote(time)) out.push(time)
     }
   }
   return out
@@ -97,7 +108,7 @@ function weekdayHistoricalTimes(
   const out: string[] = []
   for (const week of historicalWeeks) {
     const time = week[shiftCellKey(employeeName, weekday)]?.time
-    if (time !== undefined) out.push(time)
+    if (time !== undefined && isModaHistoricalVote(time)) out.push(time)
   }
   return out
 }
@@ -148,7 +159,8 @@ function buildCompletedCell(
 
 /**
  * Completa la griglia turni per moda sulle settimane storiche.
- * Non persiste nulla: restituisce una nuova griglia lasciando intatti turni manuali e ferie.
+ * Voti storici: solo lavoro (isWorkShiftTime) e RIPOSO; assenze ignorate nel conteggio.
+ * Non persiste nulla: lascia intatti turni manuali e assenze già in griglia.
  */
 export function computeModaCompletion(params: {
   employees: ShiftCompletionEmployee[]

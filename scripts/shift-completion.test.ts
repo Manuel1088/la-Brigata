@@ -145,6 +145,36 @@ runCase('CASO 6 — riposo come moda (martedì → RIPOSO)', () => {
   assertCellTime(result, 'Mario-1', 'RIPOSO', 'Mario-1')
 })
 
+runCase('CASO 7 — ferie nello storico non votano (lavoro, FERIE, lavoro → lavoro)', () => {
+  const historicalWeeks = [
+    { 'Mario-0': cell('Mario', '06:00-14:00') },
+    { 'Mario-0': cell('Mario', 'FERIE') },
+    { 'Mario-0': cell('Mario', '06:00-14:00') },
+  ]
+  const result = computeModaCompletion({
+    employees: [emp('Mario')],
+    historicalWeeks,
+    currentGrid: {},
+    daysToFill: 7,
+  })
+  assertCellTime(result, 'Mario-0', '06:00-14:00', 'Mario-0 (feria ignorata nel voto)')
+})
+
+runCase('CASO 8 — solo ferie nello storico → nessuna proposta (cella vuota)', () => {
+  const historicalWeeks = [
+    { 'Mario-0': cell('Mario', 'FERIE') },
+    { 'Mario-0': cell('Mario', 'FERIE') },
+    { 'Mario-0': cell('Mario', 'FERIE') },
+  ]
+  const result = computeModaCompletion({
+    employees: [emp('Mario')],
+    historicalWeeks,
+    currentGrid: {},
+    daysToFill: 7,
+  })
+  assertKeyAbsent(result, 'Mario-0', 'Mario-0 (ferie non votano)')
+})
+
 console.log('')
 console.log(`Totale: ${passed + failed} | Passati: ${passed} | Falliti: ${failed}`)
 process.exit(failed > 0 ? 1 : 0)
