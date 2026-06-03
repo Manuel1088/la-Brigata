@@ -1,5 +1,7 @@
+import type { Decimal } from '@prisma/client/runtime/library'
 import type { LeaveType, PrismaClient } from '@prisma/client'
 import {
+  getLeaveTypeDefinition,
   LEGACY_LEAVE_TYPE_DEFINITIONS,
   LEAVE_TYPE_DEFINITIONS,
   type LeaveTypeId,
@@ -78,6 +80,8 @@ export type LeaveRequestDto = {
   startDate: string
   endDate: string
   type: string
+  /** Ore richieste (solo ROL); null per tipi a giorni. */
+  requestedHours: number | null
   reason: string | null
   status: string
   isUrgent: boolean
@@ -87,6 +91,29 @@ export type LeaveRequestDto = {
   approvedAt: string | null
   rejectedAt: string | null
   rejectionReason: string | null
+}
+
+export function leaveBalanceAmount(value: Decimal | number): number {
+  return typeof value === 'number' ? value : Number(value)
+}
+
+/**
+ * Importo da scalare dal saldo all'approvazione (ore per ROL, giorni per gli altri).
+ * null = non scalare (es. ROL senza requestedHours).
+ */
+export function balanceDeductionForApprovedLeave(
+  type: LeaveType,
+  startDate: Date,
+  endDate: Date,
+  requestedHours: number | null | undefined
+): number | null {
+  const unit = getLeaveTypeDefinition(type)?.balanceUnit ?? 'days'
+  if (unit === 'hours') {
+    if (requestedHours == null || Number(requestedHours) <= 0) return null
+    return Number(requestedHours)
+  }
+  const days = countInclusiveDays(startDate, endDate)
+  return days > 0 ? days : null
 }
 
 export function countInclusiveDays(startDate: Date, endDate: Date): number {
@@ -175,13 +202,17 @@ export async function getLeaveBalancesForUser(
     },
   })
 
-  return rows.map((b) => ({
-    type: b.type,
-    total: b.total,
-    used: b.used,
-    remaining: b.remaining,
-    percentage: b.total > 0 ? Math.round((b.remaining / b.total) * 100) : 0,
-  }))
+  return rows.map((b) => {
+    const total = leaveBalanceAmount(b.total)
+    const remaining = leaveBalanceAmount(b.remaining)
+    return {
+      type: b.type,
+      total,
+      used: leaveBalanceAmount(b.used),
+      remaining,
+      percentage: total > 0 ? Math.round((remaining / total) * 100) : 0,
+    }
+  })
 }
 
 export async function applyApprovedLeaveToBalance(
@@ -189,13 +220,26 @@ export async function applyApprovedLeaveToBalance(
   userId: string,
   type: LeaveType,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  requestedHours: number | null | undefined
 ): Promise<void> {
   const year = startDate.getFullYear()
   await ensureLeaveEntitlementAndBalances(prisma, userId, year)
 
-  const days = countInclusiveDays(startDate, endDate)
-  if (days <= 0) return
+  const deduction = balanceDeductionForApprovedLeave(
+    type,
+    startDate,
+    endDate,
+    requestedHours
+  )
+  if (deduction == null) {
+    if (getLeaveTypeDefinition(type)?.balanceUnit === 'hours') {
+      console.warn(
+        `[leaves] ROL approvato senza requestedHours valido per user ${userId}: saldo non scalato`
+      )
+    }
+    return
+  }
 
   const balance = await prisma.leaveBalance.findUnique({
     where: {
@@ -204,8 +248,10 @@ export async function applyApprovedLeaveToBalance(
   })
   if (!balance) return
 
-  const used = Math.min(balance.total, balance.used + days)
-  const remaining = Math.max(0, balance.total - used)
+  const total = leaveBalanceAmount(balance.total)
+  const usedBefore = leaveBalanceAmount(balance.used)
+  const used = Math.min(total, usedBefore + deduction)
+  const remaining = Math.max(0, total - used)
 
   await prisma.leaveBalance.update({
     where: { id: balance.id },
@@ -219,6 +265,7 @@ export function serializeLeaveRequest(row: {
   startDate: Date
   endDate: Date
   type: LeaveType
+  requestedHours?: Decimal | null
   reason: string | null
   status: string
   isUrgent: boolean
@@ -238,6 +285,8 @@ export function serializeLeaveRequest(row: {
     startDate: toDateOnlyIso(row.startDate),
     endDate: toDateOnlyIso(row.endDate),
     type: row.type,
+    requestedHours:
+      row.requestedHours != null ? leaveBalanceAmount(row.requestedHours) : null,
     reason: row.reason,
     status: row.status,
     isUrgent: row.isUrgent,

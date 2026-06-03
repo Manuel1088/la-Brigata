@@ -19,17 +19,55 @@ type LeaveRequestRow = {
   type: string
   startDate: string
   endDate: string
+  requestedHours: number | null
   reason: string | null
   status: string
   createdAt: string
   rejectionReason: string | null
 }
 
+type LeaveFormState = {
+  type: string
+  startDate: string
+  endDate: string
+  reason: string
+  requestedHours: string
+}
+
+const emptyLeaveForm = (): LeaveFormState => ({
+  type: 'VACATION',
+  startDate: '',
+  endDate: '',
+  reason: '',
+  requestedHours: '',
+})
+
 export default function LeavesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [activeView, setActiveView] = useState('my-requests')
-  const [form, setForm] = useState<{ type: string; startDate: string; endDate: string; reason: string }>({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
+  const [form, setForm] = useState<LeaveFormState>(emptyLeaveForm)
+
+  const handleLeaveTypeChange = (newType: string) => {
+    if (newType === 'ROL') {
+      const day = form.startDate || form.endDate || ''
+      setForm({
+        type: newType,
+        startDate: day,
+        endDate: day,
+        reason: form.reason,
+        requestedHours: '',
+      })
+      return
+    }
+    setForm({
+      type: newType,
+      startDate: form.startDate,
+      endDate: form.endDate || form.startDate,
+      reason: form.reason,
+      requestedHours: '',
+    })
+  }
   const userId: string = session?.user?.id || ''
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -53,6 +91,8 @@ export default function LeavesPage() {
   }
   const [myRequests, setMyRequests] = useState<LeaveRequestRow[]>([])
   const [balances, setBalances] = useState<LeaveBalance[]>([])
+  const isRolForm = form.type === 'ROL'
+  const rolRemaining = balances.find((b) => b.type === 'ROL')?.remaining ?? 0
 
   const loadMine = async () => {
     if (!userId) {
@@ -275,7 +315,7 @@ export default function LeavesPage() {
                     <div className="relative">
                       <select
                         value={form.type}
-                        onChange={(e) => setForm({ ...form, type: e.target.value })}
+                        onChange={(e) => handleLeaveTypeChange(e.target.value)}
                         className="w-full px-3 h-10 border border-gray-300 rounded-lg bg-white appearance-none pr-8"
                       >
                       {LEAVE_TYPE_DEFINITIONS.map((def) => (
@@ -291,39 +331,131 @@ export default function LeavesPage() {
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1">Dal</label>
-                    <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="w-full px-3 h-10 border border-gray-300 rounded-lg" />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1">Al</label>
-                    <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="w-full px-3 h-10 border border-gray-300 rounded-lg" />
-                  </div>
+                  {isRolForm ? (
+                    <>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Giorno</label>
+                        <input
+                          type="date"
+                          value={form.startDate}
+                          onChange={(e) => {
+                            const day = e.target.value
+                            setForm({ ...form, startDate: day, endDate: day })
+                          }}
+                          className="w-full px-3 h-10 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Ore di ROL</label>
+                        <input
+                          type="number"
+                          min={0.5}
+                          step={0.5}
+                          value={form.requestedHours}
+                          onChange={(e) =>
+                            setForm({ ...form, requestedHours: e.target.value })
+                          }
+                          className="w-full px-3 h-10 border border-gray-300 rounded-lg"
+                          placeholder="es. 4 o 3.5"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Residuo disponibile:{' '}
+                          <span className="font-medium text-green-700">
+                            {rolRemaining} ore
+                          </span>
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Dal</label>
+                        <input
+                          type="date"
+                          value={form.startDate}
+                          onChange={(e) =>
+                            setForm({ ...form, startDate: e.target.value })
+                          }
+                          className="w-full px-3 h-10 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Al</label>
+                        <input
+                          type="date"
+                          value={form.endDate}
+                          onChange={(e) =>
+                            setForm({ ...form, endDate: e.target.value })
+                          }
+                          className="w-full px-3 h-10 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="mt-3">
                   <label className="block text-sm text-gray-700 mb-1">Motivo (opzionale)</label>
                   <input type="text" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Es. Vacanza famiglia" />
                 </div>
                 <div className="flex gap-2 justify-end mt-4">
-                  <button onClick={() => setForm({ type: 'VACATION', startDate: '', endDate: '', reason: '' })} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Annulla</button>
+                  <button onClick={() => setForm(emptyLeaveForm())} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Annulla</button>
                   <button
                     disabled={submitting}
                     onClick={async () => {
-                      if (!form.startDate || !form.endDate) {
-                        alert('Seleziona date')
-                        return
+                      let payload: {
+                        type: string
+                        startDate: string
+                        endDate: string
+                        reason?: string
+                        requestedHours?: number
                       }
+
+                      if (isRolForm) {
+                        if (!form.startDate) {
+                          alert('Seleziona il giorno del ROL')
+                          return
+                        }
+                        const hours = Number.parseFloat(form.requestedHours)
+                        if (!Number.isFinite(hours) || hours <= 0) {
+                          alert('Inserisci le ore di ROL (maggiore di zero)')
+                          return
+                        }
+                        if (hours > rolRemaining) {
+                          alert(
+                            `Le ore richieste (${hours}) superano il residuo ROL disponibile (${rolRemaining} ore)`
+                          )
+                          return
+                        }
+                        payload = {
+                          type: 'ROL',
+                          startDate: form.startDate,
+                          endDate: form.startDate,
+                          requestedHours: hours,
+                          reason: form.reason || undefined,
+                        }
+                      } else {
+                        if (!form.startDate || !form.endDate) {
+                          alert('Seleziona le date')
+                          return
+                        }
+                        if (form.endDate < form.startDate) {
+                          alert('La data di fine deve essere successiva alla data di inizio')
+                          return
+                        }
+                        payload = {
+                          type: form.type,
+                          startDate: form.startDate,
+                          endDate: form.endDate,
+                          reason: form.reason || undefined,
+                        }
+                      }
+
                       setSubmitting(true)
                       try {
                         const res = await fetch('/api/leaves', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            type: form.type,
-                            startDate: form.startDate,
-                            endDate: form.endDate,
-                            reason: form.reason || undefined,
-                          }),
+                          body: JSON.stringify(payload),
                         })
                         const data = await res.json()
                         if (!res.ok) {
@@ -331,7 +463,7 @@ export default function LeavesPage() {
                           return
                         }
                         await loadMine()
-                        setForm({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
+                        setForm(emptyLeaveForm())
                         window.dispatchEvent(new CustomEvent('approvals_updated'))
                       } catch {
                         alert('Errore di rete')
@@ -367,8 +499,19 @@ export default function LeavesPage() {
                             {LEAVE_TYPE_LABELS[req.type] ?? req.type}
                           </div>
                           <div className="font-semibold">
-                            {new Date(req.startDate).toLocaleDateString('it-IT')} -{' '}
-                            {new Date(req.endDate).toLocaleDateString('it-IT')}
+                            {req.type === 'ROL' ? (
+                              <>
+                                {new Date(req.startDate).toLocaleDateString('it-IT')}
+                                {req.requestedHours != null
+                                  ? ` · ${req.requestedHours} ore ROL`
+                                  : ''}
+                              </>
+                            ) : (
+                              <>
+                                {new Date(req.startDate).toLocaleDateString('it-IT')} -{' '}
+                                {new Date(req.endDate).toLocaleDateString('it-IT')}
+                              </>
+                            )}
                           </div>
                           {req.reason && (
                             <div className="text-sm text-gray-600 mt-1">{req.reason}</div>

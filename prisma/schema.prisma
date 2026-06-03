@@ -317,6 +317,8 @@ model LeaveRequest {
   startDate       DateTime        @map("start_date")
   endDate         DateTime        @map("end_date")
   type            LeaveType
+  /** Ore richieste (solo ROL); null per tipi a giorni. */
+  requestedHours  Decimal?        @map("requested_hours") @db.Decimal(5, 2)
   reason          String?
   status          LeaveStatus     @default(PENDING)
   approvedBy      String?         @map("approved_by")
@@ -411,9 +413,9 @@ model LeaveBalance {
   userId    String    @map("user_id")
   year      Int
   type      LeaveType
-  total     Int
-  used      Int       @default(0)
-  remaining Int
+  total     Decimal   @db.Decimal(6, 2)
+  used      Decimal   @default(0) @db.Decimal(6, 2)
+  remaining Decimal   @db.Decimal(6, 2)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt @map("updated_at")
   user      User      @relation(fields: [userId], references: [id])

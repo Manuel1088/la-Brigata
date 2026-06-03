@@ -4,8 +4,10 @@ import type { LeaveStatus, Prisma } from '@prisma/client'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import {
+  ensureLeaveEntitlementAndBalances,
   getLeaveBalancesForUser,
   isLeaveApprover,
+  leaveBalanceAmount,
   monthBounds,
   serializeLeaveRequest,
 } from '@/lib/leaves'
@@ -170,7 +172,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { startDate, endDate, type, reason, isUrgent } = parsed.data
+    const { startDate, endDate, type, reason, isUrgent, requestedHours } =
+      parsed.data
     const start = dateFromIso(startDate)
     const end = dateFromIso(endDate)
 
@@ -181,6 +184,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (type === 'ROL' && requestedHours != null) {
+      const year = start.getFullYear()
+      await ensureLeaveEntitlementAndBalances(prisma, session.user.id, year)
+      const balance = await prisma.leaveBalance.findUnique({
+        where: {
+          userId_year_type: {
+            userId: session.user.id,
+            year,
+            type: 'ROL',
+          },
+        },
+      })
+      if (balance && requestedHours > leaveBalanceAmount(balance.remaining)) {
+        return NextResponse.json(
+          {
+            error:
+              'Le ore ROL richieste superano il residuo disponibile',
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     const created = await prisma.leaveRequest.create({
       data: {
         id: crypto.randomUUID(),
@@ -188,6 +214,7 @@ export async function POST(request: NextRequest) {
         startDate: start,
         endDate: end,
         type,
+        requestedHours: type === 'ROL' ? requestedHours : null,
         reason: reason ?? null,
         status: 'PENDING',
         isUrgent: isUrgent ?? false,

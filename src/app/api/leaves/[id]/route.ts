@@ -127,7 +127,10 @@ export async function PATCH(
         updated.userId,
         updated.type,
         updated.startDate,
-        updated.endDate
+        updated.endDate,
+        updated.requestedHours != null
+          ? Number(updated.requestedHours)
+          : null
       )
 
       const restaurantId = existing.user.restaurantId

@@ -35,13 +35,39 @@ export const getLeavesQuerySchema = z.object({
     .transform((v) => v === 'true'),
 })
 
-export const postLeaveBodySchema = z.object({
-  startDate: dateIso,
-  endDate: dateIso,
-  type: leaveTypeSchema,
-  reason: z.string().max(2000).optional(),
-  isUrgent: z.boolean().optional(),
-})
+export const postLeaveBodySchema = z
+  .object({
+    startDate: dateIso,
+    endDate: dateIso,
+    type: leaveTypeSchema,
+    /** Ore (solo ROL); supporta decimali es. 3.5 */
+    requestedHours: z
+      .number()
+      .positive('Le ore devono essere maggiori di zero')
+      .max(999.99)
+      .optional(),
+    reason: z.string().max(2000).optional(),
+    isUrgent: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === 'ROL') {
+      if (data.requestedHours == null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'requestedHours obbligatorio per il ROL',
+          path: ['requestedHours'],
+        })
+      }
+      return
+    }
+    if (data.requestedHours != null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'requestedHours consentito solo per il ROL',
+        path: ['requestedHours'],
+      })
+    }
+  })
 
 export const patchLeaveBodySchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED']),
