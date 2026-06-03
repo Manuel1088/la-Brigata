@@ -5,24 +5,13 @@ import { prisma } from '@/lib/db'
 import {
   dateFromIso,
   decodeShiftTime,
+  eachDayIsoInRange,
   getDateRange,
   parseTimeToBounds,
   toDateOnlyIso,
 } from '@/lib/shifts'
 import { recalculateDistributionsForDay } from '@/lib/tips'
 import { getShiftsQuerySchema, postShiftsBodySchema } from '@/lib/validations/shifts'
-
-function eachDayIsoInRange(rangeFrom: string, rangeTo: string): string[] {
-  const dates: string[] = []
-  const start = dateFromIso(rangeFrom)
-  const end = dateFromIso(rangeTo)
-  const cur = new Date(start)
-  while (cur <= end) {
-    dates.push(toDateOnlyIso(cur))
-    cur.setDate(cur.getDate() + 1)
-  }
-  return dates
-}
 
 import { isManagerRole } from '@/lib/roles'
 import { resolveRestaurantAccess } from '@/lib/restaurant-access'

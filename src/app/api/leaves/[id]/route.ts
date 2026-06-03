@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { persistApprovedLeaveOnShifts } from '@/lib/apply-approved-leave-to-shifts'
 import { prisma } from '@/lib/db'
 import {
   applyApprovedLeaveToBalance,
   isLeaveApprover,
   serializeLeaveRequest,
 } from '@/lib/leaves'
+import { dateFromIso, eachDayIsoInRange, toDateOnlyIso } from '@/lib/shifts'
+import { recalculateDistributionsForDay } from '@/lib/tips'
 import { patchLeaveBodySchema } from '@/lib/validations/leaves'
 
 async function loadRequest(id: string) {
@@ -126,6 +129,63 @@ export async function PATCH(
         updated.startDate,
         updated.endDate
       )
+
+      const restaurantId = existing.user.restaurantId
+      if (!restaurantId) {
+        console.warn(
+          `[leaves] Richiesta ${id} approvata ma user ${updated.userId} senza restaurantId: turni non scritti`
+        )
+      } else {
+        try {
+          await prisma.$transaction(async (tx) => {
+            await persistApprovedLeaveOnShifts(tx, {
+              userId: updated.userId,
+              restaurantId,
+              department: existing.user.department,
+              startDate: updated.startDate,
+              endDate: updated.endDate,
+              leaveType: updated.type,
+            })
+          })
+        } catch (shiftErr) {
+          console.error(
+            `[leaves] Scrittura turni fallita per richiesta ${id}:`,
+            shiftErr
+          )
+        }
+
+        const rangeFrom = toDateOnlyIso(updated.startDate)
+        const rangeTo = toDateOnlyIso(updated.endDate)
+        const rangeStart = dateFromIso(rangeFrom)
+        const rangeEnd = new Date(`${rangeTo}T23:59:59.999`)
+
+        const tipEntriesInRange = await prisma.tipEntry.findMany({
+          where: {
+            restaurantId,
+            date: { gte: rangeStart, lte: rangeEnd },
+          },
+          select: { date: true },
+        })
+        const daysWithTips = new Set(
+          tipEntriesInRange.map((e) => toDateOnlyIso(e.date))
+        )
+
+        for (const dateIso of eachDayIsoInRange(rangeFrom, rangeTo)) {
+          if (!daysWithTips.has(dateIso)) continue
+          try {
+            await recalculateDistributionsForDay(
+              prisma,
+              restaurantId,
+              dateIso
+            )
+          } catch (recalcErr) {
+            console.error(
+              `Ricalcolo mance fallito ${restaurantId} ${dateIso} (leave ${id}):`,
+              recalcErr
+            )
+          }
+        }
+      }
     }
 
     return NextResponse.json({

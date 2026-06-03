@@ -192,6 +192,19 @@ export function toDateOnlyIso(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
+/** Giorni ISO inclusivi tra due date (stesso formato del calendario turni). */
+export function eachDayIsoInRange(rangeFrom: string, rangeTo: string): string[] {
+  const dates: string[] = []
+  const start = dateFromIso(rangeFrom)
+  const end = dateFromIso(rangeTo)
+  const cur = new Date(start)
+  while (cur <= end) {
+    dates.push(toDateOnlyIso(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+  return dates
+}
+
 export type ShiftCalendarEmployee = { id: string; name: string }
 
 export function shiftCellKey(employeeName: string, dayIndex: number): string {
