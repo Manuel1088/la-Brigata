@@ -19,11 +19,16 @@ import {
   findShiftCalendarEmployee,
   getShiftAtDay,
   isShiftCalendarCurrentUser,
+  isWorkShiftTime,
   shiftCellKey,
   shiftsToGrid,
   toDateOnlyIso,
   type ShiftGridCell,
 } from '@/lib/shifts'
+import {
+  LEAVE_TYPE_DEFINITIONS,
+  LEGACY_LEAVE_TYPE_DEFINITIONS,
+} from '@/lib/leave-types'
 import type { ShiftAssignment } from '@/lib/validations/shifts'
 import {
   normalizeUserDepartmentToShiftDept,
@@ -40,6 +45,64 @@ type CalendarEmployee = Omit<SimpleEmployee, 'department'> & {
 }
 
 type ShiftCell = ShiftGridCell
+
+/** Assenze impostabili a mano nel modale (FERIE/ROL solo da richieste approvate). */
+const MANUAL_ABSENCE_SHIFT_IDS = [
+  'RIPOSO',
+  'RIPOSO_ANTICIPATO',
+  'RECUPERO_RIPOSO',
+  'RO',
+] as const
+
+const SHIFT_CELL_DISPLAY: Record<string, string> = (() => {
+  const map: Record<string, string> = {
+    RIPOSO: 'Riposo',
+    RIPOSO_ANTICIPATO: 'Rip. ant.',
+    RECUPERO_RIPOSO: 'Rec. riposo',
+    RO: 'RO',
+  }
+  for (const d of [...LEAVE_TYPE_DEFINITIONS, ...LEGACY_LEAVE_TYPE_DEFINITIONS]) {
+    map[d.shiftCell] = d.label
+  }
+  return map
+})()
+
+function formatShiftCellTime(time: string): string {
+  return SHIFT_CELL_DISPLAY[time] ?? time
+}
+
+function shiftCellAppearance(time: string | undefined): string {
+  if (!time) return 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+  switch (time) {
+    case 'RIPOSO':
+      return 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+    case 'RIPOSO_ANTICIPATO':
+      return 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+    case 'RECUPERO_RIPOSO':
+      return 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+    case 'FERIE':
+      return 'bg-green-100 text-green-700 hover:bg-green-200'
+    case 'ROL':
+      return 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+    case 'RO':
+      return 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+    case 'MALATTIA':
+      return 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+    case 'MALATTIA_BIMBO':
+      return 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+    case 'CONGEDO_PARENTALE':
+    case 'CONGEDO_SINDACALE':
+    case 'DONAZIONE_SANGUE':
+    case 'PERMESSO_ELETTORALE':
+    case 'PERMESSO_RETRO':
+      return 'bg-violet-100 text-violet-800 hover:bg-violet-200'
+    default:
+      if (isWorkShiftTime(time)) {
+        return 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+      }
+      return 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+  }
+}
 
 type ShiftsCalendarProps = {
   /** Se impostato, limita i reparti visibili (da pagina team turni). */
@@ -557,7 +620,9 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     }
 
     // Assenze speciali
-    if (['RIPOSO', 'FERIE', 'ROL', 'RO'].includes(shiftId)) {
+    if (
+      (MANUAL_ABSENCE_SHIFT_IDS as readonly string[]).includes(shiftId)
+    ) {
       newShifts[cellKey] = { employee: name, time: shiftId, department: selectedDepartment }
       setShifts(newShifts)
       void saveShifts(newShifts)
@@ -915,18 +980,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                           onClick={() => handleCellClick(employee.name, dayIndex)}
                           className={`
                             w-full px-3 py-2 rounded-lg text-sm font-medium transition
-                            ${shift?.time === 'RIPOSO'
-                              ? 'bg-gray-100 text-gray-600'
-                              : shift?.time === 'FERIE'
-                              ? 'bg-green-100 text-green-700'
-                              : shift?.time === 'ROL'
-                              ? 'bg-amber-100 text-amber-700'
-                              : shift?.time === 'RO'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : shift?.time
-                              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                              : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-                            }
+                            ${shiftCellAppearance(shift?.time)}
                             ${isToday ? 'ring-2 ring-orange-400' : ''}
                             ${
                               canInteractWithCell(employee.name, shift)
@@ -935,7 +989,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                             }
                           `}
                         >
-                          {shift?.time || 'Vuoto'}
+                          {shift?.time ? formatShiftCellTime(shift.time) : 'Vuoto'}
                         </button>
                       </td>
                     )
@@ -962,7 +1016,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                 <p className="text-sm text-gray-500 mt-0.5">{selectedEmployee.name}</p>
                 {currentTime && (
                   <p className="text-xs text-orange-600 font-medium mt-1">
-                    Turno attuale: {currentTime}
+                    Turno attuale: {formatShiftCellTime(currentTime)}
                   </p>
                 )}
               </div>
@@ -1066,12 +1120,44 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                 {/* Sezione assenze */}
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Assenze</p>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {[
-                      { id: 'RIPOSO', label: 'Riposo', short: 'R',  bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300', activeBg: 'bg-gray-200' },
-                      { id: 'FERIE',  label: 'Ferie',  short: 'F',  bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-300', activeBg: 'bg-green-100' },
-                      { id: 'ROL',    label: 'ROL',    short: 'ROL',bg: 'bg-amber-50',  text: 'text-amber-700', border: 'border-amber-300', activeBg: 'bg-amber-100' },
-                      { id: 'RO',     label: 'RO',     short: 'RO', bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-300', activeBg: 'bg-yellow-100' },
+                      {
+                        id: 'RIPOSO',
+                        label: 'Riposo',
+                        short: 'R',
+                        bg: 'bg-gray-100',
+                        text: 'text-gray-700',
+                        border: 'border-gray-300',
+                        activeBg: 'bg-gray-200',
+                      },
+                      {
+                        id: 'RIPOSO_ANTICIPATO',
+                        label: 'Riposo Anticipato',
+                        short: 'R.Ant',
+                        bg: 'bg-gray-200',
+                        text: 'text-gray-700',
+                        border: 'border-gray-400',
+                        activeBg: 'bg-gray-300',
+                      },
+                      {
+                        id: 'RECUPERO_RIPOSO',
+                        label: 'Recupero Riposo',
+                        short: 'Rec.R',
+                        bg: 'bg-slate-100',
+                        text: 'text-slate-700',
+                        border: 'border-slate-300',
+                        activeBg: 'bg-slate-200',
+                      },
+                      {
+                        id: 'RO',
+                        label: 'RO',
+                        short: 'RO',
+                        bg: 'bg-yellow-50',
+                        text: 'text-yellow-700',
+                        border: 'border-yellow-300',
+                        activeBg: 'bg-yellow-100',
+                      },
                     ].map((absence) => {
                       const isCurrent = currentTime === absence.id
                       return (
@@ -1084,9 +1170,16 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                               : `${absence.bg} ${absence.text} border-transparent hover:border-current`
                           }`}
                         >
-                          <div className="text-base font-bold">{absence.short}</div>
+                          <div className="text-sm font-bold leading-tight">
+                            {absence.short}
+                          </div>
+                          <div className="text-[10px] font-normal mt-0.5 leading-tight">
+                            {absence.label}
+                          </div>
                           {isCurrent && (
-                            <div className="text-[10px] font-normal mt-0.5">Attuale</div>
+                            <div className="text-[10px] font-medium mt-0.5 text-current">
+                              Attuale
+                            </div>
                           )}
                         </button>
                       )
