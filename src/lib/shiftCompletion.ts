@@ -22,13 +22,21 @@ export type ShiftCompletionEmployee = {
   department: string
 }
 
+/** Tutti contano come "riposo" nel voto moda; la moda propone sempre 'RIPOSO' normale. */
+const REST_LIKE_TIMES = new Set(['RIPOSO', 'RIPOSO_ANTICIPATO', 'RECUPERO_RIPOSO'])
+
+function normalizeModaVoteTime(time: string): string {
+  if (REST_LIKE_TIMES.has(time)) return 'RIPOSO'
+  return time
+}
+
 /**
- * La moda propone SOLO lavoro o RIPOSO (whitelist locale: isWorkShiftTime + RIPOSO).
+ * La moda propone SOLO lavoro o RIPOSO (whitelist locale: isWorkShiftTime + riposi).
  * In leave-types.ts tutte le assenze hanno countsInModaVotes: false — non votano nello storico.
  * FERIE, ROL, RO, malattia, congedi, permessi, … sono ignorati in collectEmployeeHistoricalTimes.
  */
 export function isModaHistoricalVote(time: string): boolean {
-  if (time === 'RIPOSO') return true
+  if (REST_LIKE_TIMES.has(time)) return true
   return isWorkShiftTime(time)
 }
 
@@ -85,7 +93,9 @@ function collectEmployeeHistoricalTimes(
   for (const week of historicalWeeks) {
     for (let day = 0; day < 7; day++) {
       const time = week[shiftCellKey(employeeName, day)]?.time
-      if (time !== undefined && isModaHistoricalVote(time)) out.push(time)
+      if (time !== undefined && isModaHistoricalVote(time)) {
+        out.push(normalizeModaVoteTime(time))
+      }
     }
   }
   return out
@@ -108,7 +118,9 @@ function weekdayHistoricalTimes(
   const out: string[] = []
   for (const week of historicalWeeks) {
     const time = week[shiftCellKey(employeeName, weekday)]?.time
-    if (time !== undefined && isModaHistoricalVote(time)) out.push(time)
+    if (time !== undefined && isModaHistoricalVote(time)) {
+      out.push(normalizeModaVoteTime(time))
+    }
   }
   return out
 }

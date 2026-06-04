@@ -175,6 +175,24 @@ runCase('CASO 8 — solo ferie nello storico → nessuna proposta (cella vuota)'
   assertKeyAbsent(result, 'Mario-0', 'Mario-0 (ferie non votano)')
 })
 
+runCase(
+  'CASO 9 — riposi misti normalizzati (RIPOSO_ANTICIPATO, RIPOSO, RECUPERO_RIPOSO → RIPOSO)',
+  () => {
+    const historicalWeeks = [
+      { 'Mario-1': cell('Mario', 'RIPOSO_ANTICIPATO') },
+      { 'Mario-1': cell('Mario', 'RIPOSO') },
+      { 'Mario-1': cell('Mario', 'RECUPERO_RIPOSO') },
+    ]
+    const result = computeModaCompletion({
+      employees: [emp('Mario')],
+      historicalWeeks,
+      currentGrid: {},
+      daysToFill: 7,
+    })
+    assertCellTime(result, 'Mario-1', 'RIPOSO', 'Mario-1 (3 voti riposo normalizzati)')
+  }
+)
+
 console.log('')
 console.log(`Totale: ${passed + failed} | Passati: ${passed} | Falliti: ${failed}`)
 process.exit(failed > 0 ? 1 : 0)
