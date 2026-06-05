@@ -11,6 +11,10 @@ import {
 import { dateFromIso, eachDayIsoInRange, toDateOnlyIso } from '@/lib/shifts'
 import { recalculateDistributionsForDay } from '@/lib/tips'
 import { patchLeaveBodySchema } from '@/lib/validations/leaves'
+import {
+  notifyEmployeeLeaveApproved,
+  notifyEmployeeLeaveRejected,
+} from '@/lib/leave-notifications'
 
 async function loadRequest(id: string) {
   return prisma.leaveRequest.findUnique({
@@ -188,6 +192,33 @@ export async function PATCH(
             )
           }
         }
+      }
+
+      try {
+        await notifyEmployeeLeaveApproved({
+          userId: existing.user.id,
+          type: updated.type,
+          startDate: updated.startDate,
+          endDate: updated.endDate,
+          requestedHours:
+            updated.requestedHours != null ? Number(updated.requestedHours) : null,
+        })
+      } catch (notifErr) {
+        console.error(`[leaves] Notifica approvazione fallita per richiesta ${id}:`, notifErr)
+      }
+    } else {
+      try {
+        await notifyEmployeeLeaveRejected({
+          userId: existing.user.id,
+          type: updated.type,
+          startDate: updated.startDate,
+          endDate: updated.endDate,
+          requestedHours:
+            updated.requestedHours != null ? Number(updated.requestedHours) : null,
+          rejectionReason: updated.rejectionReason,
+        })
+      } catch (notifErr) {
+        console.error(`[leaves] Notifica rifiuto fallita per richiesta ${id}:`, notifErr)
       }
     }
 

@@ -13,6 +13,7 @@ import {
 } from '@/lib/leaves'
 import { dateFromIso } from '@/lib/shifts'
 import { isPlatformAdmin } from '@/lib/platform-admin'
+import { notifyManagersNewLeaveRequest } from '@/lib/leave-notifications'
 import { getLeavesQuerySchema, postLeaveBodySchema } from '@/lib/validations/leaves'
 
 async function getSessionUser(userId: string) {
@@ -225,9 +226,27 @@ export async function POST(request: NextRequest) {
         isUrgent: isUrgent ?? false,
       },
       include: {
-        user: { select: { name: true, department: true } },
+        user: { select: { name: true, department: true, restaurantId: true } },
       },
     })
+
+    const restaurantId = created.user.restaurantId
+    if (restaurantId) {
+      try {
+        await notifyManagersNewLeaveRequest({
+          restaurantId,
+          leaveRequestId: created.id,
+          employeeName: created.user.name,
+          type: created.type,
+          startDate: created.startDate,
+          endDate: created.endDate,
+          requestedHours:
+            created.requestedHours != null ? Number(created.requestedHours) : null,
+        })
+      } catch (notifErr) {
+        console.error('[leaves] Notifica manager nuova richiesta fallita:', notifErr)
+      }
+    }
 
     return NextResponse.json({
       success: true,
