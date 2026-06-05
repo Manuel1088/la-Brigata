@@ -78,3 +78,49 @@ export async function notifySwapAcceptedByPeer(opts: {
     },
   })
 }
+
+function buildManagerSwapDecisionMessage(dateIso: string, approved: boolean): string {
+  const day = formatSwapDayIt(dateIso)
+  if (approved) {
+    return `Il cambio turno del ${day} è stato approvato dal responsabile.`
+  }
+  return `Il cambio turno del ${day} è stato rifiutato dal responsabile.`
+}
+
+async function notifySwapManagerDecision(opts: {
+  userId: string
+  dateIso: string
+  swapId: string
+  approved: boolean
+}): Promise<void> {
+  await persistNotification({
+    type: opts.approved ? 'SUCCESS' : 'WARNING',
+    category: 'SHIFTS',
+    title: opts.approved ? 'Cambio turno approvato' : 'Cambio turno rifiutato',
+    message: buildManagerSwapDecisionMessage(opts.dateIso, opts.approved),
+    isUrgent: false,
+    userId: opts.userId,
+    metadata: {
+      swapId: opts.swapId,
+      category: opts.approved ? 'shift_swap_manager_approved' : 'shift_swap_manager_rejected',
+    },
+  })
+}
+
+/** Manager approva → notifica requester e target (chiamare due volte o via helper). */
+export async function notifySwapApprovedByManager(opts: {
+  userId: string
+  dateIso: string
+  swapId: string
+}): Promise<void> {
+  await notifySwapManagerDecision({ ...opts, approved: true })
+}
+
+/** Manager rifiuta → notifica requester e target. */
+export async function notifySwapRejectedByManager(opts: {
+  userId: string
+  dateIso: string
+  swapId: string
+}): Promise<void> {
+  await notifySwapManagerDecision({ ...opts, approved: false })
+}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/db'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { notifyCandidateRejected } from '@/lib/employment-notifications'
 
 export async function POST(
   req: NextRequest,
@@ -24,10 +25,11 @@ export async function POST(
       include: {
         user: {
           select: {
+            id: true,
             name: true,
-            email: true
-          }
-        }
+            email: true,
+          },
+        },
       }
     })
     
@@ -58,7 +60,20 @@ export async function POST(
         reviewedBy: session.user.id
       }
     })
-    
+
+    const rejectReason = typeof body.reason === 'string' ? body.reason : undefined
+    try {
+      await notifyCandidateRejected({
+        userId: employment.userId,
+        reason: rejectReason,
+      })
+    } catch (notifErr) {
+      console.error(
+        `[employments] Notifica candidatura rifiutata fallita (employment ${id}):`,
+        notifErr
+      )
+    }
+
     return NextResponse.json({
       success: true,
       message: `Richiesta di ${employment.user.name} rifiutata`,

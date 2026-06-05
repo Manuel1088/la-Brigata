@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/db'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { notifyCandidateApproved } from '@/lib/employment-notifications'
 
 export async function POST(
   req: NextRequest,
@@ -72,7 +73,16 @@ export async function POST(
         companyId: employment.restaurant.companyId ?? undefined,
       },
     })
-    
+
+    try {
+      await notifyCandidateApproved({ userId: employment.userId })
+    } catch (notifErr) {
+      console.error(
+        `[employments] Notifica candidatura approvata fallita (employment ${id}):`,
+        notifErr
+      )
+    }
+
     return NextResponse.json({
       success: true,
       employment: updated,

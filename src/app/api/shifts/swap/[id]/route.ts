@@ -11,6 +11,11 @@ import {
   serializeShiftSwapRequest,
 } from '@/lib/shift-swaps'
 import { patchShiftSwapBodySchema } from '@/lib/validations/shift-swap'
+import { toDateOnlyIso } from '@/lib/shifts'
+import {
+  notifySwapApprovedByManager,
+  notifySwapRejectedByManager,
+} from '@/lib/shift-swap-notifications'
 
 const swapInclude = {
   requester: { select: { id: true, name: true, department: true } },
@@ -78,6 +83,17 @@ export async function PATCH(
         },
         include: swapInclude,
       })
+      const dateIso = toDateOnlyIso(updated.requesterDate)
+      for (const userId of [updated.requesterUserId, updated.targetUserId]) {
+        try {
+          await notifySwapRejectedByManager({ userId, dateIso, swapId: updated.id })
+        } catch (notifErr) {
+          console.error(
+            `[swap] Notifica rifiuto manager fallita (swap ${id}, user ${userId}):`,
+            notifErr
+          )
+        }
+      }
       const serialized = await serializeShiftSwapRequest(updated)
       return NextResponse.json({ success: true, swap: serialized })
     }
@@ -110,6 +126,18 @@ export async function PATCH(
         message: result.message,
         swap: serialized,
       })
+    }
+
+    const dateIso = toDateOnlyIso(updated.requesterDate)
+    for (const userId of [updated.requesterUserId, updated.targetUserId]) {
+      try {
+        await notifySwapApprovedByManager({ userId, dateIso, swapId: updated.id })
+      } catch (notifErr) {
+        console.error(
+          `[swap] Notifica approvazione manager fallita (swap ${id}, user ${userId}):`,
+          notifErr
+        )
+      }
     }
 
     return NextResponse.json({ success: true, swap: serialized })
