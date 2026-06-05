@@ -686,6 +686,8 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
           date: toDateOnlyIso(date),
           department: dept === 'direzione' ? 'sala' : dept,
           time: cell.time,
+          shiftTemplateId: cell.shiftTemplateId ?? null,
+          displayColor: cell.displayColor ?? null,
         })
       }
 

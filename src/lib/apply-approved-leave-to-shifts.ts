@@ -81,6 +81,8 @@ export async function persistApprovedLeaveOnShifts(
         endTime,
         department: dept,
         status,
+        shiftTemplateId: null,
+        displayColor: null,
       },
     })
   }

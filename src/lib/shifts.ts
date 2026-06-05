@@ -89,6 +89,24 @@ export function isWorkShiftTime(time: string): boolean {
   return segments.some((segment) => SHIFT_TIME_SEGMENT_RE.test(segment))
 }
 
+/**
+ * Campi colore/template da persistere su Shift.
+ * Assenze (rest/leave o etichette non-lavoro): sempre null — colorate da shiftCellAppearance.
+ */
+export function shiftPersistedColorFields(
+  time: string,
+  status: string,
+  fields?: { shiftTemplateId?: string | null; displayColor?: string | null }
+): { shiftTemplateId: string | null; displayColor: string | null } {
+  if (status === 'rest' || status === 'leave' || !isWorkShiftTime(time)) {
+    return { shiftTemplateId: null, displayColor: null }
+  }
+  return {
+    shiftTemplateId: fields?.shiftTemplateId ?? null,
+    displayColor: fields?.displayColor ?? null,
+  }
+}
+
 /** Durata in ore da etichetta turno (es. "17:00-01:00", anche oltre mezzanotte e spezzati) */
 export function hoursFromShiftTimeLabel(time: string): number {
   if (time === 'RIPOSO' || time === 'FERIE') return 0
@@ -268,6 +286,8 @@ export function shiftsToGrid(
       employee: name,
       time: s.time,
       department: s.department,
+      shiftTemplateId: s.shiftTemplateId ?? null,
+      displayColor: s.displayColor ?? null,
     }
   }
 

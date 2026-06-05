@@ -8,6 +8,7 @@ import {
   eachDayIsoInRange,
   getDateRange,
   parseTimeToBounds,
+  shiftPersistedColorFields,
   toDateOnlyIso,
 } from '@/lib/shifts'
 import { recalculateDistributionsForDay } from '@/lib/tips'
@@ -92,6 +93,8 @@ export async function GET(request: NextRequest) {
       status: row.status,
       startTime: row.startTime.toISOString(),
       endTime: row.endTime.toISOString(),
+      shiftTemplateId: row.shiftTemplateId,
+      displayColor: row.displayColor,
     }))
 
     return NextResponse.json({
@@ -161,6 +164,10 @@ export async function POST(request: NextRequest) {
       await tx.shift.createMany({
         data: assignments.map((a) => {
           const { startTime, endTime, status } = parseTimeToBounds(a.time, a.date)
+          const colorFields = shiftPersistedColorFields(a.time, status, {
+            shiftTemplateId: a.shiftTemplateId,
+            displayColor: a.displayColor,
+          })
           return {
             userId: a.userId,
             restaurantId,
@@ -169,6 +176,8 @@ export async function POST(request: NextRequest) {
             endTime,
             department: a.department,
             status,
+            shiftTemplateId: colorFields.shiftTemplateId,
+            displayColor: colorFields.displayColor,
           }
         }),
       })

@@ -314,6 +314,8 @@ function gridToAssignments(
       date: toDateOnlyIso(date),
       department: normalizeDepartmentForApi(cell.department || emp.department),
       time: cell.time,
+      shiftTemplateId: cell.shiftTemplateId ?? null,
+      displayColor: cell.displayColor ?? null,
     })
   }
 
