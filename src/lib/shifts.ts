@@ -7,6 +7,10 @@ export interface ShiftGridCell {
   time?: string
   department?: string
   role?: string
+  /** FK opzionale verso ShiftTemplate (persistito su Shift.shift_template_id). */
+  shiftTemplateId?: string | null
+  /** Snapshot hex (#RRGGBB) per rendering; sopravvive se il template viene eliminato. */
+  displayColor?: string | null
 }
 
 export interface ShiftApiRecord {
@@ -19,6 +23,8 @@ export interface ShiftApiRecord {
   status: string
   startTime: string
   endTime: string
+  shiftTemplateId?: string | null
+  displayColor?: string | null
 }
 
 const DISPLAY_PREFIX = 'display:'

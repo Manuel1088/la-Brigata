@@ -148,20 +148,24 @@ model Notification {
 }
 
 model Shift {
-  id           String     @id @default(cuid())
-  userId       String     @map("user_id")
-  restaurantId String     @map("restaurant_id")
-  date         DateTime
-  startTime    DateTime   @map("start_time")
-  endTime      DateTime   @map("end_time")
-  department   String
-  status       String     @default("scheduled")
-  createdAt    DateTime   @default(now())
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
-  user         User       @relation(fields: [userId], references: [id])
+  id               String          @id @default(cuid())
+  userId           String          @map("user_id")
+  restaurantId     String          @map("restaurant_id")
+  date             DateTime
+  startTime        DateTime        @map("start_time")
+  endTime          DateTime        @map("end_time")
+  department       String
+  status           String          @default("scheduled")
+  shiftTemplateId  String?         @map("shift_template_id")
+  displayColor     String?         @map("display_color")
+  createdAt        DateTime        @default(now())
+  restaurant       Restaurant      @relation(fields: [restaurantId], references: [id])
+  user             User            @relation(fields: [userId], references: [id])
+  shiftTemplate    ShiftTemplate?  @relation(fields: [shiftTemplateId], references: [id], onDelete: SetNull)
 
   @@index([userId, date])
   @@index([restaurantId, date])
+  @@index([shiftTemplateId])
   @@map("shifts")
 }
 
@@ -211,6 +215,7 @@ model ShiftTemplate {
   sortOrder    Int               @default(0) @map("sort_order")
   createdAt    DateTime          @default(now()) @map("created_at")
   restaurant   Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  shifts       Shift[]
 
   @@index([restaurantId, isActive])
   @@map("shift_templates")

@@ -7,6 +7,8 @@ export const shiftAssignmentSchema = z.object({
   date: dateIso,
   department: z.enum(['cucina', 'pasticceria', 'sala', 'beverage', 'accoglienza', 'direzione']),
   time: z.string().min(1),
+  shiftTemplateId: z.string().nullable().optional(),
+  displayColor: z.string().nullable().optional(),
 })
 
 export const postShiftsBodySchema = z.object({
