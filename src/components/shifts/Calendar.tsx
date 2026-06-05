@@ -19,7 +19,6 @@ import {
   findShiftCalendarEmployee,
   getShiftAtDay,
   isShiftCalendarCurrentUser,
-  isWorkShiftTime,
   shiftCellKey,
   shiftsToGrid,
   toDateOnlyIso,
@@ -38,6 +37,11 @@ import {
 } from '@/lib/shift-department-access'
 import { ccnlMeetsMinimum } from '@/lib/permissions'
 import { CCNLLevel } from '@/lib/ccnl'
+import {
+  DEFAULT_WORK_COLOR,
+  resolveShiftDisplayColor,
+  shiftCellWorkInlineStyle,
+} from '@/lib/shift-colors'
 
 type CalendarEmployee = Omit<SimpleEmployee, 'department'> & {
   id: string
@@ -71,36 +75,57 @@ function formatShiftCellTime(time: string): string {
   return SHIFT_CELL_DISPLAY[time] ?? time
 }
 
-function shiftCellAppearance(time: string | undefined): string {
-  if (!time) return 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+type ShiftCellAppearance = {
+  className: string
+  style?: React.CSSProperties
+}
+
+/**
+ * Stile cella griglia: assenze → classi Tailwind (invariate); lavoro → colore hex inline.
+ * @param cell — intera cella (time + displayColor + shiftTemplateId)
+ * @param templatesMap — dbTemplates indicizzati per id (fallback colore da templateId)
+ */
+function shiftCellAppearance(
+  cell: ShiftGridCell | undefined,
+  templatesMap: ReadonlyMap<string, { color: string }>
+): ShiftCellAppearance {
+  const time = cell?.time
+  if (!time) {
+    return { className: 'bg-gray-50 text-gray-400 hover:bg-gray-100' }
+  }
   switch (time) {
     case 'RIPOSO':
-      return 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+      return { className: 'bg-gray-100 text-gray-600 hover:bg-gray-200' }
     case 'RIPOSO_ANTICIPATO':
-      return 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+      return { className: 'bg-gray-200 text-gray-700 hover:bg-gray-300' }
     case 'RECUPERO_RIPOSO':
-      return 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+      return { className: 'bg-slate-100 text-slate-700 hover:bg-slate-200' }
     case 'FERIE':
-      return 'bg-green-100 text-green-700 hover:bg-green-200'
+      return { className: 'bg-green-100 text-green-700 hover:bg-green-200' }
     case 'ROL':
-      return 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+      return { className: 'bg-amber-100 text-amber-700 hover:bg-amber-200' }
     case 'RO':
-      return 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+      return { className: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' }
     case 'MALATTIA':
-      return 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+      return { className: 'bg-rose-100 text-rose-800 hover:bg-rose-200' }
     case 'MALATTIA_BIMBO':
-      return 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+      return { className: 'bg-rose-50 text-rose-700 hover:bg-rose-100' }
     case 'CONGEDO_PARENTALE':
     case 'CONGEDO_SINDACALE':
     case 'DONAZIONE_SANGUE':
     case 'PERMESSO_ELETTORALE':
     case 'PERMESSO_RETRO':
-      return 'bg-violet-100 text-violet-800 hover:bg-violet-200'
-    default:
-      if (isWorkShiftTime(time)) {
-        return 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+      return { className: 'bg-violet-100 text-violet-800 hover:bg-violet-200' }
+    default: {
+      const workColor = resolveShiftDisplayColor(cell ?? { time }, templatesMap)
+      if (workColor) {
+        return {
+          className: 'transition hover:brightness-95',
+          style: shiftCellWorkInlineStyle(workColor),
+        }
       }
-      return 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+      return { className: 'bg-slate-100 text-slate-700 hover:bg-slate-200' }
+    }
   }
 }
 
@@ -312,6 +337,14 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       })
       .catch(() => {})
   }, [restaurantId, status])
+
+  const shiftTemplatesMap = useMemo(() => {
+    const map = new Map<string, { color: string }>()
+    for (const tpl of dbTemplates) {
+      map.set(tpl.id, { color: tpl.color })
+    }
+    return map
+  }, [dbTemplates])
 
   const getWeekDates = useCallback((date: Date) => {
     const start = new Date(date)
@@ -610,6 +643,8 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
           employee: name,
           time: `${tpl.startTime}-${tpl.endTime}`,
           department: selectedDepartment,
+          shiftTemplateId: tpl.id,
+          displayColor: tpl.color,
         }
         setShifts(newShifts)
         void saveShifts(newShifts)
@@ -641,10 +676,22 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     } else if (shift.time === 'custom') {
       const customTime = prompt('Inserisci orario personalizzato (es. 09:00-17:00):')
       if (customTime) {
-        newShifts[cellKey] = { employee: name, time: customTime, department: selectedDepartment }
+        newShifts[cellKey] = {
+          employee: name,
+          time: customTime,
+          department: selectedDepartment,
+          shiftTemplateId: null,
+          displayColor: DEFAULT_WORK_COLOR,
+        }
       }
     } else {
-      newShifts[cellKey] = { employee: name, time: shift.time, department: selectedDepartment }
+      newShifts[cellKey] = {
+        employee: name,
+        time: shift.time,
+        department: selectedDepartment,
+        shiftTemplateId: null,
+        displayColor: DEFAULT_WORK_COLOR,
+      }
     }
 
     setShifts(newShifts)
@@ -975,14 +1022,16 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                     const cellKey = shiftCellKey(employee.name, dayIndex)
                     const shift = shifts[cellKey]
                     const isToday = date.toDateString() === new Date().toDateString()
-                    
+                    const cellLook = shiftCellAppearance(shift, shiftTemplatesMap)
+
                     return (
                       <td key={dayIndex} className="px-4 py-3 text-center">
                         <button
                           onClick={() => handleCellClick(employee.name, dayIndex)}
+                          style={cellLook.style}
                           className={`
                             w-full px-3 py-2 rounded-lg text-sm font-medium transition
-                            ${shiftCellAppearance(shift?.time)}
+                            ${cellLook.className}
                             ${isToday ? 'ring-2 ring-orange-400' : ''}
                             ${
                               canInteractWithCell(employee.name, shift)

@@ -59,3 +59,30 @@ export function resolveShiftDisplayColor(
 
   return DEFAULT_WORK_COLOR
 }
+
+/** Converte #RRGGBB in componenti RGB (0–255). */
+export function parseHexColor(hex: string): { r: number; g: number; b: number } | null {
+  const m = hex.trim().match(/^#?([0-9A-Fa-f]{6})$/)
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+}
+
+/** Sfondo colore a bassa opacità + testo a hex pieno (leggibile su template chiari/scuri). */
+export function shiftCellWorkInlineStyle(hex: string): {
+  backgroundColor: string
+  color: string
+} {
+  const rgb = parseHexColor(hex)
+  if (!rgb) {
+    const fallback = parseHexColor(DEFAULT_WORK_COLOR)!
+    return {
+      backgroundColor: `rgba(${fallback.r}, ${fallback.g}, ${fallback.b}, 0.18)`,
+      color: DEFAULT_WORK_COLOR,
+    }
+  }
+  return {
+    backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18)`,
+    color: hex.startsWith('#') ? hex : `#${hex}`,
+  }
+}
