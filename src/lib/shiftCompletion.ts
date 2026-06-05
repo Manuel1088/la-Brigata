@@ -5,15 +5,16 @@ import {
 } from '@/lib/leaves-calendar'
 import {
   getMonday,
+  gridToAssignments,
   isWorkShiftTime,
+  normalizeDepartmentForShiftApi,
+  parseShiftGridCellKey,
   shiftCellKey,
   shiftsToGrid,
   toDateOnlyIso,
   type ShiftApiRecord,
   type ShiftGridCell,
 } from '@/lib/shifts'
-import type { ShiftAssignment } from '@/lib/validations/shifts'
-
 export type ShiftCompletionGrid = Record<string, ShiftGridCell>
 
 export type ShiftCompletionEmployee = {
@@ -214,44 +215,18 @@ function weekDatesFromMonday(weekStartMonday: Date, numDays: number): Date[] {
   return dates
 }
 
-function parseGridCellKey(key: string): { name: string; dayIndex: number } | null {
-  const lastDash = key.lastIndexOf('-')
-  if (lastDash === -1) return null
-  const name = key.slice(0, lastDash)
-  const dayIndex = parseInt(key.slice(lastDash + 1), 10)
-  if (Number.isNaN(dayIndex)) return null
-  return { name, dayIndex }
-}
-
 function filterGridToEmployeeNames(
   grid: ShiftCompletionGrid,
   names: Set<string>
 ): ShiftCompletionGrid {
   const out: ShiftCompletionGrid = {}
   for (const [key, cell] of Object.entries(grid)) {
-    const parsed = parseGridCellKey(key)
+    const parsed = parseShiftGridCellKey(key)
     if (parsed && names.has(parsed.name)) {
       out[key] = cell
     }
   }
   return out
-}
-
-function normalizeDepartmentForApi(dept: string): ShiftAssignment['department'] {
-  if (dept === 'direzione' || dept === 'dirigenti') return 'sala'
-  if (dept === 'bar') return 'beverage'
-  const allowed: ShiftAssignment['department'][] = [
-    'cucina',
-    'pasticceria',
-    'sala',
-    'beverage',
-    'accoglienza',
-    'direzione',
-  ]
-  if ((allowed as readonly string[]).includes(dept)) {
-    return dept as ShiftAssignment['department']
-  }
-  return 'sala'
 }
 
 async function fetchRestaurantEmployees(
@@ -294,34 +269,6 @@ async function fetchWeekGrid(
   return shiftsToGrid(data.shifts ?? [], weekDates, nameByUserId)
 }
 
-function gridToAssignments(
-  grid: ShiftCompletionGrid,
-  weekDates: Date[],
-  byName: Map<string, ShiftCompletionEmployee>
-): ShiftAssignment[] {
-  const assignments: ShiftAssignment[] = []
-
-  for (const [key, cell] of Object.entries(grid)) {
-    if (!cell.time) continue
-    const parsed = parseGridCellKey(key)
-    if (!parsed) continue
-    const emp = byName.get(parsed.name)
-    const date = weekDates[parsed.dayIndex]
-    if (!emp || !date) continue
-
-    assignments.push({
-      userId: emp.id,
-      date: toDateOnlyIso(date),
-      department: normalizeDepartmentForApi(cell.department || emp.department),
-      time: cell.time,
-      shiftTemplateId: cell.shiftTemplateId ?? null,
-      displayColor: cell.displayColor ?? null,
-    })
-  }
-
-  return assignments
-}
-
 /**
  * POST /api/shifts fa deleteMany su TUTTO il ristorante nel range date, poi createMany
  * solo dagli assignments inviati. Per non cancellare altri reparti, la griglia passata
@@ -334,7 +281,12 @@ async function persistShiftRange(params: {
   byName: Map<string, ShiftCompletionEmployee>
 }): Promise<void> {
   const { restaurantId, weekDates, grid, byName } = params
-  const assignments = gridToAssignments(grid, weekDates, byName)
+  const assignments = gridToAssignments(
+    grid,
+    weekDates,
+    byName,
+    normalizeDepartmentForShiftApi
+  )
 
   const res = await fetch('/api/shifts', {
     method: 'POST',

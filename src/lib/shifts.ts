@@ -1,5 +1,7 @@
 /** Utilities for shift scheduling API and calendar grid mapping */
 
+import type { ShiftAssignment } from '@/lib/validations/shifts'
+
 export type ShiftTimeLabel = string // e.g. "06:00-14:00", "RIPOSO", "FERIE"
 
 export interface ShiftGridCell {
@@ -292,4 +294,74 @@ export function shiftsToGrid(
   }
 
   return grid
+}
+
+export type GridToAssignmentsEmployee = {
+  id: string
+  name: string
+  department: string
+}
+
+/** Parse chiave griglia `${employeeName}-${dayIndex}` (dayIndex numerico). */
+export function parseShiftGridCellKey(key: string): { name: string; dayIndex: number } | null {
+  const lastDash = key.lastIndexOf('-')
+  if (lastDash === -1) return null
+  const name = key.slice(0, lastDash)
+  const dayIndex = parseInt(key.slice(lastDash + 1), 10)
+  if (Number.isNaN(dayIndex)) return null
+  return { name, dayIndex }
+}
+
+/** Normalizzazione reparto per POST da moda / merge griglia (dipendenti API grezzi). */
+export function normalizeDepartmentForShiftApi(dept: string): ShiftAssignment['department'] {
+  if (dept === 'direzione' || dept === 'dirigenti') return 'sala'
+  if (dept === 'bar') return 'beverage'
+  const allowed: ShiftAssignment['department'][] = [
+    'cucina',
+    'pasticceria',
+    'sala',
+    'beverage',
+    'accoglienza',
+    'direzione',
+  ]
+  if ((allowed as readonly string[]).includes(dept)) {
+    return dept as ShiftAssignment['department']
+  }
+  return 'sala'
+}
+
+/** Normalizzazione reparto per salvataggio da Calendar (dipendenti già normalizzati in UI). */
+export function normalizeDepartmentForCalendarSave(dept: string): ShiftAssignment['department'] {
+  const normalized = dept as ShiftAssignment['department']
+  return normalized === 'direzione' ? 'sala' : normalized
+}
+
+/** Converte griglia settimanale in assignments POST /api/shifts. */
+export function gridToAssignments(
+  grid: Record<string, ShiftGridCell>,
+  weekDates: Date[],
+  employeesByName: Map<string, GridToAssignmentsEmployee>,
+  normalizeDepartment: (dept: string) => ShiftAssignment['department']
+): ShiftAssignment[] {
+  const assignments: ShiftAssignment[] = []
+
+  for (const [key, cell] of Object.entries(grid)) {
+    if (!cell.time) continue
+    const parsed = parseShiftGridCellKey(key)
+    if (!parsed) continue
+    const emp = employeesByName.get(parsed.name)
+    const date = weekDates[parsed.dayIndex]
+    if (!emp || !date) continue
+
+    assignments.push({
+      userId: emp.id,
+      date: toDateOnlyIso(date),
+      department: normalizeDepartment(cell.department || emp.department),
+      time: cell.time,
+      shiftTemplateId: cell.shiftTemplateId ?? null,
+      displayColor: cell.displayColor ?? null,
+    })
+  }
+
+  return assignments
 }

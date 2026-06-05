@@ -19,6 +19,8 @@ import {
   findShiftCalendarEmployee,
   getShiftAtDay,
   isShiftCalendarCurrentUser,
+  gridToAssignments,
+  normalizeDepartmentForCalendarSave,
   shiftCellKey,
   shiftsToGrid,
   toDateOnlyIso,
@@ -28,7 +30,6 @@ import {
   LEAVE_TYPE_DEFINITIONS,
   LEGACY_LEAVE_TYPE_DEFINITIONS,
 } from '@/lib/leave-types'
-import type { ShiftAssignment } from '@/lib/validations/shifts'
 import {
   normalizeUserDepartmentToShiftDept,
   resolveVisibleShiftDepartments,
@@ -712,37 +713,6 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     setSelectedEmployee(null)
   }
 
-  const gridToAssignments = useCallback(
-    (grid: Record<string, ShiftCell>, weekDates: Date[]): ShiftAssignment[] => {
-      const byName = new Map(employees.map((e) => [e.name, e]))
-      const assignments: ShiftAssignment[] = []
-
-      for (const [key, cell] of Object.entries(grid)) {
-        if (!cell.time) continue
-        const lastDash = key.lastIndexOf('-')
-        if (lastDash === -1) continue
-        const name = key.slice(0, lastDash)
-        const dayIndex = parseInt(key.slice(lastDash + 1), 10)
-        const emp = byName.get(name)
-        const date = weekDates[dayIndex]
-        if (!emp || !date) continue
-
-        const dept = (cell.department || emp.department) as ShiftAssignment['department']
-        assignments.push({
-          userId: emp.id,
-          date: toDateOnlyIso(date),
-          department: dept === 'direzione' ? 'sala' : dept,
-          time: cell.time,
-          shiftTemplateId: cell.shiftTemplateId ?? null,
-          displayColor: cell.displayColor ?? null,
-        })
-      }
-
-      return assignments
-    },
-    [employees]
-  )
-
   const saveShifts = async (newShifts: Record<string, ShiftCell>) => {
     if (!restaurantId) {
       notifyCustom('ERROR', 'SHIFTS', 'Salvataggio', 'Ristorante non configurato')
@@ -750,7 +720,13 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     }
 
     const weekDates = getWeekDates(currentWeek)
-    const assignments = gridToAssignments(newShifts, weekDates)
+    const byName = new Map(employees.map((e) => [e.name, e]))
+    const assignments = gridToAssignments(
+      newShifts,
+      weekDates,
+      byName,
+      normalizeDepartmentForCalendarSave
+    )
 
     setIsSavingShifts(true)
     try {
