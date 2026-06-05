@@ -1,9 +1,17 @@
 /**
  * Test eseguibile: npx tsx scripts/shift-completion.test.ts
  */
+import { DEFAULT_WORK_COLOR } from '../src/lib/shift-colors'
 import { computeModaCompletion } from '../src/lib/shiftCompletion'
 
-type Cell = { employee: string; time?: string; department?: string; role?: string }
+type Cell = {
+  employee: string
+  time?: string
+  department?: string
+  role?: string
+  shiftTemplateId?: string | null
+  displayColor?: string | null
+}
 
 function cell(name: string, time: string, department = 'sala'): Cell {
   return { employee: name, time, department }
@@ -29,6 +37,21 @@ function assertCellTime(
 
 function assertKeyAbsent(grid: Record<string, Cell>, key: string, label: string): void {
   assert(!(key in grid), `${label}: atteso chiave assente "${key}", presente con ${JSON.stringify(grid[key])}`)
+}
+
+function assertCellColor(
+  grid: Record<string, Cell>,
+  key: string,
+  expected: { shiftTemplateId?: string | null; displayColor?: string | null },
+  label: string
+): void {
+  const cell = grid[key]
+  if ('shiftTemplateId' in expected) {
+    assertEqual(cell?.shiftTemplateId ?? null, expected.shiftTemplateId ?? null, `${label} shiftTemplateId`)
+  }
+  if ('displayColor' in expected) {
+    assertEqual(cell?.displayColor ?? null, expected.displayColor ?? null, `${label} displayColor`)
+  }
 }
 
 let passed = 0
@@ -190,6 +213,102 @@ runCase(
       daysToFill: 7,
     })
     assertCellTime(result, 'Mario-1', 'RIPOSO', 'Mario-1 (3 voti riposo normalizzati)')
+    assertCellColor(
+      result,
+      'Mario-1',
+      { shiftTemplateId: null, displayColor: null },
+      'Mario-1 riposo senza colore-turno'
+    )
+  }
+)
+
+runCase(
+  'CASO 10 — moda copia displayColor dallo storico (#F59E0B)',
+  () => {
+    const historicalWeeks = [
+      {
+        'Mario-0': {
+          ...cell('Mario', '12:00-15:00'),
+          shiftTemplateId: 'tpl-pranzo',
+          displayColor: '#F59E0B',
+        },
+      },
+      {
+        'Mario-0': {
+          ...cell('Mario', '12:00-15:00'),
+          shiftTemplateId: 'tpl-pranzo',
+          displayColor: '#F59E0B',
+        },
+      },
+      { 'Mario-0': cell('Mario', 'RIPOSO') },
+    ]
+    const result = computeModaCompletion({
+      employees: [emp('Mario')],
+      historicalWeeks,
+      currentGrid: {},
+      daysToFill: 7,
+    })
+    assertCellTime(result, 'Mario-0', '12:00-15:00', 'Mario-0')
+    assertCellColor(
+      result,
+      'Mario-0',
+      { shiftTemplateId: 'tpl-pranzo', displayColor: '#F59E0B' },
+      'Mario-0 colore storico'
+    )
+  }
+)
+
+runCase(
+  'CASO 11 — moda fallback DEFAULT senza colore storico né match template',
+  () => {
+    const historicalWeeks = [
+      { 'Mario-0': cell('Mario', '09:00-17:00') },
+      { 'Mario-0': cell('Mario', '09:00-17:00') },
+      { 'Mario-0': cell('Mario', '09:00-17:00') },
+    ]
+    const result = computeModaCompletion({
+      employees: [emp('Mario')],
+      historicalWeeks,
+      currentGrid: {},
+      daysToFill: 7,
+      templates: [
+        { id: 'tpl-pranzo', startTime: '12:00', endTime: '15:00', color: '#F59E0B' },
+      ],
+    })
+    assertCellTime(result, 'Mario-0', '09:00-17:00', 'Mario-0 custom')
+    assertCellColor(
+      result,
+      'Mario-0',
+      { shiftTemplateId: null, displayColor: DEFAULT_WORK_COLOR },
+      'Mario-0 custom neutro'
+    )
+  }
+)
+
+runCase(
+  'CASO 12 — moda fallback matchTemplateByTime quando storico senza colore',
+  () => {
+    const historicalWeeks = [
+      { 'Mario-0': cell('Mario', '12:00-15:00') },
+      { 'Mario-0': cell('Mario', '12:00-15:00') },
+      { 'Mario-0': cell('Mario', '12:00-15:00') },
+    ]
+    const result = computeModaCompletion({
+      employees: [emp('Mario')],
+      historicalWeeks,
+      currentGrid: {},
+      daysToFill: 7,
+      templates: [
+        { id: 'tpl-pranzo', startTime: '12:00', endTime: '15:00', color: '#F59E0B' },
+      ],
+    })
+    assertCellTime(result, 'Mario-0', '12:00-15:00', 'Mario-0 pranzo')
+    assertCellColor(
+      result,
+      'Mario-0',
+      { shiftTemplateId: 'tpl-pranzo', displayColor: '#F59E0B' },
+      'Mario-0 match template'
+    )
   }
 )
 

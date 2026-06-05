@@ -4,6 +4,10 @@ import {
   monthsInDateRange,
 } from '@/lib/leaves-calendar'
 import {
+  resolveModaCompletedShiftColorFields,
+  type ShiftTemplateColorSource,
+} from '@/lib/shift-colors'
+import {
   getMonday,
   gridToAssignments,
   isWorkShiftTime,
@@ -15,6 +19,7 @@ import {
   type ShiftApiRecord,
   type ShiftGridCell,
 } from '@/lib/shifts'
+
 export type ShiftCompletionGrid = Record<string, ShiftGridCell>
 
 export type ShiftCompletionEmployee = {
@@ -159,14 +164,17 @@ function resolveModaForWeekday(
 function buildCompletedCell(
   employee: ShiftCompletionEmployee,
   time: string,
-  historicalWeeks: ShiftCompletionGrid[]
+  historicalWeeks: ShiftCompletionGrid[],
+  templates: readonly ShiftTemplateColorSource[]
 ): ShiftGridCell {
   const fromHistory = findHistoricalCell(employee.name, time, historicalWeeks)
+  const colorFields = resolveModaCompletedShiftColorFields(time, fromHistory, templates)
   return {
     employee: employee.name,
     time,
     department: fromHistory?.department ?? employee.department,
     role: fromHistory?.role,
+    ...colorFields,
   }
 }
 
@@ -180,8 +188,10 @@ export function computeModaCompletion(params: {
   historicalWeeks: ShiftCompletionGrid[]
   currentGrid: ShiftCompletionGrid
   daysToFill: number
+  /** Template attivi del ristorante (fallback match orario → colore). */
+  templates?: readonly ShiftTemplateColorSource[]
 }): ShiftCompletionGrid {
-  const { employees, historicalWeeks, currentGrid, daysToFill } = params
+  const { employees, historicalWeeks, currentGrid, daysToFill, templates = [] } = params
   const result: ShiftCompletionGrid = { ...currentGrid }
 
   for (const employee of employees) {
@@ -195,7 +205,7 @@ export function computeModaCompletion(params: {
       const modaTime = resolveModaForWeekday(employee.name, weekday, historicalWeeks)
       if (modaTime === null) continue
 
-      result[key] = buildCompletedCell(employee, modaTime, historicalWeeks)
+      result[key] = buildCompletedCell(employee, modaTime, historicalWeeks, templates)
     }
   }
 
@@ -227,6 +237,26 @@ function filterGridToEmployeeNames(
     }
   }
   return out
+}
+
+async function fetchRestaurantShiftTemplates(
+  restaurantId: string
+): Promise<ShiftTemplateColorSource[]> {
+  const res = await fetch(
+    `/api/restaurants/${restaurantId}/shift-templates?active=true`,
+    { credentials: 'include' }
+  )
+  if (!res.ok) return []
+  const data = (await res.json()) as {
+    templates?: Array<{
+      id: string
+      startTime: string
+      endTime: string
+      color: string
+      isActive?: boolean
+    }>
+  }
+  return data.templates ?? []
 }
 
 async function fetchRestaurantEmployees(
@@ -329,7 +359,10 @@ export async function runModaCompletion(params: {
     const daysToFill = weeksToFill * 7
     const fillWeekDates = weekDatesFromMonday(monday, daysToFill)
 
-    const allEmployees = await fetchRestaurantEmployees(restaurantId)
+    const [allEmployees, shiftTemplates] = await Promise.all([
+      fetchRestaurantEmployees(restaurantId),
+      fetchRestaurantShiftTemplates(restaurantId),
+    ])
     const allByName = new Map(allEmployees.map((e) => [e.name, e]))
     const allNameByUserId = new Map(allEmployees.map((e) => [e.id, e.name]))
     const departmentEmployeeNames = new Set(employees.map((e) => e.name))
@@ -366,6 +399,7 @@ export async function runModaCompletion(params: {
       historicalWeeks,
       currentGrid,
       daysToFill,
+      templates: shiftTemplates,
     })
 
     await persistShiftRange({

@@ -60,6 +60,38 @@ export function resolveShiftDisplayColor(
   return DEFAULT_WORK_COLOR
 }
 
+/**
+ * Campi colore per una cella completata dalla moda (solo turni di lavoro).
+ * Assenze: oggetto vuoto — nessun shiftTemplateId/displayColor.
+ */
+export function resolveModaCompletedShiftColorFields(
+  time: string,
+  historicalCell: Pick<ShiftGridCell, 'shiftTemplateId' | 'displayColor'> | undefined,
+  templates: readonly ShiftTemplateColorSource[]
+): Pick<ShiftGridCell, 'shiftTemplateId' | 'displayColor'> | Record<string, never> {
+  if (!isWorkShiftTime(time)) return {}
+
+  if (historicalCell?.displayColor || historicalCell?.shiftTemplateId) {
+    return {
+      shiftTemplateId: historicalCell.shiftTemplateId ?? null,
+      displayColor: historicalCell.displayColor ?? null,
+    }
+  }
+
+  const matched = matchTemplateByTime(time, templates)
+  if (matched) {
+    return {
+      shiftTemplateId: matched.id,
+      displayColor: matched.color,
+    }
+  }
+
+  return {
+    shiftTemplateId: null,
+    displayColor: DEFAULT_WORK_COLOR,
+  }
+}
+
 /** Converte #RRGGBB in componenti RGB (0–255). */
 export function parseHexColor(hex: string): { r: number; g: number; b: number } | null {
   const m = hex.trim().match(/^#?([0-9A-Fa-f]{6})$/)
