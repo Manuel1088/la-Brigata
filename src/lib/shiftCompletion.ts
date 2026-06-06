@@ -1,9 +1,4 @@
 import {
-  applyApprovedLeavesToShiftGrid,
-  fetchApprovedLeavesForMonths,
-  monthsInDateRange,
-} from '@/lib/leaves-calendar'
-import {
   resolveModaCompletedShiftColorFields,
   type ShiftTemplateColorSource,
 } from '@/lib/shift-colors'
@@ -375,22 +370,10 @@ export async function runModaCompletion(params: {
       historicalWeeks.push(filterGridToEmployeeNames(grid, departmentEmployeeNames))
     }
 
-    let currentGrid = await fetchWeekGrid(
+    const currentGrid = await fetchWeekGrid(
       restaurantId,
       monday,
       daysToFill,
-      allNameByUserId
-    )
-
-    const months = monthsInDateRange(
-      fillWeekDates[0],
-      fillWeekDates[fillWeekDates.length - 1]
-    )
-    const approvedLeaves = await fetchApprovedLeavesForMonths(months)
-    currentGrid = applyApprovedLeavesToShiftGrid(
-      currentGrid,
-      approvedLeaves,
-      fillWeekDates,
       allNameByUserId
     )
 

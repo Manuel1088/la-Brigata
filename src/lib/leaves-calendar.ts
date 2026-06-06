@@ -62,7 +62,7 @@ export function monthsInDateRange(start: Date, end: Date): Array<{ year: number;
   return out
 }
 
-/** Sovrappone assenze approvate sulla griglia (stessa cella di persistApprovedLeaveOnShifts). */
+/** @deprecated Non usare: ferie approvate sono materializzate su Shift (fonte unica DB). */
 export function applyApprovedLeavesToShiftGrid(
   grid: Record<string, ShiftGridCell>,
   leaves: ApprovedLeaveRow[],

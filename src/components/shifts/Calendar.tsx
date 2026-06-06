@@ -8,11 +8,6 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useNotifications } from '@/hooks/useNotifications'
 import { getRestRuleFor } from '@/lib/restRules'
-import {
-  applyApprovedLeavesToShiftGrid,
-  fetchApprovedLeavesForMonths,
-  monthsInDateRange,
-} from '@/lib/leaves-calendar'
 import { type SimpleEmployee } from '@/lib/employees'
 import { useEmployeeContext } from '@/contexts/EmployeeContext'
 import {
@@ -391,20 +386,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
         const data = await res.json()
         if (!isActive()) return
 
-        let grid = shiftsToGrid(data.shifts ?? [], weekDates, nameByUserId)
-        const months = monthsInDateRange(
-          weekDates[0],
-          weekDates[weekDates.length - 1]
-        )
-        const approvedLeaves = await fetchApprovedLeavesForMonths(months)
-        if (!isActive()) return
-
-        grid = applyApprovedLeavesToShiftGrid(
-          grid,
-          approvedLeaves,
-          weekDates,
-          nameByUserId
-        )
+        const grid = shiftsToGrid(data.shifts ?? [], weekDates, nameByUserId)
         setShifts(grid)
       } catch (error) {
         console.error('Errore caricamento turni:', error)
