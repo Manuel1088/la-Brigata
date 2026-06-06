@@ -82,8 +82,19 @@ export async function PATCH(
       )
     }
 
+    if (status === 'APPROVED' && !existing.user.restaurantId) {
+      return NextResponse.json(
+        {
+          error:
+            'Impossibile approvare: il dipendente non è associato a un ristorante',
+        },
+        { status: 400 }
+      )
+    }
+
     const now = new Date()
     const approverId = session.user.id
+    const restaurantId = existing.user.restaurantId
 
     const updated = await prisma.$transaction(async (tx) => {
       const row = await tx.leaveRequest.update({
@@ -122,75 +133,59 @@ export async function PATCH(
         },
       })
 
+      if (status === 'APPROVED') {
+        await applyApprovedLeaveToBalance(
+          tx,
+          row.userId,
+          row.type,
+          row.startDate,
+          row.endDate,
+          row.requestedHours != null ? Number(row.requestedHours) : null
+        )
+
+        await persistApprovedLeaveOnShifts(tx, {
+          userId: row.userId,
+          restaurantId: restaurantId!,
+          department: existing.user.department,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          leaveType: row.type,
+        })
+      }
+
       return row
     })
 
     if (status === 'APPROVED') {
-      await applyApprovedLeaveToBalance(
-        prisma,
-        updated.userId,
-        updated.type,
-        updated.startDate,
-        updated.endDate,
-        updated.requestedHours != null
-          ? Number(updated.requestedHours)
-          : null
+      const rangeFrom = toDateOnlyIso(updated.startDate)
+      const rangeTo = toDateOnlyIso(updated.endDate)
+      const rangeStart = dateFromIso(rangeFrom)
+      const rangeEnd = new Date(`${rangeTo}T23:59:59.999`)
+
+      const tipEntriesInRange = await prisma.tipEntry.findMany({
+        where: {
+          restaurantId: restaurantId!,
+          date: { gte: rangeStart, lte: rangeEnd },
+        },
+        select: { date: true },
+      })
+      const daysWithTips = new Set(
+        tipEntriesInRange.map((e) => toDateOnlyIso(e.date))
       )
 
-      const restaurantId = existing.user.restaurantId
-      if (!restaurantId) {
-        console.warn(
-          `[leaves] Richiesta ${id} approvata ma user ${updated.userId} senza restaurantId: turni non scritti`
-        )
-      } else {
+      for (const dateIso of eachDayIsoInRange(rangeFrom, rangeTo)) {
+        if (!daysWithTips.has(dateIso)) continue
         try {
-          await prisma.$transaction(async (tx) => {
-            await persistApprovedLeaveOnShifts(tx, {
-              userId: updated.userId,
-              restaurantId,
-              department: existing.user.department,
-              startDate: updated.startDate,
-              endDate: updated.endDate,
-              leaveType: updated.type,
-            })
-          })
-        } catch (shiftErr) {
-          console.error(
-            `[leaves] Scrittura turni fallita per richiesta ${id}:`,
-            shiftErr
+          await recalculateDistributionsForDay(
+            prisma,
+            restaurantId!,
+            dateIso
           )
-        }
-
-        const rangeFrom = toDateOnlyIso(updated.startDate)
-        const rangeTo = toDateOnlyIso(updated.endDate)
-        const rangeStart = dateFromIso(rangeFrom)
-        const rangeEnd = new Date(`${rangeTo}T23:59:59.999`)
-
-        const tipEntriesInRange = await prisma.tipEntry.findMany({
-          where: {
-            restaurantId,
-            date: { gte: rangeStart, lte: rangeEnd },
-          },
-          select: { date: true },
-        })
-        const daysWithTips = new Set(
-          tipEntriesInRange.map((e) => toDateOnlyIso(e.date))
-        )
-
-        for (const dateIso of eachDayIsoInRange(rangeFrom, rangeTo)) {
-          if (!daysWithTips.has(dateIso)) continue
-          try {
-            await recalculateDistributionsForDay(
-              prisma,
-              restaurantId,
-              dateIso
-            )
-          } catch (recalcErr) {
-            console.error(
-              `Ricalcolo mance fallito ${restaurantId} ${dateIso} (leave ${id}):`,
-              recalcErr
-            )
-          }
+        } catch (recalcErr) {
+          console.error(
+            `Ricalcolo mance fallito ${restaurantId} ${dateIso} (leave ${id}):`,
+            recalcErr
+          )
         }
       }
 
@@ -228,7 +223,12 @@ export async function PATCH(
     })
   } catch (error) {
     console.error('PATCH /api/leaves/[id] error:', error)
-    return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
+    const message =
+      error instanceof Error ? error.message : 'Errore interno del server'
+    return NextResponse.json(
+      { error: `Operazione non completata: ${message}` },
+      { status: 500 }
+    )
   }
 }
 

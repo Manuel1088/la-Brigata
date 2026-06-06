@@ -1,5 +1,8 @@
 import type { Decimal } from '@prisma/client/runtime/library'
-import type { LeaveType, PrismaClient } from '@prisma/client'
+import type { LeaveType, Prisma, PrismaClient } from '@prisma/client'
+
+/** Client Prisma globale o transazione — per saldi ferie in approve atomico. */
+export type LeaveBalanceDb = PrismaClient | Prisma.TransactionClient
 import {
   getLeaveTypeDefinition,
   LEGACY_LEAVE_TYPE_DEFINITIONS,
@@ -133,11 +136,11 @@ export function isLeaveApprover(role: string): boolean {
 }
 
 export async function ensureLeaveEntitlementAndBalances(
-  prisma: PrismaClient,
+  db: LeaveBalanceDb,
   userId: string,
   year: number
 ): Promise<void> {
-  const entitlement = await prisma.leaveEntitlement.upsert({
+  const entitlement = await db.leaveEntitlement.upsert({
     where: { userId_year: { userId, year } },
     create: {
       id: crypto.randomUUID(),
@@ -164,7 +167,7 @@ export async function ensureLeaveEntitlementAndBalances(
   }
 
   for (const spec of specs) {
-    const existing = await prisma.leaveBalance.findUnique({
+    const existing = await db.leaveBalance.findUnique({
       where: {
         userId_year_type: {
           userId,
@@ -174,7 +177,7 @@ export async function ensureLeaveEntitlementAndBalances(
       },
     })
     if (!existing) {
-      await prisma.leaveBalance.create({
+      await db.leaveBalance.create({
         data: {
           id: crypto.randomUUID(),
           userId,
@@ -218,7 +221,7 @@ export async function getLeaveBalancesForUser(
 }
 
 export async function applyApprovedLeaveToBalance(
-  prisma: PrismaClient,
+  db: LeaveBalanceDb,
   userId: string,
   type: LeaveType,
   startDate: Date,
@@ -226,7 +229,7 @@ export async function applyApprovedLeaveToBalance(
   requestedHours: number | null | undefined
 ): Promise<void> {
   const year = startDate.getFullYear()
-  await ensureLeaveEntitlementAndBalances(prisma, userId, year)
+  await ensureLeaveEntitlementAndBalances(db, userId, year)
 
   const deduction = balanceDeductionForApprovedLeave(
     type,
@@ -243,7 +246,7 @@ export async function applyApprovedLeaveToBalance(
     return
   }
 
-  const balance = await prisma.leaveBalance.findUnique({
+  const balance = await db.leaveBalance.findUnique({
     where: {
       userId_year_type: { userId, year, type },
     },
@@ -255,7 +258,7 @@ export async function applyApprovedLeaveToBalance(
   const used = Math.min(total, usedBefore + deduction)
   const remaining = Math.max(0, total - used)
 
-  await prisma.leaveBalance.update({
+  await db.leaveBalance.update({
     where: { id: balance.id },
     data: { used, remaining },
   })
