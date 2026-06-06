@@ -2,6 +2,7 @@ import type { LeaveType, Prisma } from '@prisma/client'
 import { leaveTypeToShiftCell, type LeaveTypeId } from '@/lib/leave-types'
 import {
   dateFromIso,
+  decodeShiftTime,
   eachDayIsoInRange,
   parseTimeToBounds,
   toDateOnlyIso,
@@ -88,4 +89,48 @@ export async function persistApprovedLeaveOnShifts(
   }
 
   return { daysWritten: dayIsos.length }
+}
+
+/**
+ * Rimuove le celle assenza scritte da persistApprovedLeaveOnShifts (variante B).
+ * Cancella solo se decodeShiftTime corrisponde a leaveTypeToShiftCell(leaveType).
+ */
+export async function removeApprovedLeaveFromShifts(
+  tx: Prisma.TransactionClient,
+  params: {
+    userId: string
+    restaurantId: string
+    startDate: Date
+    endDate: Date
+    leaveType: LeaveType
+  }
+): Promise<{ daysRemoved: number }> {
+  const { userId, restaurantId, startDate, endDate, leaveType } = params
+  const expectedCell = leaveTypeToShiftCell(leaveType as LeaveTypeId)
+  const dayIsos = eachDayIsoInRange(
+    toDateOnlyIso(startDate),
+    toDateOnlyIso(endDate)
+  )
+
+  let daysRemoved = 0
+
+  for (const dateIso of dayIsos) {
+    const { gte, lte } = dayDateBounds(dateIso)
+    const rows = await tx.shift.findMany({
+      where: {
+        userId,
+        restaurantId,
+        date: { gte, lte },
+      },
+    })
+
+    for (const row of rows) {
+      const cellTime = decodeShiftTime(row.status, row.startTime, row.endTime)
+      if (cellTime !== expectedCell) continue
+      await tx.shift.delete({ where: { id: row.id } })
+      daysRemoved++
+    }
+  }
+
+  return { daysRemoved }
 }

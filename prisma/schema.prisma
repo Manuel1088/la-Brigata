@@ -333,6 +333,8 @@ model LeaveRequest {
   rejectedBy      String?         @map("rejected_by")
   rejectedAt      DateTime?       @map("rejected_at")
   rejectionReason String?         @map("rejection_reason")
+  revokedBy       String?         @map("revoked_by")
+  revokedAt       DateTime?       @map("revoked_at")
   isUrgent        Boolean         @default(false) @map("is_urgent")
   attachment      String?
   createdAt       DateTime        @default(now())
@@ -948,6 +950,7 @@ enum LeaveStatus {
   REJECTED
   CANCELLED
   EXPIRED
+  REVOKED
 }
 
 enum UserType {

@@ -28,6 +28,7 @@ export const leaveStatusSchema = z.enum([
   'REJECTED',
   'CANCELLED',
   'EXPIRED',
+  'REVOKED',
 ])
 
 export const getLeavesQuerySchema = z.object({
@@ -89,5 +90,10 @@ export const patchLeaveBodySchema = z.object({
   rejectionReason: z.string().max(2000).optional(),
 })
 
+export const revokeLeaveBodySchema = z.object({
+  reason: z.string().max(2000).optional(),
+})
+
 export type PostLeaveBody = z.infer<typeof postLeaveBodySchema>
 export type PatchLeaveBody = z.infer<typeof patchLeaveBodySchema>
+export type RevokeLeaveBody = z.infer<typeof revokeLeaveBodySchema>

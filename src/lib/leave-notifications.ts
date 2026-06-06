@@ -129,3 +129,36 @@ export async function notifyEmployeeLeaveRejected(opts: {
     userId: opts.userId,
   })
 }
+
+function buildEmployeeRevokedMessage(opts: {
+  type: LeaveType
+  startDate: Date
+  endDate: Date
+  requestedHours: number | null
+}): string {
+  const label = leaveTypeLabel(opts.type)
+  if (isRolRequest(opts.type) && opts.requestedHours != null) {
+    return `La tua richiesta di ${opts.requestedHours} ore di ${label} il ${formatLeaveDateIt(opts.startDate)}, che era stata approvata, è stata revocata.`
+  }
+  const from = formatLeaveDateIt(opts.startDate)
+  const to = formatLeaveDateIt(opts.endDate)
+  return `La tua richiesta di ${label} dal ${from} al ${to}, che era stata approvata, è stata revocata.`
+}
+
+/** Revoca approvazione → dipendente (userId esplicito). */
+export async function notifyEmployeeLeaveRevoked(opts: {
+  userId: string
+  type: LeaveType
+  startDate: Date
+  endDate: Date
+  requestedHours: number | null
+}): Promise<void> {
+  await persistNotification({
+    type: 'WARNING',
+    category: 'LEAVES',
+    title: 'Richiesta revocata',
+    message: buildEmployeeRevokedMessage(opts),
+    isUrgent: false,
+    userId: opts.userId,
+  })
+}

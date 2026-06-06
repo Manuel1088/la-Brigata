@@ -27,6 +27,7 @@ export const LEAVE_STATUS_LABELS: Record<string, string> = {
   REJECTED: 'Rifiutata',
   CANCELLED: 'Annullata',
   EXPIRED: 'Scaduta',
+  REVOKED: 'Revocata',
 }
 
 /** Tipi con saldo (fonte unica: tracksBalance), incluso PAID_LEAVE legacy. */
@@ -257,6 +258,44 @@ export async function applyApprovedLeaveToBalance(
   const usedBefore = leaveBalanceAmount(balance.used)
   const used = Math.min(total, usedBefore + deduction)
   const remaining = Math.max(0, total - used)
+
+  await db.leaveBalance.update({
+    where: { id: balance.id },
+    data: { used, remaining },
+  })
+}
+
+/** Inverso atomico di applyApprovedLeaveToBalance — stesso importo da balanceDeductionForApprovedLeave. */
+export async function revertApprovedLeaveFromBalance(
+  db: LeaveBalanceDb,
+  userId: string,
+  type: LeaveType,
+  startDate: Date,
+  endDate: Date,
+  requestedHours: number | null | undefined
+): Promise<void> {
+  const year = startDate.getFullYear()
+  await ensureLeaveEntitlementAndBalances(db, userId, year)
+
+  const credit = balanceDeductionForApprovedLeave(
+    type,
+    startDate,
+    endDate,
+    requestedHours
+  )
+  if (credit == null) return
+
+  const balance = await db.leaveBalance.findUnique({
+    where: {
+      userId_year_type: { userId, year, type },
+    },
+  })
+  if (!balance) return
+
+  const total = leaveBalanceAmount(balance.total)
+  const usedBefore = leaveBalanceAmount(balance.used)
+  const used = Math.max(0, usedBefore - credit)
+  const remaining = Math.min(total, total - used)
 
   await db.leaveBalance.update({
     where: { id: balance.id },

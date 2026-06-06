@@ -74,6 +74,35 @@ export default function ApprovalsLeaves({ onUpdate }: { onUpdate: () => void }) 
     setItems(list)
   }
 
+  const handleRevoke = async (id: string) => {
+    const ok = window.confirm(
+      'Sei sicuro? Le celle turno di quei giorni torneranno vuote e il saldo verrà restituito.'
+    )
+    if (!ok) return
+
+    setActingId(id)
+    try {
+      const res = await fetch(`/api/leaves/${id}/revoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || 'Revoca non riuscita')
+        return
+      }
+      await load()
+      window.dispatchEvent(new CustomEvent('approvals_updated'))
+      onUpdate?.()
+    } catch {
+      alert('Errore di rete')
+    } finally {
+      setActingId(null)
+    }
+  }
+
   const handleAction = async (id: string, action: 'APPROVED' | 'REJECTED') => {
     let rejectionReason: string | undefined
     if (action === 'REJECTED') {
@@ -181,7 +210,9 @@ export default function ApprovalsLeaves({ onUpdate }: { onUpdate: () => void }) 
                       ? 'bg-blue-100 text-blue-800'
                       : item.status === 'APPROVED'
                         ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                        : item.status === 'REVOKED'
+                          ? 'bg-gray-100 text-gray-700'
+                          : 'bg-red-100 text-red-800'
                   }`}
                 >
                   {LEAVE_STATUS_LABELS[item.status] ?? item.status}
@@ -202,6 +233,17 @@ export default function ApprovalsLeaves({ onUpdate }: { onUpdate: () => void }) 
                     className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm disabled:opacity-50"
                   >
                     Rifiuta
+                  </button>
+                </div>
+              )}
+              {item.status === 'APPROVED' && (
+                <div className="flex gap-2 mt-3">
+                  <button
+                    disabled={actingId === item.id}
+                    onClick={() => handleRevoke(item.id)}
+                    className="px-3 py-2 border border-red-300 text-red-700 rounded hover:bg-red-50 text-sm disabled:opacity-50"
+                  >
+                    ✗ Revoca
                   </button>
                 </div>
               )}
