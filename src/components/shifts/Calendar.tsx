@@ -15,6 +15,7 @@ import {
   getShiftAtDay,
   isShiftCalendarCurrentUser,
   gridToAssignments,
+  isWorkShiftTime,
   normalizeDepartmentForCalendarSave,
   shiftCellKey,
   shiftsToGrid,
@@ -53,6 +54,15 @@ const MANUAL_ABSENCE_SHIFT_IDS = [
   'RECUPERO_RIPOSO',
   'RO',
 ] as const
+
+/** Celle scritte solo da richieste approvate (non selezionabili a mano). */
+const APPROVED_LEAVE_SHIFT_CELLS = new Set<string>(
+  [...LEAVE_TYPE_DEFINITIONS, ...LEGACY_LEAVE_TYPE_DEFINITIONS].map((d) => d.shiftCell)
+)
+
+function isApprovedLeaveShiftCell(time: string | undefined): boolean {
+  return !!time && APPROVED_LEAVE_SHIFT_CELLS.has(time)
+}
 
 const SHIFT_CELL_DISPLAY: Record<string, string> = (() => {
   const map: Record<string, string> = {
@@ -610,11 +620,37 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
     setIsShiftSelectorOpen(true)
   }
 
+  const isWorkShiftSelection = (shiftId: string, department: ShiftCalendarDepartment): boolean => {
+    if (shiftId.startsWith('tpl_') || shiftId === 'personalizzato') return true
+    if ((MANUAL_ABSENCE_SHIFT_IDS as readonly string[]).includes(shiftId)) return false
+    if (shiftId === 'riposo') return false
+    const shift = departmentShifts[department as keyof typeof departmentShifts]?.find(
+      (s) => s.id === shiftId
+    )
+    if (!shift) return false
+    return isWorkShiftTime(shift.time)
+  }
+
   const handleShiftSelect = (shiftId: string) => {
     if (!selectedEmployee) return
 
     const { name, dayIndex } = selectedEmployee
     const cellKey = shiftCellKey(name, dayIndex)
+    const currentCellTime = shifts[cellKey]?.time
+
+    if (
+      isApprovedLeaveShiftCell(currentCellTime) &&
+      isWorkShiftSelection(shiftId, selectedDepartment)
+    ) {
+      notifyCustom(
+        'WARNING',
+        'SHIFTS',
+        'Assenza approvata',
+        'Revoca la richiesta di assenza prima di assegnare un turno di lavoro.'
+      )
+      return
+    }
+
     const newShifts = { ...shifts }
 
     // Template dal DB (prefisso 'tpl_')
@@ -725,7 +761,20 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
+        const err = (await res.json().catch(() => ({}))) as {
+          error?: string
+          conflicts?: Array<{ userName?: string; leaveLabel?: string; date?: string }>
+        }
+        if (res.status === 409) {
+          const message =
+            err.error ||
+            (err.conflicts?.[0]
+              ? `${err.conflicts[0].userName}: ${err.conflicts[0].leaveLabel} il ${err.conflicts[0].date}`
+              : 'Conflitto con assenza approvata')
+          notifyCustom('WARNING', 'SHIFTS', 'Salvataggio bloccato', message)
+          void reloadShifts(() => true)
+          return
+        }
         throw new Error(err.error || 'Salvataggio fallito')
       }
     } catch (error) {
@@ -1013,6 +1062,7 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
       {/* Modal selezione turno */}
       {isShiftSelectorOpen && selectedEmployee && (() => {
         const currentTime = shifts[shiftCellKey(selectedEmployee.name, selectedEmployee.dayIndex)]?.time
+        const blocksWorkAssignment = isApprovedLeaveShiftCell(currentTime)
 
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1026,6 +1076,12 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                 {currentTime && (
                   <p className="text-xs text-orange-600 font-medium mt-1">
                     Turno attuale: {formatShiftCellTime(currentTime)}
+                  </p>
+                )}
+                {blocksWorkAssignment && (
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mt-2">
+                    Assenza approvata: revoca la richiesta prima di assegnare un turno di lavoro.
+                    Puoi ancora impostare riposo o altre assenze manuali.
                   </p>
                 )}
               </div>
@@ -1044,12 +1100,16 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                         return (
                           <button
                             key={tpl.id}
+                            type="button"
+                            disabled={blocksWorkAssignment}
                             onClick={() => handleShiftSelect(`tpl_${tpl.id}`)}
                             style={isCurrent ? { borderColor: tpl.color } : undefined}
                             className={`relative text-left p-3 rounded-lg border-2 transition hover:shadow-sm ${
-                              isCurrent
-                                ? 'bg-orange-50'
-                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              blocksWorkAssignment
+                                ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50'
+                                : isCurrent
+                                  ? 'bg-orange-50'
+                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                             }`}
                           >
                             {isCurrent && (
@@ -1074,8 +1134,14 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                       })}
                       {/* Personalizzato */}
                       <button
+                        type="button"
+                        disabled={blocksWorkAssignment}
                         onClick={() => handleShiftSelect('personalizzato')}
-                        className="text-left p-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition"
+                        className={`text-left p-3 rounded-lg border-2 border-dashed transition ${
+                          blocksWorkAssignment
+                            ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50'
+                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                        }`}
                       >
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className="text-xs">⚙️</span>
@@ -1099,11 +1165,15 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                           return (
                             <button
                               key={shift.id}
+                              type="button"
+                              disabled={blocksWorkAssignment}
                               onClick={() => handleShiftSelect(shift.id)}
                               className={`text-left p-3 rounded-lg border-2 transition hover:shadow-sm ${
-                                isCurrent
-                                  ? 'border-blue-400 bg-blue-50'
-                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                blocksWorkAssignment
+                                  ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50'
+                                  : isCurrent
+                                    ? 'border-blue-400 bg-blue-50'
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                               }`}
                             >
                               {isCurrent && (
@@ -1116,8 +1186,14 @@ export default function ShiftsCalendar({ allowedDepartments }: ShiftsCalendarPro
                           )
                         })}
                       <button
+                        type="button"
+                        disabled={blocksWorkAssignment}
                         onClick={() => handleShiftSelect('personalizzato')}
-                        className="text-left p-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition"
+                        className={`text-left p-3 rounded-lg border-2 border-dashed transition ${
+                          blocksWorkAssignment
+                            ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50'
+                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                        }`}
                       >
                         <div className="text-xs font-medium text-gray-600 mb-1">⚙️ Personalizzato</div>
                         <div className="text-sm text-gray-400">Inserisci orario</div>

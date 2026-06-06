@@ -3,10 +3,15 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import {
+  findWorkShiftApprovedLeaveConflicts,
+  formatLeaveShiftConflictError,
+} from '@/lib/leave-shift-conflicts'
+import {
   dateFromIso,
   decodeShiftTime,
   eachDayIsoInRange,
   getDateRange,
+  isWorkShiftTime,
   parseTimeToBounds,
   shiftPersistedColorFields,
   toDateOnlyIso,
@@ -150,6 +155,37 @@ export async function POST(request: NextRequest) {
 
     const rangeStart = dateFromIso(rangeFrom)
     const rangeEnd = new Date(`${rangeTo}T23:59:59.999`)
+
+    const workAssignments = assignments.filter((a) => isWorkShiftTime(a.time))
+    if (workAssignments.length > 0) {
+      const userIds = [...new Set(workAssignments.map((a) => a.userId))]
+      const approvedLeaves = await prisma.leaveRequest.findMany({
+        where: {
+          status: 'APPROVED',
+          userId: { in: userIds },
+          user: { restaurantId },
+          startDate: { lte: rangeEnd },
+          endDate: { gte: rangeStart },
+        },
+        include: {
+          user: { select: { name: true } },
+        },
+      })
+
+      const conflicts = findWorkShiftApprovedLeaveConflicts(
+        workAssignments,
+        approvedLeaves
+      )
+      if (conflicts.length > 0) {
+        return NextResponse.json(
+          {
+            error: formatLeaveShiftConflictError(conflicts),
+            conflicts,
+          },
+          { status: 409 }
+        )
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.shift.deleteMany({
