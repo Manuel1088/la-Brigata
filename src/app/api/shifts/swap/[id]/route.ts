@@ -11,7 +11,8 @@ import {
   serializeShiftSwapRequest,
 } from '@/lib/shift-swaps'
 import { patchShiftSwapBodySchema } from '@/lib/validations/shift-swap'
-import { toDateOnlyIso } from '@/lib/shifts'
+import { dateFromIso, toDateOnlyIso } from '@/lib/shifts'
+import { recalculateDistributionsForDay } from '@/lib/tips'
 import {
   notifySwapApprovedByManager,
   notifySwapRejectedByManager,
@@ -126,6 +127,38 @@ export async function PATCH(
         message: result.message,
         swap: serialized,
       })
+    }
+
+    const swapDateIsos = [
+      ...new Set([
+        toDateOnlyIso(swap.requesterDate),
+        toDateOnlyIso(swap.targetDate),
+      ]),
+    ].sort()
+    if (swapDateIsos.length > 0) {
+      const rangeStart = dateFromIso(swapDateIsos[0]!)
+      const rangeEnd = new Date(`${swapDateIsos[swapDateIsos.length - 1]!}T23:59:59.999`)
+      const tipEntriesOnSwapDays = await prisma.tipEntry.findMany({
+        where: {
+          restaurantId: swap.restaurantId,
+          date: { gte: rangeStart, lte: rangeEnd },
+        },
+        select: { date: true },
+      })
+      const daysWithTips = new Set(
+        tipEntriesOnSwapDays.map((e) => toDateOnlyIso(e.date))
+      )
+      for (const dateIso of swapDateIsos) {
+        if (!daysWithTips.has(dateIso)) continue
+        try {
+          await recalculateDistributionsForDay(prisma, swap.restaurantId, dateIso)
+        } catch (recalcErr) {
+          console.error(
+            `[swap] Ricalcolo mance fallito ${swap.restaurantId} ${dateIso} (swap ${id}):`,
+            recalcErr
+          )
+        }
+      }
     }
 
     const dateIso = toDateOnlyIso(updated.requesterDate)
